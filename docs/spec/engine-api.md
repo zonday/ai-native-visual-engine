@@ -251,5 +251,5 @@ Actions that plugins are NOT permitted to call through the Engine API:
 - `runtime-engine.md`: `RuntimeAction`, `DispatchResult`, command bus
 - `history-and-undo-redo.md`: undo/redo contracts
 - `plugin-system.md`: `NodeRenderContext`, `Renderer`
+- `domain-model.md`: `SceneNode`, `SceneGraph`, `NodeId`, `PageId`, `Layout`, `Binding`
 - `data-interaction.md`: `DataInteractionAPI`
-- `component-types.md`: per-component props and metadata

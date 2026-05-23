@@ -6,7 +6,7 @@ This document defines the built-in component types owned by the engine core, and
 
 ## 2. Built-in Types
 
-The engine ships three types directly in core. They are always available and cannot be unregistered.
+The engine ships three types directly in core. They are always available and cannot be unregistered. Built-in types are registered automatically by the engine before any plugin registration runs; they are populated into `PluginRegistry` via an internal `registerBuiltins()` call at engine initialization, not through the public `registerComponent` API.
 
 ### 2.1 container
 
@@ -473,14 +473,14 @@ import { dividerPlugin } from './divider'
 import { filterPlugin } from './filter'
 
 export function registerDefaultPlugins(registry: PluginRegistry): void {
-  registry.register(metricValuePlugin)
-  registry.register(metricTrendPlugin)
-  registry.register(metricComparisonPlugin)
-  registry.register(chartPlugin)
-  registry.register(tablePlugin)
-  registry.register(headerPlugin)
-  registry.register(dividerPlugin)
-  registry.register(filterPlugin)
+  registry.registerComponent(metricValuePlugin)
+  registry.registerComponent(metricTrendPlugin)
+  registry.registerComponent(metricComparisonPlugin)
+  registry.registerComponent(chartPlugin)
+  registry.registerComponent(tablePlugin)
+  registry.registerComponent(headerPlugin)
+  registry.registerComponent(dividerPlugin)
+  registry.registerComponent(filterPlugin)
 }
 ```
 

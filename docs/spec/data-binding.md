@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This document defines the data binding model: how scene nodes reference external data sources, how variables are resolved, and the lifecycle of a binding from creation through re-resolution to unbinding.
+This document defines the data binding model: how scene nodes reference external data sources, how variables are resolved, and the lifecycle of a binding from creation through re-resolution to unbinding. For interactive binding with cross-filtering and drill-down, see `data-interaction.md`.
 
 ## 2. Binding Model
 
@@ -47,7 +47,7 @@ The engine maintains a registry of available data sources.
 export interface DataSourceRegistry {
   getDataset(id: string): Promise<Dataset | undefined>
   getVariable(id: string): Promise<unknown | undefined>
-  resolveValue(source: string, path?: string): Promise<unknown>
+  resolveValue(source: string, path?: string, filterParams?: FilterParam[]): Promise<unknown>
   subscribe(
     source: string,
     path: string | undefined,

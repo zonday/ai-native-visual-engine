@@ -73,7 +73,7 @@ export interface Asset {
 export interface Variable {
   id: string
   name: string
-  type: string
+  type: 'string' | 'number' | 'boolean' | 'json'
   value?: unknown
 }
 
@@ -82,6 +82,7 @@ export interface PageMetadata {
   hidden?: boolean
   createdAt?: number
   updatedAt?: number
+  filterPresets?: FilterPreset[]
 }
 
 export interface DocumentMetadata {

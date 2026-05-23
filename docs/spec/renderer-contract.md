@@ -152,4 +152,5 @@ Minimum performance expectations for the renderer:
 - `domain-model.md`: `SceneGraph`, `SceneNode`, `Layout`, `Theme`
 - `runtime-engine.md`: `RuntimeAction`, scene mutation contract
 - `plugin-system.md`: `ComponentPlugin`, `Renderer`, `PluginRegistry`, `MissingPluginPlaceholder`
+- `data-interaction.md`: drill affordances and re-render triggers
 - `editor-interaction.md`: editor mode overlays and transform handles

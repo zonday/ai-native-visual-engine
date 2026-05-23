@@ -127,18 +127,18 @@ export interface DrillDimension {
 // Example hierarchy
 const timeDrillHierarchy: DrillDimension = {
   name: 'year',
-  children: {
+  children: [{
     name: 'quarter',
-    children: {
+    children: [{
       name: 'month',
-      children: { name: 'day' },
-    },
-  },
+      children: [{ name: 'day' }],
+    }],
+  }],
 }
 
 const categoryDrillHierarchy: DrillDimension = {
   name: 'category',
-  children: { name: 'subcategory' },
+  children: [{ name: 'subcategory' }],
 }
 ```
 
@@ -304,7 +304,8 @@ Rules:
 1. The interaction pipeline is read-only with respect to the scene graph.
 2. No runtime actions or document actions are produced.
 3. The renderer must support partial updates — only re-render nodes whose resolved bindings changed.
-4. The entire pipeline runs synchronously within a single frame.
+4. Data resolution is async per the `DataSourceRegistry` contract. The interaction pipeline triggers re-resolution synchronously, but the resolved values arrive asynchronously. The renderer updates when resolution completes.
+5. During async re-resolution, affected components may show a loading or stale-data indicator.
 
 ## 8. Data Interaction API
 
@@ -425,10 +426,11 @@ export function ChartRenderer(input: RenderNodeInput): RenderedOutput {
 Rules:
 
 1. The API is read-only with respect to the scene graph. It triggers re-resolution, not mutation.
-2. All API calls are synchronous.
-3. `subscribe` callbacks fire synchronously within the same frame.
-4. Plugins call the API in response to user gestures (click, select, filter change).
-5. The API is provided through `RenderNodeInput.context`, not through a global singleton.
+2. All API calls are synchronous and return immediately.
+3. Data resolution triggered by the API is async; the renderer updates when resolved data arrives.
+4. `subscribe` callbacks fire synchronously when filter params change; the callback itself may trigger async resolution.
+5. Plugins call the API in response to user gestures (click, select, filter change).
+6. The API is provided through `RenderNodeInput.context`, not through a global singleton.
 
 ## 9. Testing Contract
 
@@ -447,7 +449,7 @@ See `testing-and-fixtures.md`. Key data-interaction test scenarios:
 
 - `data-binding.md`: `Binding`, `DataSourceRegistry`, resolution lifecycle
 - `component-types.md`: per-component props, constraints, and metadata
-- `domain-model.md`: `SceneNode`, `Page`, session-scoped state
+- `domain-model.md`: `SceneNode`, `Page`, `PageMetadata`, session-scoped state
 - `editor-interaction.md`: selection events and user gesture mapping
 - `renderer-contract.md`: renderer re-render contract
 - `testing-and-fixtures.md`: data interaction test scenarios
