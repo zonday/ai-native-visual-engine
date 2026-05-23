@@ -169,7 +169,7 @@ export interface UserWorkspacePreferences {
 Rules:
 
 1. `UserWorkspacePreferences` is user-scoped and not part of `DocumentSnapshot`.
-2. viewport recall, if implemented, must read and write this model rather than the shared document.
+2. Viewport recall, if implemented, must read and write this model rather than the shared document.
 
 ## 7. Scene Node Model
 

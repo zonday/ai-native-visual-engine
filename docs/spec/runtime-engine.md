@@ -337,8 +337,8 @@ Rules:
 2. Complex actions should prefer explicit inverse actions over full snapshots when feasible.
 3. For actions whose inverse cannot be represented compactly, history may store structural patch metadata.
 4. Selection-only actions use a separate transient history policy and are excluded from durable content history by default.
-5. collaborative undo and redo operate on each actor's own durable actions only.
-6. remote durable actions do not enter the local actor's undo stack.
+5. Collaborative undo and redo operate on each actor's own durable actions only.
+6. Remote durable actions do not enter the local actor's undo stack.
 
 ## 9. Event Sourcing
 

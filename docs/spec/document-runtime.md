@@ -10,11 +10,11 @@ Scene runtime actions mutate one page scene. Document actions mutate the multi-p
 
 Every document action must be:
 
-1. deterministic
-2. replayable
-3. reversible
-4. atomic
-5. serializable
+1. Deterministic
+2. Replayable
+3. Reversible
+4. Atomic
+5. Serializable
 
 The same standards that apply to scene runtime actions also apply to document actions.
 
