@@ -136,6 +136,7 @@ export interface NodeRenderContext {
   mode: 'editor' | 'runtime'
   engine: EngineAPI
   dataInteraction?: DataInteractionAPI
+  stateProps: Record<string, unknown>
 }
 ```
 
