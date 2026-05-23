@@ -72,10 +72,14 @@ export function computeInverseAction(
 | `update-runtime` shallow merging runtime state | `update-runtime` restoring pre-merge runtime state |
 | `batch-actions` with `[A1, A2, A3]` | `batch-actions` with `[inv_A3, inv_A2, inv_A1]` |
 | `create-page` | `remove-page` with the created `pageId` |
+| `rename-page` changing name from `N1` to `N2` | `rename-page` setting name back to `N1` |
 | `remove-page` | `create-page` with saved `Page` and `PersistedSceneGraph` snapshot |
 | `reorder-page` from index `a` to `b` | `reorder-page` back to index `a` |
+| `update-page-route` changing route from `R1` to `R2` | `update-page-route` setting route back to `R1` |
 | `set-document-theme` from `T1` to `T2` | `set-document-theme` back to `T1` (or clear if `T1` was empty) |
 | `set-page-theme` from `T1` to `T2` | `set-page-theme` back to `T1` (or clear if `T1` was empty) |
+
+For field-level updates (`update-props`, `update-style`, `update-runtime`), the inverse stores the full previous state of the affected fields, not a computed diff. This ensures the inverse is replayable without depending on the forward action's payload.
 
 ### 3.3 Snapshot Fallback
 

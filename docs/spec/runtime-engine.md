@@ -65,6 +65,7 @@ Behavior:
 2. Inserts `node.id` into parent `children[]`.
 3. Sets `node.parentId = parentId` in normalized form.
 4. Fails if parent does not exist or node ID already exists.
+5. If `index` is omitted, appends to the end. Clamps `index` to `[0, children.length]`; out-of-bounds values append.
 
 ### 3.2 remove-node
 
@@ -97,7 +98,10 @@ Behavior:
 1. Removes node from old parent ordering.
 2. Inserts node into new parent ordering.
 3. Updates `parentId`.
-4. Fails if move would create a cycle.
+4. Fails if target node does not exist.
+5. Fails if new parent does not exist.
+6. Fails if move would create a cycle.
+7. If `index` is omitted, appends to the end. Clamps `index` to `[0, children.length]`; out-of-bounds values append.
 
 ### 3.4 update-layout
 
@@ -158,6 +162,11 @@ export interface UpdateStyleAction {
   style: Record<string, unknown>
 }
 ```
+
+Behavior:
+
+1. Replaces the entire style object on the target node.
+2. Differs from `update-props` which shallow-merges; `update-style` uses replace semantics because styles are a flat token map.
 
 ### 3.8 update-bindings
 
@@ -273,6 +282,8 @@ export const runtimeHandlers = {
   'rotate-node': rotateNodeHandler,
   'update-props': updatePropsHandler,
   'update-style': updateStyleHandler,
+  'update-bindings': updateBindingsHandler,
+  'update-runtime': updateRuntimeHandler,
   'update-selection': updateSelectionHandler,
   'batch-actions': batchActionsHandler,
 }

@@ -78,10 +78,10 @@ export type Renderer = (input: RenderNodeInput) => unknown
 export interface RenderNodeInput {
   node: SceneNode
   children: unknown[]
-  context: RenderContext
+  context: NodeRenderContext
 }
 
-export interface RenderContext {
+export interface NodeRenderContext {
   selected: boolean
   editable: boolean
   mode: 'editor' | 'runtime'

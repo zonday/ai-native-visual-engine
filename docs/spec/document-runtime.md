@@ -82,12 +82,13 @@ export interface BatchDocumentActions {
 1. `create-page` adds both a `Page` record and its persisted scene in one atomic transaction.
 2. `create-page.page.sceneId` is the canonical key used to insert `create-page.scene` into `VisualDocument.scenes`.
 3. `create-page` must validate unique `page.id`, unique `page.sceneId`, and valid route uniqueness when a route is present.
-4. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction.
-5. `reorder-page` changes only page ordering and must not mutate scene content.
-6. `update-page-route` must maintain route uniqueness across the document.
-7. `set-document-theme` updates or clears `VisualDocument.activeThemeId` and must reference an existing theme when set.
-8. `set-page-theme` updates or clears `Page.themeId` and must reference an existing theme when set.
-9. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails. Nested batch actions are flattened before execution.
+4. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction. Must reject if the page does not exist.
+5. `rename-page` updates the page name. Must reject if the page does not exist.
+6. `reorder-page` changes only page ordering and must not mutate scene content. `index` is clamped to `[0, pages.length - 1]`; out-of-bounds values are rejected.
+7. `update-page-route` must maintain route uniqueness across the document. Must reject if the page does not exist.
+8. `set-document-theme` updates or clears `VisualDocument.activeThemeId` and must reference an existing theme when set.
+9. `set-page-theme` updates or clears `Page.themeId` and must reference an existing theme when set.
+10. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails. Nested batch actions are flattened before execution.
 
 ## 5. Route Canonicalization
 
