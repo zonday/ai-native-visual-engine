@@ -14,23 +14,26 @@ Each phase must end with:
 
 Scope:
 
-1. scene graph model
-2. node CRUD runtime actions
-3. command bus
-4. handler registry
-5. React renderer
+1. document snapshot model
+2. scene graph model
+3. document actions for page lifecycle
+4. node CRUD runtime actions
+5. command buses and handler registries
+6. React renderer
 
 Deliverables:
 
 1. create, move, remove, update props, update layout
-2. scene replay from action log
-3. renderer that can render a page from scene graph
+2. create, rename, reorder, remove, and route-update page actions
+3. scene replay from action log
+4. renderer that can render a page from scene graph
 
 Acceptance criteria:
 
-1. a sample page can be created entirely from runtime actions
-2. replaying the event log rebuilds the same scene
+1. a sample multi-page document can be created from document actions plus runtime actions
+2. replaying the document and scene event logs rebuilds the same document state
 3. renderer reads from scene graph only
+4. page route updates pass document validation and replay correctly
 
 ## 3. Phase 2: Layout And Editor Basics
 
@@ -72,7 +75,7 @@ Deliverables:
 
 Acceptance criteria:
 
-1. semantic actions compile into runtime actions
+1. semantic actions compile into document actions and/or runtime actions
 2. invalid semantic requests produce diagnostics instead of broken scenes
 3. generated dashboards satisfy required semantic constraints
 
@@ -130,7 +133,10 @@ Every phase should include:
 
 ## 8. Suggested Initial Package Breakdown
 
+This is the minimal phase-scoped package breakdown for Phase 1. It intentionally lists only the packages that must exist by the end of that phase.
+
 ```text
+src/core/document
 src/core/scene
 src/core/runtime
 src/core/layout

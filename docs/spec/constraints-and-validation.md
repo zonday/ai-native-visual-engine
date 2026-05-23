@@ -80,7 +80,7 @@ Examples:
 
 1. dashboard should contain at least one KPI card
 2. finance dashboard should prefer table plus trend chart
-3. page route names must be unique
+3. page routes must be unique
 4. required data binding missing for data-driven component
 
 Semantic constraints are especially important in the compiler stage.

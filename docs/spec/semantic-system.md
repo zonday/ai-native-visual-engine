@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This document defines the AI-facing intent layer and the semantic compiler that translates intent into runtime mutations.
+This document defines the AI-facing intent layer and the semantic compiler that translates intent into executable engine actions.
 
 ## 2. Hard Rule
 
@@ -58,6 +58,7 @@ export interface AutoLayoutAction {
   scopeNodeId: NodeId
   strategy?: 'compact' | 'balanced' | 'presentation'
 }
+```
 
 ### 3.4 update-theme-intent
 
@@ -70,13 +71,14 @@ export interface UpdateThemeIntentAction {
   emphasis?: 'data-dense' | 'presentation' | 'executive'
 }
 ```
-```
+
+This semantic intent is deferred until the engine defines a canonical active-theme attachment model and matching document/runtime actions.
 
 Semantic actions should be product-oriented, concise, and stable across renderer implementations.
 
 ## 4. Semantic Compiler Responsibilities
 
-The semantic compiler converts intent into `RuntimeAction[]`.
+The semantic compiler converts intent into executable engine actions.
 
 Pipeline:
 
@@ -86,9 +88,9 @@ Semantic Action
   -> Intent Expansion
   -> Constraint Precheck
   -> Layout Planning
-  -> Runtime Expansion
+  -> Action Expansion
   -> Validation
-  -> Runtime Actions[]
+  -> Execution Plan
 ```
 
 ## 5. Compiler Stage Definitions
@@ -175,11 +177,11 @@ export interface LayoutPlan {
 }
 ```
 
-### 5.5 Runtime Expansion
+### 5.5 Action Expansion
 
 Purpose:
 
-Convert layout plan into concrete runtime actions.
+Convert the plan into concrete document actions and runtime actions.
 
 Example output:
 
@@ -188,6 +190,10 @@ Example output:
 - `create-node` chart
 - `update-layout` grid container
 - `update-props` chart series config
+
+If the semantic action creates a new page, this stage may also emit:
+
+- `create-page`
 
 ### 5.6 Validation
 
@@ -207,15 +213,21 @@ Checks:
 ```ts
 export interface SemanticCompileContext {
   document: VisualDocument
-  scene: SceneGraph
+  scene?: SceneGraph
+  targetPageId?: PageId
   registry: PluginRegistry
   availableDatasets?: string[]
 }
 
 export interface SemanticCompileResult {
   ok: boolean
-  actions?: RuntimeAction[]
+  executionPlan?: SemanticExecutionPlan
   diagnostics?: CompilerDiagnostic[]
+}
+
+export interface SemanticExecutionPlan {
+  documentActions?: DocumentAction[]
+  runtimeActions?: RuntimeAction[]
 }
 
 export interface CompilerDiagnostic {
@@ -302,8 +314,8 @@ User Request
   -> Tool Call
   -> Semantic Action
   -> Semantic Compiler
-  -> Runtime Actions
-  -> Command Bus
+  -> Document Actions + Runtime Actions
+  -> Document Command Bus + Runtime Command Bus
 ```
 
 Rules:
@@ -311,6 +323,7 @@ Rules:
 1. Tool outputs must conform to semantic schemas.
 2. Tool layer may ask follow-up questions for missing required fields.
 3. Tool layer must not bypass compiler validation.
+4. Tool layer must not bypass document-action validation when semantic intent creates or mutates pages.
 
 ## 9. Failure and Recovery
 

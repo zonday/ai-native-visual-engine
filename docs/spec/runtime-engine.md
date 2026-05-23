@@ -2,7 +2,9 @@
 
 ## 1. Scope
 
-This document defines the runtime mutation model used by editor interactions, AI compilation output, history, and collaboration.
+This document defines the scene-level runtime mutation model used by editor interactions, AI compilation output, history, and collaboration.
+
+Document-level mutations use the parallel model defined in `document-runtime.md`.
 
 ## 2. Runtime Action Principles
 
@@ -31,6 +33,7 @@ export type RuntimeAction =
   | RemoveNodeAction
   | MoveNodeAction
   | UpdateLayoutAction
+  | RotateNodeAction
   | UpdatePropsAction
   | UpdateStyleAction
   | UpdateSelectionAction
@@ -103,7 +106,24 @@ Behavior:
 1. Merges layout fields onto existing layout or creates one if permitted.
 2. Must pass layout validation after merge.
 
-### 3.5 update-props
+### 3.5 rotate-node
+
+```ts
+export interface RotateNodeAction {
+  type: 'rotate-node'
+  nodeId: NodeId
+  rotation: number
+}
+```
+
+Behavior:
+
+1. updates canonical rotation storage on the target node layout
+2. is valid only for layout modes and component capabilities that allow rotation
+3. should normalize rotation into a documented range such as `0-359` if normalization is enabled
+4. rotation should use `rotate-node` as the canonical mutation path; `update-layout` should not be used for rotation updates
+
+### 3.6 update-props
 
 ```ts
 export interface UpdatePropsAction {
@@ -118,7 +138,7 @@ Behavior:
 1. Shallow-merges provided props by default.
 2. If a plugin requires replace semantics for specific props, that rule must be declared in plugin metadata.
 
-### 3.6 update-style
+### 3.7 update-style
 
 ```ts
 export interface UpdateStyleAction {
@@ -128,7 +148,7 @@ export interface UpdateStyleAction {
 }
 ```
 
-### 3.7 update-selection
+### 3.8 update-selection
 
 ```ts
 export interface UpdateSelectionAction {
@@ -137,9 +157,16 @@ export interface UpdateSelectionAction {
 }
 ```
 
-This action may be excluded from persisted event sourcing depending on product policy. The engine must support both persisted and session-only history modes.
+`update-selection` is session-scoped by default.
 
-### 3.8 batch-actions
+Rules:
+
+1. it updates the in-memory active `SceneGraph`
+2. it is excluded from `SceneEventLog` by default
+3. it is excluded from durable collaborative sync by default
+4. editors may keep a transient local selection history, but it does not participate in durable content undo and redo
+
+### 3.9 batch-actions
 
 ```ts
 export interface BatchActions {
@@ -199,6 +226,7 @@ export const runtimeHandlers = {
   'remove-node': removeNodeHandler,
   'move-node': moveNodeHandler,
   'update-layout': updateLayoutHandler,
+  'rotate-node': rotateNodeHandler,
   'update-props': updatePropsHandler,
   'update-style': updateStyleHandler,
   'update-selection': updateSelectionHandler,
@@ -296,7 +324,7 @@ Rules:
 1. `undo` applies `inverseAction` if available.
 2. Complex actions should prefer explicit inverse actions over full snapshots when feasible.
 3. For actions whose inverse cannot be represented compactly, history may store structural patch metadata.
-4. Selection-only actions may use separate history policy.
+4. Selection-only actions use a separate transient history policy and are excluded from durable content history by default.
 
 ## 9. Event Sourcing
 
@@ -317,10 +345,16 @@ Minimum replay contract:
 
 ```ts
 export interface SceneEventLog {
-  initialScene: SceneGraph
+  initialScene: PersistedSceneGraph
   actions: RuntimeAction[]
 }
 ```
+
+Rules:
+
+1. `SceneEventLog` stores content mutations only.
+2. Session-scoped actions such as `update-selection` are excluded by default.
+3. The persisted replay root should normally be `PersistedSceneGraph`; an editor may materialize that snapshot into an in-memory `SceneGraph` when a page becomes active.
 
 ## 10. Failure Policy
 
@@ -341,3 +375,21 @@ Rules:
 2. Invalid payloads fail validation.
 3. Handler failures must not partially mutate scene state.
 4. Middleware may annotate errors but must preserve failure semantics.
+
+## 11. Boundary With Document Runtime
+
+Use scene runtime actions for:
+
+- node CRUD
+- layout updates
+- props and style updates
+- active-scene selection updates
+
+Use document actions for:
+
+- page create and remove
+- page reorder
+- page rename
+- page route updates
+
+The semantic compiler may emit both action kinds in one execution plan, but they must remain distinct runtime domains.

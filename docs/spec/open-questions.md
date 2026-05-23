@@ -6,11 +6,11 @@ This document records unresolved decisions that should become ADRs or follow-up 
 
 ## 2. High Priority Questions
 
-1. Should `selection` be persisted in scene snapshots or kept only in collaborative session state?
-2. Is page management part of the same event log as scene runtime actions, or a separate document event stream?
-3. Should layout engines normalize invalid geometry automatically or always reject invalid mutations?
-4. What is the canonical undo policy for collaborative edits?
-5. How should unknown plugin types behave in runtime preview versus editor mode?
+1. Should viewport state remain session-only, or should it be persisted per user profile?
+2. Should layout engines normalize invalid geometry automatically or always reject invalid mutations?
+3. What is the canonical undo policy for collaborative edits?
+4. How should unknown plugin types behave in runtime preview versus editor mode?
+5. Should the editor UI present document and scene history as one merged timeline or two scoped timelines?
 
 ## 3. AI System Questions
 

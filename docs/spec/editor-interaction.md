@@ -19,6 +19,8 @@ Rules:
 1. Selection order should be stable and reflect selection sequence when meaningful.
 2. Empty selection is valid.
 3. Locked nodes may be selectable but not transformable, depending on product policy.
+4. Local selection is session-scoped editor state and is not persisted into `DocumentSnapshot` by default.
+5. Remote user selection is modeled as presence state, not as durable shared document state.
 
 Supported behaviors:
 
@@ -43,6 +45,7 @@ Rules:
 1. During drag, temporary preview state may live in session state.
 2. On commit, final geometry must be written via runtime actions.
 3. Transform rules depend on layout mode and component capability.
+4. Rotation is stored on canonical layout fields such as `AbsoluteLayout.rotation` and committed through `rotate-node`.
 
 Examples:
 
@@ -50,6 +53,7 @@ Examples:
 2. moving a grid widget -> `update-layout` with `x/y`
 3. moving a node to another container -> `move-node`
 4. absolute canvas drag -> `update-layout` with pixel coordinates
+5. rotating an absolute node -> `rotate-node`
 
 ## 4. Drag and Drop Semantics
 
@@ -80,19 +84,27 @@ The editor must support:
 5. route editing
 6. per-page scene editing
 
-Document-level operations should be modeled separately from scene runtime actions.
+Document-level operations are modeled separately from scene runtime actions and use the execution model defined in `document-runtime.md`.
 
 Recommended document actions:
 
 ```ts
 export type DocumentAction =
-  | { type: 'create-page'; page: Page; scene: SceneGraph }
+  | { type: 'create-page'; page: Page; scene: PersistedSceneGraph }
   | { type: 'rename-page'; pageId: PageId; name: string }
   | { type: 'remove-page'; pageId: PageId }
   | { type: 'reorder-page'; pageId: PageId; index: number }
+  | { type: 'update-page-route'; pageId: PageId; route: string }
 ```
 
-`DocumentAction` and `RuntimeAction` should share history infrastructure but remain separate domains.
+`DocumentAction` and `RuntimeAction` should share infrastructure patterns but remain separate execution domains with separate event logs.
+
+Execution rules:
+
+1. page creation must create the page record and its persisted scene atomically
+2. page deletion must remove the page record and its persisted scene atomically
+3. semantic compiler output may include document actions followed by scene runtime actions
+4. document actions operate on persisted scene payloads only and must not carry session overlays such as `selection` or `viewport`
 
 ## 6. Collaboration
 
@@ -104,7 +116,7 @@ Collaboration requirements:
 
 Recommended split:
 
-1. persistent shared state -> scene/document actions
+1. persistent shared state -> document actions and scene runtime actions
 2. presence state -> cursor, viewport hint, selected node outline, user color
 
 Yjs or OT integration should wrap action transport rather than replacing the action model.
@@ -113,6 +125,7 @@ Yjs or OT integration should wrap action transport rather than replacing the act
 
 Persistent:
 
+- page ordering
 - node tree
 - props
 - layout
@@ -121,6 +134,8 @@ Persistent:
 
 Session only:
 
+- selection
+- viewport offset and zoom
 - hover state
 - active panel tab
 - drag preview rectangle
@@ -149,3 +164,4 @@ An editing interaction is considered engine-compliant only if:
 3. redo restores committed state correctly
 4. collaboration can broadcast the committed result
 5. renderer switch does not change the underlying scene meaning
+6. session-only state such as selection and presence does not leak into durable document persistence unless explicitly opted in
