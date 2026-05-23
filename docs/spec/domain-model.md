@@ -19,16 +19,19 @@ IDs should be opaque strings. The engine must not encode runtime meaning into ID
 
 ## 3. Document Model
 
-`Document` is the top-level editing artifact.
+`VisualDocument` is the top-level editing artifact.
 
 ```ts
 export interface VisualDocument {
   id: DocumentId
   title: string
   pages: Page[]
+  scenes: Record<SceneId, PersistedSceneGraph>
+  activeThemeId?: string
   themes?: Theme[]
   assets?: Asset[]
   variables?: Variable[]
+  prototypes?: PrototypeComponent[]
   metadata?: DocumentMetadata
 }
 ```
@@ -36,8 +39,10 @@ export interface VisualDocument {
 Rules:
 
 1. A document owns page definitions, themes, reusable assets, and global variables.
-2. A document may reference multiple scenes, one per page in the MVP.
+2. A document owns all persisted page scenes through `scenes`.
 3. Multi-tab dashboards are modeled as multiple `Page` records or as container components within a single page, depending on product requirements. The default engine-level model is multiple pages.
+4. Every `Page.sceneId` must resolve to an existing key in `scenes`.
+5. In the MVP, `scenes` is a 1:1 mapping with `pages[].sceneId`; `Page.sceneId` values must be unique across pages, and orphan persisted scenes are not allowed.
 
 Supporting definitions:
 
@@ -47,6 +52,7 @@ export interface Page {
   name: string
   sceneId: SceneId
   route?: string
+  themeId?: string
   metadata?: PageMetadata
 }
 
@@ -68,7 +74,7 @@ export interface Asset {
 export interface Variable {
   id: string
   name: string
-  type: string
+  type: 'string' | 'number' | 'boolean' | 'json'
   value?: unknown
 }
 
@@ -77,6 +83,7 @@ export interface PageMetadata {
   hidden?: boolean
   createdAt?: number
   updatedAt?: number
+  filterPresets?: FilterPreset[]
 }
 
 export interface DocumentMetadata {
@@ -89,16 +96,19 @@ export interface DocumentMetadata {
 
 ## 4. Scene Graph Model
 
-Each page references one `SceneGraph`.
+Each page references one persisted scene. The editor may materialize that persisted scene into an in-memory `SceneGraph` with session overlays.
 
 ```ts
-export interface SceneGraph {
+export interface PersistedSceneGraph {
   version: number
   rootId: NodeId
   nodes: Record<NodeId, SceneNode>
+  metadata?: SceneMetadata
+}
+
+export interface SceneGraph extends PersistedSceneGraph {
   selection?: SelectionState
   viewport?: ViewportState
-  metadata?: SceneMetadata
 }
 
 export interface SelectionState {
@@ -122,10 +132,49 @@ Rules:
 
 1. `nodes` is the normalized storage layer.
 2. `rootId` identifies the single root node.
-3. Selection and viewport belong to scene state because they affect editor continuity, undoability policy, and collaboration semantics.
-4. `version` increments whenever a committed runtime mutation changes scene content.
+3. `PersistedSceneGraph` is the durable scene model used for persistence, import/export, and replay.
+4. `SceneGraph` is the in-memory editor model for an active page and may include session overlays such as `selection` and `viewport`.
+5. `selection` and `viewport` are session-scoped by default and are not serialized into `VisualDocument.scenes`.
+6. `version` increments whenever a committed content mutation changes persisted scene content.
+7. If viewport recall is needed later, it belongs in user-scoped workspace preferences rather than shared document persistence.
 
-## 5. Scene Node Model
+## 5. Persistence Root
+
+The persistence root for import, export, and storage is the full document snapshot.
+
+```ts
+export interface DocumentSnapshot {
+  document: VisualDocument
+}
+```
+
+Rules:
+
+1. `DocumentSnapshot.document.scenes` stores persisted scene content only.
+2. Session overlays such as local selection, viewport position, hover state, and remote presence are stored outside the persisted snapshot.
+3. Import/export pipelines operate on `DocumentSnapshot`, not ad hoc combinations of pages and detached scene files.
+
+Theme rules:
+
+1. `VisualDocument.activeThemeId` defines the default document theme when present.
+2. `Page.themeId` overrides the document theme for that page when present.
+
+## 6. User Scoped Workspace Preferences
+
+Per-user editor preferences are stored outside the shared document model.
+
+```ts
+export interface UserWorkspacePreferences {
+  lastViewportByPage?: Record<PageId, ViewportState>
+}
+```
+
+Rules:
+
+1. `UserWorkspacePreferences` is user-scoped and not part of `DocumentSnapshot`.
+2. Viewport recall, if implemented, must read and write this model rather than the shared document.
+
+## 7. Scene Node Model
 
 ```ts
 export interface SceneNode {
@@ -141,6 +190,8 @@ export interface SceneNode {
   runtime?: RuntimeState
   visible?: boolean
   locked?: boolean
+  prototypeId?: string
+  activeStates?: string[]
   metadata?: NodeMetadata
 }
 ```
@@ -174,7 +225,7 @@ Field semantics:
 9. `locked`
    Editing lock flag. Locked nodes render normally but reject editor mutations unless privileged actions override them.
 
-## 6. Node Tree Constraints
+## 8. Node Tree Constraints
 
 The following constraints are mandatory:
 
@@ -184,7 +235,7 @@ The following constraints are mandatory:
 4. Cycles are forbidden.
 5. Deleting a node deletes its subtree unless an action explicitly defines reparenting behavior.
 
-## 7. Layout Model
+## 9. Layout Model
 
 Layout is split into container layouts and item layouts.
 
@@ -201,7 +252,7 @@ export interface LayoutBase {
 }
 ```
 
-### 7.1 Free Layout
+### 9.1 Free Layout
 
 ```ts
 export interface FreeLayout extends LayoutBase {
@@ -211,7 +262,7 @@ export interface FreeLayout extends LayoutBase {
 
 Use when a container delegates placement to custom logic or when layout is intentionally unconstrained.
 
-### 7.2 Absolute Layout
+### 9.2 Absolute Layout
 
 ```ts
 export interface AbsoluteLayout extends LayoutBase {
@@ -220,13 +271,16 @@ export interface AbsoluteLayout extends LayoutBase {
   y?: number
   width?: number
   height?: number
+  rotation?: number
   zIndex?: number
 }
 ```
 
+`rotation` is stored in degrees normalized to `[0, 360)`.
+
 Use for overlay, canvas-style placement, or transform-based editing.
 
-### 7.3 Flex Layout
+### 9.3 Flex Layout
 
 ```ts
 export interface FlexLayout extends LayoutBase {
@@ -239,7 +293,7 @@ export interface FlexLayout extends LayoutBase {
 }
 ```
 
-### 7.4 Grid Layout
+### 9.4 Grid Layout
 
 ```ts
 export interface GridLayout extends LayoutBase {
@@ -251,7 +305,7 @@ export interface GridLayout extends LayoutBase {
 }
 ```
 
-### 7.5 Grid Item Layout
+### 9.5 Grid Item Layout
 
 ```ts
 export interface GridItemLayout extends LayoutBase {
@@ -272,8 +326,10 @@ Rules:
 1. A node using `grid-item` must be a child of a `grid` container.
 2. Grid coordinates are logical grid units, not pixels.
 3. Layout engines may derive pixel geometry at runtime, but stored layout remains abstract.
+4. Invalid geometry is rejected at runtime commit by default rather than auto-normalized.
+5. Only explicitly documented normalization rules such as rotation modulo or grid coordinate clamping may mutate invalid input deterministically.
 
-## 8. Style, Binding, Runtime Metadata
+## 10. Style, Binding, Runtime Metadata
 
 The concrete subtypes may evolve, but the following rules apply:
 
@@ -307,15 +363,15 @@ Rules:
 2. Renderer-only caches must not be persisted in `SceneNode`.
 3. Transient drag handles, hover outlines, and portal state belong outside persisted scene data.
 
-## 9. Editor State Ownership
+## 11. Editor State Ownership
 
 State ownership is defined as follows:
 
 1. `SceneGraph`
-   Stores page content and persistent editor-affecting state.
+   Stores the active page scene in memory, including session overlays required by the editor.
 
-2. `Document`
-   Stores cross-page resources and metadata.
+2. `VisualDocument`
+   Stores cross-page resources, page definitions, and persisted scenes.
 
 3. `EditorSessionState`
    Stores non-persistent session UI state such as open panels, hovered node, active tool, or clipboard preview.
@@ -326,6 +382,7 @@ Example:
 export interface EditorSessionState {
   activePageId?: PageId
   hoveredNodeId?: NodeId
+  localClipboard?: NodeId[]
   activeTool?: 'select' | 'move' | 'resize' | 'text' | 'pan'
   rightPanelTab?: string
 }
@@ -333,8 +390,9 @@ export interface EditorSessionState {
 
 This state may use Zustand or another UI store, but it is not the page model.
 
-## 10. Serialization Rules
+## 12. Serialization Rules
 
-1. Document and scene snapshots must be pure JSON data.
-2. Functions, class instances, DOM references, renderer handles, and mutable external references are forbidden in persisted state.
-3. Unknown node types may be preserved during load, but must render as fallback placeholders rather than crashing the scene.
+1. `DocumentSnapshot` and `PersistedSceneGraph` must be pure JSON data.
+2. Session overlays such as `selection`, `viewport`, hover state, and presence state are excluded from persisted document serialization by default.
+3. Functions, class instances, DOM references, renderer handles, and mutable external references are forbidden in persisted state.
+4. Unknown node types may be preserved during load, but must render as fallback placeholders rather than crashing the scene.

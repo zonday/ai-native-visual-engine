@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This document defines the AI-facing intent layer and the semantic compiler that translates intent into runtime mutations.
+This document defines the AI-facing intent layer and the semantic compiler that translates intent into executable engine actions.
 
 ## 2. Hard Rule
 
@@ -58,6 +58,7 @@ export interface AutoLayoutAction {
   scopeNodeId: NodeId
   strategy?: 'compact' | 'balanced' | 'presentation'
 }
+```
 
 ### 3.4 update-theme-intent
 
@@ -67,16 +68,23 @@ export interface UpdateThemeIntentAction {
   pageId?: PageId
   themeId?: string
   mode?: 'light' | 'dark'
-  emphasis?: 'data-dense' | 'presentation' | 'executive'
 }
 ```
-```
+
+Future versions may add emphasis-level hints (e.g. `'data-dense'`, `'presentation'`) that the compiler maps to concrete theme selections or token overrides.
+
+This semantic intent targets the canonical theme ownership model:
+
+1. `VisualDocument.activeThemeId` for document-wide theme changes
+2. `Page.themeId` for page-specific overrides
+
+The compiler should expand this intent into `set-document-theme` and/or `set-page-theme` document actions.
 
 Semantic actions should be product-oriented, concise, and stable across renderer implementations.
 
 ## 4. Semantic Compiler Responsibilities
 
-The semantic compiler converts intent into `RuntimeAction[]`.
+The semantic compiler converts intent into executable engine actions.
 
 Pipeline:
 
@@ -86,9 +94,9 @@ Semantic Action
   -> Intent Expansion
   -> Constraint Precheck
   -> Layout Planning
-  -> Runtime Expansion
+  -> Action Expansion
   -> Validation
-  -> Runtime Actions[]
+  -> Execution Plan (output contract, defined in section 6)
 ```
 
 ## 5. Compiler Stage Definitions
@@ -97,9 +105,9 @@ Semantic Action
 
 Purpose:
 
-1. fill defaults
-2. canonicalize input shape
-3. resolve aliases
+1. Fill defaults.
+2. Canonicalize input shape.
+3. Resolve aliases.
 
 Example:
 
@@ -162,10 +170,10 @@ Assign container layout and child placement.
 
 Responsibilities:
 
-1. choose layout mode
-2. determine grid geometry
-3. assign item positions and spans
-4. adapt to target container constraints
+1. Choose layout mode.
+2. Determine grid geometry.
+3. Assign item positions and spans.
+4. Adapt to target container constraints.
 
 Output:
 
@@ -175,11 +183,11 @@ export interface LayoutPlan {
 }
 ```
 
-### 5.5 Runtime Expansion
+### 5.5 Action Expansion
 
 Purpose:
 
-Convert layout plan into concrete runtime actions.
+Convert the plan into concrete document actions and runtime actions.
 
 Example output:
 
@@ -189,6 +197,10 @@ Example output:
 - `update-layout` grid container
 - `update-props` chart series config
 
+If the semantic action creates a new page, this stage may also emit:
+
+- `create-page`
+
 ### 5.6 Validation
 
 Purpose:
@@ -197,25 +209,41 @@ Run final validation before command bus dispatch.
 
 Checks:
 
-1. action schemas valid
-2. referenced nodes valid
-3. generated layout valid
-4. plugin types registered
+1. Action schemas valid.
+2. Referenced nodes valid.
+3. Generated layout valid.
+4. Plugin types registered.
+5. Referenced themes exist when theme intent is compiled.
 
 ## 6. Compiler Input and Output Contracts
 
 ```ts
 export interface SemanticCompileContext {
   document: VisualDocument
-  scene: SceneGraph
+  scene?: SceneGraph
+  targetPageId?: PageId
   registry: PluginRegistry
   availableDatasets?: string[]
 }
 
-export interface SemanticCompileResult {
-  ok: boolean
-  actions?: RuntimeAction[]
+export type SemanticCompileResult =
+  | SemanticCompileSuccess
+  | SemanticCompileFailure
+
+export interface SemanticCompileSuccess {
+  ok: true
+  executionPlan: SemanticExecutionPlan
   diagnostics?: CompilerDiagnostic[]
+}
+
+export interface SemanticCompileFailure {
+  ok: false
+  diagnostics: CompilerDiagnostic[]
+}
+
+export interface SemanticExecutionPlan {
+  documentActions?: DocumentAction[]
+  runtimeActions?: RuntimeAction[]
 }
 
 export interface CompilerDiagnostic {
@@ -224,6 +252,15 @@ export interface CompilerDiagnostic {
   message: string
 }
 ```
+
+Contract rules:
+
+1. `ok: true` must always include an `executionPlan`.
+2. `ok: false` must always include at least one diagnostic.
+3. Compiler failure must not produce a partial execution plan.
+4. `scene`, when provided, is the active in-memory `SceneGraph` for the target page rather than a persisted replay snapshot.
+5. Session overlays such as `selection` and `viewport` must be ignored during compilation unless an explicit targeting rule chooses to consult them.
+6. Persisted import or replay inputs should be materialized into an in-memory `SceneGraph` before compilation if scene-local planning is required.
 
 ## 7. AI Schema Requirements
 
@@ -286,11 +323,11 @@ export interface PropMeta {
 
 AI metadata must help the model answer these questions:
 
-1. what the component is for
-2. when it should be used
-3. what common mistakes to avoid
-4. which props are critical
-5. which surrounding components are compatible
+1. What the component is for.
+2. When it should be used.
+3. What common mistakes to avoid.
+4. Which props are critical.
+5. Which surrounding components are compatible.
 
 ## 8. Tool Calling Integration
 
@@ -302,8 +339,8 @@ User Request
   -> Tool Call
   -> Semantic Action
   -> Semantic Compiler
-  -> Runtime Actions
-  -> Command Bus
+  -> Document Actions + Runtime Actions
+  -> Document Command Bus + Runtime Command Bus
 ```
 
 Rules:
@@ -311,6 +348,7 @@ Rules:
 1. Tool outputs must conform to semantic schemas.
 2. Tool layer may ask follow-up questions for missing required fields.
 3. Tool layer must not bypass compiler validation.
+4. Tool layer must not bypass document-action validation when semantic intent creates or mutates pages.
 
 ## 9. Failure and Recovery
 
@@ -318,14 +356,14 @@ Compiler failures should return diagnostics rather than partial scene updates.
 
 Failure examples:
 
-1. no target container found
-2. requested component type unavailable
-3. layout planner cannot satisfy constraints
-4. required semantic block missing
+1. No target container found.
+2. Requested component type unavailable.
+3. Layout planner cannot satisfy constraints.
+4. Required semantic block missing.
 
 Recovery strategies:
 
-1. ask AI for missing parameter
-2. choose fallback template
-3. degrade to simpler layout strategy
-4. return actionable diagnostics to the editor UI
+1. Ask AI for missing parameter.
+2. Choose fallback template.
+3. Degrade to simpler layout strategy.
+4. Return actionable diagnostics to the editor UI.

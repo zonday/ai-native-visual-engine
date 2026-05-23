@@ -10,10 +10,10 @@ Constraints exist to prevent invalid structure, layout breakage, semantic degrad
 
 The engine must support constraints at four levels:
 
-1. structural
-2. layout
-3. semantic
-4. theme
+1. Structural.
+2. Layout.
+3. Semantic.
+4. Theme.
 
 ## 3. Constraint Model
 
@@ -46,42 +46,48 @@ The runtime representation of constraints may need serialization-friendly forms 
 
 Examples:
 
-1. chart must be inside a valid container
-2. grid-item must be child of grid
-3. forbidden child type under specific parent
-4. root node cannot be removed
+1. Chart must be inside a valid container.
+2. Grid-item must be child of grid.
+3. Forbidden child type under specific parent.
+4. Root node cannot be removed.
 
 Structural constraints should run:
 
-1. before runtime action commit
-2. during semantic planning
-3. during scene import
+1. Before runtime action commit.
+2. During semantic planning.
+3. During scene import.
 
 ## 5. Layout Constraints
 
 Examples:
 
-1. grid item cannot exceed column count
-2. widget cannot have negative width or height
-3. resized node must respect min and max bounds
-4. absolute child cannot exceed locked container bounds if strict clipping is enabled
+1. Grid item cannot exceed column count.
+2. Widget cannot have negative width or height.
+3. Resized node must respect min and max bounds.
+4. Absolute child cannot exceed locked container bounds if strict clipping is enabled.
 
 Layout constraints may return:
 
-1. hard error
-2. soft warning
-3. normalized correction if deterministic normalization is explicitly allowed
+1. Hard error.
+2. Soft warning.
+3. Normalized correction if deterministic normalization is explicitly allowed.
 
 Any auto-correction must be predictable and documented.
+
+Default policy:
+
+1. Invalid geometry is rejected at commit time.
+2. Preview systems and semantic planners may suggest repairs before commit.
+3. Runtime commit may only normalize values when an explicit deterministic rule is documented for that field.
 
 ## 6. Semantic Constraints
 
 Examples:
 
-1. dashboard should contain at least one KPI card
-2. finance dashboard should prefer table plus trend chart
-3. page route names must be unique
-4. required data binding missing for data-driven component
+1. Dashboard should contain at least one KPI card.
+2. Finance dashboard should prefer table plus trend chart.
+3. Page routes must be unique.
+4. Required data binding missing for data-driven component.
 
 Semantic constraints are especially important in the compiler stage.
 
@@ -89,44 +95,44 @@ Semantic constraints are especially important in the compiler stage.
 
 Examples:
 
-1. dark mode forbids low-contrast light-gray body text
-2. danger actions require approved palette tokens
-3. text and surface contrast must meet accessibility threshold
+1. Dark mode forbids low-contrast light-gray body text.
+2. Danger actions require approved palette tokens.
+3. Text and surface contrast must meet accessibility threshold.
 
 Theme constraints may apply to:
 
-1. component style props
-2. global themes
-3. AI-generated visual variants
+1. Component style props.
+2. Global themes.
+3. AI-generated visual variants.
 
 ## 8. Validation Layers
 
 Validation should happen at multiple layers:
 
-1. schema validation
+1. Schema validation.
    Ensures payload shapes are correct.
 
-2. referential validation
+2. Referential validation.
    Ensures IDs point to valid objects.
 
-3. structural validation
+3. Structural validation.
    Ensures tree legality.
 
-4. semantic validation
+4. Semantic validation.
    Ensures product meaning and template completeness.
 
-5. presentation validation
+5. Presentation validation.
    Ensures theme and visibility rules.
 
 ## 9. Validation Timing
 
 Validation should occur at these checkpoints:
 
-1. on scene import
-2. before runtime action commit
-3. during semantic compilation
-4. before persistence export
-5. in background diagnostics for editor hints
+1. On scene import.
+2. Before runtime action commit.
+3. During semantic compilation.
+4. Before persistence export.
+5. In background diagnostics for editor hints.
 
 ## 10. Failure Policy
 

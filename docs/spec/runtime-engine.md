@@ -2,7 +2,9 @@
 
 ## 1. Scope
 
-This document defines the runtime mutation model used by editor interactions, AI compilation output, history, and collaboration.
+This document defines the scene-level runtime mutation model used by editor interactions, AI compilation output, history, and collaboration.
+
+Document-level mutations use the parallel model defined in `document-runtime.md`.
 
 ## 2. Runtime Action Principles
 
@@ -23,6 +25,12 @@ Every runtime action must satisfy the following properties:
 5. Serializable
    The action payload must be serializable for history, persistence, and collaboration transport.
 
+Runtime commit policy:
+
+1. Invalid scene mutations are rejected at commit time by default.
+2. Runtime handlers must not perform non-deterministic geometric auto-repair.
+3. Only explicitly documented normalization rules may adjust input during commit.
+
 ## 3. Runtime Action Types
 
 ```ts
@@ -31,8 +39,11 @@ export type RuntimeAction =
   | RemoveNodeAction
   | MoveNodeAction
   | UpdateLayoutAction
+  | RotateNodeAction
   | UpdatePropsAction
   | UpdateStyleAction
+  | UpdateBindingsAction
+  | UpdateRuntimeAction
   | UpdateSelectionAction
   | BatchActions
 ```
@@ -54,6 +65,7 @@ Behavior:
 2. Inserts `node.id` into parent `children[]`.
 3. Sets `node.parentId = parentId` in normalized form.
 4. Fails if parent does not exist or node ID already exists.
+5. If `index` is omitted, appends to the end. Clamps `index` to `[0, children.length]`; out-of-bounds values append.
 
 ### 3.2 remove-node
 
@@ -68,7 +80,7 @@ Behavior:
 
 1. Removes target node and all descendants.
 2. Removes target ID from parent `children[]`.
-3. Fails if target is root unless a dedicated root-replacement action exists.
+3. Fails if target is root.
 
 ### 3.3 move-node
 
@@ -86,7 +98,10 @@ Behavior:
 1. Removes node from old parent ordering.
 2. Inserts node into new parent ordering.
 3. Updates `parentId`.
-4. Fails if move would create a cycle.
+4. Fails if target node does not exist.
+5. Fails if new parent does not exist.
+6. Fails if move would create a cycle.
+7. If `index` is omitted, appends to the end. Clamps `index` to `[0, children.length]`; out-of-bounds values append.
 
 ### 3.4 update-layout
 
@@ -102,8 +117,28 @@ Behavior:
 
 1. Merges layout fields onto existing layout or creates one if permitted.
 2. Must pass layout validation after merge.
+3. Must reject invalid geometry rather than auto-repairing it, unless a deterministic normalization rule is explicitly documented for that field.
 
-### 3.5 update-props
+### 3.5 rotate-node
+
+```ts
+export interface RotateNodeAction {
+  type: 'rotate-node'
+  nodeId: NodeId
+  rotation: number
+}
+```
+
+Behavior:
+
+1. `rotation` is expressed in degrees.
+2. The current spec stores canonical rotation at `AbsoluteLayout.rotation`.
+3. The current rotate behavior applies only to nodes using `absolute` layout mode and plugins whose capabilities allow rotation.
+4. Must normalize rotation into the canonical interval `[0, 360)` before storage.
+5. Rotation must use `rotate-node` as the canonical mutation path; `update-layout` must not be used for rotation updates.
+6. Must reject the action with a deterministic runtime error when the target node uses a non-`absolute` layout mode, when the plugin does not allow rotation, or when the node does not exist.
+
+### 3.6 update-props
 
 ```ts
 export interface UpdatePropsAction {
@@ -118,7 +153,7 @@ Behavior:
 1. Shallow-merges provided props by default.
 2. If a plugin requires replace semantics for specific props, that rule must be declared in plugin metadata.
 
-### 3.6 update-style
+### 3.7 update-style
 
 ```ts
 export interface UpdateStyleAction {
@@ -128,7 +163,40 @@ export interface UpdateStyleAction {
 }
 ```
 
-### 3.7 update-selection
+Behavior:
+
+1. Replaces the entire style object on the target node.
+2. Differs from `update-props` which shallow-merges; `update-style` uses replace semantics because styles are a flat token map.
+
+### 3.8 update-bindings
+
+```ts
+export interface UpdateBindingsAction {
+  type: 'update-bindings'
+  nodeId: NodeId
+  bindings: Binding[]
+}
+```
+
+Behavior:
+
+1. Replaces all bindings on the target node.
+
+### 3.9 update-runtime
+
+```ts
+export interface UpdateRuntimeAction {
+  type: 'update-runtime'
+  nodeId: NodeId
+  runtime: Record<string, unknown>
+}
+```
+
+Behavior:
+
+1. Shallow-merges provided runtime state onto the target node.
+
+### 3.10 update-selection
 
 ```ts
 export interface UpdateSelectionAction {
@@ -137,9 +205,20 @@ export interface UpdateSelectionAction {
 }
 ```
 
-This action may be excluded from persisted event sourcing depending on product policy. The engine must support both persisted and session-only history modes.
+`update-selection` is session-scoped by default.
 
-### 3.8 batch-actions
+Rules:
+
+1. It updates the in-memory active `SceneGraph`.
+2. `nodeIds` must not contain duplicates; handlers must reject the action if duplicates are provided.
+3. Provided order is preserved as the canonical selection ordering.
+4. It is excluded from `SceneEventLog` by default.
+5. It is excluded from durable collaborative sync by default.
+6. Editors may keep a transient local selection history, but it does not participate in durable content undo and redo.
+7. It must not bump persisted scene `version`.
+8. It must not mutate `PersistedSceneGraph` content fields.
+
+### 3.11 batch-actions
 
 ```ts
 export interface BatchActions {
@@ -153,6 +232,7 @@ Behavior:
 1. Executes child actions in order.
 2. Commits as one history entry.
 3. Must rollback entirely if any child action fails.
+4. Nested batch actions are flattened before execution; the self-referencing type exists for composability, not for unbounded nesting.
 
 ## 4. Command Bus
 
@@ -199,8 +279,11 @@ export const runtimeHandlers = {
   'remove-node': removeNodeHandler,
   'move-node': moveNodeHandler,
   'update-layout': updateLayoutHandler,
+  'rotate-node': rotateNodeHandler,
   'update-props': updatePropsHandler,
   'update-style': updateStyleHandler,
+  'update-bindings': updateBindingsHandler,
+  'update-runtime': updateRuntimeHandler,
   'update-selection': updateSelectionHandler,
   'batch-actions': batchActionsHandler,
 }
@@ -296,15 +379,17 @@ Rules:
 1. `undo` applies `inverseAction` if available.
 2. Complex actions should prefer explicit inverse actions over full snapshots when feasible.
 3. For actions whose inverse cannot be represented compactly, history may store structural patch metadata.
-4. Selection-only actions may use separate history policy.
+4. Selection-only actions use a separate transient history policy and are excluded from durable content history by default.
+5. Collaborative undo and redo operate on each actor's own durable actions only.
+6. Remote durable actions do not enter the local actor's undo stack.
 
 ## 9. Event Sourcing
 
 Preferred persistence model:
 
-1. store initial scene snapshot
-2. append runtime action log
-3. rebuild scene via replay
+1. Store initial scene snapshot.
+2. Append runtime action log.
+3. Rebuild scene via replay.
 
 Benefits:
 
@@ -316,11 +401,24 @@ Benefits:
 Minimum replay contract:
 
 ```ts
+export interface SceneEventLogEntry {
+  action: RuntimeAction
+  actorId?: string
+  timestamp: number
+}
+
 export interface SceneEventLog {
-  initialScene: SceneGraph
-  actions: RuntimeAction[]
+  initialScene: PersistedSceneGraph
+  actions: SceneEventLogEntry[]
 }
 ```
+
+Rules:
+
+1. `SceneEventLog` stores content mutations only.
+2. `SceneEventLog.actions` must not contain session-scoped actions such as `update-selection`.
+3. If the runtime action surface expands with additional session-only actions, they are also excluded from `SceneEventLog.actions` unless explicitly reclassified as durable content mutations.
+4. The persisted replay root should normally be `PersistedSceneGraph`; an editor may materialize that snapshot into an in-memory `SceneGraph` when a page becomes active.
 
 ## 10. Failure Policy
 
@@ -341,3 +439,21 @@ Rules:
 2. Invalid payloads fail validation.
 3. Handler failures must not partially mutate scene state.
 4. Middleware may annotate errors but must preserve failure semantics.
+
+## 11. Boundary With Document Runtime
+
+Use scene runtime actions for:
+
+- node CRUD
+- layout updates
+- props and style updates
+- active-scene selection updates
+
+Use document actions for:
+
+- page create and remove
+- page reorder
+- page rename
+- page route updates
+
+The semantic compiler may emit both action kinds in one execution plan, but they must remain distinct runtime domains.
