@@ -17,6 +17,7 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/collaboration-infrastructure.md`: Cloudflare Workers + Durable Objects relay and persistence
 - `docs/spec/history-and-undo-redo.md`: undo/redo model, inverse-action contracts, and collaboration-history interaction
 - `docs/spec/constraints-and-validation.md`: constraint system and validation layers
+- `docs/spec/schema-validation.md`: Zod schema strategy, trust boundaries, and plugin schema contract
 - `docs/spec/roadmap.md`: phased delivery and acceptance criteria
 - `docs/spec/document-runtime.md`: document-level actions, command bus, history, and event log
 - `docs/spec/bootstrap-and-lifecycle.md`: document initialization, session lifecycle, and import/export

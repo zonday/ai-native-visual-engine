@@ -132,6 +132,7 @@ Refer to the following documents for details:
 - `collaboration-infrastructure.md`
 - `history-and-undo-redo.md`
 - `constraints-and-validation.md`
+- `schema-validation.md`
 - `roadmap.md`
 - `bootstrap-and-lifecycle.md`
 - `renderer-contract.md`
