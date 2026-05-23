@@ -296,6 +296,32 @@ Reasons:
 
 Tiptap is used for rich text editing on `text` nodes. See `rich-text.md` for the full content model and editor integration.
 
+### 7.2 Schema Validation
+
+```
+zod >= 4.4
+```
+
+Zod is used for runtime validation of all external inputs, action payloads, document snapshots, and component props.
+
+```ts
+import { z } from 'zod/v4'
+
+const SceneNodeSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  parentId: z.string().optional(),
+})
+```
+
+Rules:
+
+1. Every core type exposed at a package boundary must have a corresponding Zod schema.
+2. Action payloads are validated by the Validator middleware before reaching handlers.
+3. `DocumentSnapshot` is validated on import.
+4. Component `props` are validated against their plugin-defined schema before `update-props` commit.
+5. Zod inference produces the canonical TypeScript type — schemas are the source of truth for shape, not manually-maintained interfaces.
+
 ## 8. Runtime Environment
 
 ### 8.1 Node.js
@@ -535,6 +561,7 @@ All packages are pinned to the following minimum versions. These represent the l
 | @tiptap/starter-kit | latest |
 | @tiptap/extension-underline | latest |
 | @tiptap/extension-link | latest |
+| zod | 4.4 |
 | lucide-react | latest |
 | node | 22.13 LTS |
 

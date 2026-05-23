@@ -94,14 +94,13 @@ const gridPlugin: ComponentPlugin = {
 
 ### 2.3 text
 
-A text block with optional markdown rendering.
+A rich text block powered by Tiptap. Content is stored as a Tiptap JSON document. See `rich-text.md` for the content model.
 
 ```ts
 interface TextProps {
-  content: string
-  markdown?: boolean
-  align?: 'left' | 'center' | 'right'
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  content: DocNode
+  placeholder?: string
+  editable?: boolean
 }
 ```
 
@@ -113,13 +112,12 @@ const textPlugin: ComponentPlugin = {
   renderer: TextRenderer,
   meta: {
     title: 'Text',
-    description: 'Plain or markdown text block.',
+    description: 'Rich text block powered by Tiptap. Supports headings, lists, inline formatting, and links.',
     category: 'display',
     props: [
-      { key: 'content', type: 'string', default: '' },
-      { key: 'markdown', type: 'boolean', default: false },
-      { key: 'align', type: 'string', default: 'left' },
-      { key: 'size', type: 'string', default: 'md' },
+      { key: 'content', type: 'json', default: '{"type":"doc","content":[{"type":"paragraph"}]}' },
+      { key: 'placeholder', type: 'string' },
+      { key: 'editable', type: 'boolean', default: true },
     ],
     ai: {
       usage: ['page title', 'section description', 'annotation', 'data footnote'],
@@ -127,7 +125,7 @@ const textPlugin: ComponentPlugin = {
     },
   },
   constraints: [
-    { type: 'structural', rule: 'content.length >= 0' },
+    { type: 'structural', rule: 'content must be a valid Tiptap JSON document' },
   ],
 }
 ```

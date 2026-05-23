@@ -25,6 +25,7 @@ These are non-negotiable. Any violation blocks implementation.
 | Web bundler / dev server | vite | >= 8.0 |
 | Testing | vitest | >= 4.1 |
 | Lint + format | biome | >= 2.4 |
+| Schema validation | zod | >= 4.4 |
 | State management | zustand | >= 5.0 |
 | Styling | tailwindcss + shadcn/ui (@base-ui/react) | >= 4.3 |
 | Graph layout | dagre | >= 0.8 |
@@ -102,7 +103,7 @@ it('handles create-node', () => {
 4. Keep secrets, tokens, and keys out of frontend bundles.
 5. Avoid `dangerouslySetInnerHTML` unless sanitized.
 6. Validate URL and query params before use.
-7. Prefer typed API contracts at boundaries (Zod or similar).
+7. All external inputs, action payloads, and document snapshots must be validated with Zod schemas.
 
 ## Package Boundaries
 
