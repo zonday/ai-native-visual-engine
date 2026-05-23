@@ -133,6 +133,9 @@ Refer to the following documents for details:
 - `renderer-contract.md`
 - `testing-and-fixtures.md`
 - `persistence-and-serialization.md`
+- `error-handling.md`
+- `theme-and-tokens.md`
+- `data-binding.md`
 
 Related ADRs:
 

@@ -19,6 +19,11 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/renderer-contract.md`: renderer interface, rendering modes, and fallback policies
 - `docs/spec/testing-and-fixtures.md`: test strategy, fixture format, and per-phase test requirements
 - `docs/spec/persistence-and-serialization.md`: storage, serialization, snapshot, and event log truncation
+- `docs/spec/collaboration-framework.md`: Yjs transport, action sync, presence, and conflict convergence
+- `docs/spec/history-and-undo-redo.md`: undo/redo model, inverse-action contracts, and collaboration-history interaction
+- `docs/spec/error-handling.md`: error taxonomy, propagation, and recovery strategies
+- `docs/spec/theme-and-tokens.md`: theme model, token system, and cascade rules
+- `docs/spec/data-binding.md`: data source binding, variable resolution, and binding lifecycle
 - `docs/adr/README.md`: accepted architecture decisions and ADR backlog
 
 ## Goal
