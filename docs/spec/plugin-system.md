@@ -129,9 +129,11 @@ Recommended lifecycle:
 
 When a scene references an unregistered component type:
 
+`MissingPluginPlaceholder` refers to the engine-provided fallback renderer used when a plugin type cannot be resolved.
+
 1. preserve node data
 2. render `MissingPluginPlaceholder` in editor mode
-3. render `MissingPluginPlaceholder` in runtime preview mode rather than silently hiding the node
+3. render `MissingPluginPlaceholder` in runtime mode rather than silently hiding the node
 4. surface structured warning during editing
 5. upgrade the issue to a blocking error for publish and export flows
 6. allow only conservative editor operations such as select, move, reparent, replace, or delete when metadata-driven editing is unavailable
@@ -141,7 +143,7 @@ When a scene references an unregistered component type:
 Mode-specific rules:
 
 1. editor mode may expose raw persisted fields such as `type`, `props`, and `layout` as read-only fallback inspection
-2. runtime preview must stay honest about unsupported output and must not pretend the component rendered correctly
+2. runtime mode must stay honest about unsupported output and must not pretend the component rendered correctly
 
 ## 9. Extensibility Boundaries
 

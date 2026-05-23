@@ -111,7 +111,7 @@ Behavior:
 
 1. Merges layout fields onto existing layout or creates one if permitted.
 2. Must pass layout validation after merge.
-3. must reject invalid geometry rather than auto-repairing it, unless a deterministic normalization rule is explicitly documented for that field
+3. Must reject invalid geometry rather than auto-repairing it, unless a deterministic normalization rule is explicitly documented for that field.
 
 ### 3.5 rotate-node
 
@@ -125,11 +125,11 @@ export interface RotateNodeAction {
 
 Behavior:
 
-1. `rotation` is expressed in degrees
-2. v1 stores canonical rotation at `AbsoluteLayout.rotation`
-3. v1 is valid only for nodes using `absolute` layout mode and plugins whose capabilities allow rotation
-4. must normalize rotation into the canonical interval `[0, 360)` before storage
-5. rotation must use `rotate-node` as the canonical mutation path; `update-layout` must not be used for rotation updates
+1. `rotation` is expressed in degrees.
+2. The current spec stores canonical rotation at `AbsoluteLayout.rotation`.
+3. The current rotate behavior applies only to nodes using `absolute` layout mode and plugins whose capabilities allow rotation.
+4. Must normalize rotation into the canonical interval `[0, 360)` before storage.
+5. Rotation must use `rotate-node` as the canonical mutation path; `update-layout` must not be used for rotation updates.
 
 ### 3.6 update-props
 
@@ -169,14 +169,14 @@ export interface UpdateSelectionAction {
 
 Rules:
 
-1. it updates the in-memory active `SceneGraph`
-2. `nodeIds` must not contain duplicates; handlers must reject the action if duplicates are provided
-3. provided order is preserved as the canonical selection ordering
-4. it is excluded from `SceneEventLog` by default
-5. it is excluded from durable collaborative sync by default
-6. editors may keep a transient local selection history, but it does not participate in durable content undo and redo
-7. it must not bump persisted scene `version`
-8. it must not mutate `PersistedSceneGraph` content fields
+1. It updates the in-memory active `SceneGraph`.
+2. `nodeIds` must not contain duplicates; handlers must reject the action if duplicates are provided.
+3. Provided order is preserved as the canonical selection ordering.
+4. It is excluded from `SceneEventLog` by default.
+5. It is excluded from durable collaborative sync by default.
+6. Editors may keep a transient local selection history, but it does not participate in durable content undo and redo.
+7. It must not bump persisted scene `version`.
+8. It must not mutate `PersistedSceneGraph` content fields.
 
 ### 3.9 batch-actions
 
