@@ -344,9 +344,9 @@ Rules:
 
 Preferred persistence model:
 
-1. store initial scene snapshot
-2. append runtime action log
-3. rebuild scene via replay
+1. Store initial scene snapshot.
+2. Append runtime action log.
+3. Rebuild scene via replay.
 
 Benefits:
 
