@@ -128,6 +128,30 @@ Core invariants enforced at package boundaries:
 5. Run `pnpm build` and `pnpm test` before pushing.
 6. Run `pnpm lint` and `pnpm format` before pushing.
 
+## Git Hooks
+
+A pre-commit hook enforces quality gates automatically. The hook uses `simple-git-hooks`.
+
+```json
+{
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec biome check --staged --write && pnpm test"
+  }
+}
+```
+
+Rules enforced by the pre-commit hook:
+
+1. Staged files MUST pass biome lint and format before commit. The hook auto-fixes formatting.
+2. The full test suite MUST pass before commit.
+3. If the hook fails, the commit is blocked. Fix the issues and retry.
+4. The hook is installed automatically via `pnpm prepare`:
+   ```json
+   { "scripts": { "prepare": "simple-git-hooks" } }
+   ```
+
+CI also runs these checks on every push. A commit that bypasses local hooks will still be caught in CI.
+
 ## Must Not Do
 
 These are actions that agents MUST NOT perform:
