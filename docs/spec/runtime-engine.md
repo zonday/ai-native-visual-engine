@@ -130,6 +130,7 @@ Behavior:
 3. The current rotate behavior applies only to nodes using `absolute` layout mode and plugins whose capabilities allow rotation.
 4. Must normalize rotation into the canonical interval `[0, 360)` before storage.
 5. Rotation must use `rotate-node` as the canonical mutation path; `update-layout` must not be used for rotation updates.
+6. Must reject the action with a deterministic runtime error when the target node uses a non-`absolute` layout mode, when the plugin does not allow rotation, or when the node does not exist.
 
 ### 3.6 update-props
 

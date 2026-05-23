@@ -272,6 +272,8 @@ export interface AbsoluteLayout extends LayoutBase {
 }
 ```
 
+`rotation` is stored in degrees normalized to `[0, 360)`.
+
 Use for overlay, canvas-style placement, or transform-based editing.
 
 ### 9.3 Flex Layout
@@ -321,7 +323,7 @@ Rules:
 2. Grid coordinates are logical grid units, not pixels.
 3. Layout engines may derive pixel geometry at runtime, but stored layout remains abstract.
 4. Invalid geometry is rejected at runtime commit by default rather than auto-normalized.
-5. Only explicitly documented normalization rules such as route canonicalization or rotation modulo may mutate invalid input deterministically.
+5. Only explicitly documented normalization rules such as rotation modulo or grid coordinate clamping may mutate invalid input deterministically.
 
 ## 10. Style, Binding, Runtime Metadata
 
