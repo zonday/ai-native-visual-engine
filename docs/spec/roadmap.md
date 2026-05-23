@@ -24,7 +24,7 @@ Scope:
 Deliverables:
 
 1. create, move, remove, update props, update layout
-2. create, rename, reorder, remove, and route-update page actions
+2. create, rename, reorder, remove, and `update-page-route` page actions
 3. scene replay from action log
 4. renderer that can render a page from scene graph
 

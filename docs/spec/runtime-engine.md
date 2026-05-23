@@ -128,8 +128,8 @@ Behavior:
 1. `rotation` is expressed in degrees
 2. v1 stores canonical rotation at `AbsoluteLayout.rotation`
 3. v1 is valid only for nodes using `absolute` layout mode and plugins whose capabilities allow rotation
-4. should normalize rotation into the range `0-359` if normalization is enabled
-5. rotation should use `rotate-node` as the canonical mutation path; `update-layout` should not be used for rotation updates
+4. must normalize rotation into the canonical interval `[0, 360)` before storage
+5. rotation must use `rotate-node` as the canonical mutation path; `update-layout` must not be used for rotation updates
 
 ### 3.6 update-props
 
@@ -170,11 +170,13 @@ export interface UpdateSelectionAction {
 Rules:
 
 1. it updates the in-memory active `SceneGraph`
-2. it is excluded from `SceneEventLog` by default
-3. it is excluded from durable collaborative sync by default
-4. editors may keep a transient local selection history, but it does not participate in durable content undo and redo
-5. it must not bump persisted scene `version`
-6. it must not mutate `PersistedSceneGraph` content fields
+2. `nodeIds` must not contain duplicates; handlers must reject the action if duplicates are provided
+3. provided order is preserved as the canonical selection ordering
+4. it is excluded from `SceneEventLog` by default
+5. it is excluded from durable collaborative sync by default
+6. editors may keep a transient local selection history, but it does not participate in durable content undo and redo
+7. it must not bump persisted scene `version`
+8. it must not mutate `PersistedSceneGraph` content fields
 
 ### 3.9 batch-actions
 
