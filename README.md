@@ -9,6 +9,7 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/runtime-engine.md`: runtime actions, command bus, middleware, handlers, and history
 - `docs/spec/semantic-system.md`: semantic actions, compiler pipeline, and AI schema
 - `docs/spec/plugin-system.md`: plugin contracts, registry, and renderer boundaries
+- `docs/spec/engine-api.md`: public API surface for plugins, components, and the editor shell
 - `docs/spec/component-types.md`: built-in types and default plugin component definitions
 - `docs/spec/editor-interaction.md`: selection, transform, drag and drop, multi-page, and collaboration
 - `docs/spec/collaboration-framework.md`: Yjs transport, action sync, presence, and conflict convergence
