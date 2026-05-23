@@ -62,7 +62,7 @@ export interface UpdatePageRouteAction {
 
 export interface SetDocumentThemeAction {
   type: 'set-document-theme'
-  themeId: string
+  themeId?: string
 }
 
 export interface SetPageThemeAction {
@@ -85,7 +85,7 @@ export interface BatchDocumentActions {
 4. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction.
 5. `reorder-page` changes only page ordering and must not mutate scene content.
 6. `update-page-route` must maintain route uniqueness across the document.
-7. `set-document-theme` updates `VisualDocument.activeThemeId` and must reference an existing theme.
+7. `set-document-theme` updates or clears `VisualDocument.activeThemeId` and must reference an existing theme when set.
 8. `set-page-theme` updates or clears `Page.themeId` and must reference an existing theme when set.
 9. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails.
 

@@ -16,33 +16,33 @@ All scene mutations use atomic `RuntimeAction` values.
 
 Every runtime action must be:
 
-1. deterministic
-2. replayable
-3. reversible
-4. atomic
-5. serializable
+1. Deterministic.
+2. Replayable.
+3. Reversible.
+4. Atomic.
+5. Serializable.
 
 Scene runtime actions are dispatched through a command bus, middleware pipeline, and typed handlers.
 
 History rules:
 
-1. durable scene content history tracks content-changing runtime actions only
-2. session-only actions such as `update-selection` do not enter durable history
-3. invalid scene mutations are rejected at commit time by default
-4. collaborative undo and redo operate on each actor's own durable actions only
+1. Durable scene content history tracks content-changing runtime actions only.
+2. Session-only actions such as `update-selection` do not enter durable history.
+3. Invalid scene mutations are rejected at commit time by default.
+4. Collaborative undo and redo operate on each actor's own durable actions only.
 
 ## Consequences
 
 Positive:
 
-1. runtime behavior can be replayed and audited
-2. undo and redo are explicit rather than implicit snapshots everywhere
-3. middleware can enforce validation, logging, and collaboration consistently
+1. Runtime behavior can be replayed and audited.
+2. Undo and redo are explicit rather than implicit snapshots everywhere.
+3. Middleware can enforce validation, logging, and collaboration consistently.
 
 Tradeoffs:
 
-1. every new editing capability needs an explicit action contract
-2. batch and inverse action design requires more discipline than direct mutation
+1. Every new editing capability needs an explicit action contract.
+2. Batch and inverse action design requires more discipline than direct mutation.
 
 ## Rejected Alternatives
 

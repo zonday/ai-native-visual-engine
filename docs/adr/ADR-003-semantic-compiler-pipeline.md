@@ -31,22 +31,22 @@ Compiler output is an execution plan containing:
 
 Compiler result uses an explicit success or failure contract:
 
-1. success always includes an execution plan
-2. failure always includes diagnostics
-3. failure must not emit a partial plan
+1. Success always includes an execution plan.
+2. Failure always includes diagnostics.
+3. Failure must not emit a partial plan.
 
 ## Consequences
 
 Positive:
 
 1. AI remains constrained by engine rules
-2. layout, constraints, and plugin availability are checked before commit
-3. multi-page AI flows can create pages and scene content in one plan
+2. Layout, constraints, and plugin availability are checked before commit.
+3. Multi-page AI flows can create pages and scene content in one plan.
 
 Tradeoffs:
 
-1. compiler logic becomes a significant subsystem
-2. semantic action design needs careful control to avoid surface explosion
+1. Compiler logic becomes a significant subsystem.
+2. Semantic action design needs careful control to avoid surface explosion.
 
 ## Rejected Alternatives
 

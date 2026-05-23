@@ -24,24 +24,24 @@ The model is split into:
 
 Rules:
 
-1. page structure, node hierarchy, props, layout, style, bindings, and persisted runtime metadata belong to the scene model
-2. React local state may exist only for ephemeral UI state that does not define page meaning
-3. session overlays such as selection and viewport do not belong to shared persisted document content
+1. Page structure, node hierarchy, props, layout, style, bindings, and persisted runtime metadata belong to the scene model.
+2. React local state may exist only for ephemeral UI state that does not define page meaning.
+3. Session overlays such as selection and viewport do not belong to shared persisted document content.
 4. `VisualDocument.scenes` is the canonical owner of persisted page scenes
 
 ## Consequences
 
 Positive:
 
-1. undo and redo operate against one canonical page model
-2. replay and collaboration have a stable mutation target
-3. renderer implementations stay pure with respect to scene data
+1. Undo and redo operate against one canonical page model.
+2. Replay and collaboration have a stable mutation target.
+3. Renderer implementations stay pure with respect to scene data.
 4. AI cannot bypass engine invariants by mutating arbitrary JSON blobs
 
 Tradeoffs:
 
-1. editors must explicitly model session-only overlays instead of casually storing them in component state
-2. scene hydration and materialization logic must distinguish persisted scene content from in-memory overlays
+1. Editors must explicitly model session-only overlays instead of casually storing them in component state.
+2. Scene hydration and materialization logic must distinguish persisted scene content from in-memory overlays.
 
 ## Rejected Alternatives
 

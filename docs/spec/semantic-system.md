@@ -68,9 +68,10 @@ export interface UpdateThemeIntentAction {
   pageId?: PageId
   themeId?: string
   mode?: 'light' | 'dark'
-  emphasis?: 'data-dense' | 'presentation' | 'executive'
 }
 ```
+
+Future versions may add emphasis-level hints (e.g. `'data-dense'`, `'presentation'`) that the compiler maps to concrete theme selections or token overrides.
 
 This semantic intent targets the canonical theme ownership model:
 
@@ -104,9 +105,9 @@ Semantic Action
 
 Purpose:
 
-1. fill defaults
-2. canonicalize input shape
-3. resolve aliases
+1. Fill defaults.
+2. Canonicalize input shape.
+3. Resolve aliases.
 
 Example:
 
@@ -169,10 +170,10 @@ Assign container layout and child placement.
 
 Responsibilities:
 
-1. choose layout mode
-2. determine grid geometry
-3. assign item positions and spans
-4. adapt to target container constraints
+1. Choose layout mode.
+2. Determine grid geometry.
+3. Assign item positions and spans.
+4. Adapt to target container constraints.
 
 Output:
 
@@ -208,11 +209,11 @@ Run final validation before command bus dispatch.
 
 Checks:
 
-1. action schemas valid
-2. referenced nodes valid
-3. generated layout valid
-4. plugin types registered
-5. referenced themes exist when theme intent is compiled
+1. Action schemas valid.
+2. Referenced nodes valid.
+3. Generated layout valid.
+4. Plugin types registered.
+5. Referenced themes exist when theme intent is compiled.
 
 ## 6. Compiler Input and Output Contracts
 
@@ -322,11 +323,11 @@ export interface PropMeta {
 
 AI metadata must help the model answer these questions:
 
-1. what the component is for
-2. when it should be used
-3. what common mistakes to avoid
-4. which props are critical
-5. which surrounding components are compatible
+1. What the component is for.
+2. When it should be used.
+3. What common mistakes to avoid.
+4. Which props are critical.
+5. Which surrounding components are compatible.
 
 ## 8. Tool Calling Integration
 
@@ -355,14 +356,14 @@ Compiler failures should return diagnostics rather than partial scene updates.
 
 Failure examples:
 
-1. no target container found
-2. requested component type unavailable
-3. layout planner cannot satisfy constraints
-4. required semantic block missing
+1. No target container found.
+2. Requested component type unavailable.
+3. Layout planner cannot satisfy constraints.
+4. Required semantic block missing.
 
 Recovery strategies:
 
-1. ask AI for missing parameter
-2. choose fallback template
-3. degrade to simpler layout strategy
-4. return actionable diagnostics to the editor UI
+1. Ask AI for missing parameter.
+2. Choose fallback template.
+3. Degrade to simpler layout strategy.
+4. Return actionable diagnostics to the editor UI.

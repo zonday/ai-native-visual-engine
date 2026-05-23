@@ -42,6 +42,8 @@ export type RuntimeAction =
   | RotateNodeAction
   | UpdatePropsAction
   | UpdateStyleAction
+  | UpdateBindingsAction
+  | UpdateRuntimeAction
   | UpdateSelectionAction
   | BatchActions
 ```
@@ -77,7 +79,7 @@ Behavior:
 
 1. Removes target node and all descendants.
 2. Removes target ID from parent `children[]`.
-3. Fails if target is root unless a dedicated root-replacement action exists.
+3. Fails if target is root.
 
 ### 3.3 move-node
 
@@ -157,7 +159,35 @@ export interface UpdateStyleAction {
 }
 ```
 
-### 3.8 update-selection
+### 3.8 update-bindings
+
+```ts
+export interface UpdateBindingsAction {
+  type: 'update-bindings'
+  nodeId: NodeId
+  bindings: Binding[]
+}
+```
+
+Behavior:
+
+1. Replaces all bindings on the target node.
+
+### 3.9 update-runtime
+
+```ts
+export interface UpdateRuntimeAction {
+  type: 'update-runtime'
+  nodeId: NodeId
+  runtime: Record<string, unknown>
+}
+```
+
+Behavior:
+
+1. Shallow-merges provided runtime state onto the target node.
+
+### 3.10 update-selection
 
 ```ts
 export interface UpdateSelectionAction {
@@ -179,7 +209,7 @@ Rules:
 7. It must not bump persisted scene `version`.
 8. It must not mutate `PersistedSceneGraph` content fields.
 
-### 3.9 batch-actions
+### 3.11 batch-actions
 
 ```ts
 export interface BatchActions {

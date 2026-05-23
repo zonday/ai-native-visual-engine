@@ -16,24 +16,24 @@ Collaboration wraps the action model instead of bypassing it.
 
 Rules:
 
-1. durable shared state is transported as document actions and scene runtime actions
-2. ephemeral presence state such as cursor position, selection highlight, and viewport hint is transported separately from durable action logs
-3. session-only actions such as local selection changes do not enter durable collaborative event logs by default
-4. collaborative undo and redo operate on the current actor's own durable actions only
-5. Yjs or OT may be used as the transport or convergence layer, but the engine-level semantic model remains action-based
+1. Durable shared state is transported as document actions and scene runtime actions.
+2. Ephemeral presence state such as cursor position, selection highlight, and viewport hint is transported separately from durable action logs.
+3. Session-only actions such as local selection changes do not enter durable collaborative event logs by default.
+4. Collaborative undo and redo operate on the current actor's own durable actions only.
+5. Yjs or OT may be used as the transport or convergence layer, but the engine-level semantic model remains action-based.
 
 ## Consequences
 
 Positive:
 
-1. local and remote updates share one mutation model
-2. collaboration does not need a second semantics layer for content edits
-3. presence can evolve independently from durable document consistency
+1. Local and remote updates share one mutation model.
+2. Collaboration does not need a second semantics layer for content edits.
+3. Presence can evolve independently from durable document consistency.
 
 Tradeoffs:
 
-1. the transport layer must preserve action ordering and actor identity carefully
-2. cross-user undo semantics remain intentionally conservative
+1. The transport layer must preserve action ordering and actor identity carefully.
+2. Cross-user undo semantics remain intentionally conservative.
 
 ## Rejected Alternatives
 

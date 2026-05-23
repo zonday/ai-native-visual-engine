@@ -22,24 +22,24 @@ The engine uses two parallel durable action domains:
 
 Rules:
 
-1. document and scene histories remain separate engine domains
-2. document actions mutate `VisualDocument`
-3. runtime actions mutate active page `SceneGraph` or persisted scene content through the scene runtime pipeline
-4. semantic compiler plans may include both action kinds in one execution sequence
-5. primary undo and redo remain focus-scoped by action domain
+1. Document and scene histories remain separate engine domains.
+2. Document actions mutate `VisualDocument`.
+3. Runtime actions mutate active page `SceneGraph` or persisted scene content through the scene runtime pipeline.
+4. Semantic compiler plans may include both action kinds in one execution sequence.
+5. Primary undo and redo remain focus-scoped by action domain.
 
 ## Consequences
 
 Positive:
 
-1. multi-page concerns stay explicit and testable
-2. route, theme, and page lifecycle logic do not leak into scene handlers
-3. history and replay remain semantically clear
+1. Multi-page concerns stay explicit and testable.
+2. Route, theme, and page lifecycle logic do not leak into scene handlers.
+3. History and replay remain semantically clear.
 
 Tradeoffs:
 
-1. some operations require coordinating two action domains
-2. the UI must choose the correct undo scope based on editing focus
+1. Some operations require coordinating two action domains.
+2. The UI must choose the correct undo scope based on editing focus.
 
 ## Rejected Alternatives
 

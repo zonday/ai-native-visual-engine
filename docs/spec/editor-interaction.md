@@ -84,20 +84,7 @@ The editor must support:
 5. Route editing.
 6. Per-page scene editing.
 
-Document-level operations are modeled separately from scene runtime actions and use the execution model defined in `document-runtime.md`.
-
-Recommended document actions:
-
-```ts
-export type DocumentAction =
-  | { type: 'create-page'; page: Page; scene: PersistedSceneGraph }
-  | { type: 'rename-page'; pageId: PageId; name: string }
-  | { type: 'remove-page'; pageId: PageId }
-  | { type: 'reorder-page'; pageId: PageId; index: number }
-  | { type: 'update-page-route'; pageId: PageId; route: string }
-```
-
-`DocumentAction` and `RuntimeAction` should share infrastructure patterns but remain separate execution domains with separate event logs.
+Document-level operations are modeled separately from scene runtime actions and use the execution model defined in `document-runtime.md`, which defines the authoritative `DocumentAction` union including page lifecycle, theme, and batch actions.
 
 Execution rules:
 

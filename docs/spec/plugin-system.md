@@ -8,11 +8,11 @@ This document defines how components and engine extensions are registered and co
 
 The plugin system must allow the engine to extend:
 
-1. renderable component types
-2. component metadata for inspector and AI
-3. constraints
-4. semantic helpers and templates
-5. optional runtime behaviors
+1. Renderable component types.
+2. Component metadata for inspector and AI.
+3. Constraints.
+4. Semantic helpers and templates.
+5. Optional runtime behaviors.
 
 ## 3. Component Plugin Contract
 
@@ -98,11 +98,11 @@ Rules:
 
 Each plugin must define metadata sufficient for:
 
-1. insert panel
-2. property inspector
-3. AI planning and usage hints
-4. constraint validation
-5. sample generation
+1. Insert panel.
+2. Property inspector.
+3. AI planning and usage hints.
+4. Constraint validation.
+5. Sample generation.
 
 Minimum recommendation:
 
@@ -149,13 +149,13 @@ Mode-specific rules:
 
 Plugins may extend:
 
-1. component rendering
-2. component metadata
-3. component defaults
-4. validation rules
+1. Component rendering.
+2. Component metadata.
+3. Component defaults.
+4. Validation rules.
 
 Plugins may not:
 
-1. bypass runtime validation
-2. mutate the scene outside runtime actions
-3. inject non-serializable state into persisted node data
+1. Bypass runtime validation.
+2. Mutate the scene outside runtime actions.
+3. Inject non-serializable state into persisted node data.
