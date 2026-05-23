@@ -126,6 +126,7 @@ Refer to the following documents for details:
 - `plugin-system.md`
 - `editor-interaction.md`
 - `collaboration-framework.md`
+- `collaboration-infrastructure.md`
 - `history-and-undo-redo.md`
 - `constraints-and-validation.md`
 - `roadmap.md`
