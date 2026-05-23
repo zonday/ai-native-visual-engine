@@ -60,6 +60,8 @@ Scope:
 4. Viewport state and zoom.
 5. Rich text editing on `text` nodes via Tiptap — JSON document model, formatting toolbar, Markdown import/export.
 6. Default plugin components: `metric-value`, `metric-trend`, `metric-comparison`, `chart`, `table`, `header`, `divider`, `filter`.
+7. Prototype components — user-definable reusable presets with instance inheritance and local overrides.
+8. Component states — named states with props overrides, exclusive groups for tab/radio coordination.
 
 Deliverables:
 
@@ -68,6 +70,8 @@ Deliverables:
 3. Drag move, resize, and `rotate-node` interactions producing valid runtime actions.
 4. Tiptap editor integration with full formatting surface.
 5. All 8 default plugins registered and renderable.
+6. Prototype panel with create-from-node, edit defaults, and detach.
+7. Component states with `StateAPI` for set/clear/exclusive.
 
 Acceptance criteria:
 
@@ -77,6 +81,8 @@ Acceptance criteria:
 4. Rich text editing produces valid Tiptap JSON content.
 5. `update-props` dispatch on `text` content validates the JSON structure.
 6. All 8 default plugins render correctly from their props.
+7. Prototype update propagates to instances; local overrides are preserved.
+8. Exclusive group activation clears the state on other group members.
 
 ## 4. Phase 3: Semantic Compiler And Data Interaction
 

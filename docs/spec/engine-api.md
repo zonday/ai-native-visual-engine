@@ -15,6 +15,7 @@ export interface NodeRenderContext {
   mode: 'editor' | 'runtime'
   engine: EngineAPI
   dataInteraction?: DataInteractionAPI
+  stateProps: Record<string, unknown>
 }
 ```
 
@@ -29,6 +30,7 @@ export interface EngineAPI {
   selection: SelectionAPI
   history: HistoryAPI
   dispatch: DispatchAPI
+  states: StateAPI
 }
 ```
 
@@ -152,7 +154,29 @@ Rules:
 4. `batch` commits all child actions atomically.
 5. These methods accept raw values, not action types — the engine wraps them into the correct action type internally.
 
-### 3.6 Subscribing To Scene Changes
+### 3.6 StateAPI
+
+Activate and deactivate named component states.
+
+```ts
+export interface StateAPI {
+  setState(nodeId: NodeId, state: string): void
+  clearState(nodeId: NodeId, state: string): void
+  setExclusive(nodeId: NodeId, state: string, group: string): void
+  getActiveStates(nodeId: NodeId): string[]
+}
+```
+
+See `component-states.md` for the full state model and exclusive group semantics.
+
+Rules:
+
+1. `setState` activates a named state on the target node. If already active, it moves to the end of activation order.
+2. `clearState` deactivates a state. If no states remain, props revert to base `node.props`.
+3. `setExclusive` activates a state and deactivates it on all other nodes in the same group.
+4. `getActiveStates` returns states in activation order.
+
+### 3.7 Subscribing To Scene Changes
 
 Components that need to re-render when scene data changes can subscribe.
 

@@ -31,6 +31,7 @@ export interface VisualDocument {
   themes?: Theme[]
   assets?: Asset[]
   variables?: Variable[]
+  prototypes?: PrototypeComponent[]
   metadata?: DocumentMetadata
 }
 ```
@@ -189,6 +190,8 @@ export interface SceneNode {
   runtime?: RuntimeState
   visible?: boolean
   locked?: boolean
+  prototypeId?: string
+  activeStates?: string[]
   metadata?: NodeMetadata
 }
 ```
