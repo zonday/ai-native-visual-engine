@@ -272,14 +272,16 @@ The editor shell uses:
 
 ```
 tailwindcss >= 4.0
-shadcn/ui (Radix primitives)
-lucide-react (icons)
+shadcn/ui (@base-ui/react primitives)
+lucide-react
 ```
+
+shadcn/ui components use `@base-ui/react` as the headless primitive layer, replacing older `@radix-ui/react-*` packages.
 
 Reasons:
 
 1. Consistent with `technical-domain.md` frontend standards.
-2. Accessible by default (Radix primitives).
+2. Accessible by default via base-ui primitives.
 3. Tree-shakeable — only ship what you use.
 4. Tailwind utility classes keep editor CSS scoped.
 

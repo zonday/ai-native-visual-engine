@@ -26,7 +26,7 @@ These are non-negotiable. Any violation blocks implementation.
 | Testing | vitest | >= 4.1 |
 | Lint + format | biome | >= 2.4 |
 | State management | zustand | >= 5.0 |
-| Styling | tailwindcss + shadcn/ui | >= 4.3 |
+| Styling | tailwindcss + shadcn/ui (@base-ui/react) | >= 4.3 |
 | Graph layout | dagre | >= 0.8 |
 | Collaboration | yjs + y-websocket | >= 13.6 |
 | Runtime | Node.js | >= 22.13 LTS |
