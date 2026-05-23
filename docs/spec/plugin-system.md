@@ -130,9 +130,18 @@ Recommended lifecycle:
 When a scene references an unregistered component type:
 
 1. preserve node data
-2. render fallback placeholder
-3. surface structured warning
-4. block AI operations that require the missing component unless fallback is defined
+2. render `MissingPluginPlaceholder` in editor mode
+3. render `MissingPluginPlaceholder` in runtime preview mode rather than silently hiding the node
+4. surface structured warning during editing
+5. upgrade the issue to a blocking error for publish and export flows
+6. allow only conservative editor operations such as select, move, reparent, replace, or delete when metadata-driven editing is unavailable
+7. block AI or compiler flows from creating new nodes of unknown plugin type
+8. block AI operations that require missing plugin metadata unless an explicit fallback strategy is defined
+
+Mode-specific rules:
+
+1. editor mode may expose raw persisted fields such as `type`, `props`, and `layout` as read-only fallback inspection
+2. runtime preview must stay honest about unsupported output and must not pretend the component rendered correctly
 
 ## 9. Extensibility Boundaries
 

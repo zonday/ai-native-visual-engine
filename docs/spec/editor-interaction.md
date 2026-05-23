@@ -127,6 +127,7 @@ Undo policy:
 1. local users undo their own durable document and scene actions only
 2. remote durable actions do not enter the local undo stack
 3. selection, viewport, and presence changes do not participate in durable collaborative undo
+4. post-MVP UI may add a merged activity timeline for browsing history, but primary undo and redo remain focus-scoped
 
 ## 7. Session State vs Persistent State
 

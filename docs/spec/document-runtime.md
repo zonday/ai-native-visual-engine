@@ -204,6 +204,7 @@ Rules:
 1. document history is independent of scene history but may share the same infrastructure implementation
 2. replaying `DocumentEventLog` must rebuild the same page list and persisted scene mapping
 3. a product may combine document and scene histories in one UI timeline, but the engine model keeps them as distinct domains
+4. post-MVP UI may add a merged activity timeline for inspection, but that does not imply merged undo and redo semantics
 
 ## 11. Relationship To Scene Runtime
 

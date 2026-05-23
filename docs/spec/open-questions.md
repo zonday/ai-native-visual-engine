@@ -6,15 +6,13 @@ This document records unresolved decisions that should become ADRs or follow-up 
 
 ## 2. High Priority Questions
 
-1. How should unknown plugin types behave in runtime preview versus editor mode?
-2. Should the editor UI eventually present document and scene history as one merged timeline after MVP?
+1. How many semantic actions should exist before the action surface becomes too granular for humans and models?
 
 ## 3. AI System Questions
 
-1. How many semantic actions should exist in MVP before the action surface becomes too granular?
-2. Should compiler planning be template-driven, heuristic-driven, or hybrid?
-3. How should AI request missing information from the user when semantic intent is underspecified?
-4. How should generated content reference real datasets versus mock datasets?
+1. Should compiler planning be template-driven, heuristic-driven, or hybrid?
+2. How should AI request missing information from the user when semantic intent is underspecified?
+3. How should generated content reference real datasets versus mock datasets?
 
 ## 4. Renderer Questions
 
