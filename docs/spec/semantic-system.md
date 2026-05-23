@@ -96,7 +96,7 @@ Semantic Action
   -> Layout Planning
   -> Action Expansion
   -> Validation
-  -> Execution Plan
+  -> Execution Plan (output contract, defined in section 6)
 ```
 
 ## 5. Compiler Stage Definitions
