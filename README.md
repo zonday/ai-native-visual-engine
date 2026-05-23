@@ -24,6 +24,7 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/error-handling.md`: error taxonomy, propagation, and recovery strategies
 - `docs/spec/theme-and-tokens.md`: theme model, token system, and cascade rules
 - `docs/spec/data-binding.md`: data source binding, variable resolution, and binding lifecycle
+- `docs/spec/data-interaction.md`: cross-filtering, drill-down, drill-through, and filter integration
 - `docs/spec/implementation-stack.md`: engineering toolchain, package layout, and runtime environment
 - `docs/spec/deployment.md`: Cloudflare Pages deployment and CI pipeline
 - `docs/adr/README.md`: accepted architecture decisions and ADR backlog
