@@ -10,16 +10,20 @@ The engine ships three types directly in core. They are always available and can
 
 ### 2.1 container
 
-A generic grouping container. Node without visual output; its purpose is layout and hierarchy.
+A generic flex grouping container. Its layout behavior is driven entirely by `SceneNode.layout` (`FlexLayout`), not by component props. The component itself has no visual output; the renderer reads `FlexLayout` to produce the correct flex container.
 
 ```ts
-interface ContainerProps {
-  direction?: 'horizontal' | 'vertical'
-  gap?: number
-  align?: 'start' | 'center' | 'end' | 'stretch'
-  justify?: 'start' | 'center' | 'end' | 'space-between'
-  padding?: number
-}
+// container has no component-level props.
+// All layout configuration lives on SceneNode.layout:
+//
+//   SceneNode.layout = {
+//     mode: 'flex',
+//     direction: 'horizontal' | 'vertical',
+//     gap: number,
+//     align: 'start' | 'center' | 'end' | 'stretch',
+//     justify: 'start' | 'center' | 'end' | 'space-between',
+//     wrap: boolean,
+//   }
 ```
 
 Plugin registration:
@@ -30,15 +34,9 @@ const containerPlugin: ComponentPlugin = {
   renderer: ContainerRenderer,
   meta: {
     title: 'Container',
-    description: 'Generic layout container for grouping child nodes.',
+    description: 'Generic flex layout container for grouping child nodes.',
     category: 'container',
-    props: [
-      { key: 'direction', type: 'string', default: 'vertical' },
-      { key: 'gap', type: 'number', default: 16 },
-      { key: 'align', type: 'string', default: 'stretch' },
-      { key: 'justify', type: 'string', default: 'start' },
-      { key: 'padding', type: 'number', default: 16 },
-    ],
+    props: [],
     ai: {
       usage: ['grouping related widgets', 'dashboard section wrapper'],
       antiPatterns: ['using container for single-child layout only'],
@@ -52,15 +50,19 @@ const containerPlugin: ComponentPlugin = {
 
 ### 2.2 grid
 
-The primary grid layout container.
+The primary grid layout container. Its layout behavior is driven entirely by `SceneNode.layout` (`GridLayout`), not by component props. The component itself has no visual output; the renderer reads `GridLayout` to produce the correct grid container.
 
 ```ts
-interface GridProps {
-  columns: number
-  rowHeight: number
-  gap: number
-  autoFlow?: 'row' | 'column'
-}
+// grid has no component-level props.
+// All layout configuration lives on SceneNode.layout:
+//
+//   SceneNode.layout = {
+//     mode: 'grid',
+//     columns: number,
+//     rowHeight: number,
+//     gap: number,
+//     autoFlow: 'row' | 'column',
+//   }
 ```
 
 Plugin registration:
@@ -73,12 +75,7 @@ const gridPlugin: ComponentPlugin = {
     title: 'Grid',
     description: 'Responsive grid layout container.',
     category: 'container',
-    props: [
-      { key: 'columns', type: 'number', default: 12 },
-      { key: 'rowHeight', type: 'number', default: 80 },
-      { key: 'gap', type: 'number', default: 16 },
-      { key: 'autoFlow', type: 'string', default: 'row' },
-    ],
+    props: [],
     ai: {
       usage: ['dashboard page layout', 'KPI card grid', 'chart grid'],
       antiPatterns: ['placing grid inside another grid without explicit intention'],
