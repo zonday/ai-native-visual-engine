@@ -12,7 +12,8 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/editor-interaction.md`: selection, transform, drag and drop, multi-page, and collaboration
 - `docs/spec/constraints-and-validation.md`: constraint system and validation layers
 - `docs/spec/roadmap.md`: phased delivery and acceptance criteria
-- `docs/spec/open-questions.md`: unresolved decisions and ADR candidates
+- `docs/spec/document-runtime.md`: document-level actions, command bus, history, and event log
+- `docs/adr/README.md`: accepted architecture decisions and ADR backlog
 
 ## Goal
 
