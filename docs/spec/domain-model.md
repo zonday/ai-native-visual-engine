@@ -41,6 +41,7 @@ Rules:
 2. A document owns all persisted page scenes through `scenes`.
 3. Multi-tab dashboards are modeled as multiple `Page` records or as container components within a single page, depending on product requirements. The default engine-level model is multiple pages.
 4. Every `Page.sceneId` must resolve to an existing key in `scenes`.
+5. In the MVP, `scenes` is a 1:1 mapping with `pages[].sceneId`; orphan persisted scenes are not allowed.
 
 Supporting definitions:
 

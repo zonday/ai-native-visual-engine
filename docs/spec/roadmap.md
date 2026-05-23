@@ -10,7 +10,7 @@ Each phase must end with:
 2. explicit acceptance criteria
 3. a stable API surface for the next phase
 
-## 2. Phase 1: Core Scene Runtime
+## 2. Phase 1: Core Document And Scene Runtime
 
 Scope:
 
