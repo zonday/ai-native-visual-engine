@@ -129,6 +129,10 @@ Refer to the following documents for details:
 - `roadmap.md`
 - `open-questions.md`
 
+Related ADRs:
+
+- `../adr/README.md`
+
 ## 7. Core Invariants
 
 The engine must preserve these invariants at all times:

@@ -4,32 +4,27 @@
 
 This document records unresolved decisions that should become ADRs or follow-up specs.
 
-## 2. High Priority Questions
+## 2. Remaining ADR Topics
 
-1. How many semantic actions should exist before the action surface becomes too granular for humans and models?
+1. ADR-006: Semantic Action Surface
+   Decide the MVP semantic action set, naming rules, granularity limits, and expansion boundaries so the action surface stays usable for both humans and models.
 
-## 3. AI System Questions
+2. ADR-007: Semantic Planning Strategy
+   Decide whether compiler planning is template-driven, heuristic-driven, or hybrid, and define how AI should handle missing inputs, follow-up questions, and mock-vs-real dataset references.
 
-1. Should compiler planning be template-driven, heuristic-driven, or hybrid?
-2. How should AI request missing information from the user when semantic intent is underspecified?
-3. How should generated content reference real datasets versus mock datasets?
+3. ADR-008: Renderer Evolution Strategy
+   Decide how long React remains the only renderer, when canvas or virtualization is required, and how measurement or auto-sizing can coexist with deterministic replay.
 
-## 4. Renderer Questions
+4. ADR-009: Plugin Extensibility And Migration
+   Decide whether plugins may contribute semantic templates or custom inspector panels, and define the migration and versioning protocol for plugin-driven persisted nodes over time.
 
-1. Should React be the only MVP renderer, with canvas reserved for later, or should renderer abstraction be proven earlier?
-2. Which node types require virtualization for large scenes?
-3. How should measurement and auto-sizing interact with deterministic replay?
+5. ADR-010: Post-MVP History And Activity UX
+   Decide whether the product should add a merged activity timeline after MVP, how cross-domain transaction grouping would work, and how that view should differ from primary undo and redo.
 
-## 5. Plugin System Questions
+## 3. Suggested Order
 
-1. Can plugins contribute semantic templates, or should semantic planning stay centralized in core?
-2. Can plugins define custom inspector panels without violating core state boundaries?
-3. How should versioning and migration work when plugin metadata changes over time?
-
-## 6. Recommended Next ADR Topics
-
-1. ADR-001: SceneGraph as SSOT
-2. ADR-002: Runtime Action and History Model
-3. ADR-003: Semantic Compiler Pipeline
-4. ADR-004: Document Actions vs Scene Actions
-5. ADR-005: Collaboration Transport Strategy
+1. ADR-006: Semantic Action Surface
+2. ADR-007: Semantic Planning Strategy
+3. ADR-009: Plugin Extensibility And Migration
+4. ADR-008: Renderer Evolution Strategy
+5. ADR-010: Post-MVP History And Activity UX
