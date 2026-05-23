@@ -223,6 +223,7 @@ Behavior:
 1. Executes child actions in order.
 2. Commits as one history entry.
 3. Must rollback entirely if any child action fails.
+4. Nested batch actions are flattened before execution; the self-referencing type exists for composability, not for unbounded nesting.
 
 ## 4. Command Bus
 
