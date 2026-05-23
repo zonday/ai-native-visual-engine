@@ -390,9 +390,15 @@ Benefits:
 Minimum replay contract:
 
 ```ts
+export interface SceneEventLogEntry {
+  action: RuntimeAction
+  actorId?: string
+  timestamp: number
+}
+
 export interface SceneEventLog {
   initialScene: PersistedSceneGraph
-  actions: RuntimeAction[]
+  actions: SceneEventLogEntry[]
 }
 ```
 

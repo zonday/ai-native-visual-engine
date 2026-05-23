@@ -67,6 +67,10 @@ export function computeInverseAction(
 | `update-layout` changing `x` from 10 to 20 | `update-layout` setting `x` back to 10 |
 | `rotate-node` changing rotation from 45 to 90 | `rotate-node` setting rotation back to 45 |
 | `update-props` shallow merging `{color: 'red'}` | `update-props` restoring pre-merge keys or storing a diff |
+| `update-style` with new style object | `update-style` restoring the previous style object |
+| `update-bindings` replacing bindings | `update-bindings` restoring the previous bindings array |
+| `update-runtime` shallow merging runtime state | `update-runtime` restoring pre-merge runtime state |
+| `batch-actions` with `[A1, A2, A3]` | `batch-actions` with `[inv_A3, inv_A2, inv_A1]` |
 | `create-page` | `remove-page` with the created `pageId` |
 | `remove-page` | `create-page` with saved `Page` and `PersistedSceneGraph` snapshot |
 | `reorder-page` from index `a` to `b` | `reorder-page` back to index `a` |
@@ -120,6 +124,16 @@ Rules:
 2. A page-level undo does not affect the document-level undo stack.
 3. A document-level undo does not affect any page's scene-level undo stack.
 4. If the undo operation crosses a page-lifecycle action (e.g., undoing a `create-page`), the editor must handle the page deactivation cleanly.
+
+### 4.3 Page Scene History Lifecycle
+
+When a page is deleted, its scene undo/redo stacks are also discarded.
+
+1. On local `remove-page`, the scene history for that page is discarded immediately.
+2. If the `remove-page` is undone, the scene history is re-created empty (the restored scene state is reconstructed from the event log and snapshot, not from the discarded undo stack).
+3. On remote `remove-page`, the local scene undo/redo stacks for the deleted page are discarded.
+4. A page that is recreated (whether through undo or a new `create-page`) starts with empty scene undo/redo stacks.
+5. If a page undo operation targets a page that no longer exists (deleted remotely), the undo degrades to a no-op as described in §7.3.
 
 ## 5. Undo Stack Bounds
 
@@ -295,6 +309,7 @@ See `testing-and-fixtures.md` for the undo/redo test suite. Key test scenarios:
 
 ## 11. Relationship To Other Specs
 
+- `domain-model.md`: `Page`, `SceneGraph`, `VisualDocument`, core types
 - `runtime-engine.md`: `HistoryState`, `HistoryEntry`, undo middleware, scene history rules
 - `document-runtime.md`: `DocumentHistoryState`, `DocumentHistoryEntry`, document history rules
 - `editor-interaction.md`: collaborative undo policy, focus-scoped undo

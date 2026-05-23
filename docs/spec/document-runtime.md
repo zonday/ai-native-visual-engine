@@ -181,21 +181,15 @@ The middleware concepts mirror the scene runtime pipeline so that document and s
 ## 10. History And Event Log
 
 ```ts
-export interface DocumentHistoryState {
-  undoStack: DocumentHistoryEntry[]
-  redoStack: DocumentHistoryEntry[]
-}
-
-export interface DocumentHistoryEntry {
+export interface DocumentEventLogEntry {
   action: DocumentAction
-  inverseAction?: DocumentAction
-  timestamp: number
   actorId?: string
+  timestamp: number
 }
 
 export interface DocumentEventLog {
   initialDocument: VisualDocument
-  actions: DocumentAction[]
+  actions: DocumentEventLogEntry[]
 }
 ```
 

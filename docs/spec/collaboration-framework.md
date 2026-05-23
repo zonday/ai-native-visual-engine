@@ -44,26 +44,19 @@ Each collaborative document maps to a Yjs Y.Doc.
 
 ```ts
 interface CollaborationDoc {
-  // Durable state: ordered list of committed actions
   documentActions: Y.Array<SerializedDocumentAction>
 
-  // Per page: ordered list of committed scene actions
   sceneActions: Y.Map<Y.Array<SerializedRuntimeAction>>
-
-  // Ephemeral presence: not persisted, not replayed
-  presence: {
-    cursors: Y.Map<{ x: number; y: number; pageId: PageId }>
-    selections: Y.Map<{ nodeIds: NodeId[]; pageId: PageId }>
-    viewports: Y.Map<{ zoom: number; x: number; y: number; pageId: PageId }>
-  }
 }
 ```
+
+Presence is carried through Yjs awareness (see §7), not through shared types inside `Y.Doc`.
 
 Rules:
 
 1. `documentActions` is an append-only ordered list. Each item is one `DocumentAction` serialized as JSON.
 2. `sceneActions` is a Y.Map keyed by `pageId`, each value is an append-only ordered list of `RuntimeAction` in JSON.
-3. `presence` uses Yjs awareness for transient state and is excluded from persistence and replay.
+3. Presence state uses Yjs awareness, is excluded from `Y.Doc` shared types, and is excluded from persistence and replay.
 4. Each peer has exactly one open Y.Doc per collaborative session.
 
 ## 5. Action Transport
@@ -89,7 +82,29 @@ Rules:
 6. Validator runs normally (remote actions must still be valid)
 ```
 
-### 5.3 Serialization Contract
+### 5.3 Remote Action Pipeline Entry
+
+Remote actions re-enter the middleware pipeline at the Validator stage, skipping Logger (to avoid double-logging) and skipping the History middleware (to avoid entering the local undo stack).
+
+```text
+Remote action arrives via Yjs observer
+  -> Collaboration middleware deserializes
+  -> Dispatch through CommandBus starting at Validator
+  -> Validator (must pass, same as local)
+  -> Collaboration middleware (no-op for incoming, avoids re-sync loop)
+  -> Handler
+  -> State updates
+```
+
+Rules:
+
+1. Remote actions bypass Logger to avoid duplicate log entries.
+2. Remote actions bypass Undo/History middleware; they do not enter the local undo stack.
+3. Remote actions go through Validator normally.
+4. Remote actions go through Handler normally.
+5. The Collaboration middleware is a no-op for incoming remote actions to prevent infinite re-sync loops.
+
+### 5.4 Serialization Contract
 
 All actions must round-trip through JSON without data loss.
 
@@ -144,7 +159,7 @@ Some action combinations may be semantically conflicting even if structurally va
 | Two peers delete different nodes in the same scene | Both deletes apply; no conflict (nodes are independent) |
 | Two peers move the same node to different parents | Both actions apply in order; the later action wins |
 | Two peers update the same node's layout concurrently | Both actions apply; later values overwrite |
-| Peer A creates a page, Peer B deletes it concurrently | Both actions apply; if create arrives after delete, the page is recreated; if delete arrives after create, the page is removed |
+| Peer A creates a page, Peer B deletes it concurrently | Yjs CRDT determines a deterministic ordering. If `create-page` precedes `remove-page`, the page is created then removed. If `remove-page` precedes `create-page`, the delete removes any existing page with that ID, then the create restores the full page+scene payload. The final state is the same across all peers. |
 
 ### 6.3 Convergence Guarantee
 
@@ -195,6 +210,7 @@ Rules:
 4. Incoming action log is replayed to catch up
 5. Local state is now synchronized
 6. Editor is ready for collaborative editing
+7. Undo stacks are initialized per `history-and-undo-redo.md` §9: if the session `actorId` is new, undo stacks start empty; if reconnecting with the same `actorId`, only locally-owned actions are restored
 ```
 
 ### 8.2 Leave Session
@@ -257,6 +273,7 @@ See `testing-and-fixtures.md` for the collaboration test suite. Key scenarios:
 
 ## 12. Relationship To Other Specs
 
+- `domain-model.md`: `PageId`, `VisualDocument`, core types
 - `ADR-005-collaboration-transport-strategy.md`: architectural decision rationalizing Yjs/OT as transport
 - `runtime-engine.md`: `RuntimeAction`, collaboration middleware
 - `document-runtime.md`: `DocumentAction`, document-level collaboration
