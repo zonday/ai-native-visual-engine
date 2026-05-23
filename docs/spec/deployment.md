@@ -49,7 +49,6 @@ export default defineConfig({
 ```toml
 # packages/editor/wrangler.toml
 name = "ai-native-editor"
-pages_build_output_dir = "dist"
 compatibility_date = "2026-05-23"
 ```
 
