@@ -58,23 +58,23 @@ Each package ships with its own `package.json`, `tsconfig.json`, and `src/` dire
 ### 3.1 Library Bundler
 
 ```
-tsup
+tsdown >= 0.22
 ```
 
-Core packages (`core/`, `ai/`) use `tsup` for building.
+Core packages (`core/`, `ai/`) use `tsdown` for building.
 
 ```json
 {
-  "build": "tsup src/index.ts --format esm --dts --clean"
+  "build": "tsdown"
 }
 ```
 
 Reasons:
 
-1. esbuild-based, extremely fast.
-2. Generates `.d.ts` in one pass.
-3. Supports ESM output natively.
-4. Minimal config surface.
+1. Rolldown-based, same engine as Vite 8 — unified build toolchain across the entire monorepo.
+2. Fast `.d.ts` generation via `rolldown-plugin-dts`.
+3. Minimal config surface, zero-config by default.
+4. Maintained by the same team as tsup.
 
 ### 3.2 Web Dev Server And Bundler
 
@@ -501,8 +501,8 @@ All packages are pinned to the following minimum versions. These represent the l
 | pnpm | 11.2 |
 | turborepo | 2.9 |
 | typescript | 5.6 |
-| tsup | 8.5 |
 | vite | 8.0 |
+| tsdown | 0.22 |
 | react | 19.2 |
 | react-dom | 19.2 |
 | vitest | 4.1 |
