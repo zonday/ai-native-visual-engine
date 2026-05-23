@@ -118,12 +118,12 @@ Minimum recommendation:
 
 Recommended lifecycle:
 
-1. register plugin at app startup
-2. validate metadata shape
-3. expose type to insert panel and AI schema index
-4. use plugin defaults during `create-node`
-5. use plugin renderer during rendering
-6. use plugin constraints during validation
+1. Register plugin at app startup.
+2. Validate metadata shape.
+3. Expose type to insert panel and AI schema index.
+4. Use plugin defaults during `create-node`.
+5. Use plugin renderer during rendering.
+6. Use plugin constraints during validation.
 
 ## 8. Unknown Plugin Strategy
 
@@ -131,19 +131,19 @@ When a scene references an unregistered component type:
 
 `MissingPluginPlaceholder` refers to the engine-provided fallback renderer used when a plugin type cannot be resolved.
 
-1. preserve node data
-2. render `MissingPluginPlaceholder` in editor mode
-3. render `MissingPluginPlaceholder` in runtime mode rather than silently hiding the node
-4. surface structured warning during editing
-5. upgrade the issue to a blocking error for publish and export flows
-6. allow only conservative editor operations such as select, move, reparent, replace, or delete when metadata-driven editing is unavailable
-7. block AI or compiler flows from creating new nodes of unknown plugin type
-8. block AI operations that require missing plugin metadata unless an explicit fallback strategy is defined
+1. Preserve node data.
+2. Render `MissingPluginPlaceholder` in editor mode.
+3. Render `MissingPluginPlaceholder` in runtime mode rather than silently hiding the node.
+4. Surface structured warning during editing.
+5. Upgrade the issue to a blocking error for publish and export flows.
+6. Allow only conservative editor operations such as select, move, reparent, replace, or delete when metadata-driven editing is unavailable.
+7. Block AI or compiler flows from creating new nodes of unknown plugin type.
+8. Block AI operations that require missing plugin metadata unless an explicit fallback strategy is defined.
 
 Mode-specific rules:
 
-1. editor mode may expose raw persisted fields such as `type`, `props`, and `layout` as read-only fallback inspection
-2. runtime mode must stay honest about unsupported output and must not pretend the component rendered correctly
+1. Editor mode may expose raw persisted fields such as `type`, `props`, and `layout` as read-only fallback inspection.
+2. Runtime mode must stay honest about unsupported output and must not pretend the component rendered correctly.
 
 ## 9. Extensibility Boundaries
 

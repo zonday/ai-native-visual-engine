@@ -157,7 +157,7 @@ Session only:
 The editor should support at least two rendering contexts:
 
 1. editor mode
-2. runtime preview mode
+2. runtime mode
 
 Differences:
 

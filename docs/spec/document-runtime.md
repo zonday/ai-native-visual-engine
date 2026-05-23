@@ -95,12 +95,12 @@ Route validation and uniqueness use the canonical route form.
 
 Rules:
 
-1. routes are path-like strings expressed in normalized lowercase form
-2. routes must start with `/`
-3. leading and trailing whitespace is trimmed before validation
-4. an empty route is invalid unless the product later defines an explicit homepage convention
-5. duplicate canonical routes are forbidden
-6. if normalization changes the input value, the normalized route is the stored value
+1. Routes are path-like strings expressed in normalized lowercase form.
+2. Routes must start with `/`.
+3. Leading and trailing whitespace is trimmed before validation.
+4. An empty route is invalid unless the product later defines an explicit homepage convention.
+5. Duplicate canonical routes are forbidden.
+6. If normalization changes the input value, the normalized route is the stored value.
 
 ## 6. History Policy
 
@@ -108,10 +108,10 @@ The engine keeps document history as a domain separate from scene history.
 
 Rules:
 
-1. document history entries contain only document actions
-2. scene history entries contain only scene runtime actions
-3. the engine does not require a merged document-plus-scene timeline
-4. MVP editor UI should route undo and redo by current interaction focus, such as page list operations using document history and canvas operations using scene history
+1. Document history entries contain only document actions.
+2. Scene history entries contain only scene runtime actions.
+3. The engine does not require a merged document-plus-scene timeline.
+4. MVP editor UI should route undo and redo by current interaction focus, such as page list operations using document history and canvas operations using scene history.
 
 ## 7. Document Command Bus
 
@@ -136,11 +136,11 @@ export interface DocumentRuntimeError {
 
 Responsibilities:
 
-1. accept document actions from the editor, semantic compiler, or collaboration sync
-2. pass actions through middleware
-3. route actions to document handlers
-4. return updated document state or structured failure
-5. on failure, return the pre-dispatch document state with no partial mutations applied
+1. Accept document actions from the editor, semantic compiler, or collaboration sync.
+2. Pass actions through middleware.
+3. Route actions to document handlers.
+4. Return updated document state or structured failure.
+5. On failure, return the pre-dispatch document state with no partial mutations applied.
 
 ## 8. Handler Contract
 
@@ -159,9 +159,9 @@ export interface DocumentRuntimeContext {
 
 Rules:
 
-1. handlers are pure relative to input state
-2. handlers must not mutate the input document in place
-3. side effects such as logging and remote sync belong in middleware
+1. Handlers are pure relative to input state.
+2. Handlers must not mutate the input document in place.
+3. Side effects such as logging and remote sync belong in middleware.
 
 ## 9. Middleware Pipeline
 
@@ -201,10 +201,10 @@ export interface DocumentEventLog {
 
 Rules:
 
-1. document history is independent of scene history but may share the same infrastructure implementation
-2. replaying `DocumentEventLog` must rebuild the same page list and persisted scene mapping
-3. a product may combine document and scene histories in one UI timeline, but the engine model keeps them as distinct domains
-4. post-MVP UI may add a merged activity timeline for inspection, but that does not imply merged undo and redo semantics
+1. Document history is independent of scene history but may share the same infrastructure implementation.
+2. Replaying `DocumentEventLog` must rebuild the same page list and persisted scene mapping.
+3. A product may combine document and scene histories in one UI timeline, but the engine model keeps them as distinct domains.
+4. Post-MVP UI may add a merged activity timeline for inspection, but that does not imply merged undo and redo semantics.
 
 ## 11. Relationship To Scene Runtime
 
@@ -212,14 +212,14 @@ Document actions and scene runtime actions are parallel domains.
 
 Recommended execution order when both are produced by the semantic compiler:
 
-1. dispatch required document actions first
-2. resolve resulting page and scene IDs
-3. dispatch scene runtime actions against the target scene
+1. Dispatch required document actions first.
+2. Resolve resulting page and scene IDs.
+3. Dispatch scene runtime actions against the target scene.
 
 Example:
 
-1. `create-dashboard` with no `pageId` may emit `create-page`
-2. the compiler then emits scene runtime actions to populate the new page scene
+1. `create-dashboard` with no `pageId` may emit `create-page`.
+2. The compiler then emits scene runtime actions to populate the new page scene.
 
 ## 12. Collaboration
 
