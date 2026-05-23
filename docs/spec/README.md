@@ -127,11 +127,11 @@ Refer to the following documents for details:
 - `editor-interaction.md`
 - `constraints-and-validation.md`
 - `roadmap.md`
-- `open-questions.md`
 
 Related ADRs:
 
 - `../adr/README.md`
+- `../adr/ADR-BACKLOG.md`
 
 ## 7. Core Invariants
 

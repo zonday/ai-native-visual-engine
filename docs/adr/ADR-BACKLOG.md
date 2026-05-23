@@ -1,10 +1,10 @@
-# Open Questions And ADR Candidates
+# ADR Backlog
 
-## 1. Purpose
+## Purpose
 
-This document records unresolved decisions that should become ADRs or follow-up specs.
+This document tracks architecture decisions that are still important, but are not yet formalized as accepted ADRs.
 
-## 2. Remaining ADR Topics
+## Remaining ADR Topics
 
 1. ADR-006: Semantic Action Surface
    Decide the MVP semantic action set, naming rules, granularity limits, and expansion boundaries so the action surface stays usable for both humans and models.
@@ -21,7 +21,7 @@ This document records unresolved decisions that should become ADRs or follow-up 
 5. ADR-010: Post-MVP History And Activity UX
    Decide whether the product should add a merged activity timeline after MVP, how cross-domain transaction grouping would work, and how that view should differ from primary undo and redo.
 
-## 3. Suggested Order
+## Suggested Order
 
 1. ADR-006: Semantic Action Surface
 2. ADR-007: Semantic Planning Strategy
