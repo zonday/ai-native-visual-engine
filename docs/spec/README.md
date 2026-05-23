@@ -126,6 +126,7 @@ Refer to the following documents for details:
 - `plugin-system.md`
 - `engine-api.md`
 - `component-types.md`
+- `prototype-components.md`
 - `rich-text.md`
 - `editor-interaction.md`
 - `collaboration-framework.md`
