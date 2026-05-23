@@ -219,10 +219,19 @@ export interface SemanticCompileContext {
   availableDatasets?: string[]
 }
 
-export interface SemanticCompileResult {
-  ok: boolean
-  executionPlan?: SemanticExecutionPlan
+export type SemanticCompileResult =
+  | SemanticCompileSuccess
+  | SemanticCompileFailure
+
+export interface SemanticCompileSuccess {
+  ok: true
+  executionPlan: SemanticExecutionPlan
   diagnostics?: CompilerDiagnostic[]
+}
+
+export interface SemanticCompileFailure {
+  ok: false
+  diagnostics: CompilerDiagnostic[]
 }
 
 export interface SemanticExecutionPlan {
@@ -236,6 +245,12 @@ export interface CompilerDiagnostic {
   message: string
 }
 ```
+
+Contract rules:
+
+1. `ok: true` must always include an `executionPlan`
+2. `ok: false` must always include at least one diagnostic
+3. compiler failure must not produce a partial execution plan
 
 ## 7. AI Schema Requirements
 

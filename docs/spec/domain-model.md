@@ -338,7 +338,7 @@ State ownership is defined as follows:
 1. `SceneGraph`
    Stores the active page scene in memory, including session overlays required by the editor.
 
-2. `Document`
+2. `VisualDocument`
    Stores cross-page resources, page definitions, and persisted scenes.
 
 3. `EditorSessionState`

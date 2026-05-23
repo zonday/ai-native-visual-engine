@@ -118,10 +118,11 @@ export interface RotateNodeAction {
 
 Behavior:
 
-1. updates canonical rotation storage on the target node layout
-2. is valid only for layout modes and component capabilities that allow rotation
-3. should normalize rotation into a documented range such as `0-359` if normalization is enabled
-4. rotation should use `rotate-node` as the canonical mutation path; `update-layout` should not be used for rotation updates
+1. `rotation` is expressed in degrees
+2. v1 stores canonical rotation at `AbsoluteLayout.rotation`
+3. v1 is valid only for nodes using `absolute` layout mode and plugins whose capabilities allow rotation
+4. should normalize rotation into the range `0-359` if normalization is enabled
+5. rotation should use `rotate-node` as the canonical mutation path; `update-layout` should not be used for rotation updates
 
 ### 3.6 update-props
 
@@ -165,6 +166,8 @@ Rules:
 2. it is excluded from `SceneEventLog` by default
 3. it is excluded from durable collaborative sync by default
 4. editors may keep a transient local selection history, but it does not participate in durable content undo and redo
+5. it must not bump persisted scene `version`
+6. it must not mutate `PersistedSceneGraph` content fields
 
 ### 3.9 batch-actions
 

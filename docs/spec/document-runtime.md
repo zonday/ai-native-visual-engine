@@ -67,12 +67,27 @@ export interface BatchDocumentActions {
 ## 4. Action Rules
 
 1. `create-page` adds both a `Page` record and its persisted scene in one atomic transaction.
-2. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction.
-3. `reorder-page` changes only page ordering and must not mutate scene content.
-4. `update-page-route` must maintain route uniqueness across the document.
-5. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails.
+2. `create-page.page.sceneId` is the canonical key used to insert `create-page.scene` into `VisualDocument.scenes`.
+3. `create-page` must validate unique `page.id`, unique `page.sceneId`, and valid route uniqueness when a route is present.
+4. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction.
+5. `reorder-page` changes only page ordering and must not mutate scene content.
+6. `update-page-route` must maintain route uniqueness across the document.
+7. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails.
 
-## 5. Document Command Bus
+## 5. Route Canonicalization
+
+Route validation and uniqueness use the canonical route form.
+
+Rules:
+
+1. routes are path-like strings expressed in normalized lowercase form
+2. routes must start with `/`
+3. leading and trailing whitespace is trimmed before validation
+4. an empty route is invalid unless the product later defines an explicit homepage convention
+5. duplicate canonical routes are forbidden
+6. if normalization changes the input value, the normalized route is the stored value
+
+## 6. Document Command Bus
 
 ```ts
 export interface DocumentCommandBus {
@@ -99,8 +114,9 @@ Responsibilities:
 2. pass actions through middleware
 3. route actions to document handlers
 4. return updated document state or structured failure
+5. on failure, return the pre-dispatch document state with no partial mutations applied
 
-## 6. Handler Contract
+## 7. Handler Contract
 
 ```ts
 export type DocumentHandler<TAction extends DocumentAction> = (
@@ -121,7 +137,7 @@ Rules:
 2. handlers must not mutate the input document in place
 3. side effects such as logging and remote sync belong in middleware
 
-## 7. Middleware Pipeline
+## 8. Middleware Pipeline
 
 Recommended pipeline:
 
@@ -136,7 +152,7 @@ Document Action
 
 The middleware concepts mirror the scene runtime pipeline so that document and scene actions can share implementation patterns.
 
-## 8. History And Event Log
+## 9. History And Event Log
 
 ```ts
 export interface DocumentHistoryState {
@@ -163,7 +179,7 @@ Rules:
 2. replaying `DocumentEventLog` must rebuild the same page list and persisted scene mapping
 3. a product may combine document and scene histories in one UI timeline, but the engine model keeps them as distinct domains
 
-## 9. Relationship To Scene Runtime
+## 10. Relationship To Scene Runtime
 
 Document actions and scene runtime actions are parallel domains.
 
@@ -178,7 +194,7 @@ Example:
 1. `create-dashboard` with no `pageId` may emit `create-page`
 2. the compiler then emits scene runtime actions to populate the new page scene
 
-## 10. Collaboration
+## 11. Collaboration
 
 Document actions must participate in collaboration just like scene runtime actions.
 
