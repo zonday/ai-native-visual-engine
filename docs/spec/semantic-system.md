@@ -257,6 +257,9 @@ Contract rules:
 1. `ok: true` must always include an `executionPlan`
 2. `ok: false` must always include at least one diagnostic
 3. compiler failure must not produce a partial execution plan
+4. `scene`, when provided, is the active in-memory `SceneGraph` for the target page rather than a persisted replay snapshot
+5. session overlays such as `selection` and `viewport` must be ignored during compilation unless an explicit targeting rule chooses to consult them
+6. persisted import or replay inputs should be materialized into an in-memory `SceneGraph` before compilation if scene-local planning is required
 
 ## 7. AI Schema Requirements
 

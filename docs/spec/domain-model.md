@@ -133,7 +133,7 @@ Rules:
 4. `SceneGraph` is the in-memory editor model for an active page and may include session overlays such as `selection` and `viewport`.
 5. `selection` and `viewport` are session-scoped by default and are not serialized into `VisualDocument.scenes`.
 6. `version` increments whenever a committed content mutation changes persisted scene content.
-7. if viewport recall is needed later, it belongs in user-scoped workspace preferences rather than shared document persistence.
+7. If viewport recall is needed later, it belongs in user-scoped workspace preferences rather than shared document persistence.
 
 ## 5. Persistence Root
 

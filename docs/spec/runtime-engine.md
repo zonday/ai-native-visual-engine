@@ -27,9 +27,9 @@ Every runtime action must satisfy the following properties:
 
 Runtime commit policy:
 
-1. invalid scene mutations are rejected at commit time by default
-2. runtime handlers must not perform non-deterministic geometric auto-repair
-3. only explicitly documented normalization rules may adjust input during commit
+1. Invalid scene mutations are rejected at commit time by default.
+2. Runtime handlers must not perform non-deterministic geometric auto-repair.
+3. Only explicitly documented normalization rules may adjust input during commit.
 
 ## 3. Runtime Action Types
 
