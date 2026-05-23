@@ -4,6 +4,17 @@
 
 Accepted
 
+**Date:** 2026-05
+
+**Prerequisites:** ADR-001, ADR-002, ADR-004
+
+**Related:**
+
+- `docs/spec/semantic-system.md` — implements the compiler pipeline
+- `docs/spec/runtime-engine.md` — compiler output targets runtime actions
+- `docs/spec/document-runtime.md` — compiler may also emit document actions
+- `ADR-004` — document vs scene action split that the compiler respects
+
 ## Context
 
 The product is AI-native, but the runtime engine requires deterministic, validated mutations. Letting AI directly generate scene JSON or arbitrary runtime actions would bypass engine invariants and make replay and validation unreliable.

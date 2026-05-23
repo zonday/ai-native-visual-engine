@@ -4,6 +4,18 @@
 
 Accepted
 
+**Date:** 2026-05
+
+**Prerequisites:** ADR-001 (SceneGraph as SSOT)
+
+**Related:**
+
+- `docs/spec/runtime-engine.md` — implements the action model
+- `docs/spec/document-runtime.md` — parallel action model for document domain
+- `docs/spec/history-and-undo-redo.md` — undo/redo built on action history
+- `ADR-001` — prerequisite
+- `ADR-004` — related split between document and scene actions
+
 ## Context
 
 The engine needs a mutation model that supports direct editing, AI-generated changes, replay, undo and redo, and collaboration.

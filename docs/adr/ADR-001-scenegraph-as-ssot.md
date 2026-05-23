@@ -4,6 +4,17 @@
 
 Accepted
 
+**Date:** 2026-05
+
+**Prerequisites:** None.
+
+**Related:**
+
+- `docs/spec/domain-model.md` — implements the SSOT architecture
+- `docs/spec/renderer-contract.md` — renderer is pure with respect to SSOT
+- `docs/spec/runtime-engine.md` — all mutations go through SSOT
+- `ADR-002` — builds on this decision for the action/history model
+
 ## Context
 
 The engine must support visual editing, AI-assisted generation and modification, undo and redo, replay, collaboration, and renderer switching without splitting page state across multiple competing stores.

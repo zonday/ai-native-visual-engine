@@ -23,8 +23,10 @@ This document tracks architecture decisions that are still important, but are no
 
 ## Suggested Order
 
-1. ADR-006: Semantic Action Surface
-2. ADR-007: Semantic Planning Strategy
-3. ADR-009: Plugin Extensibility And Migration
-4. ADR-008: Renderer Evolution Strategy
-5. ADR-010: Post-MVP History And Activity UX
+| # | ADR | Rationale | Blocks |
+|---|-----|-----------|--------|
+| 1 | ADR-006: Semantic Action Surface | Defines the AI-facing API contract. Without it, the compiler cannot know which intents to accept. Blocks ADR-007 and Phase 3 implementation. | ADR-007 |
+| 2 | ADR-007: Semantic Planning Strategy | Depends on the action surface being defined. Determines how the compiler fills gaps in AI intent, which affects constraint precheck, layout planning, and error recovery. | Phase 3 compiler implementation |
+| 3 | ADR-009: Plugin Extensibility And Migration | Affects the plugin registry, semantic template contributions, and node migration. Should be decided before Phase 4 (AI integration) so AI-generated nodes follow a stable migration policy. | Phase 4 AI integration |
+| 4 | ADR-008: Renderer Evolution Strategy | Canvas/virtualization decisions only become critical at scale. Post-MVP timing is acceptable; the React renderer handles Phase 1-5 MVP scope. | — |
+| 5 | ADR-010: Post-MVP History And Activity UX | Purely a post-MVP UX concern. Does not block any implementation milestone. | — |

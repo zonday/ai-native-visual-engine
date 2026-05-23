@@ -4,6 +4,18 @@
 
 Accepted
 
+**Date:** 2026-05
+
+**Prerequisites:** ADR-002 (action model must exist before collaboration can transport it)
+
+**Related:**
+
+- `docs/spec/collaboration-framework.md` — implements Yjs as the selected transport
+- `docs/spec/runtime-engine.md` §7.4 — collaboration middleware
+- `docs/spec/document-runtime.md` §12 — document action collaboration
+- `docs/spec/history-and-undo-redo.md` §7 — collaboration-history interaction
+- `ADR-002` — prerequisite
+
 ## Context
 
 The engine must support collaboration, but collaboration should not replace the core action model. It should transport and reconcile the same durable actions already used locally.

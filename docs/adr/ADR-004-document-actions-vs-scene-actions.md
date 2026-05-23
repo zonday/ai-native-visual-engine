@@ -4,6 +4,17 @@
 
 Accepted
 
+**Date:** 2026-05
+
+**Prerequisites:** ADR-001, ADR-002
+
+**Related:**
+
+- `docs/spec/document-runtime.md` — implements document actions
+- `docs/spec/runtime-engine.md` §11 — boundary between the two domains
+- `docs/spec/history-and-undo-redo.md` — separate histories per domain
+- `ADR-001`, `ADR-002` — prerequisites
+
 ## Context
 
 The engine supports multi-page documents. Some mutations change page-level structure such as page creation, route updates, or theme overrides, while others change node-level scene content.
