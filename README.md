@@ -13,6 +13,10 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/constraints-and-validation.md`: constraint system and validation layers
 - `docs/spec/roadmap.md`: phased delivery and acceptance criteria
 - `docs/spec/document-runtime.md`: document-level actions, command bus, history, and event log
+- `docs/spec/bootstrap-and-lifecycle.md`: document initialization, session lifecycle, and import/export
+- `docs/spec/renderer-contract.md`: renderer interface, rendering modes, and fallback policies
+- `docs/spec/testing-and-fixtures.md`: test strategy, fixture format, and per-phase test requirements
+- `docs/spec/persistence-and-serialization.md`: storage, serialization, snapshot, and event log truncation
 - `docs/adr/README.md`: accepted architecture decisions and ADR backlog
 
 ## Goal

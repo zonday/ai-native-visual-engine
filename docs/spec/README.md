@@ -127,6 +127,10 @@ Refer to the following documents for details:
 - `editor-interaction.md`
 - `constraints-and-validation.md`
 - `roadmap.md`
+- `bootstrap-and-lifecycle.md`
+- `renderer-contract.md`
+- `testing-and-fixtures.md`
+- `persistence-and-serialization.md`
 
 Related ADRs:
 
