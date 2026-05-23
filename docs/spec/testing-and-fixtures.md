@@ -116,13 +116,166 @@ describe('semantic compiler', () => {
 
 Purpose: Confirm that concurrent edits converge deterministically.
 
+#### Strategy
+
+Collaboration tests simulate two or more peer sessions operating on the same document. Because Yjs CRDT logic runs client-side, no real network is needed — tests create multiple in-memory Yjs Y.Doc instances connected through a virtual sync channel.
+
 ```ts
-describe('collaboration', () => {
-  it('concurrent node creation converges')
-  it('concurrent node removal converges')
-  it('conflicting layout updates converge deterministically')
-  it('remote actions do not enter local undo stack')
+import { Doc } from 'yjs'
+
+function createPeerPair() {
+  const docA = new Doc()
+  const docB = new Doc()
+
+  // Mirror updates bidirectionally to simulate sync
+  docA.on('update', (update: Uint8Array) => {
+    Y.applyUpdate(docB, update)
+  })
+  docB.on('update', (update: Uint8Array) => {
+    Y.applyUpdate(docA, update)
+  })
+
+  return { docA, docB }
+}
+```
+
+#### Test Scenarios
+
+```ts
+describe('collaboration convergence', () => {
+  it('concurrent node creation produces identical scenes on both peers', () => {
+    const { docA, docB } = createPeerPair()
+
+    dispatchToDoc(docA, createNodeAction('a', rootId))
+    dispatchToDoc(docB, createNodeAction('b', rootId))
+
+    // After sync, both peers have two nodes
+    expect(getNodeIds(docA)).toEqual(expect.arrayContaining(['a', 'b']))
+    expect(getNodeIds(docB)).toEqual(expect.arrayContaining(['a', 'b']))
+    expect(getNodeIds(docA)).toEqual(getNodeIds(docB))
+  })
+
+  it('concurrent layout updates converge to deterministic final state', () => {
+    const { docA, docB } = createPeerPair()
+
+    dispatchToDoc(docA, updateLayoutAction(nodeId, { x: 10 }))
+    dispatchToDoc(docB, updateLayoutAction(nodeId, { y: 20 }))
+
+    // CRDT determines ordering; both peers agree
+    const layoutA = getLayout(docA, nodeId)
+    const layoutB = getLayout(docB, nodeId)
+    expect(layoutA).toEqual(layoutB)
+  })
+
+  it('remote action does not enter local undo stack', () => {
+    const { docA, docB } = createPeerPair()
+
+    // Peer B creates a node
+    const action = createNodeAction('remote-node', rootId)
+    dispatchToDoc(docB, action)
+
+    // Peer A receives the remote action
+    syncAll(docA, docB)
+
+    // Peer A's undo stack must not contain the remote action
+    expect(getUndoStack(docA)).toHaveLength(0)
+  })
+
+  it('remote action clears local redo stack', () => {
+    const { docA, docB } = createPeerPair()
+
+    // Peer A commits and undoes to populate redo stack
+    dispatchToDoc(docA, updateLayoutAction(nodeId, { x: 10 }))
+    undo(docA)
+    expect(getRedoStack(docA)).toHaveLength(1)
+
+    // Peer B commits; sync reaches Peer A
+    dispatchToDoc(docB, updateLayoutAction(nodeId, { y: 20 }))
+    syncAll(docA, docB)
+
+    // Peer A's redo stack must be cleared
+    expect(getRedoStack(docA)).toHaveLength(0)
+  })
+
+  it('concurrent node removal converges', () => {
+    const { docA, docB } = createPeerPair()
+
+    dispatchToDoc(docA, removeNodeAction(nodeId))
+    dispatchToDoc(docB, removeNodeAction(nodeId))
+
+    syncAll(docA, docB)
+
+    // Node is gone on both peers
+    expect(nodeExists(docA, nodeId)).toBe(false)
+    expect(nodeExists(docB, nodeId)).toBe(false)
+  })
+
+  it('offline actions are queued and synced on reconnect', () => {
+    const { docA, docB } = createPeerPair()
+
+    // Disconnect Peer B
+    disconnect(docA, docB)
+
+    dispatchToDoc(docB, createNodeAction('offline-node', rootId))
+
+    // Peer A does not yet see the action
+    expect(nodeExists(docA, 'offline-node')).toBe(false)
+
+    // Reconnect
+    connect(docA, docB)
+
+    // Peer A now has the queued action
+    expect(nodeExists(docA, 'offline-node')).toBe(true)
+  })
+
+  it('presence state propagates between peers', () => {
+    const { docA, docB } = createPeerPair()
+
+    setPresence(docA, { cursor: { x: 100, y: 200, pageId: 'p1' } })
+    setPresence(docB, { cursor: { x: 300, y: 400, pageId: 'p1' } })
+
+    expect(getPresence(docA, 'peerB').cursor).toEqual({ x: 300, y: 400 })
+    expect(getPresence(docB, 'peerA').cursor).toEqual({ x: 100, y: 200 })
+  })
+
+  it('presence is cleaned up on disconnect', () => {
+    const { docA, docB } = createPeerPair()
+
+    setPresence(docB, { cursor: { x: 0, y: 0 } })
+    disconnect(docA, docB)
+
+    // Peer A must clean up Peer B's presence after timeout
+    expect(getPresence(docA, 'peerB')).toBeUndefined()
+  })
 })
+```
+
+#### Test Helpers
+
+Each collaboration test suite must provide these helpers:
+
+```ts
+// Dispatch an action through a peer's collaboration pipeline
+function dispatchToDoc(doc: Doc, action: RuntimeAction | DocumentAction): void
+
+// Bidirectional sync between two docs
+function syncAll(docA: Doc, docB: Doc): void
+
+// Disconnect / reconnect the update mirror between two docs
+function disconnect(docA: Doc, docB: Doc): void
+function connect(docA: Doc, docB: Doc): void
+
+// Presence helpers
+function setPresence(doc: Doc, state: AwarenessState): void
+function getPresence(doc: Doc, peerId: string): AwarenessState | undefined
+
+// Scene query helpers
+function getNodeIds(doc: Doc): NodeId[]
+function getLayout(doc: Doc, nodeId: NodeId): Layout | undefined
+function nodeExists(doc: Doc, nodeId: NodeId): boolean
+function getUndoStack(doc: Doc): HistoryEntry[]
+function getRedoStack(doc: Doc): HistoryEntry[]
+function undo(doc: Doc): void
 ```
 
 ## 4. Phase Scoped Test Requirements
