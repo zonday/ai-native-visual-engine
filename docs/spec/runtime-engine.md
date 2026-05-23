@@ -367,8 +367,9 @@ export interface SceneEventLog {
 Rules:
 
 1. `SceneEventLog` stores content mutations only.
-2. Session-scoped actions such as `update-selection` are excluded by default.
-3. The persisted replay root should normally be `PersistedSceneGraph`; an editor may materialize that snapshot into an in-memory `SceneGraph` when a page becomes active.
+2. `SceneEventLog.actions` must not contain session-scoped actions such as `update-selection`.
+3. If the runtime action surface expands with additional session-only actions, they are also excluded from `SceneEventLog.actions` unless explicitly reclassified as durable content mutations.
+4. The persisted replay root should normally be `PersistedSceneGraph`; an editor may materialize that snapshot into an in-memory `SceneGraph` when a page becomes active.
 
 ## 10. Failure Policy
 

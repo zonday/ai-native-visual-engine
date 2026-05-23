@@ -247,7 +247,7 @@ export interface LayoutBase {
 }
 ```
 
-### 8.1 Free Layout
+### 9.1 Free Layout
 
 ```ts
 export interface FreeLayout extends LayoutBase {
@@ -257,7 +257,7 @@ export interface FreeLayout extends LayoutBase {
 
 Use when a container delegates placement to custom logic or when layout is intentionally unconstrained.
 
-### 8.2 Absolute Layout
+### 9.2 Absolute Layout
 
 ```ts
 export interface AbsoluteLayout extends LayoutBase {
@@ -273,7 +273,7 @@ export interface AbsoluteLayout extends LayoutBase {
 
 Use for overlay, canvas-style placement, or transform-based editing.
 
-### 8.3 Flex Layout
+### 9.3 Flex Layout
 
 ```ts
 export interface FlexLayout extends LayoutBase {
@@ -286,7 +286,7 @@ export interface FlexLayout extends LayoutBase {
 }
 ```
 
-### 8.4 Grid Layout
+### 9.4 Grid Layout
 
 ```ts
 export interface GridLayout extends LayoutBase {
@@ -298,7 +298,7 @@ export interface GridLayout extends LayoutBase {
 }
 ```
 
-### 8.5 Grid Item Layout
+### 9.5 Grid Item Layout
 
 ```ts
 export interface GridItemLayout extends LayoutBase {
