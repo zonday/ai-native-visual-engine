@@ -306,7 +306,131 @@ Rules:
 3. The renderer must support partial updates — only re-render nodes whose resolved bindings changed.
 4. The entire pipeline runs synchronously within a single frame.
 
-## 8. Testing Contract
+## 8. Data Interaction API
+
+The engine exposes a `DataInteractionAPI` that plugins and components call to trigger interactive behavior without knowing the internal event bus.
+
+```ts
+export interface DataInteractionAPI {
+  crossFilter(selection: SelectionEvent): void
+  drillDown(componentId: NodeId, dimension: string, value: string): void
+  drillUp(componentId: NodeId): void
+  drillThrough(componentId: NodeId, target: DrillThroughTarget): void
+  setFilter(componentId: NodeId, dimension: string, value: unknown): void
+  clearFilter(componentId: NodeId): void
+  getDrillState(componentId: NodeId): DrillState | undefined
+  getFilterState(componentId: NodeId): FilterParam[]
+  subscribe(componentId: NodeId, dimensions: string[], callback: (params: FilterParam[]) => void): () => void
+}
+```
+
+### 8.1 crossFilter
+
+Emit a selection event from a component. Subscribed components on the same page re-resolve their bindings with the new filter.
+
+```ts
+api.crossFilter({
+  sourceComponentId: 'chart-1',
+  sourceComponentType: 'chart',
+  dimension: 'region',
+  value: 'APAC',
+  label: 'Asia Pacific',
+})
+```
+
+### 8.2 drillDown / drillUp
+
+Navigate down or up the drill hierarchy for a component.
+
+```ts
+// Drill from year to quarter for the selected value
+api.drillDown('chart-1', 'year', '2026')
+
+// Go back to the previous level
+api.drillUp('chart-1')
+```
+
+### 8.3 drillThrough
+
+Navigate to a detail page with context parameters.
+
+```ts
+api.drillThrough('table-1', {
+  pageId: 'customer-detail',
+  params: { customerId: 'ABC' },
+  label: 'View Customer Detail',
+})
+```
+
+### 8.4 setFilter / clearFilter
+
+Programmatically set or clear a filter on a filter component. Equivalent to user interaction with the filter control.
+
+```ts
+api.setFilter('filter-region', 'region', 'EMEA')
+api.clearFilter('filter-region')
+```
+
+### 8.5 getDrillState / getFilterState
+
+Read the current drill or filter state for a component. Used by the renderer to show drill indicators and active filter badges.
+
+```ts
+const state = api.getDrillState('chart-1')
+if (state && state.availableDimensions.length > 0) {
+  renderDrillAffordance()
+}
+```
+
+### 8.6 subscribe
+
+Subscribe to filter parameter changes for one or more dimensions. The callback fires whenever any matching filter changes, allowing the renderer to re-resolve bindings.
+
+```ts
+const unsubscribe = api.subscribe('chart-1', ['region', 'quarter'], (params) => {
+  for (const binding of node.bindings) {
+    const resolved = registry.resolveValue(binding.source, binding.path, params)
+    updateComponent(chart, resolved)
+  }
+})
+
+// When done
+unsubscribe()
+```
+
+### 8.7 How The API Is Provided
+
+The engine provides `DataInteractionAPI` to plugins through the `RenderNodeInput` context.
+
+```ts
+// In plugin renderer
+export function ChartRenderer(input: RenderNodeInput): RenderedOutput {
+  const { node, context } = input
+  const api = context.dataInteraction
+
+  return <ChartView
+    data={resolvedBinding.value}
+    onBarClick={(dimension, value) => api.crossFilter({
+      sourceComponentId: node.id,
+      sourceComponentType: node.type,
+      dimension,
+      value,
+      label: String(value),
+    })}
+    onDrillDown={(dimension, value) => api.drillDown(node.id, dimension, value)}
+  />
+}
+```
+
+Rules:
+
+1. The API is read-only with respect to the scene graph. It triggers re-resolution, not mutation.
+2. All API calls are synchronous.
+3. `subscribe` callbacks fire synchronously within the same frame.
+4. Plugins call the API in response to user gestures (click, select, filter change).
+5. The API is provided through `RenderNodeInput.context`, not through a global singleton.
+
+## 9. Testing Contract
 
 See `testing-and-fixtures.md`. Key data-interaction test scenarios:
 
@@ -319,7 +443,7 @@ See `testing-and-fixtures.md`. Key data-interaction test scenarios:
 7. Multiple concurrent selections on different dimensions accumulate correctly.
 8. A component is not cross-filtered by its own selection.
 
-## 9. Relationship To Other Specs
+## 10. Relationship To Other Specs
 
 - `data-binding.md`: `Binding`, `DataSourceRegistry`, resolution lifecycle
 - `component-types.md`: per-component props, constraints, and metadata

@@ -85,6 +85,7 @@ export interface NodeRenderContext {
   selected: boolean
   editable: boolean
   mode: 'editor' | 'runtime'
+  dataInteraction?: DataInteractionAPI
 }
 ```
 
