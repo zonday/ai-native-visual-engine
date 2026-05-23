@@ -11,7 +11,7 @@ The project uses a **pnpm monorepo** with Turborepo for task orchestration.
 ### 2.1 Package Manager
 
 ```
-pnpm >= 9.0
+pnpm >= 11.2
 ```
 
 Reasons:
@@ -24,7 +24,7 @@ Reasons:
 ### 2.2 Task Orchestration
 
 ```
-turborepo >= 2.0
+turborepo >= 2.9
 ```
 
 Pipeline configuration in `turbo.json`:
@@ -79,7 +79,7 @@ Reasons:
 ### 3.2 TypeScript
 
 ```
-TypeScript >= 5.5
+TypeScript >= 5.6
 ```
 
 Shared `tsconfig.base.json`:
@@ -115,7 +115,7 @@ Per-package `tsconfig.json` extends the base:
 ### 3.3 Linting And Formatting
 
 ```
-biome
+biome >= 2.4
 ```
 
 Single tool for both linting and formatting, replacing ESLint + Prettier.
@@ -142,7 +142,7 @@ Reasons:
 ### 3.4 Testing
 
 ```
-vitest
+vitest >= 4.1
 ```
 
 ```json
@@ -164,7 +164,7 @@ For DOM-dependent renderer tests: `@vitest/browser` with Playwright.
 ### 3.5 React
 
 ```
-React >= 19
+React >= 19.2
 ```
 
 The editor shell and renderer use React 19 for the Server Components primitives (if needed later) and the improved ref handling and hooks. No framework (Next.js, Remix) is required — this is a client-side engine and editor.
@@ -265,7 +265,7 @@ Reasons:
 ### 8.1 Node.js
 
 ```
-Node.js >= 20 LTS
+Node.js >= 22.13 LTS
 ```
 
 Required for development tooling and test runner. The engine core has no Node.js dependency — it is isomorphic.
@@ -469,7 +469,31 @@ All packages share a single version number. Initial version:
 
 The version is bumped per the roadmap phase, not per package. Semantic versioning applies to the public API surface of each package, documented in its `README.md`.
 
-## 12. Relationship To Other Specs
+## 12. Version Pinning
+
+All packages are pinned to the following minimum versions. These represent the latest stable releases as of May 2026.
+
+| Package | Minimum Version |
+|------|------|
+| pnpm | 11.2 |
+| turborepo | 2.9 |
+| typescript | 5.6 |
+| tsup | 8.5 |
+| react | 19.2 |
+| react-dom | 19.2 |
+| vitest | 4.1 |
+| @vitest/browser | 4.1 |
+| biome | 2.4 |
+| zustand | 5.0 |
+| tailwindcss | 4.3 |
+| dagre | 0.8 |
+| yjs | 13.6 |
+| y-websocket | 2.1 |
+| lib0 | 0.2 |
+| lucide-react | latest |
+| node | 22.13 LTS |
+
+## 13. Relationship To Other Specs
 
 - `roadmap.md`: phase-scoped delivery order and acceptance criteria
 - `domain-model.md`: all core types implemented in `packages/core/`
