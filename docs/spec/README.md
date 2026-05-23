@@ -137,6 +137,7 @@ Refer to the following documents for details:
 - `theme-and-tokens.md`
 - `data-binding.md`
 - `implementation-stack.md`
+- `deployment.md`
 
 Related ADRs:
 

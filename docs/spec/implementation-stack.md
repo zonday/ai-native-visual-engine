@@ -484,7 +484,11 @@ steps:
   - pnpm run test
 ```
 
-## 11. Versioning
+## 11. Deployment
+
+The editor SPA is deployed to Cloudflare Pages. See `deployment.md` for the full strategy, CI pipeline with automatic preview deployments per PR, and environment variable configuration.
+
+## 12. Versioning
 
 All packages share a single version number. Initial version:
 
@@ -494,7 +498,7 @@ All packages share a single version number. Initial version:
 
 The version is bumped per the roadmap phase, not per package. Semantic versioning applies to the public API surface of each package, documented in its `README.md`.
 
-## 12. Version Pinning
+## 13. Version Pinning
 
 All packages are pinned to the following minimum versions. These represent the latest stable releases as of May 2026.
 
@@ -519,7 +523,7 @@ All packages are pinned to the following minimum versions. These represent the l
 | lucide-react | latest |
 | node | 22.13 LTS |
 
-## 13. Relationship To Other Specs
+## 14. Relationship To Other Specs
 
 - `roadmap.md`: phase-scoped delivery order and acceptance criteria
 - `domain-model.md`: all core types implemented in `packages/core/`
