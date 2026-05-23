@@ -285,6 +285,17 @@ Reasons:
 3. Tree-shakeable — only ship what you use.
 4. Tailwind utility classes keep editor CSS scoped.
 
+### 7.1 Rich Text Editing
+
+```
+@tiptap/react
+@tiptap/starter-kit
+@tiptap/extension-underline
+@tiptap/extension-link
+```
+
+Tiptap is used for rich text editing on `text` nodes. See `rich-text.md` for the full content model and editor integration.
+
 ## 8. Runtime Environment
 
 ### 8.1 Node.js
@@ -520,6 +531,10 @@ All packages are pinned to the following minimum versions. These represent the l
 | yjs | 13.6 |
 | y-websocket | 2.1 |
 | lib0 | 0.2 |
+| @tiptap/react | latest |
+| @tiptap/starter-kit | latest |
+| @tiptap/extension-underline | latest |
+| @tiptap/extension-link | latest |
 | lucide-react | latest |
 | node | 22.13 LTS |
 
