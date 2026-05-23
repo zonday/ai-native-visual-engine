@@ -60,7 +60,8 @@ Error codes follow the pattern `<domain>.<category>`.
 | `compiler.invalid-intent` | compiler | error | Semantic action payload is malformed |
 | `compiler.constraint-violation` | compiler | error | Generated plan violates a semantic or layout constraint |
 | `compiler.unknown-component` | compiler | error | Requested component type not in plugin registry |
-| `validation.schema-mismatch` | validation | fatal | Document structure fails schema validation |
+| `validation.action-schema-mismatch` | validation | error | Action payload fails Zod validation |
+| `validation.document-schema-mismatch` | validation | fatal | Document structure fails schema validation on import |
 | `validation.referential-broken` | validation | error | A reference resolves to a missing object |
 | `renderer.unknown-plugin` | renderer | warning | Scene references a plugin type not in the registry |
 | `renderer.render-failure` | renderer | error | A component renderer threw during rendering |

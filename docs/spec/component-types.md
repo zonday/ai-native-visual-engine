@@ -489,6 +489,7 @@ Rules:
 3. The engine core ships only `container`, `grid`, and `text`.
 4. The compiler's `create-dashboard` expansion must produce only types registered at that moment.
 5. If a referenced type is not registered, the compiler emits `compiler.unknown-component`.
+6. Each default plugin exports a Zod props schema alongside its `ComponentPlugin` definition. The schema is registered via `SchemaRegistry.registerPluginPropsSchema()` at the same time the plugin itself is registered. See `schema-validation.md` §4.2.
 
 ## 5. Relationship To Other Specs
 

@@ -41,13 +41,16 @@ export const PageSchema = z.object({
   sceneId: z.string(),
   route: z.string().optional(),
   themeId: z.string().optional(),
-  metadata: PageMetadataSchema.optional(),
 })
 
 export const CreatePageActionSchema = z.object({
   type: z.literal('create-page'),
   page: PageSchema,
-  scene: PersistedSceneGraphSchema,
+  scene: z.object({
+    rootId: z.string(),
+    nodes: z.record(z.string(), z.any()),
+    version: z.number(),
+  }),
 })
 
 // Type inference — canonical TypeScript type
@@ -82,18 +85,7 @@ export type MetricValueProps = z.infer<typeof MetricValuePropsSchema>
 
 ### 4.3 Plugin Registration
 
-The `ComponentPlugin` manifest itself is validated on registration.
-
-```ts
-export const ComponentPluginSchema = z.object({
-  type: z.string(),
-  renderer: z.function(),
-  meta: ComponentMetaSchema,
-  constraints: z.array(ConstraintSchema).optional(),
-  defaults: ComponentDefaultsSchema.optional(),
-  capabilities: ComponentCapabilitiesSchema.optional(),
-})
-```
+The `ComponentPlugin` manifest is validated on registration against a schema derived from `plugin-system.md`'s type definitions. The schema validates `type` uniqueness, `renderer` presence, required `meta` fields, and optional constraint/capability shapes.
 
 ### 4.4 Rich Text Content
 
@@ -102,7 +94,12 @@ The `text` component's `content` field is validated as a Tiptap JSON document.
 ```ts
 export const DocNodeSchema: z.ZodType<DocNode> = z.object({
   type: z.literal('doc'),
-  content: z.array(BlockNodeSchema),
+  content: z.array(z.object({
+    type: z.string(),
+    content: z.array(z.any()).optional(),
+    attrs: z.record(z.string(), z.unknown()).optional(),
+    text: z.string().optional(),
+  })),
 })
 ```
 
@@ -119,33 +116,34 @@ Action dispatch
   -> Handler
 ```
 
-Validator middleware behavior:
+The validator runs at the command-bus dispatch level, before routing to a specific handler.
 
 ```ts
 export function createValidatorMiddleware(schemas: SchemaRegistry) {
-  return (action: RuntimeAction, next: Handler) => {
-    const schema = schemas.get(action.type)
+  return (action: RuntimeAction, dispatch: (action: RuntimeAction) => DispatchResult) => {
+    const schema = schemas.getActionSchema(action.type)
     if (!schema) {
-      return { ok: false, error: { code: 'validation.unknown-action-type' } }
+      return { ok: false, scene: currentScene, error: { code: 'validation.unknown-action-type' } }
     }
 
     const result = schema.safeParse(action)
     if (!result.success) {
-      return { ok: false, error: { code: 'validation.schema-mismatch', message: result.error.message } }
+      return { ok: false, scene: currentScene, error: { code: 'validation.action-schema-mismatch', message: result.error.message } }
     }
 
-    return next(action)
+    return dispatch(action)
   }
 }
 ```
 
 Rules:
 
-1. The validator middleware runs for every action dispatch.
+1. The validator middleware runs for every action dispatch at the command-bus level.
 2. If the Zod schema for the action type is not registered, the action is rejected.
 3. If `safeParse` fails, the action is rejected with the Zod error message.
 4. Component `props` are validated against the plugin's props schema during `update-props`.
 5. `create-node` validates the full `node.props` against the plugin schema.
+6. Validation failures return the pre-dispatch scene state — no partial mutations occur.
 
 ## 6. Schema Registry
 
@@ -173,7 +171,7 @@ Zod errors are surfaced through the structured error system.
 
 ```ts
 export interface ZodValidationError extends EngineError {
-  code: 'validation.schema-mismatch'
+  code: 'validation.action-schema-mismatch'
   domain: 'validation'
   severity: 'error'
   recoverable: true
