@@ -43,19 +43,20 @@ Scope:
 2. selection
 3. resize
 4. move interactions
-5. viewport state
+5. rotate interactions
+6. viewport state
 
 Deliverables:
 
 1. grid engine with collision detection
 2. selection system and overlays
-3. drag move and resize actions
+3. drag move, resize, and `rotate-node` actions
 
 Acceptance criteria:
 
-1. widgets can be selected, moved, and resized
-2. undo and redo work for move and resize
-3. grid layout remains valid after interactions
+1. widgets can be selected, moved, resized, and rotated when supported by layout mode and plugin capability
+2. undo and redo work for move, resize, and rotate interactions
+3. grid layout remains valid after interactions, and invalid rotate requests are rejected deterministically
 
 ## 4. Phase 3: Semantic Compiler
 
