@@ -43,6 +43,45 @@ These are non-negotiable. Any violation blocks implementation.
 7. Co-locate component, hook, and schema by feature when practical.
 8. Aliased imports only if project config already supports them.
 
+## Testing
+
+Every new feature, bug fix, and behavior change MUST include tests. Tests MUST be meaningful.
+
+### Test Requirements
+
+1. Every new `RuntimeAction` handler MUST have tests covering the happy path, every documented failure path, and the inverse action round-trip.
+2. Every new `DocumentAction` handler MUST have tests covering create/update/delete paths and unique-constraint violations.
+3. Every new compiler pipeline stage MUST have tests covering valid input to expected output and invalid input to expected diagnostics.
+4. Every new renderer component MUST have at least one test verifying correct rendering from a minimal scene fixture.
+5. Bug fixes MUST include a regression test that fails before the fix and passes after.
+
+### Meaningful Tests
+
+A test is meaningful only when it verifies observable behavior. Musts and must-nots:
+
+1. MUST assert a specific expected output or state, not just that code ran without throwing.
+2. MUST cover failure paths, not only the happy path.
+3. MUST NOT consist solely of snapshot assertions without documented expected behavior.
+4. MUST NOT test implementation details such as internal function call counts or private field values.
+5. MUST use the fixtures defined in `docs/spec/testing-and-fixtures.md` for scene and document inputs.
+6. Each test description MUST state the scenario and the expected outcome.
+
+```ts
+// Meaningful
+it('rejects create-node when parent does not exist', () => {
+  const action = { type: 'create-node', node: sampleNode, parentId: 'missing' }
+  const result = dispatch(action)
+  expect(result.ok).toBe(false)
+  expect(result.error?.code).toBe('scene.node-not-found')
+})
+
+// NOT meaningful
+it('handles create-node', () => {
+  const action = { type: 'create-node', node: sampleNode, parentId: root.id }
+  expect(() => dispatch(action)).not.toThrow()
+})
+```
+
 ## Naming Conventions
 
 | Category | Convention | Example |
