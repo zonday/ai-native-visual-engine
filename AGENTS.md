@@ -42,6 +42,7 @@ These are non-negotiable. Any violation blocks implementation.
 6. Explicit prop types — never `any` on component props.
 7. Co-locate component, hook, and schema by feature when practical.
 8. Aliased imports only if project config already supports them.
+9. Code style is enforced by biome. The biome config is the single source of truth. No per-file overrides, no inline disable comments without explicit approval.
 
 ## Testing
 
@@ -163,7 +164,8 @@ These are actions that agents MUST NOT perform:
 5. MUST NOT create placeholder or stub code without a linked Issue.
 6. MUST NOT deviate from the spec without updating the spec first.
 7. MUST NOT bypass the action model for any state mutation.
-8. MUST NOT invent new spec documents without explicit approval.
+8. MUST NOT circumvent the pre-commit hook or commit code that fails biome or tests.
+9. MUST NOT invent new spec documents without explicit approval.
 
 ## Key Spec References
 
