@@ -1,0 +1,22 @@
+# Node
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Local env
+.env
+.env.*
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Temporary
+.tmp/
