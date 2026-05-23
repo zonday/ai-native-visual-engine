@@ -125,6 +125,7 @@ Refer to the following documents for details:
 - `semantic-system.md`
 - `plugin-system.md`
 - `editor-interaction.md`
+- `history-and-undo-redo.md`
 - `constraints-and-validation.md`
 - `roadmap.md`
 - `bootstrap-and-lifecycle.md`

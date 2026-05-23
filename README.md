@@ -10,6 +10,7 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/semantic-system.md`: semantic actions, compiler pipeline, and AI schema
 - `docs/spec/plugin-system.md`: plugin contracts, registry, and renderer boundaries
 - `docs/spec/editor-interaction.md`: selection, transform, drag and drop, multi-page, and collaboration
+- `docs/spec/history-and-undo-redo.md`: undo/redo model, inverse-action contracts, and collaboration-history interaction
 - `docs/spec/constraints-and-validation.md`: constraint system and validation layers
 - `docs/spec/roadmap.md`: phased delivery and acceptance criteria
 - `docs/spec/document-runtime.md`: document-level actions, command bus, history, and event log
