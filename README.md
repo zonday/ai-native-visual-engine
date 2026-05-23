@@ -11,6 +11,7 @@ Implementation-oriented specification repository for an AI-native visual editor 
 - `docs/spec/plugin-system.md`: plugin contracts, registry, and renderer boundaries
 - `docs/spec/engine-api.md`: public API surface for plugins, components, and the editor shell
 - `docs/spec/component-types.md`: built-in types and default plugin component definitions
+- `docs/spec/rich-text.md`: rich text model, Tiptap integration, and Markdown interop
 - `docs/spec/editor-interaction.md`: selection, transform, drag and drop, multi-page, and collaboration
 - `docs/spec/collaboration-framework.md`: Yjs transport, action sync, presence, and conflict convergence
 - `docs/spec/collaboration-infrastructure.md`: Cloudflare Workers + Durable Objects relay and persistence
