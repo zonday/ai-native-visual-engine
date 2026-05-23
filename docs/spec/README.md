@@ -124,6 +124,7 @@ Refer to the following documents for details:
 - `runtime-engine.md`
 - `semantic-system.md`
 - `plugin-system.md`
+- `component-types.md`
 - `editor-interaction.md`
 - `collaboration-framework.md`
 - `collaboration-infrastructure.md`
