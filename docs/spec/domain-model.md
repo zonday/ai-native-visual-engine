@@ -27,6 +27,7 @@ export interface VisualDocument {
   title: string
   pages: Page[]
   scenes: Record<SceneId, PersistedSceneGraph>
+  activeThemeId?: string
   themes?: Theme[]
   assets?: Asset[]
   variables?: Variable[]
@@ -49,6 +50,7 @@ export interface Page {
   name: string
   sceneId: SceneId
   route?: string
+  themeId?: string
   metadata?: PageMetadata
 }
 
@@ -131,6 +133,7 @@ Rules:
 4. `SceneGraph` is the in-memory editor model for an active page and may include session overlays such as `selection` and `viewport`.
 5. `selection` and `viewport` are session-scoped by default and are not serialized into `VisualDocument.scenes`.
 6. `version` increments whenever a committed content mutation changes persisted scene content.
+7. if viewport recall is needed later, it belongs in user-scoped workspace preferences rather than shared document persistence.
 
 ## 5. Persistence Root
 
@@ -148,7 +151,27 @@ Rules:
 2. Session overlays such as local selection, viewport position, hover state, and remote presence are stored outside the persisted snapshot.
 3. Import/export pipelines operate on `DocumentSnapshot`, not ad hoc combinations of pages and detached scene files.
 
-## 6. Scene Node Model
+Theme rules:
+
+1. `VisualDocument.activeThemeId` defines the default document theme when present.
+2. `Page.themeId` overrides the document theme for that page when present.
+
+## 6. User Scoped Workspace Preferences
+
+Per-user editor preferences are stored outside the shared document model.
+
+```ts
+export interface UserWorkspacePreferences {
+  lastViewportByPage?: Record<PageId, ViewportState>
+}
+```
+
+Rules:
+
+1. `UserWorkspacePreferences` is user-scoped and not part of `DocumentSnapshot`.
+2. viewport recall, if implemented, must read and write this model rather than the shared document.
+
+## 7. Scene Node Model
 
 ```ts
 export interface SceneNode {
@@ -197,7 +220,7 @@ Field semantics:
 9. `locked`
    Editing lock flag. Locked nodes render normally but reject editor mutations unless privileged actions override them.
 
-## 7. Node Tree Constraints
+## 8. Node Tree Constraints
 
 The following constraints are mandatory:
 
@@ -207,7 +230,7 @@ The following constraints are mandatory:
 4. Cycles are forbidden.
 5. Deleting a node deletes its subtree unless an action explicitly defines reparenting behavior.
 
-## 8. Layout Model
+## 9. Layout Model
 
 Layout is split into container layouts and item layouts.
 
@@ -296,8 +319,10 @@ Rules:
 1. A node using `grid-item` must be a child of a `grid` container.
 2. Grid coordinates are logical grid units, not pixels.
 3. Layout engines may derive pixel geometry at runtime, but stored layout remains abstract.
+4. Invalid geometry is rejected at runtime commit by default rather than auto-normalized.
+5. Only explicitly documented normalization rules such as route canonicalization or rotation modulo may mutate invalid input deterministically.
 
-## 9. Style, Binding, Runtime Metadata
+## 10. Style, Binding, Runtime Metadata
 
 The concrete subtypes may evolve, but the following rules apply:
 
@@ -331,7 +356,7 @@ Rules:
 2. Renderer-only caches must not be persisted in `SceneNode`.
 3. Transient drag handles, hover outlines, and portal state belong outside persisted scene data.
 
-## 10. Editor State Ownership
+## 11. Editor State Ownership
 
 State ownership is defined as follows:
 
@@ -358,7 +383,7 @@ export interface EditorSessionState {
 
 This state may use Zustand or another UI store, but it is not the page model.
 
-## 11. Serialization Rules
+## 12. Serialization Rules
 
 1. `DocumentSnapshot` and `PersistedSceneGraph` must be pure JSON data.
 2. Session overlays such as `selection`, `viewport`, hover state, and presence state are excluded from persisted document serialization by default.

@@ -113,6 +113,7 @@ Collaboration requirements:
 1. concurrent edits should converge
 2. remote actions must map into the same runtime model
 3. selection presence and cursors may be ephemeral and not persisted
+4. undo and redo operate on the current actor's durable actions only
 
 Recommended split:
 
@@ -121,11 +122,19 @@ Recommended split:
 
 Yjs or OT integration should wrap action transport rather than replacing the action model.
 
+Undo policy:
+
+1. local users undo their own durable document and scene actions only
+2. remote durable actions do not enter the local undo stack
+3. selection, viewport, and presence changes do not participate in durable collaborative undo
+
 ## 7. Session State vs Persistent State
 
 Persistent:
 
 - page ordering
+- document theme selection
+- page theme overrides
 - node tree
 - props
 - layout
@@ -165,3 +174,4 @@ An editing interaction is considered engine-compliant only if:
 4. collaboration can broadcast the committed result
 5. renderer switch does not change the underlying scene meaning
 6. session-only state such as selection and presence does not leak into durable document persistence unless explicitly opted in
+7. invalid geometry is blocked at commit time rather than silently repaired by the runtime

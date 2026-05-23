@@ -72,7 +72,12 @@ export interface UpdateThemeIntentAction {
 }
 ```
 
-This semantic intent is deferred until the engine defines a canonical active-theme attachment model and matching document/runtime actions.
+This semantic intent targets the canonical theme ownership model:
+
+1. `VisualDocument.activeThemeId` for document-wide theme changes
+2. `Page.themeId` for page-specific overrides
+
+The compiler should expand this intent into `set-document-theme` and/or `set-page-theme` document actions.
 
 Semantic actions should be product-oriented, concise, and stable across renderer implementations.
 
@@ -207,6 +212,7 @@ Checks:
 2. referenced nodes valid
 3. generated layout valid
 4. plugin types registered
+5. referenced themes exist when theme intent is compiled
 
 ## 6. Compiler Input and Output Contracts
 

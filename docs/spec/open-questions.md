@@ -6,11 +6,8 @@ This document records unresolved decisions that should become ADRs or follow-up 
 
 ## 2. High Priority Questions
 
-1. Should viewport state remain session-only, or should it be persisted per user profile?
-2. Should layout engines normalize invalid geometry automatically or always reject invalid mutations?
-3. What is the canonical undo policy for collaborative edits?
-4. How should unknown plugin types behave in runtime preview versus editor mode?
-5. Should the editor UI present document and scene history as one merged timeline or two scoped timelines?
+1. How should unknown plugin types behave in runtime preview versus editor mode?
+2. Should the editor UI eventually present document and scene history as one merged timeline after MVP?
 
 ## 3. AI System Questions
 

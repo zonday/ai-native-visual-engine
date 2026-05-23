@@ -25,6 +25,12 @@ Every runtime action must satisfy the following properties:
 5. Serializable
    The action payload must be serializable for history, persistence, and collaboration transport.
 
+Runtime commit policy:
+
+1. invalid scene mutations are rejected at commit time by default
+2. runtime handlers must not perform non-deterministic geometric auto-repair
+3. only explicitly documented normalization rules may adjust input during commit
+
 ## 3. Runtime Action Types
 
 ```ts
@@ -105,6 +111,7 @@ Behavior:
 
 1. Merges layout fields onto existing layout or creates one if permitted.
 2. Must pass layout validation after merge.
+3. must reject invalid geometry rather than auto-repairing it, unless a deterministic normalization rule is explicitly documented for that field
 
 ### 3.5 rotate-node
 
@@ -328,6 +335,8 @@ Rules:
 2. Complex actions should prefer explicit inverse actions over full snapshots when feasible.
 3. For actions whose inverse cannot be represented compactly, history may store structural patch metadata.
 4. Selection-only actions use a separate transient history policy and are excluded from durable content history by default.
+5. collaborative undo and redo operate on each actor's own durable actions only.
+6. remote durable actions do not enter the local actor's undo stack.
 
 ## 9. Event Sourcing
 

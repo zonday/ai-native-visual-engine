@@ -74,6 +74,12 @@ Layout constraints may return:
 
 Any auto-correction must be predictable and documented.
 
+Default policy:
+
+1. invalid geometry is rejected at commit time
+2. preview systems and semantic planners may suggest repairs before commit
+3. runtime commit may only normalize values when an explicit deterministic rule is documented for that field
+
 ## 6. Semantic Constraints
 
 Examples:

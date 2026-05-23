@@ -27,6 +27,8 @@ export type DocumentAction =
   | RemovePageAction
   | ReorderPageAction
   | UpdatePageRouteAction
+  | SetDocumentThemeAction
+  | SetPageThemeAction
   | BatchDocumentActions
 
 export interface CreatePageAction {
@@ -58,6 +60,17 @@ export interface UpdatePageRouteAction {
   route: string
 }
 
+export interface SetDocumentThemeAction {
+  type: 'set-document-theme'
+  themeId: string
+}
+
+export interface SetPageThemeAction {
+  type: 'set-page-theme'
+  pageId: PageId
+  themeId?: string
+}
+
 export interface BatchDocumentActions {
   type: 'batch-document-actions'
   actions: DocumentAction[]
@@ -72,7 +85,9 @@ export interface BatchDocumentActions {
 4. `remove-page` removes the `Page` record and its referenced persisted scene in one atomic transaction.
 5. `reorder-page` changes only page ordering and must not mutate scene content.
 6. `update-page-route` must maintain route uniqueness across the document.
-7. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails.
+7. `set-document-theme` updates `VisualDocument.activeThemeId` and must reference an existing theme.
+8. `set-page-theme` updates or clears `Page.themeId` and must reference an existing theme when set.
+9. `batch-document-actions` commits as one history entry and must rollback fully if any child action fails.
 
 ## 5. Route Canonicalization
 
@@ -87,7 +102,18 @@ Rules:
 5. duplicate canonical routes are forbidden
 6. if normalization changes the input value, the normalized route is the stored value
 
-## 6. Document Command Bus
+## 6. History Policy
+
+The engine keeps document history as a domain separate from scene history.
+
+Rules:
+
+1. document history entries contain only document actions
+2. scene history entries contain only scene runtime actions
+3. the engine does not require a merged document-plus-scene timeline
+4. MVP editor UI should route undo and redo by current interaction focus, such as page list operations using document history and canvas operations using scene history
+
+## 7. Document Command Bus
 
 ```ts
 export interface DocumentCommandBus {
@@ -116,7 +142,7 @@ Responsibilities:
 4. return updated document state or structured failure
 5. on failure, return the pre-dispatch document state with no partial mutations applied
 
-## 7. Handler Contract
+## 8. Handler Contract
 
 ```ts
 export type DocumentHandler<TAction extends DocumentAction> = (
@@ -137,7 +163,7 @@ Rules:
 2. handlers must not mutate the input document in place
 3. side effects such as logging and remote sync belong in middleware
 
-## 8. Middleware Pipeline
+## 9. Middleware Pipeline
 
 Recommended pipeline:
 
@@ -152,7 +178,7 @@ Document Action
 
 The middleware concepts mirror the scene runtime pipeline so that document and scene actions can share implementation patterns.
 
-## 9. History And Event Log
+## 10. History And Event Log
 
 ```ts
 export interface DocumentHistoryState {
@@ -179,7 +205,7 @@ Rules:
 2. replaying `DocumentEventLog` must rebuild the same page list and persisted scene mapping
 3. a product may combine document and scene histories in one UI timeline, but the engine model keeps them as distinct domains
 
-## 10. Relationship To Scene Runtime
+## 11. Relationship To Scene Runtime
 
 Document actions and scene runtime actions are parallel domains.
 
@@ -194,7 +220,7 @@ Example:
 1. `create-dashboard` with no `pageId` may emit `create-page`
 2. the compiler then emits scene runtime actions to populate the new page scene
 
-## 11. Collaboration
+## 12. Collaboration
 
 Document actions must participate in collaboration just like scene runtime actions.
 
