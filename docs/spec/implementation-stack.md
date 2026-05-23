@@ -55,13 +55,13 @@ Each package ships with its own `package.json`, `tsconfig.json`, and `src/` dire
 
 ## 3. Build Toolchain
 
-### 3.1 Bundler
+### 3.1 Library Bundler
 
 ```
 tsup
 ```
 
-Every package uses `tsup` for building.
+Core packages (`core/`, `ai/`) use `tsup` for building.
 
 ```json
 {
@@ -76,7 +76,30 @@ Reasons:
 3. Supports ESM output natively.
 4. Minimal config surface.
 
-### 3.2 TypeScript
+### 3.2 Web Dev Server And Bundler
+
+```
+vite >= 8.0
+```
+
+Web packages (`renderer-react/`, `editor/`) use Vite for development and production builds.
+
+```json
+{
+  "dev": "vite",
+  "build": "vite build"
+}
+```
+
+Reasons:
+
+1. Native ESM dev server with instant HMR.
+2. Same ecosystem as vitest, shared config surface.
+3. Built-in React Fast Refresh.
+4. Rolldown-powered production builds.
+5. PostCSS / Tailwind CSS integration out of the box.
+
+### 3.3 TypeScript
 
 ```
 TypeScript >= 5.6
@@ -112,7 +135,7 @@ Per-package `tsconfig.json` extends the base:
 }
 ```
 
-### 3.3 Linting And Formatting
+### 3.4 Linting And Formatting
 
 ```
 biome >= 2.4
@@ -139,7 +162,7 @@ Reasons:
 3. Native TypeScript support without plugins.
 4. Built-in import sorting.
 
-### 3.4 Testing
+### 3.5 Testing
 
 ```
 vitest >= 4.1
@@ -479,6 +502,7 @@ All packages are pinned to the following minimum versions. These represent the l
 | turborepo | 2.9 |
 | typescript | 5.6 |
 | tsup | 8.5 |
+| vite | 8.0 |
 | react | 19.2 |
 | react-dom | 19.2 |
 | vitest | 4.1 |
