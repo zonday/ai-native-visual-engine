@@ -1,6 +1,7 @@
 import type { SetDocumentThemeAction } from "../actions.js";
 import { DocumentHandlerError } from "../error.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 export const setDocumentThemeHandler: DocumentHandler<
   SetDocumentThemeAction
@@ -16,4 +17,11 @@ export const setDocumentThemeHandler: DocumentHandler<
   }
 
   return { ...document, activeThemeId: action.themeId };
+};
+
+export const setDocumentThemeInverse: InverseComputer = (documentBefore) => {
+  return {
+    type: "set-document-theme",
+    themeId: documentBefore.activeThemeId,
+  };
 };

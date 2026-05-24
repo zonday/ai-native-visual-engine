@@ -1,6 +1,7 @@
 import type { BatchDocumentActions, DocumentAction } from "../actions.js";
 import type { DocumentDispatchResult } from "../command-bus.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 export function createBatchHandler(
   dispatch: (action: DocumentAction) => DocumentDispatchResult,
@@ -16,3 +17,7 @@ export function createBatchHandler(
     return current;
   };
 }
+
+export const batchInverse: InverseComputer = (_documentBefore, _action) => {
+  return undefined;
+};

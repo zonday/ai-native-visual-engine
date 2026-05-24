@@ -1,6 +1,7 @@
 import type { SetPageThemeAction } from "../actions.js";
 import { DocumentHandlerError } from "../error.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   document,
@@ -31,4 +32,18 @@ export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
     p.id === action.pageId ? { ...p, themeId: action.themeId } : p,
   );
   return { ...document, pages };
+};
+
+export const setPageThemeInverse: InverseComputer = (
+  documentBefore,
+  action,
+) => {
+  const themeAction = action as SetPageThemeAction;
+  const page = documentBefore.pages.find((p) => p.id === themeAction.pageId);
+  if (!page) return undefined;
+  return {
+    type: "set-page-theme",
+    pageId: themeAction.pageId,
+    themeId: page.themeId,
+  };
 };

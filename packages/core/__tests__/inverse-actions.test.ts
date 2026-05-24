@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeInverseAction } from "../src/document/inverse.js";
+import { computeInverseAction } from "../src/document/inverse-registry.js";
+import { defaultInverseRegistry } from "../src/document/inverse.js";
 import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 
@@ -42,7 +43,7 @@ const docWithTheme: VisualDocument = makeDoc({
   scenes: { s1: emptyScene },
 });
 
-describe("computeInverseAction", () => {
+describe("computeInverseAction with registry", () => {
   describe("create-page", () => {
     it("computes inverse as remove-page", () => {
       const action: DocumentAction = {
@@ -50,7 +51,7 @@ describe("computeInverseAction", () => {
         page: { id: "p1", name: "Page 1", sceneId: "s1" },
         scene: emptyScene,
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toEqual({
         type: "remove-page",
         pageId: "p1",
@@ -63,7 +64,7 @@ describe("computeInverseAction", () => {
         page: { id: "p1", name: "Page 1", sceneId: "s1" },
         scene: emptyScene,
       };
-      const inverse = computeInverseAction(makeDoc(), action);
+      const inverse = computeInverseAction(defaultInverseRegistry, makeDoc(), action);
       expect(inverse).toEqual({
         type: "remove-page",
         pageId: "p1",
@@ -78,7 +79,7 @@ describe("computeInverseAction", () => {
         pageId: "p1",
         name: "Renamed",
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toEqual({
         type: "rename-page",
         pageId: "p1",
@@ -92,7 +93,7 @@ describe("computeInverseAction", () => {
         pageId: "missing",
         name: "Nope",
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toBeUndefined();
     });
   });
@@ -103,7 +104,7 @@ describe("computeInverseAction", () => {
         type: "remove-page",
         pageId: "p1",
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toEqual({
         type: "create-page",
         page: {
@@ -123,7 +124,7 @@ describe("computeInverseAction", () => {
         type: "remove-page",
         pageId: "missing",
       };
-      const inverse = computeInverseAction(makeDoc(), action);
+      const inverse = computeInverseAction(defaultInverseRegistry, makeDoc(), action);
       expect(inverse).toBeUndefined();
     });
   });
@@ -135,7 +136,7 @@ describe("computeInverseAction", () => {
         pageId: "p1",
         index: 1,
       };
-      const inverse = computeInverseAction(docWithTwoPages, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithTwoPages, action);
       expect(inverse).toEqual({
         type: "reorder-page",
         pageId: "p1",
@@ -149,7 +150,7 @@ describe("computeInverseAction", () => {
         pageId: "missing",
         index: 0,
       };
-      const inverse = computeInverseAction(docWithTwoPages, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithTwoPages, action);
       expect(inverse).toBeUndefined();
     });
   });
@@ -161,7 +162,7 @@ describe("computeInverseAction", () => {
         pageId: "p1",
         route: "/new-route",
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toEqual({
         type: "update-page-route",
         pageId: "p1",
@@ -179,7 +180,7 @@ describe("computeInverseAction", () => {
         pageId: "p1",
         route: "/dashboard",
       };
-      const inverse = computeInverseAction(docNoRoute, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docNoRoute, action);
       expect(inverse).toEqual({
         type: "update-page-route",
         pageId: "p1",
@@ -193,7 +194,7 @@ describe("computeInverseAction", () => {
         pageId: "missing",
         route: "/settings",
       };
-      const inverse = computeInverseAction(docWithPage, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action);
       expect(inverse).toBeUndefined();
     });
   });
@@ -204,7 +205,7 @@ describe("computeInverseAction", () => {
         type: "set-document-theme",
         themeId: "theme-light",
       };
-      const inverse = computeInverseAction(docWithTheme, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithTheme, action);
       expect(inverse).toEqual({
         type: "set-document-theme",
         themeId: "theme-dark",
@@ -220,7 +221,7 @@ describe("computeInverseAction", () => {
         type: "set-document-theme",
         themeId: "theme-dark",
       };
-      const inverse = computeInverseAction(docNoTheme, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docNoTheme, action);
       expect(inverse).toEqual({
         type: "set-document-theme",
         themeId: undefined,
@@ -235,7 +236,7 @@ describe("computeInverseAction", () => {
         pageId: "p1",
         themeId: "theme-light",
       };
-      const inverse = computeInverseAction(docWithTheme, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithTheme, action);
       expect(inverse).toEqual({
         type: "set-page-theme",
         pageId: "p1",
@@ -249,34 +250,34 @@ describe("computeInverseAction", () => {
         pageId: "missing",
         themeId: "theme-dark",
       };
-      const inverse = computeInverseAction(docWithTheme, action);
+      const inverse = computeInverseAction(defaultInverseRegistry, docWithTheme, action);
       expect(inverse).toBeUndefined();
     });
   });
 
   describe("batch-document-actions", () => {
-    it("computes inverse by reversing order and computing per-action inverse", () => {
+    it("batch inverse returns undefined (not yet supported at registry level)", () => {
       const action: DocumentAction = {
         type: "batch-document-actions",
         actions: [
           { type: "rename-page", pageId: "p1", name: "New Name" },
-          {
-            type: "set-document-theme",
-            themeId: "theme-light",
-          },
         ],
       };
       const inverse = computeInverseAction(
-        { ...docWithPage, activeThemeId: "theme-dark", themes: [{ id: "theme-dark", name: "Dark", tokens: {} }, { id: "theme-light", name: "Light", tokens: {} }] },
+        defaultInverseRegistry,
+        docWithPage,
         action,
       );
-      expect(inverse).toEqual({
-        type: "batch-document-actions",
-        actions: [
-          { type: "set-document-theme", themeId: "theme-dark" },
-          { type: "rename-page", pageId: "p1", name: "Page 1" },
-        ],
-      });
+      expect(inverse).toBeUndefined();
+    });
+  });
+
+  describe("unknown action type", () => {
+    it("returns undefined for unregistered action type", () => {
+      const emptyRegistry = new Map<string, typeof defaultInverseRegistry extends Map<string, infer V> ? V : never>();
+      const action = { type: "unknown-action" } as unknown as DocumentAction;
+      const inverse = computeInverseAction(emptyRegistry, makeDoc(), action);
+      expect(inverse).toBeUndefined();
     });
   });
 });

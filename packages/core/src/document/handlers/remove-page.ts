@@ -1,6 +1,7 @@
 import type { RemovePageAction } from "../actions.js";
 import { DocumentHandlerError } from "../error.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 export const removePageHandler: DocumentHandler<RemovePageAction> = (
   document,
@@ -21,4 +22,23 @@ export const removePageHandler: DocumentHandler<RemovePageAction> = (
   delete scenes[page.sceneId];
 
   return { ...document, pages, scenes };
+};
+
+export const removePageInverse: InverseComputer = (documentBefore, action) => {
+  const removeAction = action as RemovePageAction;
+  const page = documentBefore.pages.find((p) => p.id === removeAction.pageId);
+  const scene = documentBefore.scenes[page?.sceneId ?? ""];
+  if (!page || !scene) return undefined;
+  return {
+    type: "create-page",
+    page: {
+      id: page.id,
+      name: page.name,
+      sceneId: page.sceneId,
+      route: page.route,
+      themeId: page.themeId,
+      metadata: page.metadata,
+    },
+    scene,
+  };
 };

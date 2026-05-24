@@ -1,6 +1,7 @@
 import type { ReorderPageAction } from "../actions.js";
 import { DocumentHandlerError } from "../error.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   document,
@@ -29,4 +30,17 @@ export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   pages.splice(action.index, 0, ...removed);
 
   return { ...document, pages };
+};
+
+export const reorderPageInverse: InverseComputer = (documentBefore, action) => {
+  const reorderAction = action as ReorderPageAction;
+  const idx = documentBefore.pages.findIndex(
+    (p) => p.id === reorderAction.pageId,
+  );
+  if (idx === -1) return undefined;
+  return {
+    type: "reorder-page",
+    pageId: reorderAction.pageId,
+    index: idx,
+  };
 };

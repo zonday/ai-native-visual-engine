@@ -1,6 +1,7 @@
 import type { UpdatePageRouteAction } from "../actions.js";
 import { DocumentHandlerError } from "../error.js";
 import type { DocumentHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
 
 const ROUTE_REGEX = /^\//;
 
@@ -52,4 +53,18 @@ export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
     p.id === action.pageId ? { ...p, route: normalized } : p,
   );
   return { ...document, pages };
+};
+
+export const updatePageRouteInverse: InverseComputer = (
+  documentBefore,
+  action,
+) => {
+  const routeAction = action as UpdatePageRouteAction;
+  const page = documentBefore.pages.find((p) => p.id === routeAction.pageId);
+  if (!page) return undefined;
+  return {
+    type: "update-page-route",
+    pageId: routeAction.pageId,
+    route: page.route ?? "",
+  };
 };

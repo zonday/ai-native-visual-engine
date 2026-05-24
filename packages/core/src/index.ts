@@ -55,7 +55,12 @@ export {
   undoDocumentAction,
 } from "./document/history.js";
 export { createUndoHistoryMiddleware } from "./document/history-middleware.js";
-export { computeInverseAction } from "./document/inverse.js";
+export type { InverseComputer, InverseRegistry } from "./document/inverse.js";
+export { defaultInverseRegistry } from "./document/inverse.js";
+export {
+  computeInverseAction,
+  createInverseRegistry,
+} from "./document/inverse-registry.js";
 
 export { documentValidatorMiddleware } from "./document/middleware/validator.js";
 export type { DocumentMiddleware } from "./document/middleware.js";
