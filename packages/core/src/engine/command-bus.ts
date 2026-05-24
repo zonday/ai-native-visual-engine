@@ -38,7 +38,6 @@ function detectSameRef<T>(before: T, after: T, action: { type: string }): void {
   }
 }
 
-declare const process: { env: Record<string, string | undefined> } | undefined;
 const isDev =
   typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 

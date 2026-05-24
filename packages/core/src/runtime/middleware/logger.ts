@@ -1,8 +1,5 @@
 import type { RuntimeMiddleware } from "../middleware.js";
-
-declare const process: { env: Record<string, string | undefined> } | undefined;
-const isDev =
-  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+import { isDev } from "../../engine/command-bus.js";
 
 export const runtimeLoggerMiddleware: RuntimeMiddleware = (
   action,
