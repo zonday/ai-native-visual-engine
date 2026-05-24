@@ -59,7 +59,7 @@ describe("removeNodeHandler", () => {
     try {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.cannot-remove-root");
+      expect((e as RuntimeHandlerError).code).toBe("scene.root-mutation");
       expect((e as RuntimeHandlerError).nodeId).toBe("root");
     }
   });

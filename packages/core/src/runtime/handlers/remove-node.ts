@@ -34,7 +34,7 @@ export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
 
   if (action.nodeId === scene.rootId) {
     throw new RuntimeHandlerError(
-      "scene.cannot-remove-root",
+      "scene.root-mutation",
       "Cannot remove the root node",
       "remove-node",
       action.nodeId,

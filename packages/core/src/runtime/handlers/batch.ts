@@ -30,7 +30,7 @@ export function createBatchHandler(
       const parsed = RuntimeActionSchema.safeParse(child);
       if (!parsed.success) {
         throw new RuntimeHandlerError(
-          "scene.batch-invalid-child-action",
+          "scene.batch-item-failed",
           `Child action validation failed: ${parsed.error.message}`,
           "batch-actions",
         );

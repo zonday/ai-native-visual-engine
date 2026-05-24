@@ -37,7 +37,7 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
     const caps = ctx.registry.getCapabilities(node.type);
     if (caps && caps.allowsRotation === false) {
       throw new RuntimeHandlerError(
-        "scene.rotation-not-allowed",
+        "scene.rotate-not-allowed",
         `Plugin for type "${node.type}" does not allow rotation`,
         "rotate-node",
         action.nodeId,

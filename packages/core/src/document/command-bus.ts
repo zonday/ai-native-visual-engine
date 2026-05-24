@@ -1,5 +1,6 @@
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
+import type { EngineError } from "../engine/error.js";
 
 export interface DocumentDispatchResult {
   ok: boolean;
@@ -7,9 +8,8 @@ export interface DocumentDispatchResult {
   error?: DocumentRuntimeError;
 }
 
-export interface DocumentRuntimeError {
-  code: string;
-  message: string;
+export interface DocumentRuntimeError extends EngineError {
+  domain: "document";
   actionType?: string;
   pageId?: string;
 }
