@@ -1,4 +1,4 @@
-import type { Theme, Page, VisualDocument } from "./types.js";
+import type { Page, Theme, VisualDocument } from "./types.js";
 
 export const BASE_THEME: Theme = {
   id: "base",

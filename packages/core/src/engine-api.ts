@@ -1,8 +1,15 @@
-import type { SceneNode, SceneGraph, NodeId, PageId, Layout, Binding } from "./types.js";
 import type { RuntimeAction } from "./runtime/actions.js";
-import type { DispatchResult, CommandBus } from "./runtime/command-bus.js";
+import type { CommandBus, DispatchResult } from "./runtime/command-bus.js";
 import type { RuntimeHistoryState } from "./runtime/history.js";
-import { undoRuntimeAction, redoRuntimeAction } from "./runtime/history.js";
+import { redoRuntimeAction, undoRuntimeAction } from "./runtime/history.js";
+import type {
+  Binding,
+  Layout,
+  NodeId,
+  PageId,
+  SceneGraph,
+  SceneNode,
+} from "./types.js";
 
 export interface NodeAPI {
   get(nodeId: NodeId): SceneNode | undefined;
@@ -56,7 +63,10 @@ export interface DispatchAPI {
   updateProps(nodeId: NodeId, props: Record<string, unknown>): DispatchResult;
   updateStyle(nodeId: NodeId, style: Record<string, unknown>): DispatchResult;
   updateBindings(nodeId: NodeId, bindings: Binding[]): DispatchResult;
-  updateRuntime(nodeId: NodeId, runtime: Record<string, unknown>): DispatchResult;
+  updateRuntime(
+    nodeId: NodeId,
+    runtime: Record<string, unknown>,
+  ): DispatchResult;
   batch(actions: RuntimeAction[]): DispatchResult;
 }
 
@@ -74,7 +84,10 @@ export interface EngineAPI {
   history: HistoryAPI;
   dispatch: DispatchAPI;
   states: StateAPI;
-  subscribeToNode(nodeId: NodeId, callback: (node: SceneNode) => void): () => void;
+  subscribeToNode(
+    nodeId: NodeId,
+    callback: (node: SceneNode) => void,
+  ): () => void;
   subscribeToScene(callback: (scene: SceneGraph) => void): () => void;
   subscribeToSelection(callback: (nodeIds: NodeId[]) => void): () => void;
 }
@@ -97,30 +110,85 @@ export function createEngineAPI(
   function notify(key: string, data: unknown) {
     const existing = notifyTimers.get(key);
     if (existing) clearTimeout(existing);
-    notifyTimers.set(key, setTimeout(() => {
-      subscribers.get(key)?.forEach((cb) => cb(data));
-      notifyTimers.delete(key);
-    }, 0));
+    notifyTimers.set(
+      key,
+      setTimeout(() => {
+        subscribers.get(key)?.forEach((cb) => {
+          cb(data);
+        });
+        notifyTimers.delete(key);
+      }, 0),
+    );
   }
 
   function dispatchAndNotify(action: RuntimeAction): DispatchResult {
     const scene = getScene();
 
-    if (action.type === "create-node" && action.parentId && !scene.nodes[action.parentId]) {
-      return { ok: false, scene, error: { code: "scene.invalid-parent", message: `Parent "${action.parentId}" not found`, actionType: "create-node", nodeId: action.parentId } };
+    if (
+      action.type === "create-node" &&
+      action.parentId &&
+      !scene.nodes[action.parentId]
+    ) {
+      return {
+        ok: false,
+        scene,
+        error: {
+          code: "scene.invalid-parent",
+          message: `Parent "${action.parentId}" not found`,
+          actionType: "create-node",
+          nodeId: action.parentId,
+        },
+      };
     }
-    if ((action.type === "remove-node" || action.type === "move-node") && "nodeId" in action) {
+    if (
+      (action.type === "remove-node" || action.type === "move-node") &&
+      "nodeId" in action
+    ) {
       const node = scene.nodes[action.nodeId as string];
       if (!node) {
-        return { ok: false, scene, error: { code: "scene.node-not-found", message: `Node "${action.nodeId}" not found`, actionType: action.type, nodeId: action.nodeId as string } };
+        return {
+          ok: false,
+          scene,
+          error: {
+            code: "scene.node-not-found",
+            message: `Node "${action.nodeId}" not found`,
+            actionType: action.type,
+            nodeId: action.nodeId as string,
+          },
+        };
       }
       if (action.type === "remove-node" && node.locked) {
-        return { ok: false, scene, error: { code: "scene.locked", message: `Node "${action.nodeId}" is locked`, actionType: "remove-node", nodeId: action.nodeId as string } };
+        return {
+          ok: false,
+          scene,
+          error: {
+            code: "scene.locked",
+            message: `Node "${action.nodeId}" is locked`,
+            actionType: "remove-node",
+            nodeId: action.nodeId as string,
+          },
+        };
       }
     }
-    if (action.type === "update-layout" || action.type === "rotate-node" || action.type === "update-props" || action.type === "update-style" || action.type === "update-bindings" || action.type === "update-runtime") {
+    if (
+      action.type === "update-layout" ||
+      action.type === "rotate-node" ||
+      action.type === "update-props" ||
+      action.type === "update-style" ||
+      action.type === "update-bindings" ||
+      action.type === "update-runtime"
+    ) {
       if ("nodeId" in action && !scene.nodes[action.nodeId as string]) {
-        return { ok: false, scene, error: { code: "scene.node-not-found", message: `Node "${action.nodeId}" not found`, actionType: action.type, nodeId: action.nodeId as string } };
+        return {
+          ok: false,
+          scene,
+          error: {
+            code: "scene.node-not-found",
+            message: `Node "${action.nodeId}" not found`,
+            actionType: action.type,
+            nodeId: action.nodeId as string,
+          },
+        };
       }
     }
 
@@ -133,36 +201,73 @@ export function createEngineAPI(
   }
 
   const nodeAPI: NodeAPI = {
-    get(nodeId) { return getScene().nodes[nodeId]; },
+    get(nodeId) {
+      return getScene().nodes[nodeId];
+    },
     getParent(nodeId) {
       const node = getScene().nodes[nodeId];
       return node?.parentId ? getScene().nodes[node.parentId] : undefined;
     },
     getChildren(nodeId) {
       const node = getScene().nodes[nodeId];
-      return node?.children?.map((id) => getScene().nodes[id]).filter(Boolean) as SceneNode[] ?? [];
+      return (
+        (node?.children
+          ?.map((id) => getScene().nodes[id])
+          .filter(Boolean) as SceneNode[]) ?? []
+      );
     },
-    getProps(nodeId) { return getScene().nodes[nodeId]?.props ?? {}; },
-    getLayout(nodeId) { return getScene().nodes[nodeId]?.layout as Layout | undefined; },
-    getBindings(nodeId) { return getScene().nodes[nodeId]?.bindings ?? []; },
-    getStyle(nodeId) { return getScene().nodes[nodeId]?.style ?? {}; },
-    isVisible(nodeId) { return getScene().nodes[nodeId]?.visible !== false; },
-    isLocked(nodeId) { return getScene().nodes[nodeId]?.locked === true; },
-    exists(nodeId) { return nodeId in getScene().nodes; },
+    getProps(nodeId) {
+      return getScene().nodes[nodeId]?.props ?? {};
+    },
+    getLayout(nodeId) {
+      return getScene().nodes[nodeId]?.layout as Layout | undefined;
+    },
+    getBindings(nodeId) {
+      return getScene().nodes[nodeId]?.bindings ?? [];
+    },
+    getStyle(nodeId) {
+      return getScene().nodes[nodeId]?.style ?? {};
+    },
+    isVisible(nodeId) {
+      return getScene().nodes[nodeId]?.visible !== false;
+    },
+    isLocked(nodeId) {
+      return getScene().nodes[nodeId]?.locked === true;
+    },
+    exists(nodeId) {
+      return nodeId in getScene().nodes;
+    },
   };
 
   const sceneAPI: SceneAPI = {
-    getRoot() { return getScene().nodes[getScene().rootId]!; },
-    getActivePageId() { return pageId; },
-    getSceneVersion() { return getScene().version; },
-    getAllNodes() { return getAllNodes(getScene()); },
-    findNodes(predicate) { return getAllNodes(getScene()).filter(predicate); },
-    findNodeByType(type) { return getAllNodes(getScene()).filter((n) => n.type === type); },
+    getRoot() {
+      const root = getScene().nodes[getScene().rootId];
+      return root as SceneNode;
+    },
+    getActivePageId() {
+      return pageId;
+    },
+    getSceneVersion() {
+      return getScene().version;
+    },
+    getAllNodes() {
+      return getAllNodes(getScene());
+    },
+    findNodes(predicate) {
+      return getAllNodes(getScene()).filter(predicate);
+    },
+    findNodeByType(type) {
+      return getAllNodes(getScene()).filter((n) => n.type === type);
+    },
   };
 
   const selectionAPI: SelectionAPI = {
-    getSelection() { return getScene().selection?.nodeIds ?? []; },
-    isSelected(nodeId) { return getScene().selection?.nodeIds.includes(nodeId) === true; },
+    getSelection() {
+      return getScene().selection?.nodeIds ?? [];
+    },
+    isSelected(nodeId) {
+      return getScene().selection?.nodeIds.includes(nodeId) === true;
+    },
     select(nodeIds) {
       const unique = [...new Set(nodeIds)];
       dispatchAndNotify({ type: "update-selection", nodeIds: unique });
@@ -175,26 +280,44 @@ export function createEngineAPI(
     removeFromSelection(nodeIds) {
       const current = getScene().selection?.nodeIds ?? [];
       const set = new Set(nodeIds);
-      dispatchAndNotify({ type: "update-selection", nodeIds: current.filter((id) => !set.has(id)) });
+      dispatchAndNotify({
+        type: "update-selection",
+        nodeIds: current.filter((id) => !set.has(id)),
+      });
     },
-    clearSelection() { dispatchAndNotify({ type: "update-selection", nodeIds: [] }); },
+    clearSelection() {
+      dispatchAndNotify({ type: "update-selection", nodeIds: [] });
+    },
     selectAll() {
-      const all = getAllNodes(getScene()).filter((n) => n.id !== getScene().rootId);
-      dispatchAndNotify({ type: "update-selection", nodeIds: all.map((n) => n.id) });
+      const all = getAllNodes(getScene()).filter(
+        (n) => n.id !== getScene().rootId,
+      );
+      dispatchAndNotify({
+        type: "update-selection",
+        nodeIds: all.map((n) => n.id),
+      });
     },
     selectParent(nodeId) {
       const parent = nodeAPI.getParent(nodeId);
-      if (parent) dispatchAndNotify({ type: "update-selection", nodeIds: [parent.id] });
+      if (parent)
+        dispatchAndNotify({ type: "update-selection", nodeIds: [parent.id] });
     },
     selectChildren(nodeId) {
       const children = nodeAPI.getChildren(nodeId);
-      dispatchAndNotify({ type: "update-selection", nodeIds: children.map((c) => c.id) });
+      dispatchAndNotify({
+        type: "update-selection",
+        nodeIds: children.map((c) => c.id),
+      });
     },
   };
 
   const historyAPI: HistoryAPI = {
-    canUndo() { return getHistory().undoStack.length > 0; },
-    canRedo() { return getHistory().redoStack.length > 0; },
+    canUndo() {
+      return getHistory().undoStack.length > 0;
+    },
+    canRedo() {
+      return getHistory().redoStack.length > 0;
+    },
     undo() {
       const result = undoRuntimeAction(getHistory());
       if (result) dispatchAndNotify(result.inverseAction as RuntimeAction);
@@ -203,8 +326,12 @@ export function createEngineAPI(
       const result = redoRuntimeAction(getHistory());
       if (result) dispatchAndNotify(result.action as RuntimeAction);
     },
-    getUndoStackSize() { return getHistory().undoStack.length; },
-    getRedoStackSize() { return getHistory().redoStack.length; },
+    getUndoStackSize() {
+      return getHistory().undoStack.length;
+    },
+    getRedoStackSize() {
+      return getHistory().redoStack.length;
+    },
   };
 
   const dispatchAPI: DispatchAPI = {
@@ -248,13 +375,21 @@ export function createEngineAPI(
       const idx = active.indexOf(state);
       if (idx >= 0) active.splice(idx, 1);
       active.push(state);
-      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+      dispatchAndNotify({
+        type: "update-runtime",
+        nodeId,
+        runtime: { activeStates: active },
+      });
     },
     clearState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
       const active = (node.activeStates ?? []).filter((s) => s !== state);
-      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+      dispatchAndNotify({
+        type: "update-runtime",
+        nodeId,
+        runtime: { activeStates: active },
+      });
     },
     setExclusive(nodeId, state, _group) {
       const all = getAllNodes(getScene());
@@ -262,7 +397,11 @@ export function createEngineAPI(
       for (const n of all) {
         if (n.id !== nodeId && n.activeStates?.includes(state)) {
           const filtered = (n.activeStates ?? []).filter((s) => s !== state);
-          actions.push({ type: "update-runtime", nodeId: n.id, runtime: { activeStates: filtered } });
+          actions.push({
+            type: "update-runtime",
+            nodeId: n.id,
+            runtime: { activeStates: filtered },
+          });
         }
       }
       const thisNode = getScene().nodes[nodeId];
@@ -271,7 +410,11 @@ export function createEngineAPI(
         const idx = active.indexOf(state);
         if (idx >= 0) active.splice(idx, 1);
         active.push(state);
-        actions.push({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+        actions.push({
+          type: "update-runtime",
+          nodeId,
+          runtime: { activeStates: active },
+        });
       }
       if (actions.length > 0) {
         dispatchAndNotify({ type: "batch-actions", actions });
@@ -292,20 +435,23 @@ export function createEngineAPI(
     subscribeToNode(nodeId, callback) {
       const key = `node:${nodeId}`;
       if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)!.add(callback as Subscriber<unknown>);
-      return () => subscribers.get(key)?.delete(callback as Subscriber<unknown>);
+      subscribers.get(key)?.add(callback as Subscriber<unknown>);
+      return () =>
+        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
     },
     subscribeToScene(callback) {
       const key = "scene";
       if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)!.add(callback as Subscriber<unknown>);
-      return () => subscribers.get(key)?.delete(callback as Subscriber<unknown>);
+      subscribers.get(key)?.add(callback as Subscriber<unknown>);
+      return () =>
+        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
     },
     subscribeToSelection(callback) {
       const key = "selection";
       if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)!.add(callback as Subscriber<unknown>);
-      return () => subscribers.get(key)?.delete(callback as Subscriber<unknown>);
+      subscribers.get(key)?.add(callback as Subscriber<unknown>);
+      return () =>
+        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
     },
   };
 }
