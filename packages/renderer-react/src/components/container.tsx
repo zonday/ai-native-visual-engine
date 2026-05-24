@@ -1,6 +1,6 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext } from "../renderer.js";
-import { resolveLayoutStyle } from "../layout-style.js";
+import { resolveFlexStyle } from "../layout-style.js";
 
 export interface ContainerProps {
   node: SceneNode;
@@ -9,11 +9,8 @@ export interface ContainerProps {
 }
 
 export function ContainerNode({ node, children }: ContainerProps) {
-  const style = resolveLayoutStyle(node);
-  if (!style.display) style.display = "flex";
-
   return (
-    <div data-component="container" style={style}>
+    <div data-component="container" style={resolveFlexStyle(node)}>
       {children}
     </div>
   );

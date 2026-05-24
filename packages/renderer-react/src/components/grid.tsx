@@ -1,6 +1,6 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext } from "../renderer.js";
-import { resolveLayoutStyle } from "../layout-style.js";
+import { resolveGridStyle } from "../layout-style.js";
 
 export interface GridProps {
   node: SceneNode;
@@ -9,11 +9,8 @@ export interface GridProps {
 }
 
 export function GridNode({ node, children }: GridProps) {
-  const style = resolveLayoutStyle(node);
-  if (!style.display) style.display = "grid";
-
   return (
-    <div data-component="grid" style={style}>
+    <div data-component="grid" style={resolveGridStyle(node)}>
       {children}
     </div>
   );
