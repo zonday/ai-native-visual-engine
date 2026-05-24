@@ -1,4 +1,17 @@
-import type { SceneGraph, SceneNode, SelectionState, ViewportState, PageId } from "@ai-native/core";
+import type {
+  PageId,
+  SceneGraph,
+  SceneNode,
+  SelectionState,
+  ViewportState,
+} from "@ai-native/core";
+
+export interface MarqueeRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface RenderContext {
   mode: "editor" | "runtime";
@@ -6,11 +19,16 @@ export interface RenderContext {
   scene: SceneGraph;
   selection?: SelectionState;
   viewport?: ViewportState;
+  marqueeRect?: MarqueeRect;
 }
 
 export interface ComponentRenderer {
   type: string;
-  render: (node: SceneNode, ctx: RenderContext, children?: React.ReactNode) => React.ReactNode;
+  render: (
+    node: SceneNode,
+    ctx: RenderContext,
+    children?: React.ReactNode,
+  ) => React.ReactNode;
 }
 
 export type ComponentRegistry = Map<string, ComponentRenderer>;

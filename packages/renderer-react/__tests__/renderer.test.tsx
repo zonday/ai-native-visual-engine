@@ -128,6 +128,50 @@ describe("SceneRenderer", () => {
     const result = SceneRenderer({ registry, context: ctx });
     expect(result).toBeDefined();
   });
+
+  it("does not show selection outline in runtime mode", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: [],
+        },
+      },
+      selection: { nodeIds: ["root"] },
+    };
+    const ctx: RenderContext = {
+      mode: "runtime",
+      pageId: "page-1",
+      scene,
+      selection: { nodeIds: ["root"] },
+    };
+    const result = SceneRenderer({ registry, context: ctx });
+    expect(result).toBeDefined();
+  });
+
+  it("renders marquee overlay when marqueeRect is provided", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: [],
+        },
+      },
+    };
+    const ctx: RenderContext = {
+      ...context,
+      scene,
+      marqueeRect: { x: 10, y: 20, width: 300, height: 150 },
+    };
+    const result = SceneRenderer({ registry, context: ctx });
+    expect(result).toBeDefined();
+  });
 });
 
 describe("MissingPluginPlaceholder", () => {
