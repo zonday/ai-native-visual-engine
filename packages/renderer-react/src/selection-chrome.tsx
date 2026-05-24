@@ -21,6 +21,7 @@ const handleStyle: React.CSSProperties = {
   borderRadius: "1px",
   zIndex: 10,
   cursor: "pointer",
+  pointerEvents: "auto",
 };
 
 const rotateHandleStyle: React.CSSProperties = {
@@ -32,6 +33,7 @@ const rotateHandleStyle: React.CSSProperties = {
   borderRadius: "50%",
   zIndex: 10,
   cursor: "grab",
+  pointerEvents: "auto",
   top: -ROTATE_OFFSET,
   left: "50%",
   marginLeft: -ROTATE_HANDLE_SIZE / 2,
@@ -55,14 +57,17 @@ export function SelectionChrome({
     startY: number;
   } | null>(null);
 
+  const onTransformRef = useRef(onTransform);
+  onTransformRef.current = onTransform;
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const drag = dragRef.current;
-      if (!drag || !onTransform) return;
+      if (!drag || !onTransformRef.current) return;
       const deltaX = e.clientX - drag.startX;
       const deltaY = e.clientY - drag.startY;
       const type = drag.handle === "rotate" ? "rotate" : "resize";
-      onTransform({
+      onTransformRef.current({
         nodeId,
         type,
         handle: drag.handle,
@@ -74,11 +79,11 @@ export function SelectionChrome({
 
     const handleMouseUp = (e: MouseEvent) => {
       const drag = dragRef.current;
-      if (!drag || !onTransform) return;
+      if (!drag || !onTransformRef.current) return;
       const deltaX = e.clientX - drag.startX;
       const deltaY = e.clientY - drag.startY;
       const type = drag.handle === "rotate" ? "rotate" : "resize";
-      onTransform({
+      onTransformRef.current({
         nodeId,
         type,
         handle: drag.handle,
@@ -95,7 +100,7 @@ export function SelectionChrome({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [onTransform, nodeId]);
+  }, [nodeId]);
 
   const startDrag = (handle: string) => (e: React.MouseEvent) => {
     e.stopPropagation();

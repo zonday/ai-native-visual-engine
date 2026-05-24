@@ -131,15 +131,19 @@ export function SceneRenderer({
     startY: number;
   } | null>(null);
 
-  useEffect(() => {
-    if (!onTransform) return;
+  const didDragRef = useRef(false);
 
+  const onTransformRef = useRef(onTransform);
+  onTransformRef.current = onTransform;
+
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const drag = moveDragRef.current;
-      if (!drag) return;
+      if (!drag || !onTransformRef.current) return;
+      didDragRef.current = true;
       const deltaX = e.clientX - drag.startX;
       const deltaY = e.clientY - drag.startY;
-      onTransform({
+      onTransformRef.current({
         nodeId: drag.nodeId,
         type: "move",
         deltaX,
@@ -150,16 +154,18 @@ export function SceneRenderer({
 
     const handleMouseUp = (e: MouseEvent) => {
       const drag = moveDragRef.current;
-      if (!drag || !onTransform) return;
-      const deltaX = e.clientX - drag.startX;
-      const deltaY = e.clientY - drag.startY;
-      onTransform({
-        nodeId: drag.nodeId,
-        type: "move",
-        deltaX,
-        deltaY,
-        commit: true,
-      });
+      if (!drag || !onTransformRef.current) return;
+      if (didDragRef.current) {
+        const deltaX = e.clientX - drag.startX;
+        const deltaY = e.clientY - drag.startY;
+        onTransformRef.current({
+          nodeId: drag.nodeId,
+          type: "move",
+          deltaX,
+          deltaY,
+          commit: true,
+        });
+      }
       moveDragRef.current = null;
     };
 
@@ -169,7 +175,7 @@ export function SceneRenderer({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [onTransform]);
+  }, []);
 
   const root = context.scene.nodes[context.scene.rootId];
   if (!root) return null;
@@ -186,10 +192,15 @@ export function SceneRenderer({
       context.mode === "editor" &&
       !!context.selection?.nodeIds.includes(nodeId);
     if (!isSelected) return;
+    didDragRef.current = false;
     moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
   };
 
   const sceneClickHandler = (e: React.MouseEvent) => {
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
     handleSceneClick(e, context.scene, onSelectNode);
   };
 
