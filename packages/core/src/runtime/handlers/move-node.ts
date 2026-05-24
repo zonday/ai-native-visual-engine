@@ -1,0 +1,115 @@
+import type { SceneGraph, SceneNode } from "../../types.js";
+import type { MoveNodeAction } from "../actions.js";
+import { RuntimeHandlerError } from "../error.js";
+import type { RuntimeHandler } from "../handler.js";
+import type { InverseComputer } from "../inverse-registry.js";
+
+function isDescendantOf(
+  nodeId: string,
+  potentialAncestorId: string,
+  nodes: Record<string, SceneNode>,
+): boolean {
+  let current: string | undefined = nodeId;
+  const visited = new Set<string>();
+  while (current) {
+    if (current === potentialAncestorId) return true;
+    if (visited.has(current)) return false;
+    visited.add(current);
+    const node: SceneNode | undefined = nodes[current];
+    current = node?.parentId;
+  }
+  return false;
+}
+
+export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
+  scene,
+  action,
+  _ctx,
+) => {
+  const node = scene.nodes[action.nodeId];
+  if (!node) {
+    throw new RuntimeHandlerError(
+      "scene.node-not-found",
+      `Node "${action.nodeId}" not found`,
+      "move-node",
+      action.nodeId,
+    );
+  }
+
+  const newParent = scene.nodes[action.parentId];
+  if (!newParent) {
+    throw new RuntimeHandlerError(
+      "scene.node-not-found",
+      `New parent "${action.parentId}" not found`,
+      "move-node",
+      action.parentId,
+    );
+  }
+
+  if (action.nodeId === action.parentId) {
+    throw new RuntimeHandlerError(
+      "scene.cycle-detected",
+      "Cannot move a node into itself",
+      "move-node",
+      action.nodeId,
+    );
+  }
+
+  if (isDescendantOf(action.parentId, action.nodeId, scene.nodes)) {
+    throw new RuntimeHandlerError(
+      "scene.cycle-detected",
+      `Moving "${action.nodeId}" into "${action.parentId}" would create a cycle`,
+      "move-node",
+      action.nodeId,
+    );
+  }
+
+  const nodes = { ...scene.nodes };
+
+  const oldParentId = node.parentId;
+  if (oldParentId && nodes[oldParentId]) {
+    nodes[oldParentId] = {
+      ...nodes[oldParentId]!,
+      children: (nodes[oldParentId]!.children ?? []).filter(
+        (id) => id !== action.nodeId,
+      ),
+    };
+  }
+
+  const updatedNewParent = nodes[action.parentId]!;
+  const index =
+    action.index !== undefined
+      ? Math.min(
+          Math.max(0, action.index),
+          (updatedNewParent.children ?? []).length,
+        )
+      : (updatedNewParent.children ?? []).length;
+
+  const newParentChildren = [...(updatedNewParent.children ?? [])];
+  newParentChildren.splice(index, 0, action.nodeId);
+  nodes[action.parentId] = { ...updatedNewParent, children: newParentChildren };
+  nodes[action.nodeId] = { ...node, parentId: action.parentId };
+
+  return { ...scene, nodes, version: scene.version + 1 };
+};
+
+export const moveNodeInverse: InverseComputer<MoveNodeAction> = (
+  sceneBefore,
+  action,
+  _context,
+) => {
+  const node = sceneBefore.nodes[action.nodeId];
+  if (!node) return undefined;
+
+  const oldParentId = node.parentId;
+  const oldIndex = oldParentId
+    ? (sceneBefore.nodes[oldParentId]?.children ?? []).indexOf(action.nodeId)
+    : undefined;
+
+  return {
+    type: "move-node",
+    nodeId: action.nodeId,
+    parentId: oldParentId ?? sceneBefore.rootId,
+    index: oldIndex,
+  };
+};
