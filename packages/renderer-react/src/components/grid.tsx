@@ -13,6 +13,8 @@ export function GridNode({ node, children }: GridProps) {
 
   if (layout) {
     if (layout.columns) style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
+    if (typeof layout.rowHeight === "number") style.gridAutoRows = layout.rowHeight;
+    if (layout.autoFlow) style.gridAutoFlow = layout.autoFlow as React.CSSProperties["gridAutoFlow"];
     if (typeof layout.gap === "number") style.gap = layout.gap;
     if (typeof layout.padding === "number") style.padding = layout.padding;
     if (typeof layout.width === "number") style.width = layout.width;
