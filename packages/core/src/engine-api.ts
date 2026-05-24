@@ -92,13 +92,15 @@ export function createEngineAPI(
   getHistory: () => RuntimeHistoryState,
 ): EngineAPI {
   const subscribers = new Map<string, Set<Subscriber<unknown>>>();
-  let notifyTimer: ReturnType<typeof setTimeout> | undefined;
+  const notifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   function notify(key: string, data: unknown) {
-    clearTimeout(notifyTimer);
-    notifyTimer = setTimeout(() => {
+    const existing = notifyTimers.get(key);
+    if (existing) clearTimeout(existing);
+    notifyTimers.set(key, setTimeout(() => {
       subscribers.get(key)?.forEach((cb) => cb(data));
-    }, 0);
+      notifyTimers.delete(key);
+    }, 0));
   }
 
   function dispatchAndNotify(action: RuntimeAction): DispatchResult {
@@ -113,7 +115,7 @@ export function createEngineAPI(
         return { ok: false, scene, error: { code: "scene.node-not-found", message: `Node "${action.nodeId}" not found`, actionType: action.type, nodeId: action.nodeId as string } };
       }
       if (action.type === "remove-node" && node.locked) {
-        return { ok: false, scene, error: { code: "scene.root-mutation", message: `Node "${action.nodeId}" is locked`, actionType: "remove-node", nodeId: action.nodeId as string } };
+        return { ok: false, scene, error: { code: "scene.locked", message: `Node "${action.nodeId}" is locked`, actionType: "remove-node", nodeId: action.nodeId as string } };
       }
     }
     if (action.type === "update-layout" || action.type === "rotate-node" || action.type === "update-props" || action.type === "update-style" || action.type === "update-bindings" || action.type === "update-runtime") {
