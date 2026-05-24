@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { VisualDocumentSchema, DocumentSnapshotSchema } from "../src/types.js";
-import type { DocumentSnapshot } from "../src/types.js";
+import type { DocumentSnapshot, SceneGraph, SceneNode } from "../src/types.js";
 import { createNewDocument, createEmptyScene } from "../src/bootstrap.js";
 import { openDocumentSession } from "../src/session.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import { exportDocument } from "../src/import-export.js";
+import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { DispatchResult } from "../src/runtime/command-bus.js";
 
 function validateFixture(snapshot: DocumentSnapshot): { ok: boolean; diagnostics: string[] } {
   const diagnostics: string[] = [];
@@ -108,6 +110,44 @@ describe("action replay determinism", () => {
     }
 
     expect(bus1.getScene().nodes).toEqual(bus2.getScene().nodes);
+  });
+});
+
+describe("batch actions via command bus", () => {
+  it("batch dispatches multiple create-node actions atomically", () => {
+    const doc = createNewDocument({ title: "Batch" });
+    const scene = doc.scenes[doc.pages[0]!.sceneId]!;
+    const initial = { ...scene, version: 0, nodes: { ...scene.nodes } };
+
+    let current = initial;
+    const dispatch = (action: RuntimeAction): DispatchResult => {
+      const { handlerRegistry: reg } = createDefaultRuntimeRegistries(
+        () => ({ ok: false, scene: current, error: { code: "fail", message: "noop" } }),
+      );
+      const entry = reg.get(action.type);
+      if (!entry) return { ok: false, scene: current, error: { code: "unknown", message: "?" } };
+      try {
+        current = entry.handler(current, action, { now: Date.now });
+        return { ok: true, scene: current };
+      } catch (e) {
+        return { ok: false, scene: current, error: { code: "error", message: (e as Error).message } };
+      }
+    };
+
+    const { handlerRegistry } = createDefaultRuntimeRegistries(dispatch);
+    const bus = createRuntimeCommandBus(handlerRegistry, [], initial, { now: Date.now });
+
+    const result = bus.dispatch({
+      type: "batch-actions",
+      actions: [
+        { type: "create-node", node: { id: "a", type: "container" }, parentId: scene.rootId },
+        { type: "create-node", node: { id: "b", type: "text" }, parentId: "a" },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.scene.nodes["a"]).toBeDefined();
+    expect(result.scene.nodes["b"]).toBeDefined();
   });
 });
 
