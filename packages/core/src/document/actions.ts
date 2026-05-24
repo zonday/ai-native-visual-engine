@@ -1,19 +1,10 @@
 import { z } from "zod/v4";
+import { PageSchema, PersistedSceneGraphSchema } from "../types.js";
 
 export const CreatePageActionSchema = z.object({
   type: z.literal("create-page"),
-  page: z.object({
-    id: z.string(),
-    name: z.string(),
-    sceneId: z.string(),
-    route: z.string().optional(),
-    themeId: z.string().optional(),
-  }),
-  scene: z.object({
-    version: z.number(),
-    rootId: z.string(),
-    nodes: z.record(z.string(), z.any()),
-  }),
+  page: PageSchema,
+  scene: PersistedSceneGraphSchema,
 });
 
 export const RenamePageActionSchema = z.object({
@@ -52,7 +43,7 @@ export const SetPageThemeActionSchema = z.object({
 
 export const BatchDocumentActionsSchema = z.object({
   type: z.literal("batch-document-actions"),
-  actions: z.array(z.any()),
+  actions: z.array(z.unknown()),
 });
 
 export const DocumentActionSchema = z.discriminatedUnion("type", [

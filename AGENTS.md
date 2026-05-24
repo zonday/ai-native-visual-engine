@@ -58,6 +58,8 @@ Every new feature, bug fix, and behavior change MUST include tests. Tests MUST b
 3. Every new compiler pipeline stage MUST have tests covering valid input to expected output and invalid input to expected diagnostics.
 4. Every new renderer component MUST have at least one test verifying correct rendering from a minimal scene fixture.
 5. Bug fixes MUST include a regression test that fails before the fix and passes after.
+6. Package tests MUST live in a package-level `__tests__/` directory (for example `packages/core/__tests__/`). Do NOT place test files inside `src/` or create per-subdirectory test barrels.
+7. Every package `tsconfig.json` MUST include the `__tests__` directory in its `include` array so that `tsc --noEmit` type-checks test files. Example: `"include": ["src", "__tests__"]`.
 
 ### Meaningful Tests
 

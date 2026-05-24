@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import type { VisualDocument } from "../../types.js";
-import { renamePageHandler } from "./rename-page.js";
+import { describe, it, expect } from "vitest";
+import type { VisualDocument } from "../src/types.js";
+import { renamePageHandler } from "../src/document/handlers/rename-page.js";
+import { DocumentHandlerError } from "../src/document/error.js";
 
 const doc: VisualDocument = {
   id: "doc-1",
@@ -35,5 +36,21 @@ describe("renamePageHandler", () => {
     };
     const result = renamePageHandler(multiDoc, action, { now: Date.now });
     expect(result.pages[1]?.name).toBe("Page 2");
+  });
+
+  it("rejects when page not found", () => {
+    const action = {
+      type: "rename-page" as const,
+      pageId: "missing",
+      name: "Nope",
+    };
+    expect(() => renamePageHandler(doc, action, { now: Date.now })).toThrow(
+      DocumentHandlerError,
+    );
+    try {
+      renamePageHandler(doc, action, { now: Date.now });
+    } catch (e) {
+      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+    }
   });
 });

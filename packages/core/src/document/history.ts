@@ -45,15 +45,12 @@ export function undoDocumentAction(
   const entry = state.undoStack[state.undoStack.length - 1];
   if (!entry?.inverseAction) return null;
 
-  const cleanDocument =
-    entry.inverseAction.type === "remove-page" ? document : document;
-
   return {
     state: {
       undoStack: state.undoStack.slice(0, -1),
       redoStack: [...state.redoStack, entry],
     },
-    document: cleanDocument,
+    document,
     inverseAction: entry.inverseAction,
   };
 }

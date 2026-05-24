@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { DocumentActionSchema } from "./actions.js";
+import { describe, it, expect } from "vitest";
+import { DocumentActionSchema } from "../src/document/actions.js";
 
 describe("DocumentActionSchema", () => {
   it("validates create-page action", () => {
@@ -37,6 +37,32 @@ describe("DocumentActionSchema", () => {
   it("rejects reorder-page with negative index", () => {
     const action = { type: "reorder-page", pageId: "p1", index: -1 };
     expect(DocumentActionSchema.safeParse(action).success).toBe(false);
+  });
+
+  it("validates update-page-route action", () => {
+    const action = {
+      type: "update-page-route",
+      pageId: "p1",
+      route: "/dashboard",
+    };
+    expect(DocumentActionSchema.safeParse(action).success).toBe(true);
+  });
+
+  it("validates set-document-theme action", () => {
+    const action = {
+      type: "set-document-theme",
+      themeId: "theme-dark",
+    };
+    expect(DocumentActionSchema.safeParse(action).success).toBe(true);
+  });
+
+  it("validates set-page-theme action", () => {
+    const action = {
+      type: "set-page-theme",
+      pageId: "p1",
+      themeId: "sales",
+    };
+    expect(DocumentActionSchema.safeParse(action).success).toBe(true);
   });
 
   it("rejects unknown action type", () => {

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import type { PersistedSceneGraph, VisualDocument } from "../../types.js";
-import { removePageHandler } from "./remove-page.js";
+import { describe, it, expect } from "vitest";
+import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import { removePageHandler } from "../src/document/handlers/remove-page.js";
+import { DocumentHandlerError } from "../src/document/error.js";
 
 const emptyScene: PersistedSceneGraph = {
   version: 0,
@@ -28,10 +29,15 @@ describe("removePageHandler", () => {
     expect(result.scenes.s2).toBeDefined();
   });
 
-  it("returns the document unchanged when page not found", () => {
+  it("rejects when page not found", () => {
     const action = { type: "remove-page" as const, pageId: "missing" };
-    const result = removePageHandler(doc, action, { now: Date.now });
-    expect(result.pages).toHaveLength(2);
-    expect(result.scenes).toHaveProperty("s1");
+    expect(() => removePageHandler(doc, action, { now: Date.now })).toThrow(
+      DocumentHandlerError,
+    );
+    try {
+      removePageHandler(doc, action, { now: Date.now });
+    } catch (e) {
+      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+    }
   });
 });

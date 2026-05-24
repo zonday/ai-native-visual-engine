@@ -43,6 +43,7 @@ export type {
 export type { DocumentHandlerRegistry } from "./document/handler-registry.js";
 export { createHandlerRegistry } from "./document/handler-registry.js";
 export { normalizeRoute } from "./document/handlers/update-page-route.js";
+
 export type {
   DocumentHistoryEntry,
   DocumentHistoryState,
@@ -53,8 +54,6 @@ export {
   redoDocumentAction,
   undoDocumentAction,
 } from "./document/history.js";
-export { documentLoggerMiddleware } from "./document/middleware/logger.js";
-export { documentUndoHistoryMiddleware } from "./document/middleware/undo-history.js";
 
 export { documentValidatorMiddleware } from "./document/middleware/validator.js";
 export type { DocumentMiddleware } from "./document/middleware.js";

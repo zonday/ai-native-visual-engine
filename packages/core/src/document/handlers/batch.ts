@@ -6,10 +6,11 @@ export function createBatchHandler(
   dispatch: (action: DocumentAction) => DocumentDispatchResult,
 ): DocumentHandler<BatchDocumentActions> {
   return (document, action, _ctx) => {
+    const original = document;
     let current = document;
     for (const child of action.actions) {
-      const result = dispatch(child);
-      if (!result.ok) return current;
+      const result = dispatch(child as DocumentAction);
+      if (!result.ok) return original;
       current = result.document;
     }
     return current;
