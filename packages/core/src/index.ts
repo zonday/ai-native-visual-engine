@@ -168,12 +168,17 @@ export type { NewDocumentOptions } from "./bootstrap.js";
 
 export {
   openDocumentSession,
+  openDocumentFromSnapshot,
+  loadDocument,
   materializeScene,
   SessionError,
 } from "./session.js";
 export type {
   EditorSessionState,
   DocumentSession,
+  ActivatePageOptions,
+  DocumentLifecycleEvent,
+  DocumentLoadResult,
 } from "./session.js";
 
 // ── Snapshot and persistence ──
@@ -191,6 +196,18 @@ export type {
 } from "./snapshot.js";
 
 export type { StorageBackend } from "./storage-backend.js";
+export { InMemoryStorageBackend } from "./storage-backend.js";
+
+// ── Serialization ──
+export {
+  serializeDocument,
+  serializeEventLog,
+  CURRENT_SERIALIZATION_VERSION,
+} from "./serialization.js";
+export type {
+  SerializedDocument,
+  SerializedEventLog,
+} from "./serialization.js";
 
 // ── Import and export ──
 export { importDocument, exportDocument } from "./import-export.js";

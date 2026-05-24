@@ -1,4 +1,5 @@
-import type { VisualDocument, PersistedSceneGraph, SceneGraph, PageId } from "./types.js";
+import { VisualDocumentSchema } from "./types.js";
+import type { VisualDocument, PersistedSceneGraph, SceneGraph, PageId, DocumentSnapshot } from "./types.js";
 
 export class SessionError extends Error {
   readonly code: string;
@@ -8,6 +9,10 @@ export class SessionError extends Error {
     this.name = "SessionError";
     this.code = code;
   }
+}
+
+export interface ActivatePageOptions {
+  pageId: PageId;
 }
 
 export interface EditorSessionState {
@@ -22,6 +27,52 @@ export interface DocumentSession {
   getActiveScene(): SceneGraph;
   switchPage(pageId: PageId): void;
   close(): void;
+}
+
+export type DocumentLifecycleEvent =
+  | { type: "document-opened"; snapshot: DocumentSnapshot }
+  | { type: "page-activated"; pageId: PageId }
+  | { type: "page-deactivated"; pageId: PageId }
+  | { type: "document-saved"; snapshot: DocumentSnapshot }
+  | { type: "document-closed" };
+
+export interface DocumentLoadResult {
+  ok: boolean;
+  document?: VisualDocument;
+  damagedPageIds?: PageId[];
+  diagnostics: string[];
+}
+
+export function loadDocument(
+  snapshot: DocumentSnapshot,
+): DocumentLoadResult {
+  const diagnostics: string[] = [];
+  const damagedPageIds: PageId[] = [];
+  const parsed = VisualDocumentSchema.safeParse(snapshot.document);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      diagnostics: [parsed.error.message],
+    };
+  }
+
+  const document = parsed.data as VisualDocument;
+
+  for (const page of document.pages) {
+    const persistedScene = document.scenes[page.sceneId];
+    if (!persistedScene) {
+      damagedPageIds.push(page.id);
+      diagnostics.push(`Scene "${page.sceneId}" missing for page "${page.id}"`);
+    }
+  }
+
+  return {
+    ok: damagedPageIds.length === 0,
+    document,
+    damagedPageIds: damagedPageIds.length > 0 ? damagedPageIds : undefined,
+    diagnostics,
+  };
 }
 
 export function openDocumentSession(
@@ -79,6 +130,20 @@ export function openDocumentSession(
       state.isOpen = false;
     },
   };
+}
+
+export function openDocumentFromSnapshot(
+  snapshot: DocumentSnapshot,
+  activePageId?: PageId,
+): DocumentSession {
+  const result = loadDocument(snapshot);
+  if (!result.ok) {
+    throw new SessionError(
+      "session.load-failed",
+      `Document load failed: ${result.diagnostics.join("; ")}`,
+    );
+  }
+  return openDocumentSession(result.document!, activePageId);
 }
 
 export function materializeScene(

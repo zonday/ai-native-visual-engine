@@ -17,3 +17,46 @@ export interface StorageBackend {
   ): Promise<DocumentAction[] | RuntimeAction[]>;
   compact(documentId: DocumentId): Promise<void>;
 }
+
+export class InMemoryStorageBackend implements StorageBackend {
+  private documents = new Map<string, DocumentSnapshot>();
+  private eventLogs = new Map<
+    string,
+    DocumentAction[] | RuntimeAction[]
+  >();
+
+  async loadDocument(documentId: string): Promise<DocumentSnapshot | null> {
+    return this.documents.get(documentId) ?? null;
+  }
+
+  async saveDocument(snapshot: DocumentSnapshot): Promise<void> {
+    this.documents.set(snapshot.document.id, snapshot);
+  }
+
+  async appendEventLog(
+    context: string,
+    contextId: string,
+    actions: DocumentAction[] | RuntimeAction[],
+  ): Promise<void> {
+    const key = `${context}:${contextId}`;
+    const existing = this.eventLogs.get(key);
+    if (existing) {
+      (existing as Array<DocumentAction | RuntimeAction>).push(...actions);
+    } else {
+      this.eventLogs.set(key, actions);
+    }
+  }
+
+  async loadEventLog(
+    context: string,
+    contextId: string,
+    _sinceVersion?: number,
+  ): Promise<DocumentAction[] | RuntimeAction[]> {
+    const key = `${context}:${contextId}`;
+    return this.eventLogs.get(key) ?? [];
+  }
+
+  async compact(_documentId: string): Promise<void> {
+    // No-op in memory: snapshots and event logs are always in memory
+  }
+}
