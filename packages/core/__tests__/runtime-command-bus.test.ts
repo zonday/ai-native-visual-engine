@@ -48,7 +48,7 @@ describe("createRuntimeCommandBus", () => {
     const result = bus.dispatch(action);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("scene.unknown-action-type");
+    expect(result.error?.code).toBe("unknown-action-type");
     expect(result.error?.actionType).toBe("nonexistent");
   });
 
@@ -107,7 +107,7 @@ describe("createRuntimeCommandBus", () => {
 
     const result = bus.dispatch(action);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("scene.middleware-error");
+    expect(result.error?.code).toBe("middleware-error");
   });
 
   it("runs middleware pipeline before handler and passes modified scene", () => {

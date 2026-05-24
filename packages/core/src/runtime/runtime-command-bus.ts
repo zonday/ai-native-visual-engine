@@ -1,4 +1,4 @@
-import { deepFreeze, detectSameRef, isDev } from "../engine/command-bus.js";
+import { createCommandBus } from "../engine/command-bus.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
@@ -13,62 +13,21 @@ export function createRuntimeCommandBus(
   scene: SceneGraph,
   context: RuntimeContext,
 ) {
-  let currentScene = scene;
+  const bus = createCommandBus(registry, middlewares, scene, context);
   return {
     dispatch(action: RuntimeAction): DispatchResult {
-      const entry = registry.get(action.type);
-      if (!entry) {
-        return {
-          ok: false,
-          scene: currentScene,
-          error: {
-            code: "scene.unknown-action-type",
-            message: `Unknown runtime action type: ${action.type}`,
-            actionType: action.type,
-          },
-        };
-      }
-
-      const handler = entry.handler;
-      let runningScene = currentScene;
-      const chain = [...middlewares];
-
-      function runChain(): DispatchResult {
-        if (chain.length === 0) {
-          if (isDev) {
-            const sceneBefore = runningScene;
-            deepFreeze(runningScene);
-            runningScene = handler(runningScene, action, context);
-            detectSameRef(sceneBefore, runningScene, action);
-          } else {
-            runningScene = handler(runningScene, action, context);
-          }
-          return { ok: true, scene: runningScene };
-        }
-        const mw = chain.shift();
-        if (!mw)
-          return {
-            ok: false,
-            scene: runningScene,
-            error: {
-              code: "scene.middleware-error",
-              message: "Middleware chain broken",
-            },
-          };
-        return mw(action, runningScene, runChain);
-      }
-
       try {
-        const result = runChain();
-        if (result.ok) {
-          currentScene = result.scene;
-        }
-        return result;
+        const result = bus.dispatch(action);
+        return {
+          ok: result.ok,
+          scene: result.state,
+          error: result.error,
+        };
       } catch (err) {
         if (err instanceof RuntimeHandlerError) {
           return {
             ok: false,
-            scene: runningScene,
+            scene: bus.getState(),
             error: {
               code: err.code,
               message: err.message,
@@ -79,7 +38,7 @@ export function createRuntimeCommandBus(
         }
         return {
           ok: false,
-          scene: runningScene,
+          scene: bus.getState(),
           error: {
             code: "scene.handler-error",
             message: err instanceof Error ? err.message : "Unknown error",
@@ -89,7 +48,7 @@ export function createRuntimeCommandBus(
       }
     },
     getScene(): SceneGraph {
-      return currentScene;
+      return bus.getState();
     },
   };
 }

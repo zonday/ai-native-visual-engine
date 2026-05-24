@@ -43,7 +43,7 @@ describe("createUndoHistoryMiddleware", () => {
 
     const next = () => ({
       ok: true as const,
-      document: {
+      state: {
         ...emptyDoc,
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
         scenes: { s1: emptyScene },
@@ -79,7 +79,7 @@ describe("createUndoHistoryMiddleware", () => {
 
     const next = () => ({
       ok: false as const,
-      document: emptyDoc,
+      state: emptyDoc,
       error: { code: "document.page-not-found", message: "not found" },
     });
 
@@ -109,7 +109,7 @@ describe("createUndoHistoryMiddleware", () => {
 
     const next = () => ({
       ok: true as const,
-      document: emptyDoc,
+      state: emptyDoc,
     });
 
     const result = middleware(action, emptyDoc, next);
@@ -139,7 +139,7 @@ describe("createUndoHistoryMiddleware", () => {
 
     const next = () => ({
       ok: true as const,
-      document: {
+      state: {
         ...emptyDoc,
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
         scenes: { s1: emptyScene },

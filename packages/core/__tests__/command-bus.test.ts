@@ -59,7 +59,7 @@ describe("createDocumentCommandBus", () => {
     const result = bus.dispatch(action);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("document.unknown-action-type");
+    expect(result.error?.code).toBe("unknown-action-type");
     expect(result.error?.actionType).toBe("nonexistent");
   });
 
@@ -124,7 +124,7 @@ describe("createDocumentCommandBus", () => {
 
     const result = bus.dispatch(action);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("document.middleware-error");
+    expect(result.error?.code).toBe("middleware-error");
   });
 
   it("runs middleware pipeline before handler and passes modified document", () => {

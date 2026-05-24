@@ -1,9 +1,5 @@
+import type { Middleware } from "../engine/command-bus.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
-import type { DocumentDispatchResult } from "./command-bus.js";
 
-export type DocumentMiddleware = (
-  action: DocumentAction,
-  document: VisualDocument,
-  next: () => DocumentDispatchResult,
-) => DocumentDispatchResult;
+export type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
