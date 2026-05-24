@@ -12,7 +12,7 @@ function normalizeRotation(degrees: number): number {
 export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   scene,
   action,
-  _ctx,
+  ctx,
 ) => {
   const node = scene.nodes[action.nodeId];
   if (!node) {
@@ -32,6 +32,18 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
       "rotate-node",
       action.nodeId,
     );
+  }
+
+  if (ctx.registry) {
+    const caps = ctx.registry.getCapabilities(node.type);
+    if (caps && caps.allowsRotation === false) {
+      throw new RuntimeHandlerError(
+        "scene.rotation-not-allowed",
+        `Plugin for type "${node.type}" does not allow rotation`,
+        "rotate-node",
+        action.nodeId,
+      );
+    }
   }
 
   const normalized = normalizeRotation(action.rotation);

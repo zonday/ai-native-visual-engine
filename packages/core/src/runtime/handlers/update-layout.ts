@@ -4,6 +4,53 @@ import { RuntimeHandlerError } from "../error.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
+function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
+  if ("width" in layout) {
+    const w = layout.width;
+    if (typeof w !== "number" || !Number.isFinite(w) || w < 0) {
+      throw new RuntimeHandlerError(
+        "scene.invalid-layout-geometry",
+        `Invalid width "${w}" for node "${nodeId}"`,
+        "update-layout",
+        nodeId,
+      );
+    }
+  }
+  if ("height" in layout) {
+    const h = layout.height;
+    if (typeof h !== "number" || !Number.isFinite(h) || h < 0) {
+      throw new RuntimeHandlerError(
+        "scene.invalid-layout-geometry",
+        `Invalid height "${h}" for node "${nodeId}"`,
+        "update-layout",
+        nodeId,
+      );
+    }
+  }
+  if ("x" in layout) {
+    const x = layout.x;
+    if (typeof x !== "number" || !Number.isFinite(x)) {
+      throw new RuntimeHandlerError(
+        "scene.invalid-layout-geometry",
+        `Invalid x "${x}" for node "${nodeId}"`,
+        "update-layout",
+        nodeId,
+      );
+    }
+  }
+  if ("y" in layout) {
+    const y = layout.y;
+    if (typeof y !== "number" || !Number.isFinite(y)) {
+      throw new RuntimeHandlerError(
+        "scene.invalid-layout-geometry",
+        `Invalid y "${y}" for node "${nodeId}"`,
+        "update-layout",
+        nodeId,
+      );
+    }
+  }
+}
+
 export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   scene,
   action,
@@ -19,9 +66,12 @@ export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
     );
   }
 
+  const merged = { ...(node.layout ?? {}), ...action.layout };
+  validateLayout(merged as Record<string, unknown>, action.nodeId);
+
   const updatedNode = {
     ...node,
-    layout: { ...(node.layout ?? {}), ...action.layout },
+    layout: merged,
   };
 
   return {
