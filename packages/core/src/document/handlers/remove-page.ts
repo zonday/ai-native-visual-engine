@@ -24,9 +24,12 @@ export const removePageHandler: DocumentHandler<RemovePageAction> = (
   return { ...document, pages, scenes };
 };
 
-export const removePageInverse: InverseComputer = (documentBefore, action) => {
-  const removeAction = action as RemovePageAction;
-  const page = documentBefore.pages.find((p) => p.id === removeAction.pageId);
+export const removePageInverse: InverseComputer<RemovePageAction> = (
+  documentBefore,
+  action,
+  _context,
+) => {
+  const page = documentBefore.pages.find((p) => p.id === action.pageId);
   const scene = documentBefore.scenes[page?.sceneId ?? ""];
   if (!page || !scene) return undefined;
   return {

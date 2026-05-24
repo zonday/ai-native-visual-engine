@@ -40,12 +40,16 @@ export type {
   DocumentHandler,
   DocumentRuntimeContext,
 } from "./document/handler.js";
-export type { DocumentHandlerRegistry } from "./document/handler-registry.js";
-export { createHandlerRegistry } from "./document/handler-registry.js";
+export type {
+  DocumentHandlerEntry,
+  DocumentHandlerRegistry,
+} from "./document/handler-registry.js";
 export { normalizeRoute } from "./document/handlers/update-page-route.js";
 export type {
   DocumentHistoryEntry,
   DocumentHistoryState,
+  HistoryEntry,
+  HistoryState,
 } from "./document/history.js";
 export {
   createDocumentHistoryState,
@@ -56,7 +60,7 @@ export {
 } from "./document/history.js";
 export { createUndoHistoryMiddleware } from "./document/history-middleware.js";
 export type { InverseComputer, InverseRegistry } from "./document/inverse.js";
-export { defaultInverseRegistry } from "./document/inverse.js";
+export { createDefaultDocumentRegistries } from "./document/inverse.js";
 export {
   computeInverseAction,
   createInverseRegistry,

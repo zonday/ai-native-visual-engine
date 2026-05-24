@@ -32,15 +32,16 @@ export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   return { ...document, pages };
 };
 
-export const reorderPageInverse: InverseComputer = (documentBefore, action) => {
-  const reorderAction = action as ReorderPageAction;
-  const idx = documentBefore.pages.findIndex(
-    (p) => p.id === reorderAction.pageId,
-  );
+export const reorderPageInverse: InverseComputer<ReorderPageAction> = (
+  documentBefore,
+  action,
+  _context,
+) => {
+  const idx = documentBefore.pages.findIndex((p) => p.id === action.pageId);
   if (idx === -1) return undefined;
   return {
     type: "reorder-page",
-    pageId: reorderAction.pageId,
+    pageId: action.pageId,
     index: idx,
   };
 };

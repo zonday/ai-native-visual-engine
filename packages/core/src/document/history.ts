@@ -1,17 +1,24 @@
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 
-export interface DocumentHistoryEntry {
-  action: DocumentAction;
-  inverseAction?: DocumentAction;
+/**
+ * Generic history entry per spec §2.
+ * Concrete domain types create aliases, e.g. DocumentHistoryEntry = HistoryEntry<DocumentAction>.
+ */
+export interface HistoryEntry<TAction> {
+  action: TAction;
+  inverseAction?: TAction;
   timestamp: number;
   actorId?: string;
 }
 
-export interface DocumentHistoryState {
-  undoStack: DocumentHistoryEntry[];
-  redoStack: DocumentHistoryEntry[];
+export interface HistoryState<TAction> {
+  undoStack: HistoryEntry<TAction>[];
+  redoStack: HistoryEntry<TAction>[];
 }
+
+export type DocumentHistoryEntry = HistoryEntry<DocumentAction>;
+export type DocumentHistoryState = HistoryState<DocumentAction>;
 
 export function createDocumentHistoryState(): DocumentHistoryState {
   return { undoStack: [], redoStack: [] };
@@ -31,6 +38,14 @@ export function pushDocumentUndo(
   return { undoStack, redoStack: [] };
 }
 
+/**
+ * Pops the top entry from the undo stack and returns the inverse action.
+ * Note: this function does NOT apply the inverse to the document — it only
+ * manages history stack state. The caller is responsible for dispatching
+ * the returned inverseAction through the command bus. This design keeps
+ * history pure (no mutation) and allows the command bus middleware to
+ * handle dispatch.
+ */
 export function undoDocumentAction(
   state: DocumentHistoryState,
   document: VisualDocument,

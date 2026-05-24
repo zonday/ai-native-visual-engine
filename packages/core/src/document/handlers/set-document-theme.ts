@@ -19,7 +19,9 @@ export const setDocumentThemeHandler: DocumentHandler<
   return { ...document, activeThemeId: action.themeId };
 };
 
-export const setDocumentThemeInverse: InverseComputer = (documentBefore) => {
+export const setDocumentThemeInverse: InverseComputer<
+  SetDocumentThemeAction
+> = (documentBefore, _action, _context) => {
   return {
     type: "set-document-theme",
     themeId: documentBefore.activeThemeId,

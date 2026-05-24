@@ -1,35 +1,35 @@
+import type { DocumentRuntimeContext } from "./handler.js";
+import type { DocumentHandlerRegistry } from "./handler-registry.js";
 import type { DocumentHistoryEntry, DocumentHistoryState } from "./history.js";
 import { pushDocumentUndo } from "./history.js";
-import {
-  computeInverseAction,
-  type InverseRegistry,
-} from "./inverse-registry.js";
 import type { DocumentMiddleware } from "./middleware.js";
 
 export function createUndoHistoryMiddleware(
   getHistory: () => DocumentHistoryState,
   setHistory: (state: DocumentHistoryState) => void,
   getActorId: () => string | undefined,
-  registry: InverseRegistry,
+  registry: DocumentHandlerRegistry,
+  getContext: () => DocumentRuntimeContext,
 ): DocumentMiddleware {
   return (action, documentBefore, next) => {
     const result = next();
 
     if (result.ok) {
-      const inverseAction = computeInverseAction(
-        registry,
-        documentBefore,
-        action,
-      );
-      if (inverseAction) {
-        const entry: DocumentHistoryEntry = {
-          action,
-          inverseAction,
-          timestamp: Date.now(),
-          actorId: getActorId(),
-        };
-        const newHistory = pushDocumentUndo(getHistory(), entry);
-        setHistory(newHistory);
+      const entry = registry.get(action.type);
+      const inverseComputer = entry?.inverse;
+      if (inverseComputer) {
+        const context = getContext();
+        const inverseAction = inverseComputer(documentBefore, action, context);
+        if (inverseAction) {
+          const historyEntry: DocumentHistoryEntry = {
+            action,
+            inverseAction,
+            timestamp: context.now(),
+            actorId: getActorId() ?? context.actorId,
+          };
+          const newHistory = pushDocumentUndo(getHistory(), historyEntry);
+          setHistory(newHistory);
+        }
       }
     }
 

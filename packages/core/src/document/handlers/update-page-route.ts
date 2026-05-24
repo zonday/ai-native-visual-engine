@@ -4,6 +4,7 @@ import type { DocumentHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
 const ROUTE_REGEX = /^\//;
+const TRAILING_SLASH_REGEX = /\/+$/;
 
 export function normalizeRoute(route: string): string {
   const trimmed = route.trim();
@@ -12,6 +13,8 @@ export function normalizeRoute(route: string): string {
   if (!ROUTE_REGEX.test(normalized)) {
     normalized = `/${normalized}`;
   }
+  normalized = normalized.replace(TRAILING_SLASH_REGEX, "");
+  if (!normalized) return "";
   return normalized;
 }
 
@@ -55,16 +58,16 @@ export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   return { ...document, pages };
 };
 
-export const updatePageRouteInverse: InverseComputer = (
+export const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
   documentBefore,
   action,
+  _context,
 ) => {
-  const routeAction = action as UpdatePageRouteAction;
-  const page = documentBefore.pages.find((p) => p.id === routeAction.pageId);
+  const page = documentBefore.pages.find((p) => p.id === action.pageId);
   if (!page) return undefined;
   return {
     type: "update-page-route",
-    pageId: routeAction.pageId,
+    pageId: action.pageId,
     route: page.route ?? "",
   };
 };

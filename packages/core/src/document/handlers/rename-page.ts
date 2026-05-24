@@ -23,14 +23,16 @@ export const renamePageHandler: DocumentHandler<RenamePageAction> = (
   return { ...document, pages };
 };
 
-export const renamePageInverse: InverseComputer = (documentBefore, action) => {
-  const page = documentBefore.pages.find(
-    (p) => p.id === (action as RenamePageAction).pageId,
-  );
+export const renamePageInverse: InverseComputer<RenamePageAction> = (
+  documentBefore,
+  action,
+  _context,
+) => {
+  const page = documentBefore.pages.find((p) => p.id === action.pageId);
   if (!page) return undefined;
   return {
     type: "rename-page",
-    pageId: (action as RenamePageAction).pageId,
+    pageId: action.pageId,
     name: page.name,
   };
 };

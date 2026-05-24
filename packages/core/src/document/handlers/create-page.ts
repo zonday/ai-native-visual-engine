@@ -54,9 +54,13 @@ export const createPageHandler: DocumentHandler<CreatePageAction> = (
   return { ...document, pages, scenes };
 };
 
-export const createPageInverse: InverseComputer = (_documentBefore, action) => {
+export const createPageInverse: InverseComputer<CreatePageAction> = (
+  _documentBefore,
+  action,
+  _context,
+) => {
   return {
     type: "remove-page",
-    pageId: (action as CreatePageAction).page.id,
+    pageId: action.page.id,
   };
 };

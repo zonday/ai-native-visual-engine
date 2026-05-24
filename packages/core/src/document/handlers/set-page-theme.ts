@@ -34,16 +34,16 @@ export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   return { ...document, pages };
 };
 
-export const setPageThemeInverse: InverseComputer = (
+export const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (
   documentBefore,
   action,
+  _context,
 ) => {
-  const themeAction = action as SetPageThemeAction;
-  const page = documentBefore.pages.find((p) => p.id === themeAction.pageId);
+  const page = documentBefore.pages.find((p) => p.id === action.pageId);
   if (!page) return undefined;
   return {
     type: "set-page-theme",
-    pageId: themeAction.pageId,
+    pageId: action.pageId,
     themeId: page.themeId,
   };
 };
