@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { VisualDocumentSchema, DocumentSnapshotSchema } from "../src/types.js";
-import type { DocumentSnapshot, SceneGraph, SceneNode } from "../src/types.js";
+import type { DocumentSnapshot, SceneGraph } from "../src/types.js";
 import { createNewDocument, createEmptyScene } from "../src/bootstrap.js";
 import { openDocumentSession } from "../src/session.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
@@ -169,8 +169,8 @@ describe("exportDocument with fixtures", () => {
   });
 });
 
-describe("renderer integration with fixture scenes", () => {
-  it("renders container and text nodes from fixture", () => {
+describe("scene fixture with container and text nodes", () => {
+  it("creates a scene with container and text node hierarchy", () => {
     const doc = createNewDocument({ title: "Render" });
     const scene = doc.scenes[doc.pages[0]!.sceneId]!;
     scene.nodes["text-1"] = { id: "text-1", type: "text", parentId: scene.rootId, props: { text: "Hello" } };
