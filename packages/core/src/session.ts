@@ -61,7 +61,7 @@ export function loadDocument(
   if (!parsed.success) {
     return {
       ok: false,
-      diagnostics: [parsed.error.message],
+      diagnostics: [`validation.document-schema-mismatch: ${parsed.error.message}`],
     };
   }
 
@@ -71,7 +71,7 @@ export function loadDocument(
     const persistedScene = document.scenes[page.sceneId];
     if (!persistedScene) {
       damagedPageIds.push(page.id);
-      diagnostics.push(`Scene "${page.sceneId}" missing for page "${page.id}"`);
+      diagnostics.push(`validation.referential-broken: Scene "${page.sceneId}" missing for page "${page.id}"`);
     }
   }
 

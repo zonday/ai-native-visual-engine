@@ -39,7 +39,7 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   const newParent = scene.nodes[action.parentId];
   if (!newParent) {
     throw new RuntimeHandlerError(
-      "scene.node-not-found",
+      "scene.invalid-parent",
       `New parent "${action.parentId}" not found`,
       "move-node",
       action.parentId,

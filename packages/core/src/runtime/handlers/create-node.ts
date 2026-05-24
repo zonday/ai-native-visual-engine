@@ -12,7 +12,7 @@ export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   const parent = scene.nodes[action.parentId];
   if (!parent) {
     throw new RuntimeHandlerError(
-      "scene.node-not-found",
+      "scene.invalid-parent",
       `Parent node "${action.parentId}" not found`,
       "create-node",
       action.parentId,
