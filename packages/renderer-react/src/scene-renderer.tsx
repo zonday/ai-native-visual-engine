@@ -1,6 +1,7 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext, ComponentRenderer, ComponentRegistry } from "./renderer.js";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
+import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
 
 function resolveRenderer(
   node: SceneNode,
@@ -11,35 +12,6 @@ function resolveRenderer(
   return (n: SceneNode, ctx: RenderContext) => MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
 }
 
-function getLayoutStyle(node: SceneNode): React.CSSProperties {
-  const layout = node.layout;
-  if (!layout) return {};
-
-  if (layout.mode === "absolute") {
-    const style: React.CSSProperties = { position: "absolute" };
-    if (typeof layout.x === "number") style.left = layout.x;
-    if (typeof layout.y === "number") style.top = layout.y;
-    if (typeof layout.width === "number") style.width = layout.width;
-    if (typeof layout.height === "number") style.height = layout.height;
-    if (typeof layout.zIndex === "number") style.zIndex = layout.zIndex;
-    if (typeof layout.rotation === "number") {
-      style.transform = `rotate(${layout.rotation}deg)`;
-    }
-    return style;
-  }
-
-  if (layout.mode === "grid-item") {
-    const style: React.CSSProperties = {};
-    if (typeof layout.x === "number") style.gridColumn = layout.x + 1;
-    if (typeof layout.y === "number") style.gridRow = layout.y + 1;
-    if (typeof layout.w === "number") style.gridColumnEnd = `span ${layout.w}`;
-    if (typeof layout.h === "number") style.gridRowEnd = `span ${layout.h}`;
-    return style;
-  }
-
-  return {};
-}
-
 function renderNode(
   node: SceneNode,
   registry: ComponentRegistry,
@@ -48,10 +20,11 @@ function renderNode(
   if (node.visible === false) return null;
 
   const render = resolveRenderer(node, registry);
-  const layoutStyle = getLayoutStyle(node);
-  const isSelected =
+  const layoutStyle = resolveLayoutStyle(node);
+  const isSelected = !!(
     ctx.mode === "editor" &&
-    ctx.selection?.nodeIds.includes(node.id);
+    ctx.selection?.nodeIds.includes(node.id)
+  );
 
   const childNodes = node.children
     ?.map((childId: string) => ctx.scene.nodes[childId])
@@ -60,12 +33,7 @@ function renderNode(
 
   const content = render(node, ctx, childNodes);
 
-  const needsWrapper = isSelected ||
-    layoutStyle.position === "absolute" ||
-    layoutStyle.gridColumn !== undefined ||
-    node.locked === true;
-
-  if (!needsWrapper) {
+  if (!wrapperNeeded(node, isSelected)) {
     return content;
   }
 

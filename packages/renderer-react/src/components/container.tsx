@@ -1,5 +1,6 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext } from "../renderer.js";
+import { resolveLayoutStyle } from "../layout-style.js";
 
 export interface ContainerProps {
   node: SceneNode;
@@ -8,19 +9,8 @@ export interface ContainerProps {
 }
 
 export function ContainerNode({ node, children }: ContainerProps) {
-  const layout = node.layout;
-  const style: React.CSSProperties = { display: "flex" };
-
-  if (layout) {
-    if (layout.direction) style.flexDirection = layout.direction as React.CSSProperties["flexDirection"];
-    if (typeof layout.gap === "number") style.gap = layout.gap;
-    if (typeof layout.padding === "number") style.padding = layout.padding;
-    if (layout.align) style.alignItems = layout.align as React.CSSProperties["alignItems"];
-    if (layout.justify) style.justifyContent = layout.justify as React.CSSProperties["justifyContent"];
-    if (layout.wrap) style.flexWrap = "wrap";
-    if (typeof layout.width === "number") style.width = layout.width;
-    if (typeof layout.height === "number") style.height = layout.height;
-  }
+  const style = resolveLayoutStyle(node);
+  if (!style.display) style.display = "flex";
 
   return (
     <div data-component="container" style={style}>
