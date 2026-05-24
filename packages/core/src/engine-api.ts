@@ -371,57 +371,47 @@ export function createEngineAPI(
     setState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
-      const active = node.activeStates ? [...node.activeStates] : [];
+      const active = ((node.runtime as Record<string, unknown> | undefined)?.activeStates as string[] | undefined)
+        ? [...((node.runtime as Record<string, unknown>)?.activeStates as string[])] : [];
       const idx = active.indexOf(state);
       if (idx >= 0) active.splice(idx, 1);
       active.push(state);
-      dispatchAndNotify({
-        type: "update-runtime",
-        nodeId,
-        runtime: { activeStates: active },
-      });
+      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
     },
     clearState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
-      const active = (node.activeStates ?? []).filter((s) => s !== state);
-      dispatchAndNotify({
-        type: "update-runtime",
-        nodeId,
-        runtime: { activeStates: active },
-      });
+      const active = (((node.runtime as Record<string, unknown> | undefined)?.activeStates as string[] | undefined) ?? []).filter((s) => s !== state);
+      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
     },
     setExclusive(nodeId, state, _group) {
       const all = getAllNodes(getScene());
       const actions: RuntimeAction[] = [];
       for (const n of all) {
-        if (n.id !== nodeId && n.activeStates?.includes(state)) {
-          const filtered = (n.activeStates ?? []).filter((s) => s !== state);
+        const existing = (n.runtime as Record<string, unknown> | undefined)?.activeStates as string[] | undefined;
+        if (n.id !== nodeId && existing?.includes(state)) {
           actions.push({
             type: "update-runtime",
             nodeId: n.id,
-            runtime: { activeStates: filtered },
+            runtime: { activeStates: existing.filter((s) => s !== state) },
           });
         }
       }
       const thisNode = getScene().nodes[nodeId];
       if (thisNode) {
-        const active = thisNode.activeStates ? [...thisNode.activeStates] : [];
+        const runtimeActive = (thisNode.runtime as Record<string, unknown> | undefined)?.activeStates as string[] | undefined;
+        const active = runtimeActive ? [...runtimeActive] : [];
         const idx = active.indexOf(state);
         if (idx >= 0) active.splice(idx, 1);
         active.push(state);
-        actions.push({
-          type: "update-runtime",
-          nodeId,
-          runtime: { activeStates: active },
-        });
+        actions.push({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
       }
       if (actions.length > 0) {
         dispatchAndNotify({ type: "batch-actions", actions });
       }
     },
     getActiveStates(nodeId) {
-      return getScene().nodes[nodeId]?.activeStates ?? [];
+      return (getScene().nodes[nodeId]?.runtime as Record<string, unknown> | undefined)?.activeStates as string[] ?? [];
     },
   };
 

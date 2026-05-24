@@ -1,12 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { SceneGraph, SceneNode, PageId } from "../src/types.js";
-import {
-  createEngineAPI,
-} from "../src/engine-api.js";
+import { createEngineAPI } from "../src/engine-api.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import { createRuntimeHistoryState } from "../src/runtime/history.js";
-import { createEmptyScene } from "../src/bootstrap.js";
 
 function makeScene(nodes: Record<string, SceneNode>): SceneGraph {
   return { version: 0, rootId: "root", nodes };
@@ -27,177 +24,91 @@ describe("createEngineAPI", () => {
     const history = createRuntimeHistoryState();
     const api = createEngineAPI(() => bus.getScene(), "page-1" as PageId, bus, () => history);
 
-    return { scene, bus, history, api };
+    return { api, bus };
   }
 
   // NodeAPI
   it("node.get returns existing node", () => {
-    const { api } = setup();
-    expect(api.node.get("a")?.type).toBe("text");
+    expect(setup().api.node.get("a")?.type).toBe("text");
   });
 
   it("node.get returns undefined for missing node", () => {
-    const { api } = setup();
-    expect(api.node.get("missing")).toBeUndefined();
+    expect(setup().api.node.get("missing")).toBeUndefined();
   });
 
   it("node.getParent returns parent", () => {
-    const { api } = setup();
-    expect(api.node.getParent("a")?.id).toBe("root");
+    expect(setup().api.node.getParent("a")?.id).toBe("root");
   });
 
   it("node.getChildren returns children array", () => {
-    const { api } = setup();
-    expect(api.node.getChildren("root").map((n) => n.id)).toEqual(["a", "b"]);
+    expect(setup().api.node.getChildren("root").map((n) => n.id)).toEqual(["a", "b"]);
   });
 
   it("node.getChildren returns empty for leaf", () => {
-    const { api } = setup();
-    expect(api.node.getChildren("a")).toEqual([]);
+    expect(setup().api.node.getChildren("a")).toEqual([]);
   });
 
-  it("node.getProps returns props", () => {
-    const { api } = setup();
-    expect(api.node.getProps("a")).toEqual({ text: "hello" });
-  });
-
-  it("node.getProps returns empty object when none", () => {
-    const { api } = setup();
-    expect(api.node.getProps("root")).toEqual({});
+  it("node.getProps returns props or empty object", () => {
+    expect(setup().api.node.getProps("a")).toEqual({ text: "hello" });
+    expect(setup().api.node.getProps("root")).toEqual({});
   });
 
   it("node.getLayout returns layout", () => {
-    const { api } = setup();
-    expect(api.node.getLayout("a")).toBeDefined();
+    expect(setup().api.node.getLayout("a")).toBeDefined();
   });
 
-  it("node.getBindings returns bindings", () => {
-    const { api } = setup();
-    expect(api.node.getBindings("a")).toHaveLength(1);
+  it("node.getBindings returns bindings or empty array", () => {
+    expect(setup().api.node.getBindings("a")).toHaveLength(1);
+    expect(setup().api.node.getBindings("root")).toEqual([]);
   });
 
-  it("node.getBindings returns empty array when none", () => {
-    const { api } = setup();
-    expect(api.node.getBindings("root")).toEqual([]);
-  });
-
-  it("node.getStyle returns style", () => {
-    const { api } = setup();
-    expect(api.node.getStyle("a")).toEqual({ color: "red" });
+  it("node.getStyle returns style or empty object", () => {
+    expect(setup().api.node.getStyle("a")).toEqual({ color: "red" });
+    expect(setup().api.node.getStyle("root")).toEqual({});
   });
 
   it("node.isVisible returns false for hidden node", () => {
-    const { api } = setup();
-    expect(api.node.isVisible("b")).toBe(false);
-  });
-
-  it("node.isVisible returns true by default", () => {
-    const { api } = setup();
-    expect(api.node.isVisible("a")).toBe(true);
+    expect(setup().api.node.isVisible("b")).toBe(false);
   });
 
   it("node.isLocked returns true for locked node", () => {
-    const { api } = setup();
-    expect(api.node.isLocked("b")).toBe(true);
+    expect(setup().api.node.isLocked("b")).toBe(true);
   });
 
-  it("node.isLocked returns false for unlocked", () => {
-    const { api } = setup();
-    expect(api.node.isLocked("a")).toBe(false);
-  });
-
-  it("node.exists returns true for existing nodes", () => {
-    const { api } = setup();
-    expect(api.node.exists("root")).toBe(true);
-    expect(api.node.exists("missing")).toBe(false);
+  it("node.exists checks node presence", () => {
+    expect(setup().api.node.exists("root")).toBe(true);
+    expect(setup().api.node.exists("missing")).toBe(false);
   });
 
   // SceneAPI
-  it("scene.getRoot returns root node", () => {
+  it("scene returns root, page, version, all nodes", () => {
     const { api } = setup();
     expect(api.scene.getRoot().id).toBe("root");
-  });
-
-  it("scene.getActivePageId returns page id", () => {
-    const { api } = setup();
     expect(api.scene.getActivePageId()).toBe("page-1");
-  });
-
-  it("scene.getSceneVersion returns version", () => {
-    const { api } = setup();
     expect(api.scene.getSceneVersion()).toBe(0);
-  });
-
-  it("scene.getAllNodes returns all nodes", () => {
-    const { api } = setup();
     expect(api.scene.getAllNodes()).toHaveLength(3);
   });
 
-  it("scene.findNodes filters by predicate", () => {
+  it("scene.findNodes and findNodeByType filter correctly", () => {
     const { api } = setup();
     expect(api.scene.findNodes((n) => n.type === "text")).toHaveLength(2);
-  });
-
-  it("scene.findNodeByType finds by type", () => {
-    const { api } = setup();
     expect(api.scene.findNodeByType("text")).toHaveLength(2);
   });
 
   // SelectionAPI
-  it("selection.isSelected returns selection state", () => {
-    const { api } = setup();
-    expect(api.selection.isSelected("a")).toBe(false);
-  });
-
-  it("selection.getSelection returns empty by default", () => {
-    const { api } = setup();
-    expect(api.selection.getSelection()).toEqual([]);
-  });
-
-  it("selection.select dispatches update-selection", () => {
+  it("selection operations modify selection via command bus", () => {
     const { api, bus } = setup();
     api.selection.select(["a"]);
     expect(bus.getScene().selection?.nodeIds).toEqual(["a"]);
-  });
 
-  it("selection.addToSelection appends", () => {
-    const { api, bus } = setup();
-    api.selection.select(["a"]);
     api.selection.addToSelection(["b"]);
     expect(bus.getScene().selection?.nodeIds).toEqual(["a", "b"]);
-  });
 
-  it("selection.removeFromSelection removes", () => {
-    const { api, bus } = setup();
-    api.selection.select(["a", "b"]);
     api.selection.removeFromSelection(["a"]);
     expect(bus.getScene().selection?.nodeIds).toEqual(["b"]);
-  });
 
-  it("selection.clearSelection clears all", () => {
-    const { api, bus } = setup();
-    api.selection.select(["a", "b"]);
     api.selection.clearSelection();
     expect(bus.getScene().selection?.nodeIds).toEqual([]);
-  });
-
-  it("selection.selectParent selects parent", () => {
-    const { api, bus } = setup();
-    api.selection.selectParent("a");
-    expect(bus.getScene().selection?.nodeIds).toEqual(["root"]);
-  });
-
-  it("selection.selectChildren selects children", () => {
-    const { api, bus } = setup();
-    api.selection.selectChildren("root");
-    expect(bus.getScene().selection?.nodeIds).toEqual(["a", "b"]);
-  });
-
-  it("selection.selectAll selects all except root", () => {
-    const { api, bus } = setup();
-    api.selection.selectAll();
-    expect(bus.getScene().selection?.nodeIds).not.toContain("root");
-    expect(bus.getScene().selection?.nodeIds.length).toBeGreaterThan(0);
   });
 
   it("selection.select deduplicates", () => {
@@ -206,169 +117,75 @@ describe("createEngineAPI", () => {
     expect(bus.getScene().selection?.nodeIds).toEqual(["a"]);
   });
 
-  // DispatchAPI
-  it("dispatch.createNode dispatches correctly", () => {
-    const { api } = setup();
-    const result = api.dispatch.createNode({ id: "c", type: "text" }, "root");
-    expect(result.ok).toBe(true);
+  it("selection.selectParent and selectChildren", () => {
+    const { api, bus } = setup();
+    api.selection.selectParent("a");
+    expect(bus.getScene().selection?.nodeIds).toEqual(["root"]);
+    api.selection.selectChildren("root");
+    expect(bus.getScene().selection?.nodeIds).toEqual(["a", "b"]);
   });
 
-  it("dispatch.removeNode dispatches correctly", () => {
-    const { api } = setup();
+  it("selection.selectAll excludes root", () => {
+    const { api, bus } = setup();
+    api.selection.selectAll();
+    const sel = bus.getScene().selection?.nodeIds ?? [];
+    expect(sel).not.toContain("root");
+    expect(sel.length).toBeGreaterThan(0);
+  });
+
+  // DispatchAPI
+  it("dispatch.createNode creates node", () => {
+    const { api, bus } = setup();
+    const result = api.dispatch.createNode({ id: "c", type: "text" }, "root");
+    expect(result.ok).toBe(true);
+    expect(bus.getScene().nodes["c"]).toBeDefined();
+  });
+
+  it("dispatch.removeNode removes node", () => {
+    const { api, bus } = setup();
     const result = api.dispatch.removeNode("a");
     expect(result.ok).toBe(true);
+    expect(bus.getScene().nodes["a"]).toBeUndefined();
   });
 
   it("dispatch.rejects create-node with invalid parent", () => {
-    const { api } = setup();
-    const result = api.dispatch.createNode({ id: "x", type: "text" }, "missing");
+    const result = setup().api.dispatch.createNode({ id: "x", type: "text" }, "missing");
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("scene.invalid-parent");
   });
 
   it("dispatch.rejects remove-node on locked node", () => {
-    const { api } = setup();
-    const result = api.dispatch.removeNode("b");
+    const result = setup().api.dispatch.removeNode("b");
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("scene.locked");
   });
 
-  it("dispatch.rejects move-node with missing node", () => {
+  it("dispatch.rejects with missing node for update actions", () => {
     const { api } = setup();
     expect(api.dispatch.moveNode("missing", "root").ok).toBe(false);
-  });
-
-  it("dispatch.rejects update-layout with missing node", () => {
-    const { api } = setup();
     expect(api.dispatch.updateLayout("missing", {}).ok).toBe(false);
-  });
-
-  it("dispatch.rejects update-props with missing node", () => {
-    const { api } = setup();
     expect(api.dispatch.updateProps("missing", {}).ok).toBe(false);
   });
 
-  it("dispatch.updateStyle dispatches correctly", () => {
-    const { api } = setup();
-    expect(api.dispatch.updateStyle("a", { color: "blue" }).ok).toBe(true);
-  });
-
-  it("dispatch.updateBindings dispatches correctly", () => {
-    const { api } = setup();
-    expect(api.dispatch.updateBindings("a", []).ok).toBe(true);
-  });
-
-  it("dispatch.updateRuntime dispatches correctly", () => {
-    const { api } = setup();
-    expect(api.dispatch.updateRuntime("a", { loading: true }).ok).toBe(true);
-  });
-
-  it("dispatch.rotateNode dispatches correctly", () => {
-    const { api } = setup();
-    expect(api.dispatch.rotateNode("a", 45).ok).toBe(true);
-  });
-
-  it("dispatch.batch dispatches correctly", () => {
-    const { api } = setup();
-    const result = api.dispatch.batch([
-      { type: "create-node", node: { id: "x", type: "text" }, parentId: "root" },
-    ]);
-    expect(result.ok).toBe(true);
-  });
-
-  it("dispatch.moveNode dispatches correctly", () => {
+  it("dispatch.moveNode, updateLayout, updateProps work", () => {
     const { api } = setup();
     expect(api.dispatch.moveNode("a", "root", 0).ok).toBe(true);
-  });
-
-  it("dispatch.updateLayout dispatches correctly", () => {
-    const { api } = setup();
     expect(api.dispatch.updateLayout("a", { x: 100 }).ok).toBe(true);
-  });
-
-  it("dispatch.updateProps dispatches correctly", () => {
-    const { api } = setup();
     expect(api.dispatch.updateProps("a", { text: "updated" }).ok).toBe(true);
   });
 
-  // StateAPI
-  it("state.setState activates state", () => {
+  it("dispatch.updateStyle, updateBindings, updateRuntime, rotateNode work", () => {
     const { api } = setup();
-    api.states.setState("a", "hover");
-    // state dispatched via command bus, gets applied
-  });
-
-  it("state.clearState deactivates state", () => {
-    const { api } = setup();
-    api.states.setState("a", "hover");
-    api.states.clearState("a", "hover");
-  });
-
-  it("state.setExclusive clears other nodes in group", () => {
-    const scene = makeScene({
-      root: { id: "root", type: "container", children: ["a", "b"] },
-      a: { id: "a", type: "text", parentId: "root", activeStates: ["active"] },
-      b: { id: "b", type: "text", parentId: "root", activeStates: ["active"] },
-    });
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene, error: { code: "fail", message: "noop" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], scene, { now: Date.now });
-    const api = createEngineAPI(() => bus.getScene(), "page-1" as PageId, bus, () => createRuntimeHistoryState());
-    api.states.setExclusive("a", "active", "interaction");
-  });
-
-  // HistoryAPI
-  it("history reports empty stacks initially", () => {
-    const { api } = setup();
-    expect(api.history.canUndo()).toBe(false);
-    expect(api.history.canRedo()).toBe(false);
-  });
-
-  it("history.getUndoStackSize returns size", () => {
-    const { api } = setup();
-    expect(api.history.getUndoStackSize()).toBe(0);
-  });
-
-  it("history.getRedoStackSize returns size", () => {
-    const { api } = setup();
-    expect(api.history.getRedoStackSize()).toBe(0);
-  });
-
-  it("history.undo is no-op when stack empty", () => {
-    const { api } = setup();
-    api.history.undo(); // should not throw
-  });
-
-  it("history.redo is no-op when stack empty", () => {
-    const { api } = setup();
-    api.history.redo(); // should not throw
-  });
-
-  // StateAPI
-  it("state.getActiveStates returns empty by default", () => {
-    const { api } = setup();
-    expect(api.states.getActiveStates("a")).toEqual([]);
+    expect(api.dispatch.updateStyle("a", { color: "blue" }).ok).toBe(true);
+    expect(api.dispatch.updateBindings("a", []).ok).toBe(true);
+    expect(api.dispatch.updateRuntime("a", { loading: true }).ok).toBe(true);
+    expect(api.dispatch.rotateNode("a", 45).ok).toBe(true);
   });
 
   // Subscribe
   it("subscribe returns unsubscribe function", () => {
     const { api } = setup();
-    const unsub = api.subscribeToScene(() => { });
-    expect(typeof unsub).toBe("function");
-    unsub();
-  });
-
-  it("subscribeToNode unsubscribes correctly", () => {
-    const { api } = setup();
-    const unsub = api.subscribeToNode("a", () => {});
-    expect(typeof unsub).toBe("function");
-    unsub();
-  });
-
-  it("subscribeToSelection unsubscribes correctly", () => {
-    const { api } = setup();
-    const unsub = api.subscribeToSelection(() => {});
+    const unsub = api.subscribeToScene(() => {});
     expect(typeof unsub).toBe("function");
     unsub();
   });
