@@ -22,7 +22,7 @@ export function importDocument(
   if (!parsed.success) {
     return {
       ok: false,
-      diagnostics: [...diagnostics, parsed.error.message],
+      diagnostics: [`import.invalid-format: ${parsed.error.message}`],
     };
   }
 

@@ -75,7 +75,7 @@ describe("createNodeHandler", () => {
     try {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
+      expect((e as RuntimeHandlerError).code).toBe("scene.invalid-parent");
       expect((e as RuntimeHandlerError).nodeId).toBe("missing-parent");
     }
   });

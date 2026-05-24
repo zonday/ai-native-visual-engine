@@ -8,7 +8,7 @@ function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
     const w = layout.width;
     if (typeof w !== "number" || !Number.isFinite(w) || w < 0) {
       throw new RuntimeHandlerError(
-        "scene.invalid-layout-geometry",
+        "scene.invalid-geometry",
         `Invalid width "${w}" for node "${nodeId}"`,
         "update-layout",
         nodeId,
@@ -19,7 +19,7 @@ function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
     const h = layout.height;
     if (typeof h !== "number" || !Number.isFinite(h) || h < 0) {
       throw new RuntimeHandlerError(
-        "scene.invalid-layout-geometry",
+        "scene.invalid-geometry",
         `Invalid height "${h}" for node "${nodeId}"`,
         "update-layout",
         nodeId,
@@ -30,7 +30,7 @@ function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
     const x = layout.x;
     if (typeof x !== "number" || !Number.isFinite(x)) {
       throw new RuntimeHandlerError(
-        "scene.invalid-layout-geometry",
+        "scene.invalid-geometry",
         `Invalid x "${x}" for node "${nodeId}"`,
         "update-layout",
         nodeId,
@@ -41,7 +41,7 @@ function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
     const y = layout.y;
     if (typeof y !== "number" || !Number.isFinite(y)) {
       throw new RuntimeHandlerError(
-        "scene.invalid-layout-geometry",
+        "scene.invalid-geometry",
         `Invalid y "${y}" for node "${nodeId}"`,
         "update-layout",
         nodeId,

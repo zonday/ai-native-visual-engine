@@ -91,6 +91,16 @@ export type {
 export type { RuntimeMiddleware } from "./runtime/middleware.js";
 export { RuntimeHandlerError } from "./runtime/error.js";
 
+// ── Error taxonomy ──
+export { HandlerError } from "./engine/error.js";
+export type {
+  EngineError,
+  ErrorSeverity,
+  ErrorDomain,
+  CompilerDiagnostic,
+  RendererError,
+} from "./engine/error.js";
+
 // ── Runtime registries ──
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 
