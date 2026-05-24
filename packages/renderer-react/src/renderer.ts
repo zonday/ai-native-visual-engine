@@ -14,3 +14,10 @@ export interface ComponentRenderer {
 }
 
 export type ComponentRegistry = Map<string, ComponentRenderer>;
+
+export interface ResolvedRenderNode {
+  nodeId: string;
+  type: string;
+  output: React.ReactNode;
+  children: ResolvedRenderNode[];
+}

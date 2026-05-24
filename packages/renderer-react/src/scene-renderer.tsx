@@ -15,39 +15,29 @@ function getLayoutStyle(node: SceneNode): React.CSSProperties {
   const layout = node.layout;
   if (!layout) return {};
 
-  const style: React.CSSProperties = {};
-
   if (layout.mode === "absolute") {
+    const style: React.CSSProperties = { position: "absolute" };
     if (typeof layout.x === "number") style.left = layout.x;
     if (typeof layout.y === "number") style.top = layout.y;
     if (typeof layout.width === "number") style.width = layout.width;
     if (typeof layout.height === "number") style.height = layout.height;
-    style.position = "absolute";
+    if (typeof layout.zIndex === "number") style.zIndex = layout.zIndex;
     if (typeof layout.rotation === "number") {
       style.transform = `rotate(${layout.rotation}deg)`;
     }
-  }
-
-  if (layout.mode === "flex") {
-    style.display = "flex";
-    if (layout.direction) style.flexDirection = layout.direction as React.CSSProperties["flexDirection"];
-    if (typeof layout.gap === "number") style.gap = layout.gap;
-  }
-
-  if (layout.mode === "grid") {
-    style.display = "grid";
-    if (typeof layout.columns === "number") style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
-    if (typeof layout.gap === "number") style.gap = layout.gap;
+    return style;
   }
 
   if (layout.mode === "grid-item") {
+    const style: React.CSSProperties = {};
     if (typeof layout.x === "number") style.gridColumn = layout.x + 1;
     if (typeof layout.y === "number") style.gridRow = layout.y + 1;
     if (typeof layout.w === "number") style.gridColumnEnd = `span ${layout.w}`;
     if (typeof layout.h === "number") style.gridRowEnd = `span ${layout.h}`;
+    return style;
   }
 
-  return style;
+  return {};
 }
 
 function renderNode(
@@ -70,7 +60,12 @@ function renderNode(
 
   const content = render(node, ctx, childNodes);
 
-  if (!isSelected && !layoutStyle.position) {
+  const needsWrapper = isSelected ||
+    layoutStyle.position === "absolute" ||
+    layoutStyle.gridColumn !== undefined ||
+    node.locked === true;
+
+  if (!needsWrapper) {
     return content;
   }
 
@@ -82,6 +77,11 @@ function renderNode(
   if (isSelected) {
     style.outline = "2px solid #3b82f6";
     style.outlineOffset = "1px";
+  }
+
+  if (node.locked === true && ctx.mode === "editor") {
+    style.opacity = 0.7;
+    style.pointerEvents = "none";
   }
 
   return (
