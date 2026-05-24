@@ -1,16 +1,28 @@
 import { describe, it, expect } from "vitest";
-import type { PersistedSceneGraph } from "../src/types.js";
+import type { PersistedSceneGraph, SceneGraph, SceneNode } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
   createRuntimeEventLog,
   appendRuntimeEvent,
+  replayRuntimeEvents,
 } from "../src/runtime/event-log.js";
+
+const baseNode = (id: string, type = "container"): SceneNode => ({
+  id,
+  type,
+});
 
 const emptyPersistedScene: PersistedSceneGraph = {
   version: 0,
   rootId: "root",
-  nodes: { root: { id: "root", type: "container" } },
+  nodes: { root: { id: "root", type: "container", children: [] } },
 };
+
+const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
+  version: 0,
+  rootId,
+  nodes,
+});
 
 describe("createRuntimeEventLog", () => {
   it("creates an event log with the initial scene and empty actions", () => {
@@ -47,3 +59,80 @@ describe("appendRuntimeEvent", () => {
     expect(log.actions).toEqual([]);
   });
 });
+
+describe("replayRuntimeEvents", () => {
+  it("replays actions from the log and updates the scene", () => {
+    const log = createRuntimeEventLog(emptyPersistedScene);
+    let scene = makeScene({
+      root: { id: "root", type: "container", children: [] },
+    });
+
+    const dispatch = (action: RuntimeAction) => {
+      const a = action as Extract<RuntimeAction, { type: "create-node" }>;
+      scene = {
+        ...scene,
+        nodes: {
+          ...scene.nodes,
+          root: {
+            ...scene.nodes.root!,
+            children: [...(scene.nodes.root!.children ?? []), a.node.id],
+          },
+          [a.node.id]: { ...a.node, parentId: "root" },
+        },
+      };
+      return { ok: true, scene };
+    };
+
+    log.actions.push({
+      action: { type: "create-node", node: baseNode("a"), parentId: "root" },
+      timestamp: 1,
+    });
+    log.actions.push({
+      action: { type: "create-node", node: baseNode("b"), parentId: "root" },
+      timestamp: 2,
+    });
+
+    replayRuntimeEvents(log, dispatch);
+    expect(scene.nodes["a"]).toBeDefined();
+    expect(scene.nodes["b"]).toBeDefined();
+    expect(scene.nodes["root"]?.children).toEqual(["a", "b"]);
+  });
+
+  it("skips update-selection actions during replay", () => {
+    const log = createRuntimeEventLog(emptyPersistedScene);
+    let dispatchCount = 0;
+    const dispatch = (_action: RuntimeAction) => {
+      dispatchCount++;
+      return { ok: true, scene: emptyPersistedScene as SceneGraph };
+    };
+
+    log.actions.push({
+      action: { type: "update-selection", nodeIds: ["root"] },
+      timestamp: 1,
+    });
+    log.actions.push({
+      action: { type: "create-node", node: baseNode("a"), parentId: "root" },
+      timestamp: 2,
+    });
+
+    replayRuntimeEvents(log, dispatch);
+    expect(dispatchCount).toBe(1);
+  });
+
+  it("throws when a dispatched action fails", () => {
+    const log = createRuntimeEventLog(emptyPersistedScene);
+    const dispatch = (_action: RuntimeAction) => ({
+      ok: false,
+      scene: emptyPersistedScene as SceneGraph,
+      error: { code: "fail", message: "oops" },
+    });
+
+    log.actions.push({
+      action: { type: "create-node", node: baseNode("a"), parentId: "root" },
+      timestamp: 1,
+    });
+
+    expect(() => replayRuntimeEvents(log, dispatch)).toThrow("Replay failed");
+  });
+});
+
