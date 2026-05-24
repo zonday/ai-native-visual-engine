@@ -166,6 +166,12 @@ export {
   VariableSchema,
   ViewportStateSchema,
   VisualDocumentSchema,
+  LayoutSchema,
+  FreeLayoutSchema,
+  AbsoluteLayoutSchema,
+  FlexLayoutSchema,
+  GridLayoutSchema,
+  GridItemLayoutSchema,
 } from "./types.js";
 
 // ── Bootstrap and lifecycle ──

@@ -102,58 +102,66 @@ export type Asset = z.infer<typeof AssetSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
 
 // ── Layout ──
-export type Layout =
-  | FreeLayout
-  | AbsoluteLayout
-  | FlexLayout
-  | GridLayout
-  | GridItemLayout;
+export const FreeLayoutSchema = z.object({
+  mode: z.literal("free"),
+});
+
+export const AbsoluteLayoutSchema = z.object({
+  mode: z.literal("absolute"),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  rotation: z.number().optional(),
+  zIndex: z.number().optional(),
+});
+
+export const FlexLayoutSchema = z.object({
+  mode: z.literal("flex"),
+  direction: z.enum(["horizontal", "vertical"]),
+  gap: z.number().optional(),
+  align: z.enum(["start", "center", "end", "stretch"]).optional(),
+  justify: z.enum(["start", "center", "end", "space-between"]).optional(),
+  wrap: z.boolean().optional(),
+});
+
+export const GridLayoutSchema = z.object({
+  mode: z.literal("grid"),
+  columns: z.number(),
+  rowHeight: z.number(),
+  gap: z.number(),
+  autoFlow: z.enum(["row", "column"]).optional(),
+});
+
+export const GridItemLayoutSchema = z.object({
+  mode: z.literal("grid-item"),
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+  minW: z.number().optional(),
+  minH: z.number().optional(),
+  maxW: z.number().optional(),
+  maxH: z.number().optional(),
+});
+
+export const LayoutSchema = z.discriminatedUnion("mode", [
+  FreeLayoutSchema,
+  AbsoluteLayoutSchema,
+  FlexLayoutSchema,
+  GridLayoutSchema,
+  GridItemLayoutSchema,
+]);
+
+export type Layout = z.infer<typeof LayoutSchema>;
+export type FreeLayout = z.infer<typeof FreeLayoutSchema>;
+export type AbsoluteLayout = z.infer<typeof AbsoluteLayoutSchema>;
+export type FlexLayout = z.infer<typeof FlexLayoutSchema>;
+export type GridLayout = z.infer<typeof GridLayoutSchema>;
+export type GridItemLayout = z.infer<typeof GridItemLayoutSchema>;
 
 export interface LayoutBase {
   mode: "free" | "absolute" | "flex" | "grid" | "grid-item";
-}
-
-export interface FreeLayout extends LayoutBase {
-  mode: "free";
-}
-
-export interface AbsoluteLayout extends LayoutBase {
-  mode: "absolute";
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  zIndex?: number;
-}
-
-export interface FlexLayout extends LayoutBase {
-  mode: "flex";
-  direction: "horizontal" | "vertical";
-  gap?: number;
-  align?: "start" | "center" | "end" | "stretch";
-  justify?: "start" | "center" | "end" | "space-between";
-  wrap?: boolean;
-}
-
-export interface GridLayout extends LayoutBase {
-  mode: "grid";
-  columns: number;
-  rowHeight: number;
-  gap: number;
-  autoFlow?: "row" | "column";
-}
-
-export interface GridItemLayout extends LayoutBase {
-  mode: "grid-item";
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  minW?: number;
-  minH?: number;
-  maxW?: number;
-  maxH?: number;
 }
 
 // ── Binding ──
