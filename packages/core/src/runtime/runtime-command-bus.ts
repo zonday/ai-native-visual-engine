@@ -1,4 +1,3 @@
-import { createCommandBus } from "../engine/command-bus.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
@@ -6,14 +5,15 @@ import { RuntimeHandlerError } from "./error.js";
 import type { RuntimeContext } from "./handler.js";
 import type { RuntimeHandlerRegistry } from "./handler-registry.js";
 import type { RuntimeMiddleware } from "./middleware.js";
+import { createCommandBus } from "../engine/command-bus.js";
 
 export function createRuntimeCommandBus(
   registry: RuntimeHandlerRegistry,
   middlewares: RuntimeMiddleware[],
-  scene: SceneGraph,
+  initialState: SceneGraph,
   context: RuntimeContext,
 ) {
-  const bus = createCommandBus(registry, middlewares, scene, context);
+  const bus = createCommandBus(registry, middlewares, initialState, context);
   return {
     dispatch(action: RuntimeAction): DispatchResult {
       try {

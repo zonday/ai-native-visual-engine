@@ -1,4 +1,3 @@
-import { createCommandBus } from "../engine/command-bus.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 import type { DocumentDispatchResult } from "./command-bus.js";
@@ -6,14 +5,15 @@ import { DocumentHandlerError } from "./error.js";
 import type { DocumentRuntimeContext } from "./handler.js";
 import type { DocumentHandlerRegistry } from "./handler-registry.js";
 import type { DocumentMiddleware } from "./middleware.js";
+import { createCommandBus } from "../engine/command-bus.js";
 
 export function createDocumentCommandBus(
   registry: DocumentHandlerRegistry,
   middlewares: DocumentMiddleware[],
-  document: VisualDocument,
+  initialState: VisualDocument,
   context: DocumentRuntimeContext,
 ) {
-  const bus = createCommandBus(registry, middlewares, document, context);
+  const bus = createCommandBus(registry, middlewares, initialState, context);
   return {
     dispatch(action: DocumentAction): DocumentDispatchResult {
       try {
