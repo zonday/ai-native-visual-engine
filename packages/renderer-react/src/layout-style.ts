@@ -29,7 +29,7 @@ export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
 
 export function resolveFlexStyle(node: SceneNode): React.CSSProperties {
   const layout = node.layout;
-  const style: React.CSSProperties = { display: "flex" };
+  const style: React.CSSProperties = { display: "flex", position: "relative" };
   if (!layout || layout.mode !== "flex") return style;
 
   if (layout.direction) style.flexDirection = layout.direction as React.CSSProperties["flexDirection"];
@@ -45,7 +45,7 @@ export function resolveFlexStyle(node: SceneNode): React.CSSProperties {
 
 export function resolveGridStyle(node: SceneNode): React.CSSProperties {
   const layout = node.layout;
-  const style: React.CSSProperties = { display: "grid" };
+  const style: React.CSSProperties = { display: "grid", position: "relative" };
   if (!layout || layout.mode !== "grid") return style;
 
   if (layout.columns) style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
