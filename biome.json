@@ -1,0 +1,19 @@
+{
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "useConst": "error"
+      }
+    }
+  },
+  "files": {
+    "includes": ["packages/*/src/**", "*.json", "*.yaml", "*.md"]
+  }
+}

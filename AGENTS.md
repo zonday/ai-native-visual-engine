@@ -44,6 +44,8 @@ These are non-negotiable. Any violation blocks implementation.
 7. Co-locate component, hook, and schema by feature when practical.
 8. Aliased imports only if project config already supports them.
 9. Code style is enforced by biome. The biome config is the single source of truth. No per-file overrides, no inline disable comments without explicit approval.
+10. Exports must be explicit. Never use `export * from` — import and re-export only what the consumer needs.
+11. Subdirectories must not contain `index.ts` barrel files. Every module file exports its own symbols directly. The top-level `index.ts` is the only aggregation point, and it must list every export explicitly.
 
 ## Testing
 
@@ -56,6 +58,8 @@ Every new feature, bug fix, and behavior change MUST include tests. Tests MUST b
 3. Every new compiler pipeline stage MUST have tests covering valid input to expected output and invalid input to expected diagnostics.
 4. Every new renderer component MUST have at least one test verifying correct rendering from a minimal scene fixture.
 5. Bug fixes MUST include a regression test that fails before the fix and passes after.
+6. Package tests MUST live in a package-level `__tests__/` directory (for example `packages/core/__tests__/`). Do NOT place test files inside `src/` or create per-subdirectory test barrels.
+7. Every package `tsconfig.json` MUST include the `__tests__` directory in its `include` array so that `tsc --noEmit` type-checks test files. Example: `"include": ["src", "__tests__"]`.
 
 ### Meaningful Tests
 

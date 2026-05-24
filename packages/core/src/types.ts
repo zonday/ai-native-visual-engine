@@ -1,0 +1,319 @@
+import { z } from "zod/v4";
+
+// ── IDs ──
+export type DocumentId = string;
+export type PageId = string;
+export type SceneId = string;
+export type NodeId = string;
+
+// ── Theme ──
+export const ColorTokensSchema = z.object({
+  background: z.string().optional(),
+  surface: z.string().optional(),
+  surfaceVariant: z.string().optional(),
+  textPrimary: z.string().optional(),
+  textSecondary: z.string().optional(),
+  textMuted: z.string().optional(),
+  border: z.string().optional(),
+  borderFocus: z.string().optional(),
+  accent: z.string().optional(),
+  accentHover: z.string().optional(),
+  danger: z.string().optional(),
+  success: z.string().optional(),
+  warning: z.string().optional(),
+  chart: z.record(z.string(), z.string()).optional(),
+});
+
+export const SpacingTokensSchema = z.object({
+  unit: z.number(),
+  xs: z.number().optional(),
+  sm: z.number().optional(),
+  md: z.number().optional(),
+  lg: z.number().optional(),
+  xl: z.number().optional(),
+  componentGap: z.number().optional(),
+  sectionGap: z.number().optional(),
+});
+
+export const TypographyTokensSchema = z.object({
+  fontFamily: z.string().optional(),
+  fontFamilyMono: z.string().optional(),
+  fontSizeRoot: z.number().optional(),
+  headingScale: z.number().optional(),
+  bodyScale: z.number().optional(),
+  fontWeightHeading: z.number().optional(),
+  fontWeightBody: z.number().optional(),
+  lineHeight: z.number().optional(),
+});
+
+export const BorderTokensSchema = z.object({
+  radiusSm: z.number().optional(),
+  radiusMd: z.number().optional(),
+  radiusLg: z.number().optional(),
+  width: z.number().optional(),
+});
+
+export const ShadowTokensSchema = z.object({
+  sm: z.string().optional(),
+  md: z.string().optional(),
+  lg: z.string().optional(),
+});
+
+export const ThemeTokensSchema = z.object({
+  colors: ColorTokensSchema.optional(),
+  spacing: SpacingTokensSchema.optional(),
+  typography: TypographyTokensSchema.optional(),
+  borders: BorderTokensSchema.optional(),
+  shadows: ShadowTokensSchema.optional(),
+});
+
+export const ThemeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mode: z.enum(["light", "dark"]).optional(),
+  tokens: ThemeTokensSchema,
+});
+
+export type ColorTokens = z.infer<typeof ColorTokensSchema>;
+export type SpacingTokens = z.infer<typeof SpacingTokensSchema>;
+export type TypographyTokens = z.infer<typeof TypographyTokensSchema>;
+export type BorderTokens = z.infer<typeof BorderTokensSchema>;
+export type ShadowTokens = z.infer<typeof ShadowTokensSchema>;
+export type ThemeTokens = z.infer<typeof ThemeTokensSchema>;
+export type Theme = z.infer<typeof ThemeSchema>;
+
+// ── Asset, Variable ──
+export const AssetSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  url: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const VariableSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["string", "number", "boolean", "json"]),
+  value: z.unknown().optional(),
+});
+
+export type Asset = z.infer<typeof AssetSchema>;
+export type Variable = z.infer<typeof VariableSchema>;
+
+// ── Layout ──
+export type Layout =
+  | FreeLayout
+  | AbsoluteLayout
+  | FlexLayout
+  | GridLayout
+  | GridItemLayout;
+
+export interface LayoutBase {
+  mode: "free" | "absolute" | "flex" | "grid" | "grid-item";
+}
+
+export interface FreeLayout extends LayoutBase {
+  mode: "free";
+}
+
+export interface AbsoluteLayout extends LayoutBase {
+  mode: "absolute";
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  zIndex?: number;
+}
+
+export interface FlexLayout extends LayoutBase {
+  mode: "flex";
+  direction: "horizontal" | "vertical";
+  gap?: number;
+  align?: "start" | "center" | "end" | "stretch";
+  justify?: "start" | "center" | "end" | "space-between";
+  wrap?: boolean;
+}
+
+export interface GridLayout extends LayoutBase {
+  mode: "grid";
+  columns: number;
+  rowHeight: number;
+  gap: number;
+  autoFlow?: "row" | "column";
+}
+
+export interface GridItemLayout extends LayoutBase {
+  mode: "grid-item";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+}
+
+// ── Binding ──
+export interface Binding {
+  key: string;
+  source: string;
+  path?: string;
+  transform?: string;
+}
+
+export interface Style {
+  [key: string]: unknown;
+}
+
+export interface RuntimeState {
+  [key: string]: unknown;
+}
+
+// ── Page ──
+export const FilterPresetSchema = z.object({
+  filterComponentId: z.string(),
+  dimension: z.string(),
+  value: z.unknown(),
+});
+
+export const PageMetadataSchema = z.object({
+  icon: z.string().optional(),
+  hidden: z.boolean().optional(),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+  filterPresets: z.array(FilterPresetSchema).optional(),
+});
+
+export const PageSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  sceneId: z.string(),
+  route: z.string().optional(),
+  themeId: z.string().optional(),
+  metadata: PageMetadataSchema.optional(),
+});
+
+export type FilterPreset = z.infer<typeof FilterPresetSchema>;
+export type PageMetadata = z.infer<typeof PageMetadataSchema>;
+export type Page = z.infer<typeof PageSchema>;
+
+// ── Scene ──
+export const PersistedSceneGraphSchema = z.object({
+  version: z.number(),
+  rootId: z.string(),
+  nodes: z.record(z.string(), z.any()),
+  metadata: z
+    .object({
+      title: z.string().optional(),
+      createdAt: z.number().optional(),
+      updatedAt: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const SelectionStateSchema = z.object({
+  nodeIds: z.array(z.string()),
+});
+
+export const ViewportStateSchema = z.object({
+  zoom: z.number(),
+  x: z.number(),
+  y: z.number(),
+});
+
+export const SceneNodeSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string().optional(),
+  parentId: z.string().optional(),
+  children: z.array(z.string()).optional(),
+  props: z.record(z.string(), z.unknown()).optional(),
+  style: z.record(z.string(), z.unknown()).optional(),
+  layout: z.record(z.string(), z.unknown()).optional(),
+  bindings: z
+    .array(
+      z.object({
+        key: z.string(),
+        source: z.string(),
+        path: z.string().optional(),
+        transform: z.string().optional(),
+      }),
+    )
+    .optional(),
+  runtime: z.record(z.string(), z.unknown()).optional(),
+  visible: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  prototypeId: z.string().optional(),
+  activeStates: z.array(z.string()).optional(),
+});
+
+export const SceneGraphSchema = z.object({
+  version: z.number(),
+  rootId: z.string(),
+  nodes: z.record(z.string(), SceneNodeSchema),
+  selection: SelectionStateSchema.optional(),
+  viewport: ViewportStateSchema.optional(),
+  metadata: z
+    .object({
+      title: z.string().optional(),
+      createdAt: z.number().optional(),
+      updatedAt: z.number().optional(),
+    })
+    .optional(),
+});
+
+export type PersistedSceneGraph = z.infer<typeof PersistedSceneGraphSchema>;
+export type SelectionState = z.infer<typeof SelectionStateSchema>;
+export type ViewportState = z.infer<typeof ViewportStateSchema>;
+export type SceneNode = z.infer<typeof SceneNodeSchema>;
+export type SceneGraph = z.infer<typeof SceneGraphSchema>;
+
+// ── Document ──
+export const PrototypeComponentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  baseType: z.string(),
+  defaultProps: z.record(z.string(), z.unknown()),
+  defaultStyle: z.record(z.string(), z.unknown()),
+  defaultLayout: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const DocumentMetadataSchema = z.object({
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+  ownerId: z.string().optional(),
+  version: z.number().optional(),
+});
+
+export const VisualDocumentSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  pages: z.array(PageSchema),
+  scenes: z.record(z.string(), PersistedSceneGraphSchema),
+  activeThemeId: z.string().optional(),
+  themes: z.array(ThemeSchema).optional(),
+  assets: z.array(AssetSchema).optional(),
+  variables: z.array(VariableSchema).optional(),
+  prototypes: z.array(PrototypeComponentSchema).optional(),
+  metadata: DocumentMetadataSchema.optional(),
+});
+
+export const DocumentSnapshotSchema = z.object({
+  document: VisualDocumentSchema,
+});
+
+export const UserWorkspacePreferencesSchema = z.object({
+  lastViewportByPage: z.record(z.string(), ViewportStateSchema).optional(),
+});
+
+export type DocumentMetadata = z.infer<typeof DocumentMetadataSchema>;
+export type PrototypeComponent = z.infer<typeof PrototypeComponentSchema>;
+export type VisualDocument = z.infer<typeof VisualDocumentSchema>;
+export type DocumentSnapshot = z.infer<typeof DocumentSnapshotSchema>;
+export type UserWorkspacePreferences = z.infer<
+  typeof UserWorkspacePreferencesSchema
+>;
