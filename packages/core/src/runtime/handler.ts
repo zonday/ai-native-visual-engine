@@ -1,13 +1,8 @@
+import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 
-export interface RuntimeContext {
-  now: () => number;
-  actorId?: string;
-}
+export type { RuntimeContext };
 
-export type RuntimeHandler<TAction extends RuntimeAction> = (
-  scene: Readonly<SceneGraph>,
-  action: TAction,
-  context: RuntimeContext,
-) => SceneGraph;
+export type RuntimeHandler<TAction extends RuntimeAction = RuntimeAction> =
+  Handler<SceneGraph, TAction, RuntimeContext>;

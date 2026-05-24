@@ -1,6 +1,6 @@
-export class RuntimeHandlerError extends Error {
-  readonly code: string;
-  readonly actionType?: string;
+import { HandlerError } from "../engine/error.js";
+
+export class RuntimeHandlerError extends HandlerError {
   readonly nodeId?: string;
 
   constructor(
@@ -9,10 +9,8 @@ export class RuntimeHandlerError extends Error {
     actionType?: string,
     nodeId?: string,
   ) {
-    super(message);
+    super(code, message, actionType);
     this.name = "RuntimeHandlerError";
-    this.code = code;
-    this.actionType = actionType;
     this.nodeId = nodeId;
   }
 }

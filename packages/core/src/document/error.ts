@@ -1,7 +1,7 @@
-export class DocumentHandlerError extends Error {
-  code: string;
-  actionType?: string;
-  pageId?: string;
+import { HandlerError } from "../engine/error.js";
+
+export class DocumentHandlerError extends HandlerError {
+  readonly pageId?: string;
 
   constructor(
     code: string,
@@ -9,9 +9,8 @@ export class DocumentHandlerError extends Error {
     actionType?: string,
     pageId?: string,
   ) {
-    super(message);
-    this.code = code;
-    this.actionType = actionType;
+    super(code, message, actionType);
+    this.name = "DocumentHandlerError";
     this.pageId = pageId;
   }
 }

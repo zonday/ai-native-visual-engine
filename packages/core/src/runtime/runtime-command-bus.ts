@@ -1,3 +1,4 @@
+import { deepFreeze, detectSameRef, isDev } from "../engine/command-bus.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
@@ -5,34 +6,6 @@ import { RuntimeHandlerError } from "./error.js";
 import type { RuntimeContext } from "./handler.js";
 import type { RuntimeHandlerRegistry } from "./handler-registry.js";
 import type { RuntimeMiddleware } from "./middleware.js";
-
-function deepFreeze<T>(value: T, seen?: WeakSet<object>): T {
-  if (value === null || typeof value !== "object") return value;
-  if (Object.isFrozen(value)) return value;
-  seen ??= new WeakSet();
-  if (seen.has(value)) return value;
-  seen.add(value);
-  for (const key of Reflect.ownKeys(value)) {
-    deepFreeze((value as Record<symbol | string, unknown>)[key], seen);
-  }
-  return Object.freeze(value);
-}
-
-function detectMutation(
-  sceneBefore: SceneGraph,
-  sceneAfter: SceneGraph,
-  action: RuntimeAction,
-): void {
-  if (sceneAfter === sceneBefore) {
-    console.warn(
-      `[immutability] handler for "${action.type}" returned same object reference. Handlers must return a new scene, not mutate in place.`,
-    );
-  }
-}
-
-declare const process: { env: Record<string, string | undefined> } | undefined;
-const isDev =
-  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 
 export function createRuntimeCommandBus(
   registry: RuntimeHandlerRegistry,
@@ -66,7 +39,7 @@ export function createRuntimeCommandBus(
             const sceneBefore = runningScene;
             deepFreeze(runningScene);
             runningScene = handler(runningScene, action, context);
-            detectMutation(sceneBefore, runningScene, action);
+            detectSameRef(sceneBefore, runningScene, action);
           } else {
             runningScene = handler(runningScene, action, context);
           }

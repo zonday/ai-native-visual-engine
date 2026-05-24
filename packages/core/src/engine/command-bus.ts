@@ -39,7 +39,7 @@ function detectSameRef<T>(before: T, after: T, action: { type: string }): void {
 }
 
 declare const process: { env: Record<string, string | undefined> } | undefined;
-export const isDev =
+const isDev =
   typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 
 export function createCommandBus<
@@ -109,4 +109,4 @@ export function createCommandBus<
   };
 }
 
-export type { HandlerRegistry as EngineHandlerRegistry, InverseComputer };
+export { deepFreeze, detectSameRef, isDev };

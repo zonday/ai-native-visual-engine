@@ -1,10 +1,22 @@
+import type {
+  HandlerEntry,
+  HandlerRegistry,
+  InverseComputer,
+} from "../engine/handler-registry.js";
+import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
-import type { RuntimeHandler } from "./handler.js";
-import type { InverseComputer } from "./inverse-registry.js";
+import type { RuntimeContext } from "./handler.js";
 
-export interface RuntimeHandlerEntry {
-  handler: RuntimeHandler<RuntimeAction>;
-  inverse: InverseComputer;
-}
+export type RuntimeHandlerEntry = HandlerEntry<
+  SceneGraph,
+  RuntimeAction,
+  RuntimeContext
+>;
 
-export type RuntimeHandlerRegistry = Map<string, RuntimeHandlerEntry>;
+export type RuntimeHandlerRegistry = HandlerRegistry<
+  SceneGraph,
+  RuntimeAction,
+  RuntimeContext
+>;
+
+export type { InverseComputer };
