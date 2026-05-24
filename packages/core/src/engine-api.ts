@@ -92,12 +92,36 @@ export function createEngineAPI(
   getHistory: () => RuntimeHistoryState,
 ): EngineAPI {
   const subscribers = new Map<string, Set<Subscriber<unknown>>>();
+  let notifyTimer: ReturnType<typeof setTimeout> | undefined;
 
   function notify(key: string, data: unknown) {
-    subscribers.get(key)?.forEach((cb) => cb(data));
+    clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(() => {
+      subscribers.get(key)?.forEach((cb) => cb(data));
+    }, 0);
   }
 
   function dispatchAndNotify(action: RuntimeAction): DispatchResult {
+    const scene = getScene();
+
+    if (action.type === "create-node" && action.parentId && !scene.nodes[action.parentId]) {
+      return { ok: false, scene, error: { code: "scene.invalid-parent", message: `Parent "${action.parentId}" not found`, actionType: "create-node", nodeId: action.parentId } };
+    }
+    if ((action.type === "remove-node" || action.type === "move-node") && "nodeId" in action) {
+      const node = scene.nodes[action.nodeId as string];
+      if (!node) {
+        return { ok: false, scene, error: { code: "scene.node-not-found", message: `Node "${action.nodeId}" not found`, actionType: action.type, nodeId: action.nodeId as string } };
+      }
+      if (action.type === "remove-node" && node.locked) {
+        return { ok: false, scene, error: { code: "scene.root-mutation", message: `Node "${action.nodeId}" is locked`, actionType: "remove-node", nodeId: action.nodeId as string } };
+      }
+    }
+    if (action.type === "update-layout" || action.type === "rotate-node" || action.type === "update-props" || action.type === "update-style" || action.type === "update-bindings" || action.type === "update-runtime") {
+      if ("nodeId" in action && !scene.nodes[action.nodeId as string]) {
+        return { ok: false, scene, error: { code: "scene.node-not-found", message: `Node "${action.nodeId}" not found`, actionType: action.type, nodeId: action.nodeId as string } };
+      }
+    }
+
     const result = commandBus.dispatch(action);
     if (result.ok) {
       notify("scene", getScene());
