@@ -18,7 +18,7 @@ describe("documentValidatorMiddleware", () => {
       emptyDoc,
       () => {
         nextCalled = true;
-        return { ok: true, document: emptyDoc };
+        return { ok: true, state: emptyDoc };
       },
     );
     expect(result.ok).toBe(true);
@@ -29,7 +29,7 @@ describe("documentValidatorMiddleware", () => {
     const result = documentValidatorMiddleware(
       { type: "create-page", page: { id: "p1" } } as unknown as DocumentAction,
       emptyDoc,
-      () => ({ ok: true, document: emptyDoc }),
+      () => ({ ok: true, state: emptyDoc }),
     );
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("validation.action-schema-mismatch");
@@ -39,17 +39,17 @@ describe("documentValidatorMiddleware", () => {
     const result = documentValidatorMiddleware(
       { type: "unknown-action" } as unknown as DocumentAction,
       emptyDoc,
-      () => ({ ok: true, document: emptyDoc }),
+      () => ({ ok: true, state: emptyDoc }),
     );
     expect(result.ok).toBe(false);
-    expect(result.document).toBe(emptyDoc);
+    expect(result.state).toBe(emptyDoc);
   });
 
   it("includes actionType in error for invalid actions", () => {
     const result = documentValidatorMiddleware(
       { type: "reorder-page", pageId: "p1", index: "not-a-number" } as unknown as DocumentAction,
       emptyDoc,
-      () => ({ ok: true, document: emptyDoc }),
+      () => ({ ok: true, state: emptyDoc }),
     );
     expect(result.ok).toBe(false);
     expect(result.error?.actionType).toBe("reorder-page");

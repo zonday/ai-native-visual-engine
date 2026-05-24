@@ -1,3 +1,4 @@
+// ── Document actions ──
 export type {
   BatchDocumentActions,
   CreatePageAction,
@@ -9,7 +10,6 @@ export type {
   SetPageThemeAction,
   UpdatePageRouteAction,
 } from "./document/actions.js";
-
 export {
   BatchDocumentActionsSchema,
   CreatePageActionSchema,
@@ -22,20 +22,14 @@ export {
   UpdatePageRouteActionSchema,
 } from "./document/actions.js";
 
+// ── Document command bus ──
 export type {
   DocumentDispatchResult,
   DocumentRuntimeError,
 } from "./document/command-bus.js";
-
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
-export type {
-  DocumentEventLog,
-  DocumentEventLogEntry,
-} from "./document/event-log.js";
-export {
-  appendDocumentEvent,
-  createDocumentEventLog,
-} from "./document/event-log.js";
+
+// ── Document domain types ──
 export type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -44,30 +38,62 @@ export type {
   DocumentHandlerEntry,
   DocumentHandlerRegistry,
 } from "./document/handler-registry.js";
-export { normalizeRoute } from "./document/handlers/update-page-route.js";
-export type {
-  DocumentHistoryEntry,
-  DocumentHistoryState,
-  HistoryEntry,
-  HistoryState,
-} from "./document/history.js";
-export {
-  createDocumentHistoryState,
-  DEFAULT_MAX_DOCUMENT_UNDO_STACK,
-  pushDocumentUndo,
-  redoDocumentAction,
-  undoDocumentAction,
-} from "./document/history.js";
-export { createUndoHistoryMiddleware } from "./document/history-middleware.js";
-export type { InverseComputer, InverseRegistry } from "./document/inverse.js";
-export { createDefaultDocumentRegistries } from "./document/inverse.js";
-export {
-  computeInverseAction,
-  createInverseRegistry,
-} from "./document/inverse-registry.js";
-
-export { documentValidatorMiddleware } from "./document/middleware/validator.js";
 export type { DocumentMiddleware } from "./document/middleware.js";
+export { DocumentHandlerError } from "./document/error.js";
+
+// ── Document registries ──
+export { createDefaultDocumentRegistries } from "./document/inverse.js";
+
+// ── Runtime actions ──
+export type {
+  BatchActions,
+  CreateNodeAction,
+  MoveNodeAction,
+  RemoveNodeAction,
+  RotateNodeAction,
+  RuntimeAction,
+  UpdateBindingsAction,
+  UpdateLayoutAction,
+  UpdatePropsAction,
+  UpdateRuntimeAction,
+  UpdateSelectionAction,
+  UpdateStyleAction,
+} from "./runtime/actions.js";
+export {
+  BatchActionsSchema,
+  CreateNodeActionSchema,
+  MoveNodeActionSchema,
+  RemoveNodeActionSchema,
+  RotateNodeActionSchema,
+  RuntimeActionSchema,
+  UpdateBindingsActionSchema,
+  UpdateLayoutActionSchema,
+  UpdatePropsActionSchema,
+  UpdateRuntimeActionSchema,
+  UpdateSelectionActionSchema,
+  UpdateStyleActionSchema,
+} from "./runtime/actions.js";
+
+// ── Runtime command bus ──
+export type {
+  CommandBus,
+  DispatchResult,
+  RuntimeError,
+} from "./runtime/command-bus.js";
+export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
+
+// ── Runtime domain types ──
+export type { RuntimeContext, RuntimeHandler } from "./runtime/handler.js";
+export type {
+  RuntimeHandlerEntry,
+  RuntimeHandlerRegistry,
+} from "./runtime/handler-registry.js";
+export type { RuntimeMiddleware } from "./runtime/middleware.js";
+export { RuntimeHandlerError } from "./runtime/error.js";
+
+// ── Runtime registries ──
+export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
+
 // ── Core types ──
 export type {
   AbsoluteLayout,
@@ -107,7 +133,6 @@ export type {
   ViewportState,
   VisualDocument,
 } from "./types.js";
-
 export {
   AssetSchema,
   BorderTokensSchema,

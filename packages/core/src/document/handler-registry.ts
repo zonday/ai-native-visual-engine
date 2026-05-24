@@ -1,10 +1,22 @@
+import type {
+  HandlerEntry,
+  HandlerRegistry,
+  InverseComputer,
+} from "../engine/handler-registry.js";
+import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
-import type { DocumentHandler } from "./handler.js";
-import type { InverseComputer } from "./inverse-registry.js";
+import type { DocumentRuntimeContext } from "./handler.js";
 
-export interface DocumentHandlerEntry {
-  handler: DocumentHandler<DocumentAction>;
-  inverse: InverseComputer;
-}
+export type DocumentHandlerEntry = HandlerEntry<
+  VisualDocument,
+  DocumentAction,
+  DocumentRuntimeContext
+>;
 
-export type DocumentHandlerRegistry = Map<string, DocumentHandlerEntry>;
+export type DocumentHandlerRegistry = HandlerRegistry<
+  VisualDocument,
+  DocumentAction,
+  DocumentRuntimeContext
+>;
+
+export type { InverseComputer };

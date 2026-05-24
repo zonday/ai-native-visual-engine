@@ -86,7 +86,7 @@ describe("history middleware - branch for entry without inverse", () => {
     );
 
     const action = { type: "no-inverse-action" } as unknown as DocumentAction;
-    const next = () => ({ ok: true as const, document: emptyDoc });
+    const next = () => ({ ok: true as const, state: emptyDoc });
 
     middleware(action, emptyDoc, next);
     expect(history.undoStack).toHaveLength(0);
