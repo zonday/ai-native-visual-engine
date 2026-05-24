@@ -6,7 +6,7 @@ export interface DocumentRuntimeContext {
 }
 
 export type DocumentHandler<TAction> = (
-  document: VisualDocument,
+  document: Readonly<VisualDocument>,
   action: TAction,
   context: DocumentRuntimeContext,
 ) => VisualDocument;

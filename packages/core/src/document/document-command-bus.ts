@@ -6,6 +6,34 @@ import type { DocumentRuntimeContext } from "./handler.js";
 import type { DocumentHandlerRegistry } from "./handler-registry.js";
 import type { DocumentMiddleware } from "./middleware.js";
 
+function deepFreeze<T>(value: T, seen?: WeakSet<object>): T {
+  if (value === null || typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  seen ??= new WeakSet();
+  if (seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze((value as Record<symbol | string, unknown>)[key], seen);
+  }
+  return Object.freeze(value);
+}
+
+function detectMutation(
+  docBefore: VisualDocument,
+  docAfter: VisualDocument,
+  action: DocumentAction,
+): void {
+  if (docAfter === docBefore) {
+    console.warn(
+      `[immutability] handler for "${action.type}" returned same object reference. Handlers must return a new document, not mutate in place.`,
+    );
+  }
+}
+
+declare const process: { env: Record<string, string | undefined> } | undefined;
+const isDev =
+  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+
 export function createDocumentCommandBus(
   registry: DocumentHandlerRegistry,
   middlewares: DocumentMiddleware[],
@@ -33,7 +61,14 @@ export function createDocumentCommandBus(
 
       function runChain(): DocumentDispatchResult {
         if (chain.length === 0) {
-          currentDocument = handler(currentDocument, action, context);
+          if (isDev) {
+            const docBefore = currentDocument;
+            deepFreeze(currentDocument);
+            currentDocument = handler(currentDocument, action, context);
+            detectMutation(docBefore, currentDocument, action);
+          } else {
+            currentDocument = handler(currentDocument, action, context);
+          }
           return { ok: true, document: currentDocument };
         }
         const mw = chain.shift();

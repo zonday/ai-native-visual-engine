@@ -147,7 +147,7 @@ Responsibilities:
 
 ```ts
 export type DocumentHandler<TAction extends DocumentAction> = (
-  document: VisualDocument,
+  document: Readonly<VisualDocument>,
   action: TAction,
   context: DocumentRuntimeContext
 ) => VisualDocument
@@ -161,8 +161,18 @@ export interface DocumentRuntimeContext {
 Rules:
 
 1. Handlers are pure relative to input state.
-2. Handlers must not mutate the input document in place.
+2. Handlers must not mutate the input document in place. The input `document` is typed as `Readonly<VisualDocument>` for compile-time protection.
 3. Side effects such as logging and remote sync belong in middleware.
+
+### Immutability Enforcement
+
+In development mode (`NODE_ENV !== "production"`), the command bus applies two additional protections:
+
+1. **Deep freeze** — The input document is recursively frozen with `Object.freeze()` before being passed to the handler. Any attempt to mutate the frozen object (e.g., `pages.push`, property assignment) throws a `TypeError`, which the command bus catches and returns as a `document.handler-error` failure.
+
+2. **Same-reference detection** — After the handler returns, the command bus checks whether the returned document is the same object as the input. If so, it emits a `console.warn` indicating the handler likely mutated in place instead of returning a new object.
+
+These checks are disabled in production to avoid the performance cost of deep freezing.
 
 ## 9. Middleware Pipeline
 
