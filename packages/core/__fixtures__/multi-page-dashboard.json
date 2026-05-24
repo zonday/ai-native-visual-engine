@@ -1,0 +1,22 @@
+{
+  "document": {
+    "id": "doc-dashboard",
+    "title": "Dashboard",
+    "pages": [
+      { "id": "page-1", "name": "Overview", "sceneId": "scene-1" },
+      { "id": "page-2", "name": "Analytics", "sceneId": "scene-2" }
+    ],
+    "scenes": {
+      "scene-1": {
+        "version": 0,
+        "rootId": "root-1",
+        "nodes": { "root-1": { "id": "root-1", "type": "container", "children": [] } }
+      },
+      "scene-2": {
+        "version": 0,
+        "rootId": "root-2",
+        "nodes": { "root-2": { "id": "root-2", "type": "container", "children": ["text-1"] }, "text-1": { "id": "text-1", "type": "text", "parentId": "root-2", "props": { "text": "Analytics" } } }
+      }
+    }
+  }
+}

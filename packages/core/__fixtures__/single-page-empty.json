@@ -1,0 +1,18 @@
+{
+  "document": {
+    "id": "doc-single-page",
+    "title": "Single Page",
+    "pages": [
+      { "id": "page-1", "name": "Page 1", "sceneId": "scene-1" }
+    ],
+    "scenes": {
+      "scene-1": {
+        "version": 0,
+        "rootId": "root-1",
+        "nodes": {
+          "root-1": { "id": "root-1", "type": "container", "children": [] }
+        }
+      }
+    }
+  }
+}
