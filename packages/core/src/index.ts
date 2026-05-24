@@ -157,3 +157,41 @@ export {
   ViewportStateSchema,
   VisualDocumentSchema,
 } from "./types.js";
+
+// ── Bootstrap and lifecycle ──
+export {
+  createNewDocument,
+  createEmptyScene,
+  generateId,
+} from "./bootstrap.js";
+export type { NewDocumentOptions } from "./bootstrap.js";
+
+export {
+  openDocumentSession,
+  materializeScene,
+  SessionError,
+} from "./session.js";
+export type {
+  EditorSessionState,
+  DocumentSession,
+} from "./session.js";
+
+// ── Snapshot and persistence ──
+export {
+  createSnapshotManager,
+  truncateDocumentEventLog,
+  truncateRuntimeEventLog,
+  DEFAULT_SNAPSHOT_INTERVAL,
+  MAX_DOCUMENT_EVENT_LOG_ACTIONS,
+  MAX_SCENE_EVENT_LOG_ACTIONS,
+} from "./snapshot.js";
+export type {
+  SnapshotManager,
+  SnapshotVerification,
+} from "./snapshot.js";
+
+export type { StorageBackend } from "./storage-backend.js";
+
+// ── Import and export ──
+export { importDocument, exportDocument } from "./import-export.js";
+export type { ImportResult, ExportOptions } from "./import-export.js";
