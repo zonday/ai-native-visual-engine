@@ -8,7 +8,7 @@ export interface ContainerProps {
 }
 
 export function ContainerNode({ node, children }: ContainerProps) {
-  const layout = node.layout as Record<string, unknown> | undefined;
+  const layout = node.layout;
 
   return (
     <div

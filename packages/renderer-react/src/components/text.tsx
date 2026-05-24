@@ -7,7 +7,7 @@ export interface TextProps {
 }
 
 export function TextNode({ node }: TextProps) {
-  const text = (node.props as Record<string, unknown> | undefined)?.text as string | undefined;
+  const text = (node.props)?.text as string | undefined;
 
   return (
     <div

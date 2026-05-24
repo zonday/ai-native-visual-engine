@@ -8,7 +8,7 @@ export interface GridProps {
 }
 
 export function GridNode({ node, children }: GridProps) {
-  const layout = node.layout as Record<string, unknown> | undefined;
+  const layout = node.layout;
 
   return (
     <div

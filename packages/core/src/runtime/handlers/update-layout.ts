@@ -66,7 +66,7 @@ export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   }
 
   const merged = { ...(node.layout ?? {}), ...action.layout };
-  validateLayout(merged as Record<string, unknown>, action.nodeId);
+  validateLayout(merged, action.nodeId);
 
   const updatedNode = {
     ...node,

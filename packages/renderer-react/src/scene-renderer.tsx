@@ -12,7 +12,7 @@ function resolveRenderer(
 }
 
 function getLayoutStyle(node: SceneNode): React.CSSProperties {
-  const layout = node.layout as Record<string, unknown> | undefined;
+  const layout = node.layout;
   if (!layout) return {};
 
   const style: React.CSSProperties = {};
