@@ -81,6 +81,10 @@ export interface EngineAPI {
 
 type Subscriber<T> = (data: T) => void;
 
+function getAllNodes(scene: SceneGraph): SceneNode[] {
+  return Object.values(scene.nodes);
+}
+
 export function createEngineAPI(
   getScene: () => SceneGraph,
   pageId: PageId,
@@ -91,6 +95,15 @@ export function createEngineAPI(
 
   function notify(key: string, data: unknown) {
     subscribers.get(key)?.forEach((cb) => cb(data));
+  }
+
+  function dispatchAndNotify(action: RuntimeAction): DispatchResult {
+    const result = commandBus.dispatch(action);
+    if (result.ok) {
+      notify("scene", getScene());
+      notify("selection", getScene().selection?.nodeIds ?? []);
+    }
+    return result;
   }
 
   const nodeAPI: NodeAPI = {
@@ -112,48 +125,44 @@ export function createEngineAPI(
     exists(nodeId) { return nodeId in getScene().nodes; },
   };
 
-  function getAllNodes(): SceneNode[] {
-    return Object.values(getScene().nodes);
-  }
-
   const sceneAPI: SceneAPI = {
     getRoot() { return getScene().nodes[getScene().rootId]!; },
     getActivePageId() { return pageId; },
     getSceneVersion() { return getScene().version; },
-    getAllNodes,
-    findNodes(predicate) { return getAllNodes().filter(predicate); },
-    findNodeByType(type) { return getAllNodes().filter((n) => n.type === type); },
+    getAllNodes() { return getAllNodes(getScene()); },
+    findNodes(predicate) { return getAllNodes(getScene()).filter(predicate); },
+    findNodeByType(type) { return getAllNodes(getScene()).filter((n) => n.type === type); },
   };
 
   const selectionAPI: SelectionAPI = {
     getSelection() { return getScene().selection?.nodeIds ?? []; },
-    isSelected(nodeId) { return getScene().selection?.nodeIds.includes(nodeId) ?? false; },
+    isSelected(nodeId) { return getScene().selection?.nodeIds.includes(nodeId) === true; },
     select(nodeIds) {
       const unique = [...new Set(nodeIds)];
-      commandBus.dispatch({ type: "update-selection", nodeIds: unique });
+      dispatchAndNotify({ type: "update-selection", nodeIds: unique });
     },
     addToSelection(nodeIds) {
       const current = getScene().selection?.nodeIds ?? [];
       const unique = [...new Set([...current, ...nodeIds])];
-      commandBus.dispatch({ type: "update-selection", nodeIds: unique });
+      dispatchAndNotify({ type: "update-selection", nodeIds: unique });
     },
     removeFromSelection(nodeIds) {
       const current = getScene().selection?.nodeIds ?? [];
       const set = new Set(nodeIds);
-      commandBus.dispatch({ type: "update-selection", nodeIds: current.filter((id) => !set.has(id)) });
+      dispatchAndNotify({ type: "update-selection", nodeIds: current.filter((id) => !set.has(id)) });
     },
-    clearSelection() { commandBus.dispatch({ type: "update-selection", nodeIds: [] }); },
+    clearSelection() { dispatchAndNotify({ type: "update-selection", nodeIds: [] }); },
     selectAll() {
-      const all = getAllNodes().filter((n) => n.id !== getScene().rootId);
-      commandBus.dispatch({ type: "update-selection", nodeIds: all.map((n) => n.id) });
+      const all = getAllNodes(getScene()).filter((n) => n.id !== getScene().rootId);
+      dispatchAndNotify({ type: "update-selection", nodeIds: all.map((n) => n.id) });
     },
     selectParent(nodeId) {
       const parent = nodeAPI.getParent(nodeId);
-      if (parent) commandBus.dispatch({ type: "update-selection", nodeIds: [parent.id] });
+      if (parent) dispatchAndNotify({ type: "update-selection", nodeIds: [parent.id] });
     },
     selectChildren(nodeId) {
       const children = nodeAPI.getChildren(nodeId);
-      commandBus.dispatch({ type: "update-selection", nodeIds: children.map((c) => c.id) });
+      dispatchAndNotify({ type: "update-selection", nodeIds: children.map((c) => c.id) });
     },
   };
 
@@ -162,11 +171,11 @@ export function createEngineAPI(
     canRedo() { return getHistory().redoStack.length > 0; },
     undo() {
       const result = undoRuntimeAction(getHistory());
-      if (result) commandBus.dispatch(result.inverseAction as RuntimeAction);
+      if (result) dispatchAndNotify(result.inverseAction as RuntimeAction);
     },
     redo() {
       const result = redoRuntimeAction(getHistory());
-      if (result) commandBus.dispatch(result.action as RuntimeAction);
+      if (result) dispatchAndNotify(result.action as RuntimeAction);
     },
     getUndoStackSize() { return getHistory().undoStack.length; },
     getRedoStackSize() { return getHistory().redoStack.length; },
@@ -174,34 +183,34 @@ export function createEngineAPI(
 
   const dispatchAPI: DispatchAPI = {
     createNode(node, parentId, index) {
-      return commandBus.dispatch({ type: "create-node", node, parentId, index }) as DispatchResult;
+      return dispatchAndNotify({ type: "create-node", node, parentId, index });
     },
     removeNode(nodeId) {
-      return commandBus.dispatch({ type: "remove-node", nodeId }) as DispatchResult;
+      return dispatchAndNotify({ type: "remove-node", nodeId });
     },
     moveNode(nodeId, parentId, index) {
-      return commandBus.dispatch({ type: "move-node", nodeId, parentId, index }) as DispatchResult;
+      return dispatchAndNotify({ type: "move-node", nodeId, parentId, index });
     },
     updateLayout(nodeId, layout) {
-      return commandBus.dispatch({ type: "update-layout", nodeId, layout }) as DispatchResult;
+      return dispatchAndNotify({ type: "update-layout", nodeId, layout });
     },
     rotateNode(nodeId, rotation) {
-      return commandBus.dispatch({ type: "rotate-node", nodeId, rotation }) as DispatchResult;
+      return dispatchAndNotify({ type: "rotate-node", nodeId, rotation });
     },
     updateProps(nodeId, props) {
-      return commandBus.dispatch({ type: "update-props", nodeId, props }) as DispatchResult;
+      return dispatchAndNotify({ type: "update-props", nodeId, props });
     },
     updateStyle(nodeId, style) {
-      return commandBus.dispatch({ type: "update-style", nodeId, style }) as DispatchResult;
+      return dispatchAndNotify({ type: "update-style", nodeId, style });
     },
     updateBindings(nodeId, bindings) {
-      return commandBus.dispatch({ type: "update-bindings", nodeId, bindings }) as DispatchResult;
+      return dispatchAndNotify({ type: "update-bindings", nodeId, bindings });
     },
     updateRuntime(nodeId, runtime) {
-      return commandBus.dispatch({ type: "update-runtime", nodeId, runtime }) as DispatchResult;
+      return dispatchAndNotify({ type: "update-runtime", nodeId, runtime });
     },
     batch(actions) {
-      return commandBus.dispatch({ type: "batch-actions", actions }) as DispatchResult;
+      return dispatchAndNotify({ type: "batch-actions", actions });
     },
   };
 
@@ -213,22 +222,34 @@ export function createEngineAPI(
       const idx = active.indexOf(state);
       if (idx >= 0) active.splice(idx, 1);
       active.push(state);
-      commandBus.dispatch({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
     },
     clearState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
       const active = (node.activeStates ?? []).filter((s) => s !== state);
-      commandBus.dispatch({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+      dispatchAndNotify({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
     },
-    setExclusive(nodeId, state, group) {
-      const all = getAllNodes();
+    setExclusive(nodeId, state, _group) {
+      const all = getAllNodes(getScene());
+      const actions: RuntimeAction[] = [];
       for (const n of all) {
         if (n.id !== nodeId && n.activeStates?.includes(state)) {
-          stateAPI.clearState(n.id, state);
+          const filtered = (n.activeStates ?? []).filter((s) => s !== state);
+          actions.push({ type: "update-runtime", nodeId: n.id, runtime: { activeStates: filtered } });
         }
       }
-      stateAPI.setState(nodeId, state);
+      const thisNode = getScene().nodes[nodeId];
+      if (thisNode) {
+        const active = thisNode.activeStates ? [...thisNode.activeStates] : [];
+        const idx = active.indexOf(state);
+        if (idx >= 0) active.splice(idx, 1);
+        active.push(state);
+        actions.push({ type: "update-runtime", nodeId, runtime: { activeStates: active } });
+      }
+      if (actions.length > 0) {
+        dispatchAndNotify({ type: "batch-actions", actions });
+      }
     },
     getActiveStates(nodeId) {
       return getScene().nodes[nodeId]?.activeStates ?? [];
