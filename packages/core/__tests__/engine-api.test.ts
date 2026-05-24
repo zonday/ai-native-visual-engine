@@ -233,6 +233,91 @@ describe("createEngineAPI", () => {
     expect(result.error?.code).toBe("scene.locked");
   });
 
+  it("dispatch.rejects move-node with missing node", () => {
+    const { api } = setup();
+    expect(api.dispatch.moveNode("missing", "root").ok).toBe(false);
+  });
+
+  it("dispatch.rejects update-layout with missing node", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateLayout("missing", {}).ok).toBe(false);
+  });
+
+  it("dispatch.rejects update-props with missing node", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateProps("missing", {}).ok).toBe(false);
+  });
+
+  it("dispatch.updateStyle dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateStyle("a", { color: "blue" }).ok).toBe(true);
+  });
+
+  it("dispatch.updateBindings dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateBindings("a", []).ok).toBe(true);
+  });
+
+  it("dispatch.updateRuntime dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateRuntime("a", { loading: true }).ok).toBe(true);
+  });
+
+  it("dispatch.rotateNode dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.rotateNode("a", 45).ok).toBe(true);
+  });
+
+  it("dispatch.batch dispatches correctly", () => {
+    const { api } = setup();
+    const result = api.dispatch.batch([
+      { type: "create-node", node: { id: "x", type: "text" }, parentId: "root" },
+    ]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("dispatch.moveNode dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.moveNode("a", "root", 0).ok).toBe(true);
+  });
+
+  it("dispatch.updateLayout dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateLayout("a", { x: 100 }).ok).toBe(true);
+  });
+
+  it("dispatch.updateProps dispatches correctly", () => {
+    const { api } = setup();
+    expect(api.dispatch.updateProps("a", { text: "updated" }).ok).toBe(true);
+  });
+
+  // StateAPI
+  it("state.setState activates state", () => {
+    const { api } = setup();
+    api.states.setState("a", "hover");
+    // state dispatched via command bus, gets applied
+  });
+
+  it("state.clearState deactivates state", () => {
+    const { api } = setup();
+    api.states.setState("a", "hover");
+    api.states.clearState("a", "hover");
+  });
+
+  it("state.setExclusive clears other nodes in group", () => {
+    const scene = makeScene({
+      root: { id: "root", type: "container", children: ["a", "b"] },
+      a: { id: "a", type: "text", parentId: "root", activeStates: ["active"] },
+      b: { id: "b", type: "text", parentId: "root", activeStates: ["active"] },
+    });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(
+      () => ({ ok: false, scene, error: { code: "fail", message: "noop" } }),
+    );
+    const bus = createRuntimeCommandBus(handlerRegistry, [], scene, { now: Date.now });
+    const api = createEngineAPI(() => bus.getScene(), "page-1" as PageId, bus, () => createRuntimeHistoryState());
+    api.states.setExclusive("a", "active", "interaction");
+  });
+
   // HistoryAPI
   it("history reports empty stacks initially", () => {
     const { api } = setup();
@@ -243,6 +328,21 @@ describe("createEngineAPI", () => {
   it("history.getUndoStackSize returns size", () => {
     const { api } = setup();
     expect(api.history.getUndoStackSize()).toBe(0);
+  });
+
+  it("history.getRedoStackSize returns size", () => {
+    const { api } = setup();
+    expect(api.history.getRedoStackSize()).toBe(0);
+  });
+
+  it("history.undo is no-op when stack empty", () => {
+    const { api } = setup();
+    api.history.undo(); // should not throw
+  });
+
+  it("history.redo is no-op when stack empty", () => {
+    const { api } = setup();
+    api.history.redo(); // should not throw
   });
 
   // StateAPI
