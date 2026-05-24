@@ -9,19 +9,18 @@ export interface ContainerProps {
 
 export function ContainerNode({ node, children }: ContainerProps) {
   const layout = node.layout;
+  const style: React.CSSProperties = { display: "flex" };
+
+  if (layout) {
+    if (layout.direction) style.flexDirection = layout.direction as React.CSSProperties["flexDirection"];
+    if (typeof layout.gap === "number") style.gap = layout.gap;
+    if (typeof layout.padding === "number") style.padding = layout.padding;
+    if (typeof layout.width === "number") style.width = layout.width;
+    if (typeof layout.height === "number") style.height = layout.height;
+  }
 
   return (
-    <div
-      data-component="container"
-      style={{
-        display: "flex",
-        flexDirection: (layout?.direction as React.CSSProperties["flexDirection"]) ?? "column",
-        gap: (typeof layout?.gap === "number" ? layout.gap : 0) as number,
-        padding: (typeof layout?.padding === "number" ? layout.padding : 8) as number,
-        width: (typeof layout?.width === "number" ? layout.width : "100%") as number | string,
-        height: (typeof layout?.height === "number" ? layout.height : "100%") as number | string,
-      }}
-    >
+    <div data-component="container" style={style}>
       {children}
     </div>
   );

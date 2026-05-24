@@ -9,21 +9,18 @@ export interface GridProps {
 
 export function GridNode({ node, children }: GridProps) {
   const layout = node.layout;
+  const style: React.CSSProperties = { display: "grid" };
+
+  if (layout) {
+    if (layout.columns) style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
+    if (typeof layout.gap === "number") style.gap = layout.gap;
+    if (typeof layout.padding === "number") style.padding = layout.padding;
+    if (typeof layout.width === "number") style.width = layout.width;
+    if (typeof layout.height === "number") style.height = layout.height;
+  }
 
   return (
-    <div
-      data-component="grid"
-      style={{
-        display: "grid",
-        gridTemplateColumns: layout?.columns
-          ? `repeat(${layout.columns}, 1fr)`
-          : "repeat(auto-fill, minmax(100px, 1fr))",
-        gap: (typeof layout?.gap === "number" ? layout.gap : 8) as number,
-        padding: (typeof layout?.padding === "number" ? layout.padding : 8) as number,
-        width: (typeof layout?.width === "number" ? layout.width : "100%") as number | string,
-        height: (typeof layout?.height === "number" ? layout.height : "100%") as number | string,
-      }}
-    >
+    <div data-component="grid" style={style}>
       {children}
     </div>
   );
