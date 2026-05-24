@@ -228,3 +228,18 @@ export type {
 // ── Import and export ──
 export { importDocument, exportDocument } from "./import-export.js";
 export type { ImportResult, ExportOptions } from "./import-export.js";
+
+// ── Engine API ──
+export { createEngineAPI } from "./engine-api.js";
+export type {
+  EngineAPI,
+  NodeAPI,
+  SceneAPI,
+  SelectionAPI,
+  HistoryAPI,
+  DispatchAPI,
+  StateAPI,
+} from "./engine-api.js";
+
+// ── Theme ──
+export { BASE_THEME, resolveTheme, resolveToken } from "./theme.js";
