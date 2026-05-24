@@ -243,3 +243,7 @@ export type {
 
 // ── Theme ──
 export { BASE_THEME, resolveTheme, resolveToken } from "./theme.js";
+
+// ── Grid layout ──
+export { autoLayoutGrid, detectCollisions, resolveCollisions } from "./grid-layout.js";
+export type { CollisionInfo, GridItemPosition, LayoutResult } from "./grid-layout.js";
