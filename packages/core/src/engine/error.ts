@@ -52,7 +52,7 @@ export class HandlerError extends Error {
     return {
       code: this.code,
       message: this.message,
-      severity: domain === "validation" ? "error" : "error",
+      severity: "error",
       domain,
       recoverable: true,
       context: this.actionType ? { actionType: this.actionType } : undefined,

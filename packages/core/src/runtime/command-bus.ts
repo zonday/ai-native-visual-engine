@@ -1,6 +1,5 @@
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
-import type { EngineError, ErrorDomain, ErrorSeverity } from "../engine/error.js";
 
 export interface DispatchResult {
   ok: boolean;
@@ -8,8 +7,9 @@ export interface DispatchResult {
   error?: RuntimeError;
 }
 
-export interface RuntimeError extends EngineError {
-  domain: "scene";
+export interface RuntimeError {
+  code: string;
+  message: string;
   actionType?: string;
   nodeId?: string;
 }
