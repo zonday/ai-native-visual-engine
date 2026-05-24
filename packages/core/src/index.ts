@@ -43,17 +43,19 @@ export type {
 export type { DocumentHandlerRegistry } from "./document/handler-registry.js";
 export { createHandlerRegistry } from "./document/handler-registry.js";
 export { normalizeRoute } from "./document/handlers/update-page-route.js";
-
 export type {
   DocumentHistoryEntry,
   DocumentHistoryState,
 } from "./document/history.js";
 export {
   createDocumentHistoryState,
+  DEFAULT_MAX_DOCUMENT_UNDO_STACK,
   pushDocumentUndo,
   redoDocumentAction,
   undoDocumentAction,
 } from "./document/history.js";
+export { createUndoHistoryMiddleware } from "./document/history-middleware.js";
+export { computeInverseAction } from "./document/inverse.js";
 
 export { documentValidatorMiddleware } from "./document/middleware/validator.js";
 export type { DocumentMiddleware } from "./document/middleware.js";
