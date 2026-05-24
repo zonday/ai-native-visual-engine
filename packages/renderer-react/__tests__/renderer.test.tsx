@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { renderToString } from "react-dom/server";
 import type { SceneGraph, SceneNode } from "@ai-native/core";
 import { SceneRenderer } from "../src/scene-renderer.jsx";
 import type { RenderContext, ComponentRegistry } from "../src/renderer.js";
@@ -17,7 +18,8 @@ const emptyScene: SceneGraph = {
 const registry: ComponentRegistry = new Map();
 registry.set("container", {
   type: "container",
-  render: (node, ctx) => ContainerNode({ node, ctx }),
+  render: (node, ctx, children) =>
+    ContainerNode({ node, ctx, children }),
 });
 registry.set("text", {
   type: "text",
@@ -40,8 +42,10 @@ describe("SceneRenderer", () => {
       },
     };
     const ctx = { ...context, scene };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain('data-component="container"');
   });
 
   it("renders text node", () => {
@@ -63,8 +67,11 @@ describe("SceneRenderer", () => {
       },
     };
     const ctx = { ...context, scene };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain('data-component="text"');
+    expect(html).toContain("Hello");
   });
 
   it("renders missing plugin placeholder for unknown type", () => {
@@ -80,8 +87,11 @@ describe("SceneRenderer", () => {
       },
     };
     const ctx = { ...context, scene };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain("Unknown");
+    expect(html).toContain("unknown-type");
   });
 
   it("does not render invisible nodes", () => {
@@ -103,11 +113,13 @@ describe("SceneRenderer", () => {
       },
     };
     const ctx = { ...context, scene };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain('data-node-id="child-1"');
   });
 
-  it("shows selection outline in editor mode", () => {
+  it("shows selection chrome in editor mode when selection matches", () => {
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -118,18 +130,19 @@ describe("SceneRenderer", () => {
           children: [],
         },
       },
-      selection: { nodeIds: ["root"] },
     };
     const ctx: RenderContext = {
       ...context,
       scene,
       selection: { nodeIds: ["root"] },
     };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain('data-selection-chrome="root"');
   });
 
-  it("does not show selection outline in runtime mode", () => {
+  it("does not show selection chrome in runtime mode even with selection", () => {
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -140,7 +153,6 @@ describe("SceneRenderer", () => {
           children: [],
         },
       },
-      selection: { nodeIds: ["root"] },
     };
     const ctx: RenderContext = {
       mode: "runtime",
@@ -148,11 +160,13 @@ describe("SceneRenderer", () => {
       scene,
       selection: { nodeIds: ["root"] },
     };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("data-selection-chrome");
   });
 
-  it("renders marquee overlay when marqueeRect is provided", () => {
+  it("renders marquee overlay when marqueeRect is provided in editor mode", () => {
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -169,14 +183,77 @@ describe("SceneRenderer", () => {
       scene,
       marqueeRect: { x: 10, y: 20, width: 300, height: 150 },
     };
-    const result = SceneRenderer({ registry, context: ctx });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain("data-marquee-overlay");
+  });
+
+  it("does not render marquee overlay in runtime mode", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: [],
+        },
+      },
+    };
+    const ctx: RenderContext = {
+      mode: "runtime",
+      pageId: "page-1",
+      scene,
+      marqueeRect: { x: 10, y: 20, width: 300, height: 150 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("data-marquee-overlay");
+  });
+
+  it("forwards onTransform and renders selected node with resize handles", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1"],
+        },
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+        },
+      },
+    };
+    const ctx: RenderContext = {
+      ...context,
+      scene,
+      selection: { nodeIds: ["child-1"] },
+    };
+    const html = renderToString(
+      <SceneRenderer
+        registry={registry}
+        context={ctx}
+        onTransform={() => {}}
+      />,
+    );
+    expect(html).toContain('data-node-id="child-1"');
+    expect(html).toContain('data-handle="se"');
   });
 });
 
 describe("MissingPluginPlaceholder", () => {
   it("renders with unknown type name", () => {
-    const result = MissingPluginPlaceholder({ nodeType: "custom-widget", mode: "editor" });
-    expect(result).toBeDefined();
+    const html = renderToString(
+      <MissingPluginPlaceholder nodeType="custom-widget" mode="editor" />,
+    );
+    expect(html).toContain("custom-widget");
+    expect(html).toContain("Unknown");
   });
 });
