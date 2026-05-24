@@ -44,9 +44,22 @@ describe("InMemoryStorageBackend", () => {
     ] as RuntimeAction[]);
     await backend.appendEventLog("scene", "scene-1", [
       { type: "create-node", node: { id: "b", type: "container" }, parentId: "root" },
-    ]);
+    ] as RuntimeAction[]);
 
     const loaded = await backend.loadEventLog("scene", "scene-1");
     expect(loaded).toHaveLength(2);
+  });
+
+  it("respects sinceVersion to skip earlier actions", async () => {
+    const backend = new InMemoryStorageBackend();
+    await backend.appendEventLog("document", "doc-1", [
+      { type: "rename-page", pageId: "p1", name: "A" },
+      { type: "rename-page", pageId: "p1", name: "B" },
+      { type: "rename-page", pageId: "p1", name: "C" },
+    ] as DocumentAction[]);
+
+    const loaded = await backend.loadEventLog("document", "doc-1", 2);
+    expect(loaded).toHaveLength(1);
+    expect((loaded[0] as DocumentAction & { name: string }).name).toBe("C");
   });
 });

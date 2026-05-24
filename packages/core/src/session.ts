@@ -23,7 +23,15 @@ export interface EditorSessionState {
 
 export interface DocumentSession {
   readonly state: EditorSessionState;
+
+  /** Returns the current VisualDocument (read-only reference). */
   getDocument(): VisualDocument;
+
+  /**
+   * Materializes the active page's PersistedSceneGraph into a SceneGraph.
+   * Returns the baseline persisted state with empty selection/viewport.
+   * For runtime mutations, use a CommandBus backed by this scene.
+   */
   getActiveScene(): SceneGraph;
   switchPage(pageId: PageId): void;
   close(): void;

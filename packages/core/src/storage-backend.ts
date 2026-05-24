@@ -50,10 +50,14 @@ export class InMemoryStorageBackend implements StorageBackend {
   async loadEventLog(
     context: string,
     contextId: string,
-    _sinceVersion?: number,
+    sinceVersion?: number,
   ): Promise<DocumentAction[] | RuntimeAction[]> {
     const key = `${context}:${contextId}`;
-    return this.eventLogs.get(key) ?? [];
+    const all = this.eventLogs.get(key) ?? [];
+    if (sinceVersion !== undefined) {
+      return all.slice(sinceVersion);
+    }
+    return all;
   }
 
   async compact(_documentId: string): Promise<void> {

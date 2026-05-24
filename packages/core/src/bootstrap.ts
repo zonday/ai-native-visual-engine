@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import type { VisualDocument, PersistedSceneGraph, Page, DocumentId, PageId, SceneId } from "./types.js";
 
 export function generateId(prefix: string): string {
