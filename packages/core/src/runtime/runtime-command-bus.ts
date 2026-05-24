@@ -40,13 +40,14 @@ export function createRuntimeCommandBus(
   scene: SceneGraph,
   context: RuntimeContext,
 ) {
+  let currentScene = scene;
   return {
     dispatch(action: RuntimeAction): DispatchResult {
       const entry = registry.get(action.type);
       if (!entry) {
         return {
           ok: false,
-          scene,
+          scene: currentScene,
           error: {
             code: "scene.unknown-action-type",
             message: `Unknown runtime action type: ${action.type}`,
@@ -56,41 +57,45 @@ export function createRuntimeCommandBus(
       }
 
       const handler = entry.handler;
-      let currentScene = scene;
+      let runningScene = currentScene;
       const chain = [...middlewares];
 
       function runChain(): DispatchResult {
         if (chain.length === 0) {
           if (isDev) {
-            const sceneBefore = currentScene;
-            deepFreeze(currentScene);
-            currentScene = handler(currentScene, action, context);
-            detectMutation(sceneBefore, currentScene, action);
+            const sceneBefore = runningScene;
+            deepFreeze(runningScene);
+            runningScene = handler(runningScene, action, context);
+            detectMutation(sceneBefore, runningScene, action);
           } else {
-            currentScene = handler(currentScene, action, context);
+            runningScene = handler(runningScene, action, context);
           }
-          return { ok: true, scene: currentScene };
+          return { ok: true, scene: runningScene };
         }
         const mw = chain.shift();
         if (!mw)
           return {
             ok: false,
-            scene: currentScene,
+            scene: runningScene,
             error: {
               code: "scene.middleware-error",
               message: "Middleware chain broken",
             },
           };
-        return mw(action, currentScene, runChain);
+        return mw(action, runningScene, runChain);
       }
 
       try {
-        return runChain();
+        const result = runChain();
+        if (result.ok) {
+          currentScene = result.scene;
+        }
+        return result;
       } catch (err) {
         if (err instanceof RuntimeHandlerError) {
           return {
             ok: false,
-            scene: currentScene,
+            scene: runningScene,
             error: {
               code: err.code,
               message: err.message,
@@ -101,7 +106,7 @@ export function createRuntimeCommandBus(
         }
         return {
           ok: false,
-          scene: currentScene,
+          scene: runningScene,
           error: {
             code: "scene.handler-error",
             message: err instanceof Error ? err.message : "Unknown error",
@@ -111,7 +116,7 @@ export function createRuntimeCommandBus(
       }
     },
     getScene(): SceneGraph {
-      return scene;
+      return currentScene;
     },
   };
 }

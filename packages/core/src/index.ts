@@ -163,10 +163,8 @@ export {
   updateStyleInverse,
 } from "./runtime/handlers/update-style.js";
 export type {
-  HistoryEntry as RuntimeHistoryEntry,
-  HistoryState as RuntimeHistoryState,
-  RuntimeHistoryEntry as RuntimeHistoryEntryDetail,
-  RuntimeHistoryState as RuntimeHistoryStateDetail,
+  RuntimeHistoryEntry,
+  RuntimeHistoryState,
 } from "./runtime/history.js";
 export {
   createRuntimeHistoryState,

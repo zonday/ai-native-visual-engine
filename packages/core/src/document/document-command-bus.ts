@@ -40,13 +40,14 @@ export function createDocumentCommandBus(
   document: VisualDocument,
   context: DocumentRuntimeContext,
 ) {
+  let currentDocument = document;
   return {
     dispatch(action: DocumentAction): DocumentDispatchResult {
       const entry = registry.get(action.type);
       if (!entry) {
         return {
           ok: false,
-          document,
+          document: currentDocument,
           error: {
             code: "document.unknown-action-type",
             message: `Unknown document action type: ${action.type}`,
@@ -56,41 +57,45 @@ export function createDocumentCommandBus(
       }
 
       const handler = entry.handler;
-      let currentDocument = document;
+      let runningDocument = currentDocument;
       const chain = [...middlewares];
 
       function runChain(): DocumentDispatchResult {
         if (chain.length === 0) {
           if (isDev) {
-            const docBefore = currentDocument;
-            deepFreeze(currentDocument);
-            currentDocument = handler(currentDocument, action, context);
-            detectMutation(docBefore, currentDocument, action);
+            const docBefore = runningDocument;
+            deepFreeze(runningDocument);
+            runningDocument = handler(runningDocument, action, context);
+            detectMutation(docBefore, runningDocument, action);
           } else {
-            currentDocument = handler(currentDocument, action, context);
+            runningDocument = handler(runningDocument, action, context);
           }
-          return { ok: true, document: currentDocument };
+          return { ok: true, document: runningDocument };
         }
         const mw = chain.shift();
         if (!mw)
           return {
             ok: false,
-            document: currentDocument,
+            document: runningDocument,
             error: {
               code: "document.middleware-error",
               message: "Middleware chain broken",
             },
           };
-        return mw(action, currentDocument, runChain);
+        return mw(action, runningDocument, runChain);
       }
 
       try {
-        return runChain();
+        const result = runChain();
+        if (result.ok) {
+          currentDocument = result.document;
+        }
+        return result;
       } catch (err) {
         if (err instanceof DocumentHandlerError) {
           return {
             ok: false,
-            document: currentDocument,
+            document: runningDocument,
             error: {
               code: err.code,
               message: err.message,
@@ -101,7 +106,7 @@ export function createDocumentCommandBus(
         }
         return {
           ok: false,
-          document: currentDocument,
+          document: runningDocument,
           error: {
             code: "document.handler-error",
             message: err instanceof Error ? err.message : "Unknown error",
@@ -111,7 +116,7 @@ export function createDocumentCommandBus(
       }
     },
     getDocument(): VisualDocument {
-      return document;
+      return currentDocument;
     },
   };
 }
