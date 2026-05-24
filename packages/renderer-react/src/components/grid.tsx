@@ -1,22 +1,24 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext } from "../renderer.js";
 
-export interface ContainerProps {
+export interface GridProps {
   node: SceneNode;
   ctx: RenderContext;
   children?: React.ReactNode;
 }
 
-export function ContainerNode({ node, children }: ContainerProps) {
+export function GridNode({ node, children }: GridProps) {
   const layout = node.layout as Record<string, unknown> | undefined;
 
   return (
     <div
-      data-component="container"
+      data-component="grid"
       style={{
-        display: "flex",
-        flexDirection: (layout?.direction as React.CSSProperties["flexDirection"]) ?? "column",
-        gap: (typeof layout?.gap === "number" ? layout.gap : 0) as number,
+        display: "grid",
+        gridTemplateColumns: layout?.columns
+          ? `repeat(${layout.columns}, 1fr)`
+          : "repeat(auto-fill, minmax(100px, 1fr))",
+        gap: (typeof layout?.gap === "number" ? layout.gap : 8) as number,
         padding: (typeof layout?.padding === "number" ? layout.padding : 8) as number,
         width: (typeof layout?.width === "number" ? layout.width : "100%") as number | string,
         height: (typeof layout?.height === "number" ? layout.height : "100%") as number | string,
@@ -27,10 +29,10 @@ export function ContainerNode({ node, children }: ContainerProps) {
   );
 }
 
-export function registerContainer(registry: Map<string, unknown>) {
-  registry.set("container", {
-    type: "container",
+export function registerGrid(registry: Map<string, unknown>) {
+  registry.set("grid", {
+    type: "grid",
     render: (node: SceneNode, _ctx: RenderContext, children?: React.ReactNode) =>
-      ContainerNode({ node, ctx: _ctx, children }),
+      GridNode({ node, ctx: _ctx, children }),
   });
 }

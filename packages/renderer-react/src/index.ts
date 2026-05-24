@@ -3,6 +3,8 @@ export { SceneRenderer } from "./scene-renderer.jsx";
 export type { SceneRendererProps } from "./scene-renderer.jsx";
 export { ContainerNode, registerContainer } from "./components/container.jsx";
 export type { ContainerProps } from "./components/container.jsx";
+export { GridNode, registerGrid } from "./components/grid.jsx";
+export type { GridProps } from "./components/grid.jsx";
 export { TextNode, registerText } from "./components/text.jsx";
 export type { TextProps } from "./components/text.jsx";
 export { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";

@@ -10,7 +10,7 @@ export interface RenderContext {
 
 export interface ComponentRenderer {
   type: string;
-  render: (node: SceneNode, ctx: RenderContext) => React.ReactNode;
+  render: (node: SceneNode, ctx: RenderContext, children?: React.ReactNode) => React.ReactNode;
 }
 
 export type ComponentRegistry = Map<string, ComponentRenderer>;

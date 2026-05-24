@@ -63,6 +63,17 @@ function renderNode(
     ctx.mode === "editor" &&
     ctx.selection?.nodeIds.includes(node.id);
 
+  const childNodes = node.children
+    ?.map((childId: string) => ctx.scene.nodes[childId])
+    .filter((c): c is SceneNode => !!c)
+    .map((child) => renderNode(child, registry, ctx)) ?? [];
+
+  const content = render(node, ctx, childNodes);
+
+  if (!isSelected && !layoutStyle.position) {
+    return content;
+  }
+
   const style: React.CSSProperties = {
     ...layoutStyle,
     ...(node.style as React.CSSProperties | undefined),
@@ -71,23 +82,6 @@ function renderNode(
   if (isSelected) {
     style.outline = "2px solid #3b82f6";
     style.outlineOffset = "1px";
-  }
-
-  const content = render(node, ctx);
-
-  const children = node.children?.map((childId: string) => {
-    const child = ctx.scene.nodes[childId];
-    if (!child) return null;
-    return renderNode(child, registry, ctx);
-  });
-
-  if (children?.length || content) {
-    return (
-      <div key={node.id} data-node-id={node.id} data-node-type={node.type} style={style}>
-        {content}
-        {children}
-      </div>
-    );
   }
 
   return (
