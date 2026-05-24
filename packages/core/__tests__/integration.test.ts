@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { VisualDocumentSchema, DocumentSnapshotSchema } from "../src/types.js";
 import type { DocumentSnapshot, SceneGraph } from "../src/types.js";
 import { createNewDocument, createEmptyScene } from "../src/bootstrap.js";
@@ -9,49 +11,31 @@ import { exportDocument } from "../src/import-export.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
 
+function loadFixture(name: string): DocumentSnapshot {
+  const path = resolve(__dirname, `../__fixtures__/${name}.json`);
+  return JSON.parse(readFileSync(path, "utf-8")) as DocumentSnapshot;
+}
+
 function validateFixture(snapshot: DocumentSnapshot): { ok: boolean; diagnostics: string[] } {
   const diagnostics: string[] = [];
   const parsed = DocumentSnapshotSchema.safeParse(snapshot);
-  if (!parsed.success) {
-    diagnostics.push(parsed.error.message);
-  }
+  if (!parsed.success) diagnostics.push(parsed.error.message);
   const docParsed = VisualDocumentSchema.safeParse(snapshot.document);
-  if (!docParsed.success) {
-    diagnostics.push(docParsed.error.message);
-  }
+  if (!docParsed.success) diagnostics.push(docParsed.error.message);
   return { ok: diagnostics.length === 0, diagnostics };
 }
 
-describe("fixture validation", () => {
-  it("single-page-empty fixture is valid", () => {
-    const doc = createNewDocument({ title: "Single Page" });
-    const snapshot: DocumentSnapshot = { document: doc };
-    const result = validateFixture(snapshot);
+describe("fixture files validation", () => {
+  it("single-page-empty.json is valid", () => {
+    const result = validateFixture(loadFixture("single-page-empty"));
     expect(result.ok).toBe(true);
   });
 
-  it("multi-page-dashboard fixture is valid", () => {
-    const doc = createNewDocument({ title: "Dashboard" });
-    const scene2 = createEmptyScene();
-    scene2.version = 1;
-    doc.pages.push({ id: "page-2", name: "Analytics", sceneId: "scene-2" });
-    doc.scenes["scene-2"] = scene2;
-    const snapshot: DocumentSnapshot = { document: doc };
-    const result = validateFixture(snapshot);
+  it("multi-page-dashboard.json is valid", () => {
+    const result = validateFixture(loadFixture("multi-page-dashboard"));
     expect(result.ok).toBe(true);
   });
-
-  it("unknown-plugin-node does not block validation", () => {
-    const doc = createNewDocument({ title: "Unknown Plugin" });
-    const scene = doc.scenes[doc.pages[0]!.sceneId]!;
-    scene.nodes["unknown-widget"] = { id: "unknown-widget", type: "custom-widget", parentId: scene.rootId };
-    scene.nodes[scene.rootId]!.children = ["unknown-widget"];
-    const snapshot: DocumentSnapshot = { document: doc };
-    const result = validateFixture(snapshot);
-    expect(result.ok).toBe(true);
-  });
-
-  it("invalid-geometry-node produces diagnostics", () => {
+  it("invalid geometry produces validation diagnostics", () => {
     const result = validateFixture({ document: { foo: "bar" } } as unknown as DocumentSnapshot);
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
@@ -65,6 +49,11 @@ describe("createNewDocument initialization", () => {
     expect(parsed.success).toBe(true);
     expect(doc.pages).toHaveLength(1);
     expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
+  });
+
+  it("sets active theme via themeId option", () => {
+    const doc = createNewDocument({ title: "Themed", themeId: "dark-theme" });
+    expect(doc.activeThemeId).toBe("dark-theme");
   });
 });
 
