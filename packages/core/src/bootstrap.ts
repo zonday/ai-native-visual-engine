@@ -1,12 +1,9 @@
+import crypto from "node:crypto";
 import type { VisualDocument, PersistedSceneGraph, Page, DocumentId, PageId, SceneId } from "./types.js";
 
-let idCounter = 0;
-
 export function generateId(prefix: string): string {
-  idCounter++;
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${prefix}-${ts}-${rand}-${idCounter}`;
+  const uuid = crypto.randomUUID();
+  return `${prefix}-${uuid}`;
 }
 
 export function createEmptyScene(

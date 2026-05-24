@@ -1,6 +1,5 @@
-import { VisualDocumentSchema, DocumentSnapshotSchema } from "./types.js";
-import type { VisualDocument, DocumentId, PageId } from "./types.js";
-import { generateId } from "./bootstrap.js";
+import { VisualDocumentSchema } from "./types.js";
+import type { VisualDocument, PageId, DocumentSnapshot } from "./types.js";
 
 export interface ImportResult {
   ok: boolean;
@@ -37,7 +36,7 @@ export function importDocument(
 export function exportDocument(
   document: VisualDocument,
   options?: ExportOptions,
-): VisualDocument {
+): DocumentSnapshot {
   const targetIds = new Set(options?.targetPageIds);
 
   const pages = options?.targetPageIds
@@ -61,5 +60,5 @@ export function exportDocument(
     throw new Error(`Export validation failed: ${validated.error.message}`);
   }
 
-  return exported;
+  return { document: exported };
 }

@@ -61,4 +61,9 @@ describe("generateId", () => {
     const ids = new Set(Array.from({ length: 100 }, () => generateId("test")));
     expect(ids.size).toBe(100);
   });
+
+  it("includes the prefix", () => {
+    const id = generateId("doc");
+    expect(id.startsWith("doc-")).toBe(true);
+  });
 });

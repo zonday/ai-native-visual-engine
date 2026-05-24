@@ -16,7 +16,7 @@ export interface SnapshotManager {
   getSnapshot(): DocumentSnapshot;
   getDocumentEventLog(): DocumentEventLog;
   shouldCompact(): boolean;
-  compact(): DocumentSnapshot;
+  compact(replay: (snapshot: DocumentSnapshot, actions: DocumentEventLog) => DocumentSnapshot): DocumentSnapshot;
 }
 
 export function createSnapshotManager(
@@ -30,32 +30,28 @@ export function createSnapshotManager(
     shouldCompact(): boolean {
       return documentEventLog.actions.length >= interval;
     },
-    compact(): DocumentSnapshot {
-      return snapshot;
+    compact(replay): DocumentSnapshot {
+      return replay(snapshot, documentEventLog);
     },
   };
 }
 
 export function truncateDocumentEventLog(
   log: DocumentEventLog,
-  checkpointVersion: number,
+  sinceIndex: number,
 ): DocumentEventLog {
   return {
     ...log,
-    actions: log.actions.filter(
-      (_entry, index) => index >= checkpointVersion,
-    ),
+    actions: log.actions.filter((_entry, index) => index >= sinceIndex),
   };
 }
 
 export function truncateRuntimeEventLog(
   log: RuntimeEventLog,
-  checkpointVersion: number,
+  sinceIndex: number,
 ): RuntimeEventLog {
   return {
     ...log,
-    actions: log.actions.filter(
-      (_entry, index) => index >= checkpointVersion,
-    ),
+    actions: log.actions.filter((_entry, index) => index >= sinceIndex),
   };
 }

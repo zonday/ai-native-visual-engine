@@ -26,8 +26,8 @@ describe("exportDocument", () => {
   it("exports the full document by default", () => {
     const doc = createNewDocument({ title: "Export" });
     const exported = exportDocument(doc);
-    expect(exported.pages).toHaveLength(1);
-    expect(exported.id).toBe(doc.id);
+    expect(exported.document.pages).toHaveLength(1);
+    expect(exported.document.id).toBe(doc.id);
   });
 
   it("exports only selected pages when targetPageIds is provided", () => {
@@ -44,13 +44,13 @@ describe("exportDocument", () => {
     };
 
     const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
-    expect(exported.pages).toHaveLength(1);
-    expect(exported.pages[0]!.id).toBe(doc.pages[0]!.id);
+    expect(exported.document.pages).toHaveLength(1);
+    expect(exported.document.pages[0]!.id).toBe(doc.pages[0]!.id);
   });
 
   it("strips activeThemeId when includeThemes is false", () => {
     const doc = createNewDocument({ themeId: "dark" });
     const exported = exportDocument(doc, { includeThemes: false });
-    expect(exported.activeThemeId).toBeUndefined();
+    expect(exported.document.activeThemeId).toBeUndefined();
   });
 });
