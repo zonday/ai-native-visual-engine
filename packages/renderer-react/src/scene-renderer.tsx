@@ -90,7 +90,11 @@ function renderNode(
       {isSelected && (
         <SelectionChrome
           nodeId={node.id}
-          layout={node.layout as { mode: string } | undefined}
+          layout={
+            node.layout && typeof node.layout.mode === "string"
+              ? { mode: node.layout.mode }
+              : undefined
+          }
           onTransform={onTransform}
         />
       )}

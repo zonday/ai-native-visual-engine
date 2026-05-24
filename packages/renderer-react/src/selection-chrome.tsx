@@ -123,10 +123,10 @@ export function SelectionChrome({
           onMouseDown={startDrag(c.label)}
           style={{
             ...handleStyle,
-            top: c.top as number | undefined,
-            left: c.left as number | undefined,
-            right: c.right as number | undefined,
-            bottom: c.bottom as number | undefined,
+            top: c.top,
+            left: c.left,
+            right: c.right,
+            bottom: c.bottom,
           }}
         />
       ))}
