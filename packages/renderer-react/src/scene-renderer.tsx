@@ -3,13 +3,15 @@ import type { RenderContext, ComponentRenderer, ComponentRegistry } from "./rend
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
 
+function missingPluginFallback(n: SceneNode, ctx: RenderContext) {
+  return MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
+}
+
 function resolveRenderer(
   node: SceneNode,
   registry: ComponentRegistry,
 ): ComponentRenderer["render"] {
-  const entry = registry.get(node.type);
-  if (entry) return entry.render;
-  return (n: SceneNode, ctx: RenderContext) => MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
+  return registry.get(node.type)?.render ?? missingPluginFallback;
 }
 
 function renderNode(
