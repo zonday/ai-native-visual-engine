@@ -94,18 +94,19 @@ export interface LinkMark {
   attrs: { href: string; title?: string };
 }
 
-export const EMPTY_DOC: DocNode = {
+export const EMPTY_DOC: DocNode = Object.freeze({
   type: "doc",
-  content: [{ type: "paragraph" }],
-};
+  content: Object.freeze([Object.freeze({ type: "paragraph" })]),
+}) as DocNode;
 
 export function extractPlainText(doc: DocNode): string {
   const parts: string[] = [];
-  walkTextNodes(doc, parts);
+  walkTextNodes(doc, parts, 0);
   return parts.join("");
 }
 
-function walkTextNodes(node: unknown, parts: string[]): void {
+function walkTextNodes(node: unknown, parts: string[], depth: number): void {
+  if (depth >= 100) return;
   if (!node || typeof node !== "object") return;
   const n = node as Record<string, unknown>;
   if (n.type === "text" && typeof n.text === "string") {
@@ -118,7 +119,7 @@ function walkTextNodes(node: unknown, parts: string[]): void {
   }
   const content = Array.isArray(n.content) ? n.content : [];
   for (const child of content) {
-    walkTextNodes(child, parts);
+    walkTextNodes(child, parts, depth + 1);
   }
 }
 
@@ -147,7 +148,20 @@ const textNodeSchema = z.object({
         z.object({
           type: z.literal("link"),
           attrs: z.object({
-            href: z.string(),
+            href: z
+              .string()
+              .refine(
+                (u) =>
+                  u.startsWith("https://") ||
+                  u.startsWith("http://") ||
+                  u.startsWith("/") ||
+                  u.startsWith("#") ||
+                  u.startsWith("mailto:"),
+                {
+                  message:
+                    "Only http/https/relative/mailto/anchor URLs allowed",
+                },
+              ),
             title: z.string().optional(),
           }),
         }),
@@ -160,22 +174,22 @@ const blockNodeSchema: z.ZodType<BlockNode> = z.lazy(() =>
   z.discriminatedUnion("type", [
     z.object({
       type: z.literal("paragraph"),
-      content: z.array(inlineNodeSchema).optional(),
+      content: z.array(inlineNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("heading"),
       attrs: z.object({
         level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
       }),
-      content: z.array(inlineNodeSchema).optional(),
+      content: z.array(inlineNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("bulletList"),
-      content: z.array(listItemNodeSchema).optional(),
+      content: z.array(listItemNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("orderedList"),
-      content: z.array(listItemNodeSchema).optional(),
+      content: z.array(listItemNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("blockquote"),
@@ -202,7 +216,7 @@ const inlineNodeSchema: z.ZodType<InlineNode> = z.discriminatedUnion("type", [
 
 const docNodeSchema: z.ZodType<DocNode> = z.object({
   type: z.literal("doc"),
-  content: z.array(blockNodeSchema),
+  content: z.array(blockNodeSchema).max(10000).max(10000),
 });
 
 export function validateRichText(doc: unknown): doc is DocNode {

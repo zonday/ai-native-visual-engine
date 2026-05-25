@@ -129,20 +129,39 @@ export function autoLayoutGrid(
     const h = Math.max(layout?.h ?? 1, 1);
 
     if (x === undefined || y === undefined) {
-      const maxRows = childIds.length;
-      for (let row = 0; row < maxRows; row++) {
-        for (let col = 0; col < columns; col++) {
-          if (!occupied.has(`${col},${row}`)) {
+      let found = false;
+      const maxRows = childIds.length + h;
+      for (let row = 0; row < maxRows && !found; row++) {
+        for (let col = 0; col < columns && !found; col++) {
+          let allFree = true;
+          for (let r = row; r < row + h && allFree; r++) {
+            for (let c = col; c < col + w && allFree; c++) {
+              if (c >= columns || occupied.has(`${c},${r}`)) {
+                allFree = false;
+              }
+            }
+          }
+          if (allFree) {
             x = col;
             y = row;
-            break;
+            found = true;
           }
         }
-        if (x !== undefined) break;
       }
     }
 
-    if (x === undefined) x = 0;
+    if (x === undefined) {
+      const maxRow =
+        occupied.size === 0
+          ? 0
+          : Math.max(
+              ...Array.from(occupied.keys()).map((k) =>
+                Number.parseInt(k.split(",")[1] || "0", 10),
+              ),
+            );
+      x = 0;
+      y = maxRow + 1;
+    }
     if (y === undefined) y = 0;
 
     for (let r = y; r < y + h; r++) {

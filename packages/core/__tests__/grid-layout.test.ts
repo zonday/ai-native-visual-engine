@@ -215,6 +215,120 @@ describe("autoLayoutGrid", () => {
     const result = autoLayoutGrid(scene, "root");
     expect(result.collisions).toHaveLength(1);
   });
+
+  it("auto-places multi-cell items (w>1, h>1) without collisions", () => {
+    const scene = makeScene({
+      root: {
+        id: "root",
+        type: "grid",
+        children: ["a", "b"],
+        layout: { mode: "grid", columns: 4, rowHeight: 60, gap: 16 },
+      },
+      a: {
+        id: "a",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 0, y: 0, w: 1, h: 1 },
+      },
+      b: {
+        id: "b",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", w: 2, h: 2 },
+      },
+    });
+
+    const result = autoLayoutGrid(scene, "root");
+    const a = getItem(result.positions, "a");
+    const b = getItem(result.positions, "b");
+    expect(a.x).toBe(0);
+    expect(a.y).toBe(0);
+    expect(a.w).toBe(1);
+    expect(a.h).toBe(1);
+    expect(b.x).toBe(1);
+    expect(b.y).toBe(0);
+    expect(b.w).toBe(2);
+    expect(b.h).toBe(2);
+    expect(result.collisions).toHaveLength(0);
+  });
+
+  it("auto-places wide item (w>1) beyond childIds.length row bound", () => {
+    const scene = makeScene({
+      root: {
+        id: "root",
+        type: "grid",
+        children: ["a", "b", "c", "d"],
+        layout: { mode: "grid", columns: 2, rowHeight: 60, gap: 16 },
+      },
+      a: {
+        id: "a",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 0, y: 0, w: 1, h: 1 },
+      },
+      b: {
+        id: "b",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 1, y: 0, w: 1, h: 1 },
+      },
+      c: {
+        id: "c",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 0, y: 1, w: 1, h: 1 },
+      },
+      d: {
+        id: "d",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", w: 2, h: 2 },
+      },
+    });
+
+    const result = autoLayoutGrid(scene, "root");
+    expect(result.collisions).toHaveLength(0);
+    const d = getItem(result.positions, "d");
+    expect(d.w).toBe(2);
+    expect(d.h).toBe(2);
+    expect(d.x).toBeGreaterThanOrEqual(0);
+  });
+
+  it("fallback places multi-cell item after last occupied row when no free cell found", () => {
+    const scene = makeScene({
+      root: {
+        id: "root",
+        type: "grid",
+        children: ["a", "b", "c"],
+        layout: { mode: "grid", columns: 2, rowHeight: 60, gap: 16 },
+      },
+      a: {
+        id: "a",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 0, y: 0, w: 1, h: 1 },
+      },
+      b: {
+        id: "b",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", x: 1, y: 0, w: 1, h: 1 },
+      },
+      c: {
+        id: "c",
+        type: "text",
+        parentId: "root",
+        layout: { mode: "grid-item", w: 2, h: 3 },
+      },
+    });
+
+    const result = autoLayoutGrid(scene, "root");
+    expect(result.collisions).toHaveLength(0);
+    const c = getItem(result.positions, "c");
+    expect(c.w).toBe(2);
+    expect(c.h).toBe(3);
+    expect(c.y).toBeGreaterThanOrEqual(1);
+  });
 });
 
 describe("detectCollisions", () => {
