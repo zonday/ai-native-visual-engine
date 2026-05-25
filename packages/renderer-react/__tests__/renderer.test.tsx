@@ -357,6 +357,74 @@ describe("SceneRenderer", () => {
     expect(html).toContain('data-node-id="child-1"');
     expect(html).toContain("data-handle");
   });
+
+  it("shows move cursor on wrapper when a selected absolute node is transformable", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1"],
+        },
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+        },
+      },
+    };
+    const ctx: RenderContext = {
+      ...context,
+      scene,
+      selection: { nodeIds: ["child-1"] },
+    };
+    const html = renderToString(
+      <SceneRenderer
+        registry={registry}
+        context={ctx}
+        onTransform={() => {}}
+      />,
+    );
+    expect(html).toContain("cursor:move");
+  });
+
+  it("does not show move cursor on locked selected node", () => {
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1"],
+        },
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          locked: true,
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+        },
+      },
+    };
+    const ctx: RenderContext = {
+      ...context,
+      scene,
+      selection: { nodeIds: ["child-1"] },
+    };
+    const html = renderToString(
+      <SceneRenderer
+        registry={registry}
+        context={ctx}
+        onTransform={() => {}}
+      />,
+    );
+    expect(html).toContain('data-node-id="child-1"');
+    expect(html).not.toContain("cursor:move");
+  });
 });
 
 describe("MissingPluginPlaceholder", () => {

@@ -70,11 +70,6 @@ function renderNode(
     style.pointerEvents = "none";
   }
 
-  const wrapperStyle: React.CSSProperties = {
-    position: "relative",
-    ...style,
-  };
-
   // Only expose interactive transform chrome for non-locked nodes whose layout
   // mode supports transform actions (absolute or grid-item).
   const layoutMode =
@@ -83,6 +78,16 @@ function renderNode(
       : undefined;
   const isTransformable =
     !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
+
+  // Show move cursor on the wrapper so the user knows it can be dragged.
+  if (isSelected && isTransformable) {
+    style.cursor = "move";
+  }
+
+  const wrapperStyle: React.CSSProperties = {
+    position: "relative",
+    ...style,
+  };
 
   return (
     <div
