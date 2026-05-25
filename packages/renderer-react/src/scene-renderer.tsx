@@ -72,20 +72,17 @@ function renderNode(
     ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
   );
 
-  const childNodes =
-    node.children
-      ?.map((childId: string) => ctx.scene.nodes[childId])
-      .filter((c): c is SceneNode => !!c)
-      .map((child) =>
-        renderNode(
-          child,
-          registry,
-          ctx,
-          prototypeMap,
-          statesByType,
-          onTransform,
-        ),
-      ) ?? [];
+  const childNodes: React.ReactNode[] = [];
+  if (node.children) {
+    for (const childId of node.children) {
+      const c = ctx.scene.nodes[childId];
+      if (c) {
+        childNodes.push(
+          renderNode(c, registry, ctx, prototypeMap, statesByType, onTransform),
+        );
+      }
+    }
+  }
 
   const content = render(resolvedNode, ctx, childNodes);
 
@@ -255,6 +252,17 @@ export function SceneRenderer({
     return map;
   }, [context.prototypes]);
 
+  const viewportStyle: React.CSSProperties | undefined = useMemo(() => {
+    const vp = context.viewport;
+    if (!vp || vp.zoom <= 0 || (vp.zoom === 1 && vp.x === 0 && vp.y === 0)) {
+      return undefined;
+    }
+    return {
+      transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
+      transformOrigin: "0 0",
+    };
+  }, [context.viewport]);
+
   const sceneMouseDown = useCallback(
     (e: React.MouseEvent) => {
       didDragRef.current = false;
@@ -283,7 +291,13 @@ export function SceneRenderer({
       if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
       moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
     },
-    [context, onTransform, prototypeMap],
+    [
+      context.mode,
+      context.scene.nodes,
+      context.selection?.nodeIds,
+      onTransform,
+      prototypeMap,
+    ],
   );
 
   const sceneClickHandler = useCallback(
@@ -320,15 +334,6 @@ export function SceneRenderer({
   );
 
   if (context.mode === "editor") {
-    const vp = context.viewport;
-    const viewportStyle: React.CSSProperties | undefined =
-      vp && vp.zoom > 0 && (vp.zoom !== 1 || vp.x !== 0 || vp.y !== 0)
-        ? {
-            transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
-            transformOrigin: "0 0",
-          }
-        : undefined;
-
     return (
       <EditorCallbacksContext.Provider value={editorCallbacks}>
         <style>
