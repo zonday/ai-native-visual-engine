@@ -105,12 +105,8 @@ export function extractPlainText(doc: DocNode): string {
   return parts.join("");
 }
 
-function walkTextNodes(
-  node: unknown,
-  parts: string[],
-  depth: number,
-): void {
-  if (depth > 100) return;
+function walkTextNodes(node: unknown, parts: string[], depth: number): void {
+  if (depth >= 100) return;
   if (!node || typeof node !== "object") return;
   const n = node as Record<string, unknown>;
   if (n.type === "text" && typeof n.text === "string") {

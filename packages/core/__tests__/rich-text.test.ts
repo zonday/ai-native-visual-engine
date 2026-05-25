@@ -222,4 +222,66 @@ describe("validateRichText", () => {
       }),
     ).toBe(false);
   });
+
+  it("accepts https href in link mark", () => {
+    expect(
+      validateRichText({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "link",
+                marks: [
+                  { type: "link", attrs: { href: "https://example.com" } },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects javascript: href in link mark", () => {
+    expect(
+      validateRichText({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "xss",
+                marks: [
+                  { type: "link", attrs: { href: "javascript:alert(1)" } },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts relative path and mailto hrefs", () => {
+    expect(
+      validateRichText({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "a", marks: [{ type: "link", attrs: { href: "/path" } }] },
+              { type: "text", text: "b", marks: [{ type: "link", attrs: { href: "#anchor" } }] },
+              { type: "text", text: "c", marks: [{ type: "link", attrs: { href: "mailto:x@y.com" } }] },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
 });
