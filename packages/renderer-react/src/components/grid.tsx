@@ -1,6 +1,6 @@
 import type { SceneNode } from "@ai-native/core";
-import type { RenderContext } from "../renderer.js";
 import { resolveGridStyle } from "../layout-style.js";
+import type { RenderContext } from "../renderer.js";
 
 export interface GridProps {
   node: SceneNode;
@@ -19,7 +19,10 @@ export function GridNode({ node, children }: GridProps) {
 export function registerGrid(registry: Map<string, unknown>) {
   registry.set("grid", {
     type: "grid",
-    render: (node: SceneNode, _ctx: RenderContext, children?: React.ReactNode) =>
-      GridNode({ node, ctx: _ctx, children }),
+    render: (
+      node: SceneNode,
+      _ctx: RenderContext,
+      children?: React.ReactNode,
+    ) => GridNode({ node, ctx: _ctx, children }),
   });
 }
