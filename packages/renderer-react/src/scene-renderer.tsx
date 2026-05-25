@@ -1,5 +1,5 @@
 import type { SceneNode } from "@ai-native/core";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
 import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
@@ -191,60 +191,70 @@ export function SceneRenderer({
     };
   }, []);
 
+  const editorCallbacks = useMemo(
+    () => ({
+      onUpdateProps,
+      onContentChange: onUpdateProps
+        ? (nodeId: string, content: unknown) =>
+            onUpdateProps(nodeId, { content })
+        : undefined,
+    }),
+    [onUpdateProps],
+  );
+
+  const zoomAdjustedOnTransform = useCallback(
+    (event: TransformEvent) => {
+      if (!onTransform) return;
+      const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
+      onTransform({
+        ...event,
+        deltaX: event.deltaX / zoom,
+        deltaY: event.deltaY / zoom,
+      });
+    },
+    [onTransform],
+  );
+
+  const sceneMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      didDragRef.current = false;
+      if (!onTransform) return;
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      const wrapper = target.closest("[data-node-id]");
+      if (!wrapper) return;
+      const nodeId = wrapper.getAttribute("data-node-id");
+      if (!nodeId) return;
+      const node = context.scene.nodes[nodeId];
+      if (!node) return;
+      const isSelected =
+        context.mode === "editor" &&
+        !!context.selection?.nodeIds.includes(nodeId);
+      if (!isSelected) return;
+      if (node.locked === true) return;
+      const layoutMode =
+        node.layout && typeof node.layout.mode === "string"
+          ? node.layout.mode
+          : undefined;
+      if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
+      moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
+    },
+    [context, onTransform],
+  );
+
+  const sceneClickHandler = useCallback(
+    (e: React.MouseEvent) => {
+      if (didDragRef.current) {
+        didDragRef.current = false;
+        return;
+      }
+      handleSceneClick(e, context.scene, onSelectNode);
+    },
+    [context.scene, onSelectNode],
+  );
+
   const root = context.scene.nodes[context.scene.rootId];
   if (!root) return null;
-
-  const sceneMouseDown = (e: React.MouseEvent) => {
-    // Clear stale didDragRef from a previous drag that ended with mouseup
-    // outside the scene root (no click fired to consume it).
-    didDragRef.current = false;
-    if (!onTransform) return;
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    const wrapper = target.closest("[data-node-id]");
-    if (!wrapper) return;
-    const nodeId = wrapper.getAttribute("data-node-id");
-    if (!nodeId) return;
-    const node = context.scene.nodes[nodeId];
-    if (!node) return;
-    const isSelected =
-      context.mode === "editor" &&
-      !!context.selection?.nodeIds.includes(nodeId);
-    if (!isSelected) return;
-    if (node.locked === true) return;
-    const layoutMode =
-      node.layout && typeof node.layout.mode === "string"
-        ? node.layout.mode
-        : undefined;
-    if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
-    moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
-  };
-
-  const sceneClickHandler = (e: React.MouseEvent) => {
-    // Suppress the click that follows a move-drag on the same node.
-    // didDragRef is set by mousemove and consumed here; if mouseup
-    // happened outside the scene root (no click follows), the stale
-    // flag is cleared by the next mousedown via sceneMouseDown.
-    if (didDragRef.current) {
-      didDragRef.current = false;
-      return;
-    }
-    handleSceneClick(e, context.scene, onSelectNode);
-  };
-
-  // Wrap onTransform so move/resize/rotate deltas emitted by SelectionChrome
-  // are converted from screen-space (clientX/Y) to content-space, accounting
-  // for the CSS viewport transform on the scene root.
-  const zoomAdjustedOnTransform = onTransform
-    ? (event: TransformEvent) => {
-        const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
-        onTransform({
-          ...event,
-          deltaX: event.deltaX / zoom,
-          deltaY: event.deltaY / zoom,
-        });
-      }
-    : undefined;
 
   const rootContent = renderNode(
     root,
@@ -252,13 +262,6 @@ export function SceneRenderer({
     context,
     zoomAdjustedOnTransform,
   );
-
-  const editorCallbacks = {
-    onUpdateProps,
-    onContentChange: onUpdateProps
-      ? (nodeId: string, content: unknown) => onUpdateProps(nodeId, { content })
-      : undefined,
-  };
 
   if (context.mode === "editor") {
     const vp = context.viewport;
