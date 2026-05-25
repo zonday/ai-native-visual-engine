@@ -69,7 +69,8 @@ function renderNode(
     style.outlineOffset = "1px";
   }
 
-  if (node.locked === true && ctx.mode === "editor") {
+  const isLocked = node.locked === true;
+  if (isLocked && ctx.mode === "editor") {
     style.opacity = 0.7;
     style.pointerEvents = "none";
   }
@@ -79,6 +80,15 @@ function renderNode(
     ...style,
   };
 
+  // Only expose interactive transform chrome for non-locked nodes whose layout
+  // mode supports transform actions (absolute or grid-item).
+  const layoutMode =
+    node.layout && typeof node.layout.mode === "string"
+      ? node.layout.mode
+      : undefined;
+  const isTransformable =
+    !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
+
   return (
     <div
       key={node.id}
@@ -87,14 +97,10 @@ function renderNode(
       style={wrapperStyle}
     >
       {content}
-      {isSelected && (
+      {isSelected && isTransformable && (
         <SelectionChrome
           nodeId={node.id}
-          layout={
-            node.layout && typeof node.layout.mode === "string"
-              ? { mode: node.layout.mode }
-              : undefined
-          }
+          layout={{ mode: layoutMode as "absolute" | "grid-item" }}
           onTransform={onTransform}
         />
       )}
@@ -167,10 +173,11 @@ export function SceneRenderer({
         });
       }
       moveDragRef.current = null;
+      didDragRef.current = false;
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp, { passive: true });
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
@@ -188,15 +195,27 @@ export function SceneRenderer({
     if (!wrapper) return;
     const nodeId = wrapper.getAttribute("data-node-id");
     if (!nodeId) return;
+    const node = context.scene.nodes[nodeId];
+    if (!node) return;
     const isSelected =
       context.mode === "editor" &&
       !!context.selection?.nodeIds.includes(nodeId);
     if (!isSelected) return;
+    if (node.locked === true) return;
+    const layoutMode =
+      node.layout && typeof node.layout.mode === "string"
+        ? node.layout.mode
+        : undefined;
+    if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
     didDragRef.current = false;
     moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
   };
 
   const sceneClickHandler = (e: React.MouseEvent) => {
+    // After a drag, mouseup fires first and resets didDragRef to false.
+    // This guard handles the edge case where click fires without a preceding
+    // mouseup (e.g. simulated events in tests). In normal browser usage the
+    // ref is already false here.
     if (didDragRef.current) {
       didDragRef.current = false;
       return;

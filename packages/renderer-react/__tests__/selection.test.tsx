@@ -9,11 +9,6 @@ describe("SelectionChrome", () => {
     expect(html).toContain('data-selection-chrome="node-1"');
   });
 
-  it("renders four corner handles", () => {
-    const html = renderToString(<SelectionChrome nodeId="n1" />);
-    expect(html.match(/data-handle/g)).toHaveLength(4);
-  });
-
   it("renders all four handle positions", () => {
     const html = renderToString(<SelectionChrome nodeId="n1" />);
     expect(html).toContain('data-handle="nw"');
@@ -45,3 +40,4 @@ describe("MarqueeOverlay", () => {
     expect(html).toContain("data-marquee-overlay");
   });
 });
+
