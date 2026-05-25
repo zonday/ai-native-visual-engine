@@ -437,10 +437,14 @@ describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
       );
 
       // Click on an unselected sibling — must NOT be suppressed by stale didDragRef.
+      // fireEvent.click alone does NOT dispatch mousedown; we must fire mousedown
+      // explicitly so sceneMouseDown resets didDragRef before the click handler runs.
       onSelectNode.mockClear();
       const child2El = getByTestId("root-wrapper").querySelector(
         '[data-node-id="child-2"]',
       ) as HTMLElement;
+      fireEvent.mouseDown(child2El, { button: 0 });
+      fireEvent.mouseUp(child2El, { button: 0 });
       fireEvent.click(child2El);
 
       expect(onSelectNode).toHaveBeenCalledWith(

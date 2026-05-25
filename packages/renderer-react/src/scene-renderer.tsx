@@ -168,7 +168,6 @@ export function SceneRenderer({
         });
       }
       moveDragRef.current = null;
-      didDragRef.current = false;
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
@@ -183,6 +182,9 @@ export function SceneRenderer({
   if (!root) return null;
 
   const sceneMouseDown = (e: React.MouseEvent) => {
+    // Clear stale didDragRef from a previous drag that ended with mouseup
+    // outside the scene root (no click fired to consume it).
+    didDragRef.current = false;
     if (!onTransform) return;
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
@@ -202,15 +204,14 @@ export function SceneRenderer({
         ? node.layout.mode
         : undefined;
     if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
-    didDragRef.current = false;
     moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
   };
 
   const sceneClickHandler = (e: React.MouseEvent) => {
-    // After a drag, mouseup fires first and resets didDragRef to false.
-    // This guard handles the edge case where click fires without a preceding
-    // mouseup (e.g. simulated events in tests). In normal browser usage the
-    // ref is already false here.
+    // Suppress the click that follows a move-drag on the same node.
+    // didDragRef is set by mousemove and consumed here; if mouseup
+    // happened outside the scene root (no click follows), the stale
+    // flag is cleared by the next mousedown via sceneMouseDown.
     if (didDragRef.current) {
       didDragRef.current = false;
       return;
