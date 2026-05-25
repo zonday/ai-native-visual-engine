@@ -139,6 +139,9 @@ export function SceneRenderer({
 
   const didDragRef = useRef(false);
 
+  const zoomRef = useRef(context.viewport?.zoom ?? 1);
+  zoomRef.current = context.viewport?.zoom ?? 1;
+
   const onTransformRef = useRef(onTransform);
   onTransformRef.current = onTransform;
 
@@ -147,8 +150,9 @@ export function SceneRenderer({
       const drag = moveDragRef.current;
       if (!drag || !onTransformRef.current) return;
       didDragRef.current = true;
-      const deltaX = e.clientX - drag.startX;
-      const deltaY = e.clientY - drag.startY;
+      const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
+      const deltaX = (e.clientX - drag.startX) / zoom;
+      const deltaY = (e.clientY - drag.startY) / zoom;
       onTransformRef.current({
         nodeId: drag.nodeId,
         type: "move",
@@ -162,8 +166,9 @@ export function SceneRenderer({
       const drag = moveDragRef.current;
       if (!drag) return;
       if (onTransformRef.current && didDragRef.current) {
-        const deltaX = e.clientX - drag.startX;
-        const deltaY = e.clientY - drag.startY;
+        const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
+        const deltaX = (e.clientX - drag.startX) / zoom;
+        const deltaY = (e.clientY - drag.startY) / zoom;
         onTransformRef.current({
           nodeId: drag.nodeId,
           type: "move",
@@ -224,15 +229,44 @@ export function SceneRenderer({
     handleSceneClick(e, context.scene, onSelectNode);
   };
 
-  const rootContent = renderNode(root, registry, context, onTransform);
+  // Wrap onTransform so move/resize/rotate deltas emitted by SelectionChrome
+  // are converted from screen-space (clientX/Y) to content-space, accounting
+  // for the CSS viewport transform on the scene root.
+  const zoomAdjustedOnTransform = onTransform
+    ? (event: TransformEvent) => {
+        const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
+        onTransform({
+          ...event,
+          deltaX: event.deltaX / zoom,
+          deltaY: event.deltaY / zoom,
+        });
+      }
+    : undefined;
+
+  const rootContent = renderNode(
+    root,
+    registry,
+    context,
+    zoomAdjustedOnTransform,
+  );
 
   if (context.mode === "editor") {
+    const vp = context.viewport;
+    const viewportStyle: React.CSSProperties | undefined =
+      vp && vp.zoom > 0 && (vp.zoom !== 1 || vp.x !== 0 || vp.y !== 0)
+        ? {
+            transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
+            transformOrigin: "0 0",
+          }
+        : undefined;
+
     return (
       <div
         role="none"
         data-scene-root
         onClick={sceneClickHandler}
         onMouseDown={sceneMouseDown}
+        style={viewportStyle}
       >
         {rootContent}
         {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}

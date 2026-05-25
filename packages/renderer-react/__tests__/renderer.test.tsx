@@ -523,3 +523,212 @@ describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
   );
 });
 
+describe("SceneRenderer — viewport transform", () => {
+  const scene: SceneGraph = {
+    version: 0,
+    rootId: "root",
+    nodes: {
+      root: { id: "root", type: "container", children: [] },
+    },
+  };
+
+  it("applies scale and translate transform for zoomed viewport in editor mode", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 2, x: 100, y: 50 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain("scale(2)");
+    expect(html).toContain("translate(-100px, -50px)");
+    expect(html).toContain("transform-origin:0 0");
+  });
+
+  it("does not apply viewport transform for identity viewport (zoom=1, x=0, y=0)", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 1, x: 0, y: 0 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("transform-origin");
+  });
+
+  it("treats zoom=0 as zoom=1 to avoid division by zero", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 0, x: 0, y: 0 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    // zoom=0 triggers the safety guard: viewportStyle is undefined (identity)
+    expect(html).not.toContain("transform-origin");
+  });
+
+  it("does not apply viewport transform when viewport is absent", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("transform-origin");
+  });
+
+  it("does not apply viewport transform in runtime mode", () => {
+    const ctx: RenderContext = {
+      mode: "runtime",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 2, x: 100, y: 50 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("transform-origin");
+  });
+});
+
+describe("SceneRenderer — zoom-adjusted deltas", () => {
+  it(
+    "emits content-space deltas for move drag under viewport zoom=2",
+    { timeout: 5000 },
+    async () => {
+      const { render, fireEvent } = await import("@testing-library/react");
+
+      const scene: SceneGraph = {
+        version: 0,
+        rootId: "root",
+        nodes: {
+          root: {
+            id: "root",
+            type: "container",
+            children: ["child-1"],
+          },
+          "child-1": {
+            id: "child-1",
+            type: "container",
+            parentId: "root",
+            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+          },
+        },
+      };
+
+      const onTransform = vi.fn();
+
+      const { getByTestId } = render(
+        <div data-testid="zoom-root-wrapper">
+          <SceneRenderer
+            registry={registry}
+            context={{
+              mode: "editor",
+              pageId: "page-1",
+              scene,
+              selection: { nodeIds: ["child-1"] },
+              viewport: { zoom: 2, x: 0, y: 0 },
+            }}
+            onTransform={onTransform}
+          />
+        </div>,
+      );
+
+      const nodeEl = getByTestId("zoom-root-wrapper").querySelector(
+        '[data-node-id="child-1"]',
+      ) as HTMLElement;
+      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 100, clientY: 100 });
+      // Move 20 screen pixels → 10 content pixels at zoom=2
+      fireEvent.mouseMove(window, { clientX: 120, clientY: 120 });
+      fireEvent.mouseUp(window, { clientX: 120, clientY: 120 });
+
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: false,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: true,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+    },
+  );
+
+  it(
+    "does not crash for move drag with zoom=0 (guarded to zoom=1)",
+    { timeout: 5000 },
+    async () => {
+      const { render, fireEvent } = await import("@testing-library/react");
+
+      const scene: SceneGraph = {
+        version: 0,
+        rootId: "root",
+        nodes: {
+          root: {
+            id: "root",
+            type: "container",
+            children: ["child-1"],
+          },
+          "child-1": {
+            id: "child-1",
+            type: "container",
+            parentId: "root",
+            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+          },
+        },
+      };
+
+      const onTransform = vi.fn();
+
+      const { getByTestId } = render(
+        <div data-testid="zero-zoom-wrapper">
+          <SceneRenderer
+            registry={registry}
+            context={{
+              mode: "editor",
+              pageId: "page-1",
+              scene,
+              selection: { nodeIds: ["child-1"] },
+              viewport: { zoom: 0, x: 0, y: 0 },
+            }}
+            onTransform={onTransform}
+          />
+        </div>,
+      );
+
+      const nodeEl = getByTestId("zero-zoom-wrapper").querySelector(
+        '[data-node-id="child-1"]',
+      ) as HTMLElement;
+      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
+      fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
+      fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
+
+      // zoom=0 guarded to 1, so 10 screen pixels → 10 content deltas
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: false,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+    },
+  );
+});
+
