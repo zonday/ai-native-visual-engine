@@ -1,4 +1,9 @@
-import type { BlockNode, DocNode, InlineNode, ListItemNode } from "./rich-text.js";
+import type {
+  BlockNode,
+  DocNode,
+  InlineNode,
+  ListItemNode,
+} from "./rich-text.js";
 
 function parseInline(text: string): InlineNode[] {
   if (text.length === 0) return [];
@@ -280,10 +285,7 @@ export function docToMarkdown(doc: DocNode): string {
             .map((n) => {
               if (n.type === "hardBreak") return "";
               if (n.type === "text") return n.text;
-              if (
-                "content" in n &&
-                Array.isArray(n.content)
-              ) {
+              if ("content" in n && Array.isArray(n.content)) {
                 return serializeInline(n.content as InlineNode[]);
               }
               return "";
@@ -300,10 +302,7 @@ export function docToMarkdown(doc: DocNode): string {
             .map((n) => {
               if (n.type === "hardBreak") return "";
               if (n.type === "text") return n.text;
-              if (
-                "content" in n &&
-                Array.isArray(n.content)
-              ) {
+              if ("content" in n && Array.isArray(n.content)) {
                 return serializeInline(n.content as InlineNode[]);
               }
               return "";
