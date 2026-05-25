@@ -13,15 +13,31 @@ import { TextNode } from "./components/text.jsx";
 
 type NodeRenderFn = (props: { node: unknown; ctx: unknown }) => unknown;
 
-function r(Component: NodeRenderFn): ComponentPlugin["renderer"] {
+function makeRenderer(Component: NodeRenderFn): ComponentPlugin["renderer"] {
   return (node: unknown, ctx: unknown) => Component({ node, ctx });
+}
+
+function registerPlugins(
+  registry: Map<string, unknown>,
+  plugins: ComponentPlugin[],
+): void {
+  for (const plugin of plugins) {
+    registry.set(plugin.type, {
+      type: plugin.type,
+      render: plugin.renderer as (
+        node: unknown,
+        ctx: unknown,
+        children?: unknown,
+      ) => unknown,
+    });
+  }
 }
 
 // ── Built-in types (always available, cannot be unregistered) ──
 
 const containerPlugin: ComponentPlugin = {
   type: "container",
-  renderer: r(ContainerNode),
+  renderer: makeRenderer(ContainerNode),
   meta: {
     title: "Container",
     description: "Generic flex layout container for grouping child nodes.",
@@ -37,7 +53,7 @@ const containerPlugin: ComponentPlugin = {
 
 const gridPlugin: ComponentPlugin = {
   type: "grid",
-  renderer: r(GridNode),
+  renderer: makeRenderer(GridNode),
   meta: {
     title: "Grid",
     description: "Responsive grid layout container.",
@@ -59,7 +75,7 @@ const gridPlugin: ComponentPlugin = {
 
 const textPlugin: ComponentPlugin = {
   type: "text",
-  renderer: r(TextNode),
+  renderer: makeRenderer(TextNode),
   meta: {
     title: "Text",
     description:
@@ -98,7 +114,7 @@ const textPlugin: ComponentPlugin = {
 
 const metricValuePlugin: ComponentPlugin = {
   type: "metric-value",
-  renderer: r(MetricValueNode),
+  renderer: makeRenderer(MetricValueNode),
   meta: {
     title: "Metric Value",
     description: "Single metric display with label and value.",
@@ -125,7 +141,7 @@ const metricValuePlugin: ComponentPlugin = {
 
 const metricTrendPlugin: ComponentPlugin = {
   type: "metric-trend",
-  renderer: r(MetricTrendNode),
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Metric Trend",
     description: "Metric with inline sparkline and directional indicator.",
@@ -149,7 +165,7 @@ const metricTrendPlugin: ComponentPlugin = {
 
 const metricComparisonPlugin: ComponentPlugin = {
   type: "metric-comparison",
-  renderer: r(MetricComparisonNode),
+  renderer: makeRenderer(MetricComparisonNode),
   meta: {
     title: "Metric Comparison",
     description: "Metric with comparison value and percentage change.",
@@ -180,7 +196,7 @@ const metricComparisonPlugin: ComponentPlugin = {
 
 const chartPlugin: ComponentPlugin = {
   type: "chart",
-  renderer: r(ChartNode),
+  renderer: makeRenderer(ChartNode),
   meta: {
     title: "Chart",
     description: "Line, bar, or pie chart driven by data bindings.",
@@ -211,7 +227,7 @@ const chartPlugin: ComponentPlugin = {
 
 const tablePlugin: ComponentPlugin = {
   type: "table",
-  renderer: r(TableNode),
+  renderer: makeRenderer(TableNode),
   meta: {
     title: "Table",
     description: "Paginated data table driven by data bindings.",
@@ -238,7 +254,7 @@ const tablePlugin: ComponentPlugin = {
 
 const headerPlugin: ComponentPlugin = {
   type: "header",
-  renderer: r(HeaderNode),
+  renderer: makeRenderer(HeaderNode),
   meta: {
     title: "Header",
     description: "Page or section header with title and optional subtitle.",
@@ -257,7 +273,7 @@ const headerPlugin: ComponentPlugin = {
 
 const dividerPlugin: ComponentPlugin = {
   type: "divider",
-  renderer: r(DividerNode),
+  renderer: makeRenderer(DividerNode),
   meta: {
     title: "Divider",
     description: "Visual separator between sections.",
@@ -276,7 +292,7 @@ const dividerPlugin: ComponentPlugin = {
 
 const filterPlugin: ComponentPlugin = {
   type: "filter",
-  renderer: r(FilterNode),
+  renderer: makeRenderer(FilterNode),
   meta: {
     title: "Filter",
     description:
@@ -325,27 +341,9 @@ export const allPluginDefinitions: ComponentPlugin[] = [
 ];
 
 export function registerBuiltinPlugins(registry: Map<string, unknown>): void {
-  for (const plugin of builtinPluginDefinitions) {
-    registry.set(plugin.type, {
-      type: plugin.type,
-      render: plugin.renderer as (
-        node: unknown,
-        ctx: unknown,
-        children?: unknown,
-      ) => unknown,
-    });
-  }
+  registerPlugins(registry, builtinPluginDefinitions);
 }
 
 export function registerDefaultPlugins(registry: Map<string, unknown>): void {
-  for (const plugin of allPluginDefinitions) {
-    registry.set(plugin.type, {
-      type: plugin.type,
-      render: plugin.renderer as (
-        node: unknown,
-        ctx: unknown,
-        children?: unknown,
-      ) => unknown,
-    });
-  }
+  registerPlugins(registry, allPluginDefinitions);
 }
