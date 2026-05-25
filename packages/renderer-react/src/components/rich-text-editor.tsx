@@ -20,11 +20,18 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
   }) as DocNode;
 
   const isEditable = ctx.mode === "editor" && node.props?.editable !== false;
+  const placeholder =
+    (node.props?.placeholder as string | undefined) ?? undefined;
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Link],
     content,
     editable: isEditable,
+    editorProps: {
+      attributes: {
+        placeholder: placeholder ?? "",
+      },
+    },
     onUpdate: ({ editor }) => {
       if (!onContentChange) return;
       const json = editor.getJSON() as DocNode;
@@ -46,6 +53,15 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
 
   return (
     <div data-component="text" data-richtext="editor">
+      <style>
+        {`.ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          pointer-events: none;
+          float: left;
+          height: 0;
+        }`}
+      </style>
       <EditorContent editor={editor} />
     </div>
   );
