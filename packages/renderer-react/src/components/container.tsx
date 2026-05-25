@@ -15,14 +15,3 @@ export function ContainerNode({ node, children }: ContainerProps) {
     </div>
   );
 }
-
-export function registerContainer(registry: Map<string, unknown>) {
-  registry.set("container", {
-    type: "container",
-    render: (
-      node: SceneNode,
-      _ctx: RenderContext,
-      children?: React.ReactNode,
-    ) => ContainerNode({ node, ctx: _ctx, children }),
-  });
-}

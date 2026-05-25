@@ -15,14 +15,3 @@ export function GridNode({ node, children }: GridProps) {
     </div>
   );
 }
-
-export function registerGrid(registry: Map<string, unknown>) {
-  registry.set("grid", {
-    type: "grid",
-    render: (
-      node: SceneNode,
-      _ctx: RenderContext,
-      children?: React.ReactNode,
-    ) => GridNode({ node, ctx: _ctx, children }),
-  });
-}

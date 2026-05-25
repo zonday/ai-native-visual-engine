@@ -1,22 +1,104 @@
 import type { ComponentPlugin } from "@ai-native/core";
 import { ChartNode } from "./components/chart.jsx";
+import { ContainerNode } from "./components/container.jsx";
 import { DividerNode } from "./components/divider.jsx";
 import { FilterNode } from "./components/filter.jsx";
+import { GridNode } from "./components/grid.jsx";
 import { HeaderNode } from "./components/header.jsx";
 import { MetricComparisonNode } from "./components/metric-comparison.jsx";
 import { MetricTrendNode } from "./components/metric-trend.jsx";
 import { MetricValueNode } from "./components/metric-value.jsx";
 import { TableNode } from "./components/table.jsx";
+import { TextNode } from "./components/text.jsx";
 
-function makeRenderer(
-  Component: (props: { node: unknown; ctx: unknown }) => unknown,
-) {
+type NodeRenderFn = (props: { node: unknown; ctx: unknown }) => unknown;
+
+function r(Component: NodeRenderFn): ComponentPlugin["renderer"] {
   return (node: unknown, ctx: unknown) => Component({ node, ctx });
 }
 
-export const metricValuePlugin: ComponentPlugin = {
+// ── Built-in types (always available, cannot be unregistered) ──
+
+const containerPlugin: ComponentPlugin = {
+  type: "container",
+  renderer: r(ContainerNode),
+  meta: {
+    title: "Container",
+    description: "Generic flex layout container for grouping child nodes.",
+    category: "container",
+    props: [],
+    ai: {
+      usage: ["grouping related widgets", "dashboard section wrapper"],
+      antiPatterns: ["using container for single-child layout only"],
+    },
+  },
+  constraints: [{ type: "structural", rule: "children.length >= 0" }],
+};
+
+const gridPlugin: ComponentPlugin = {
+  type: "grid",
+  renderer: r(GridNode),
+  meta: {
+    title: "Grid",
+    description: "Responsive grid layout container.",
+    category: "container",
+    props: [],
+    ai: {
+      usage: ["dashboard page layout", "KPI card grid", "chart grid"],
+      antiPatterns: [
+        "placing grid inside another grid without explicit intention",
+      ],
+    },
+  },
+  constraints: [
+    { type: "layout", rule: "columns >= 1" },
+    { type: "layout", rule: "rowHeight >= 1" },
+    { type: "layout", rule: "all children must use grid-item layout" },
+  ],
+};
+
+const textPlugin: ComponentPlugin = {
+  type: "text",
+  renderer: r(TextNode),
+  meta: {
+    title: "Text",
+    description:
+      "Rich text block powered by Tiptap. Supports headings, lists, inline formatting, and links.",
+    category: "display",
+    props: [
+      {
+        key: "content",
+        type: "json",
+        default: '{"type":"doc","content":[{"type":"paragraph"}]}',
+      },
+      { key: "placeholder", type: "string" },
+      { key: "editable", type: "boolean", default: true },
+    ],
+    ai: {
+      usage: [
+        "page title",
+        "section description",
+        "annotation",
+        "data footnote",
+      ],
+      antiPatterns: [
+        "using text block for structured data that belongs in a table or chart",
+      ],
+    },
+  },
+  constraints: [
+    {
+      type: "structural",
+      rule: "content must be a valid Tiptap JSON document",
+    },
+  ],
+};
+
+// ── Default plugins ──
+
+const metricValuePlugin: ComponentPlugin = {
   type: "metric-value",
-  renderer: makeRenderer(MetricValueNode),
+  renderer: r(MetricValueNode),
   meta: {
     title: "Metric Value",
     description: "Single metric display with label and value.",
@@ -41,9 +123,9 @@ export const metricValuePlugin: ComponentPlugin = {
   ],
 };
 
-export const metricTrendPlugin: ComponentPlugin = {
+const metricTrendPlugin: ComponentPlugin = {
   type: "metric-trend",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(MetricTrendNode),
   meta: {
     title: "Metric Trend",
     description: "Metric with inline sparkline and directional indicator.",
@@ -65,9 +147,9 @@ export const metricTrendPlugin: ComponentPlugin = {
   constraints: [{ type: "semantic", rule: "trendData.length >= 2" }],
 };
 
-export const metricComparisonPlugin: ComponentPlugin = {
+const metricComparisonPlugin: ComponentPlugin = {
   type: "metric-comparison",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(MetricComparisonNode),
   meta: {
     title: "Metric Comparison",
     description: "Metric with comparison value and percentage change.",
@@ -96,9 +178,9 @@ export const metricComparisonPlugin: ComponentPlugin = {
   ],
 };
 
-export const chartPlugin: ComponentPlugin = {
+const chartPlugin: ComponentPlugin = {
   type: "chart",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(ChartNode),
   meta: {
     title: "Chart",
     description: "Line, bar, or pie chart driven by data bindings.",
@@ -127,9 +209,9 @@ export const chartPlugin: ComponentPlugin = {
   ],
 };
 
-export const tablePlugin: ComponentPlugin = {
+const tablePlugin: ComponentPlugin = {
   type: "table",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(TableNode),
   meta: {
     title: "Table",
     description: "Paginated data table driven by data bindings.",
@@ -154,9 +236,9 @@ export const tablePlugin: ComponentPlugin = {
   ],
 };
 
-export const headerPlugin: ComponentPlugin = {
+const headerPlugin: ComponentPlugin = {
   type: "header",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(HeaderNode),
   meta: {
     title: "Header",
     description: "Page or section header with title and optional subtitle.",
@@ -173,9 +255,9 @@ export const headerPlugin: ComponentPlugin = {
   },
 };
 
-export const dividerPlugin: ComponentPlugin = {
+const dividerPlugin: ComponentPlugin = {
   type: "divider",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(DividerNode),
   meta: {
     title: "Divider",
     description: "Visual separator between sections.",
@@ -192,9 +274,9 @@ export const dividerPlugin: ComponentPlugin = {
   },
 };
 
-export const filterPlugin: ComponentPlugin = {
+const filterPlugin: ComponentPlugin = {
   type: "filter",
-  renderer: makeRenderer(MetricTrendNode),
+  renderer: r(FilterNode),
   meta: {
     title: "Filter",
     description:
@@ -222,7 +304,16 @@ export const filterPlugin: ComponentPlugin = {
   ],
 };
 
+// ── Exports ──
+
+export const builtinPluginDefinitions: ComponentPlugin[] = [
+  containerPlugin,
+  gridPlugin,
+  textPlugin,
+];
+
 export const allPluginDefinitions: ComponentPlugin[] = [
+  ...builtinPluginDefinitions,
   metricValuePlugin,
   metricTrendPlugin,
   metricComparisonPlugin,
@@ -232,6 +323,19 @@ export const allPluginDefinitions: ComponentPlugin[] = [
   dividerPlugin,
   filterPlugin,
 ];
+
+export function registerBuiltinPlugins(registry: Map<string, unknown>): void {
+  for (const plugin of builtinPluginDefinitions) {
+    registry.set(plugin.type, {
+      type: plugin.type,
+      render: plugin.renderer as (
+        node: unknown,
+        ctx: unknown,
+        children?: unknown,
+      ) => unknown,
+    });
+  }
+}
 
 export function registerDefaultPlugins(registry: Map<string, unknown>): void {
   for (const plugin of allPluginDefinitions) {

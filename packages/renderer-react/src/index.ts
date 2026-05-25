@@ -8,7 +8,7 @@ export { MetricTrendNode } from "./components/metric-trend.jsx";
 export { MetricValueNode } from "./components/metric-value.jsx";
 export { TableNode } from "./components/table.jsx";
 export type { TextProps } from "./components/text.jsx";
-export { registerText, TextNode } from "./components/text.jsx";
+export { TextNode } from "./components/text.jsx";
 export {
   resolveFlexStyle,
   resolveGridStyle,
@@ -19,6 +19,8 @@ export type { MarqueeOverlayProps } from "./marquee-select.jsx";
 export { MarqueeOverlay } from "./marquee-select.jsx";
 export {
   allPluginDefinitions,
+  builtinPluginDefinitions,
+  registerBuiltinPlugins,
   registerDefaultPlugins,
 } from "./plugin-registry.js";
 export type {
