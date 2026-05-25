@@ -1,5 +1,6 @@
 import type {
   PageId,
+  PrototypeComponent,
   SceneGraph,
   SceneNode,
   SelectionState,
@@ -20,6 +21,7 @@ export interface RenderContext {
   selection?: SelectionState;
   viewport?: ViewportState;
   marqueeRect?: MarqueeRect;
+  prototypes?: PrototypeComponent[];
 }
 
 export interface ComponentRenderer {

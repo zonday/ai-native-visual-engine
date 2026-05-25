@@ -9,6 +9,18 @@ export {
 } from "./bootstrap.js";
 // ── Plugin system ──
 
+// ── Prototype components ──
+export type {
+  PrototypeComponent,
+  ResolvedInstance,
+} from "./prototype.js";
+export {
+  createNodeFromPrototype,
+  createPrototypeFromNode,
+  detachInstance,
+  resolveInstance,
+} from "./prototype.js";
+
 // ── Rich text ──
 export {
   EMPTY_DOC,

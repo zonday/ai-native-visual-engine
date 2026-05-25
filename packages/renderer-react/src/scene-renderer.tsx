@@ -1,4 +1,5 @@
 import type { SceneNode } from "@ai-native/core";
+import { resolveInstance } from "@ai-native/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
@@ -43,8 +44,19 @@ function renderNode(
 ): React.ReactNode {
   if (node.visible === false) return null;
 
-  const render = resolveRenderer(node, registry);
-  const layoutStyle = resolveLayoutStyle(node);
+  const prototype = node.prototypeId
+    ? ctx.prototypes?.find((p) => p.id === node.prototypeId)
+    : undefined;
+  const resolved = resolveInstance(node, prototype);
+  const resolvedNode: SceneNode = {
+    ...node,
+    props: resolved.props,
+    style: resolved.style,
+    layout: resolved.layout as SceneNode["layout"],
+  };
+
+  const render = resolveRenderer(resolvedNode, registry);
+  const layoutStyle = resolveLayoutStyle(resolvedNode);
   const isSelected = !!(
     ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
   );
@@ -55,15 +67,15 @@ function renderNode(
       .filter((c): c is SceneNode => !!c)
       .map((child) => renderNode(child, registry, ctx, onTransform)) ?? [];
 
-  const content = render(node, ctx, childNodes);
+  const content = render(resolvedNode, ctx, childNodes);
 
-  if (!wrapperNeeded(node, isSelected)) {
+  if (!wrapperNeeded(resolvedNode, isSelected)) {
     return content;
   }
 
   const style: React.CSSProperties = {
     ...layoutStyle,
-    ...(node.style as React.CSSProperties | undefined),
+    ...(resolvedNode.style as React.CSSProperties | undefined),
   };
 
   const isLocked = node.locked === true;
@@ -75,8 +87,8 @@ function renderNode(
   // Only expose interactive transform chrome for non-locked nodes whose layout
   // mode supports transform actions (absolute or grid-item).
   const layoutMode =
-    node.layout && typeof node.layout.mode === "string"
-      ? node.layout.mode
+    resolvedNode.layout && typeof resolvedNode.layout.mode === "string"
+      ? resolvedNode.layout.mode
       : undefined;
   const isTransformable =
     !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
