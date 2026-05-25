@@ -1,5 +1,5 @@
-import { createContext, useContext } from "react";
 import type { DocNode } from "@ai-native/core";
+import { createContext, useContext } from "react";
 
 export interface EditorCallbacks {
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;

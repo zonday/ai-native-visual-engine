@@ -1,11 +1,10 @@
-import type { DocNode } from "@ai-native/core";
-import type { SceneNode } from "@ai-native/core";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
+import type { DocNode, SceneNode } from "@ai-native/core";
 import Link from "@tiptap/extension-link";
-import type { RenderContext } from "../renderer.js";
+import Underline from "@tiptap/extension-underline";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { useEditorCallbacks } from "../editor-callbacks.js";
+import type { RenderContext } from "../renderer.js";
 
 export interface RichTextEditorProps {
   node: SceneNode;
@@ -20,8 +19,7 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
     content: [{ type: "paragraph" }],
   }) as DocNode;
 
-  const isEditable =
-    ctx.mode === "editor" && node.props?.editable !== false;
+  const isEditable = ctx.mode === "editor" && node.props?.editable !== false;
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Link],
@@ -40,6 +38,7 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
       <div
         data-component="text"
         data-richtext="static"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML from Tiptap ProseMirror serializer is safe
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );

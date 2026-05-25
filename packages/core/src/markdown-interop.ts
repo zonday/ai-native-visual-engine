@@ -1,4 +1,4 @@
-import type { BlockNode, DocNode, InlineNode, MarkNode } from "./rich-text.js";
+import type { BlockNode, DocNode, InlineNode } from "./rich-text.js";
 
 function parseInline(text: string): InlineNode[] {
   if (text.length === 0) return [];
@@ -159,9 +159,7 @@ export function markdownToDoc(md: string): DocNode {
         const text = match?.[1] ?? "";
         items.push({
           type: "listItem",
-          content: [
-            { type: "paragraph", content: parseInline(text) },
-          ],
+          content: [{ type: "paragraph", content: parseInline(text) }],
         });
         i++;
       }
@@ -177,9 +175,7 @@ export function markdownToDoc(md: string): DocNode {
         const text = match?.[1] ?? "";
         items.push({
           type: "listItem",
-          content: [
-            { type: "paragraph", content: parseInline(text) },
-          ],
+          content: [{ type: "paragraph", content: parseInline(text) }],
         });
         i++;
       }
@@ -281,8 +277,17 @@ export function docToMarkdown(doc: DocNode): string {
       case "bulletList": {
         for (const item of block.content ?? []) {
           const inner = item.content
-            .filter((n): n is Exclude<typeof n, { type: "hardBreak" }> => n.type !== "hardBreak")
-            .map((n) => serializeInline("content" in n && Array.isArray(n.content) ? n.content as InlineNode[] : []))
+            .filter(
+              (n): n is Exclude<typeof n, { type: "hardBreak" }> =>
+                n.type !== "hardBreak",
+            )
+            .map((n) =>
+              serializeInline(
+                "content" in n && Array.isArray(n.content)
+                  ? (n.content as InlineNode[])
+                  : [],
+              ),
+            )
             .join("");
           lines.push(`- ${inner}`);
         }
@@ -292,8 +297,17 @@ export function docToMarkdown(doc: DocNode): string {
         let idx = 1;
         for (const item of block.content ?? []) {
           const inner = item.content
-            .filter((n): n is Exclude<typeof n, { type: "hardBreak" }> => n.type !== "hardBreak")
-            .map((n) => serializeInline("content" in n && Array.isArray(n.content) ? n.content as InlineNode[] : []))
+            .filter(
+              (n): n is Exclude<typeof n, { type: "hardBreak" }> =>
+                n.type !== "hardBreak",
+            )
+            .map((n) =>
+              serializeInline(
+                "content" in n && Array.isArray(n.content)
+                  ? (n.content as InlineNode[])
+                  : [],
+              ),
+            )
             .join("");
           lines.push(`${idx}. ${inner}`);
           idx++;

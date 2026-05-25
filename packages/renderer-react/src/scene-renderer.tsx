@@ -1,6 +1,7 @@
 import type { SceneNode } from "@ai-native/core";
 import { useEffect, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
+import { EditorCallbacksContext } from "./editor-callbacks.js";
 import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
 import { MarqueeOverlay } from "./marquee-select.jsx";
 import type {
@@ -10,10 +11,6 @@ import type {
   TransformEvent,
 } from "./renderer.js";
 import { SelectionChrome } from "./selection-chrome.jsx";
-import {
-  EditorCallbacksContext,
-  useEditorCallbacks,
-} from "./editor-callbacks.js";
 
 function missingPluginFallback(n: SceneNode, ctx: RenderContext) {
   return MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
@@ -259,8 +256,7 @@ export function SceneRenderer({
   const editorCallbacks = {
     onUpdateProps,
     onContentChange: onUpdateProps
-      ? (nodeId: string, content: unknown) =>
-          onUpdateProps(nodeId, { content })
+      ? (nodeId: string, content: unknown) => onUpdateProps(nodeId, { content })
       : undefined,
   };
 
@@ -292,7 +288,7 @@ export function SceneRenderer({
 
   return (
     <EditorCallbacksContext.Provider value={editorCallbacks}>
-      <>{rootContent}</>
+      {rootContent}
     </EditorCallbacksContext.Provider>
   );
 }

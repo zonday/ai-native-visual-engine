@@ -164,7 +164,9 @@ const blockNodeSchema: z.ZodType<BlockNode> = z.lazy(() =>
     }),
     z.object({
       type: z.literal("heading"),
-      attrs: z.object({ level: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
+      attrs: z.object({
+        level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+      }),
       content: z.array(inlineNodeSchema).optional(),
     }),
     z.object({
