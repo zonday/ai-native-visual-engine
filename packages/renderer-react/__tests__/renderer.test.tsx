@@ -587,3 +587,74 @@ describe("SceneRenderer — viewport transform", () => {
   });
 });
 
+describe("SceneRenderer — zoom-adjusted deltas", () => {
+  it(
+    "emits content-space deltas for move drag under viewport zoom=2",
+    { timeout: 5000 },
+    async () => {
+      const { render, fireEvent } = await import("@testing-library/react");
+
+      const scene: SceneGraph = {
+        version: 0,
+        rootId: "root",
+        nodes: {
+          root: {
+            id: "root",
+            type: "container",
+            children: ["child-1"],
+          },
+          "child-1": {
+            id: "child-1",
+            type: "container",
+            parentId: "root",
+            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+          },
+        },
+      };
+
+      const onTransform = vi.fn();
+
+      const { getByTestId } = render(
+        <div data-testid="zoom-root-wrapper">
+          <SceneRenderer
+            registry={registry}
+            context={{
+              mode: "editor",
+              pageId: "page-1",
+              scene,
+              selection: { nodeIds: ["child-1"] },
+              viewport: { zoom: 2, x: 0, y: 0 },
+            }}
+            onTransform={onTransform}
+          />
+        </div>,
+      );
+
+      const nodeEl = getByTestId("zoom-root-wrapper").querySelector(
+        '[data-node-id="child-1"]',
+      ) as HTMLElement;
+      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 100, clientY: 100 });
+      // Move 20 screen pixels → 10 content pixels at zoom=2
+      fireEvent.mouseMove(window, { clientX: 120, clientY: 120 });
+      fireEvent.mouseUp(window, { clientX: 120, clientY: 120 });
+
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: false,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: true,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+    },
+  );
+});
+
