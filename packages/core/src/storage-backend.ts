@@ -1,6 +1,6 @@
-import type { DocumentSnapshot, DocumentId } from "./types.js";
 import type { DocumentAction } from "./document/actions.js";
 import type { RuntimeAction } from "./runtime/actions.js";
+import type { DocumentId, DocumentSnapshot } from "./types.js";
 
 export interface StorageBackend {
   loadDocument(documentId: DocumentId): Promise<DocumentSnapshot | null>;
@@ -20,10 +20,7 @@ export interface StorageBackend {
 
 export class InMemoryStorageBackend implements StorageBackend {
   private documents = new Map<string, DocumentSnapshot>();
-  private eventLogs = new Map<
-    string,
-    DocumentAction[] | RuntimeAction[]
-  >();
+  private eventLogs = new Map<string, DocumentAction[] | RuntimeAction[]>();
 
   async loadDocument(documentId: string): Promise<DocumentSnapshot | null> {
     return this.documents.get(documentId) ?? null;

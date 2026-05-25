@@ -1,13 +1,18 @@
-import type { VisualDocument, PersistedSceneGraph, Page, DocumentId, PageId, SceneId } from "./types.js";
+import type {
+  DocumentId,
+  Page,
+  PageId,
+  PersistedSceneGraph,
+  SceneId,
+  VisualDocument,
+} from "./types.js";
 
 export function generateId(prefix: string): string {
   const uuid = crypto.randomUUID();
   return `${prefix}-${uuid}`;
 }
 
-export function createEmptyScene(
-  rootId?: string,
-): PersistedSceneGraph {
+export function createEmptyScene(rootId?: string): PersistedSceneGraph {
   const id = rootId ?? generateId("root");
   return {
     version: 0,

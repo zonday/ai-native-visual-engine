@@ -3,7 +3,10 @@ export interface MissingPluginPlaceholderProps {
   mode: "editor" | "runtime";
 }
 
-export function MissingPluginPlaceholder({ nodeType, mode }: MissingPluginPlaceholderProps) {
+export function MissingPluginPlaceholder({
+  nodeType,
+  mode,
+}: MissingPluginPlaceholderProps) {
   return (
     <div
       data-component="missing-plugin"

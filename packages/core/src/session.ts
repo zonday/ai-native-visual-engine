@@ -1,5 +1,11 @@
+import type {
+  DocumentSnapshot,
+  PageId,
+  PersistedSceneGraph,
+  SceneGraph,
+  VisualDocument,
+} from "./types.js";
 import { VisualDocumentSchema } from "./types.js";
-import type { VisualDocument, PersistedSceneGraph, SceneGraph, PageId, DocumentSnapshot } from "./types.js";
 
 export class SessionError extends Error {
   readonly code: string;
@@ -51,9 +57,7 @@ export interface DocumentLoadResult {
   diagnostics: string[];
 }
 
-export function loadDocument(
-  snapshot: DocumentSnapshot,
-): DocumentLoadResult {
+export function loadDocument(snapshot: DocumentSnapshot): DocumentLoadResult {
   const diagnostics: string[] = [];
   const damagedPageIds: PageId[] = [];
   const parsed = VisualDocumentSchema.safeParse(snapshot.document);
@@ -61,7 +65,9 @@ export function loadDocument(
   if (!parsed.success) {
     return {
       ok: false,
-      diagnostics: [`validation.document-schema-mismatch: ${parsed.error.message}`],
+      diagnostics: [
+        `validation.document-schema-mismatch: ${parsed.error.message}`,
+      ],
     };
   }
 
@@ -71,7 +77,9 @@ export function loadDocument(
     const persistedScene = document.scenes[page.sceneId];
     if (!persistedScene) {
       damagedPageIds.push(page.id);
-      diagnostics.push(`validation.referential-broken: Scene "${page.sceneId}" missing for page "${page.id}"`);
+      diagnostics.push(
+        `validation.referential-broken: Scene "${page.sceneId}" missing for page "${page.id}"`,
+      );
     }
   }
 
@@ -88,13 +96,19 @@ export function openDocumentSession(
   activePageId?: PageId,
 ): DocumentSession {
   if (document.pages.length === 0) {
-    throw new SessionError("session.no-pages", "Cannot open document with no pages");
+    throw new SessionError(
+      "session.no-pages",
+      "Cannot open document with no pages",
+    );
   }
 
   const pageId = activePageId ?? document.pages[0]!.id;
   const page = document.pages.find((p) => p.id === pageId);
   if (!page) {
-    throw new SessionError("session.page-not-found", `Page "${pageId}" not found`);
+    throw new SessionError(
+      "session.page-not-found",
+      `Page "${pageId}" not found`,
+    );
   }
 
   const state: EditorSessionState = {
@@ -110,13 +124,21 @@ export function openDocumentSession(
       if (!state.isOpen) {
         throw new SessionError("session.closed", "Session is closed");
       }
-      const activePage = document.pages.find((p) => p.id === state.activePageId);
+      const activePage = document.pages.find(
+        (p) => p.id === state.activePageId,
+      );
       if (!activePage) {
-        throw new SessionError("session.page-not-found", `Page "${state.activePageId}" not found`);
+        throw new SessionError(
+          "session.page-not-found",
+          `Page "${state.activePageId}" not found`,
+        );
       }
       const persistedScene = document.scenes[activePage.sceneId];
       if (!persistedScene) {
-        throw new SessionError("session.scene-not-found", `Scene "${activePage.sceneId}" not found`);
+        throw new SessionError(
+          "session.scene-not-found",
+          `Scene "${activePage.sceneId}" not found`,
+        );
       }
       return materializeScene(persistedScene);
     },
@@ -126,11 +148,17 @@ export function openDocumentSession(
       }
       const target = document.pages.find((p) => p.id === targetPageId);
       if (!target) {
-        throw new SessionError("session.page-not-found", `Page "${targetPageId}" not found`);
+        throw new SessionError(
+          "session.page-not-found",
+          `Page "${targetPageId}" not found`,
+        );
       }
       const targetScene = document.scenes[target.sceneId];
       if (!targetScene) {
-        throw new SessionError("session.scene-not-found", `Scene "${target.sceneId}" not found`);
+        throw new SessionError(
+          "session.scene-not-found",
+          `Scene "${target.sceneId}" not found`,
+        );
       }
       state.activePageId = targetPageId;
     },
@@ -154,9 +182,7 @@ export function openDocumentFromSnapshot(
   return openDocumentSession(result.document!, activePageId);
 }
 
-export function materializeScene(
-  persisted: PersistedSceneGraph,
-): SceneGraph {
+export function materializeScene(persisted: PersistedSceneGraph): SceneGraph {
   return {
     version: persisted.version,
     rootId: persisted.rootId,

@@ -1,5 +1,5 @@
+import type { DocumentSnapshot, PageId, VisualDocument } from "./types.js";
 import { VisualDocumentSchema } from "./types.js";
-import type { VisualDocument, PageId, DocumentSnapshot } from "./types.js";
 
 export interface ImportResult {
   ok: boolean;
@@ -13,9 +13,7 @@ export interface ExportOptions {
   includeAssets?: boolean;
 }
 
-export function importDocument(
-  data: unknown,
-): ImportResult {
+export function importDocument(data: unknown): ImportResult {
   const diagnostics: string[] = [];
   const parsed = VisualDocumentSchema.safeParse(data);
 
@@ -52,7 +50,8 @@ export function exportDocument(
     ...document,
     pages,
     scenes,
-    activeThemeId: options?.includeThemes !== false ? document.activeThemeId : undefined,
+    activeThemeId:
+      options?.includeThemes !== false ? document.activeThemeId : undefined,
   };
 
   const validated = VisualDocumentSchema.safeParse(exported);

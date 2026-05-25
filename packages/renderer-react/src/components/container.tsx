@@ -1,6 +1,6 @@
 import type { SceneNode } from "@ai-native/core";
-import type { RenderContext } from "../renderer.js";
 import { resolveFlexStyle } from "../layout-style.js";
+import type { RenderContext } from "../renderer.js";
 
 export interface ContainerProps {
   node: SceneNode;
@@ -14,12 +14,4 @@ export function ContainerNode({ node, children }: ContainerProps) {
       {children}
     </div>
   );
-}
-
-export function registerContainer(registry: Map<string, unknown>) {
-  registry.set("container", {
-    type: "container",
-    render: (node: SceneNode, _ctx: RenderContext, children?: React.ReactNode) =>
-      ContainerNode({ node, ctx: _ctx, children }),
-  });
 }

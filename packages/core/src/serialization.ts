@@ -1,6 +1,6 @@
-import type { DocumentSnapshot } from "./types.js";
 import type { DocumentAction } from "./document/actions.js";
 import type { RuntimeAction } from "./runtime/actions.js";
+import type { DocumentSnapshot } from "./types.js";
 
 export const CURRENT_SERIALIZATION_VERSION = 1;
 
@@ -20,7 +20,9 @@ export interface SerializedEventLog {
   actions: DocumentAction[] | RuntimeAction[];
 }
 
-export function serializeDocument(snapshot: DocumentSnapshot): SerializedDocument {
+export function serializeDocument(
+  snapshot: DocumentSnapshot,
+): SerializedDocument {
   return {
     version: CURRENT_SERIALIZATION_VERSION,
     type: "document-snapshot",
