@@ -1,3 +1,4 @@
+import type { ComponentStateDef } from "./component-states.js";
 import type { SceneNode } from "./types.js";
 
 export interface PropMeta {
@@ -55,6 +56,7 @@ export interface ComponentMeta {
   events?: EventMeta[];
   examples?: Example[];
   constraints?: ComponentConstraint[];
+  states?: ComponentStateDef[];
   ai?: {
     usage?: string[];
     antiPatterns?: string[];

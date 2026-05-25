@@ -1,5 +1,5 @@
 import type { PrototypeComponent, SceneNode } from "@ai-native/core";
-import { resolveInstance } from "@ai-native/core";
+import { resolveInstance, resolveStateProps } from "@ai-native/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
@@ -41,6 +41,10 @@ function renderNode(
   registry: ComponentRegistry,
   ctx: RenderContext,
   prototypeMap: Map<string, PrototypeComponent>,
+  statesByType: Map<
+    string,
+    { stateProps: Map<string, Record<string, unknown>> }
+  >,
   onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
@@ -49,9 +53,19 @@ function renderNode(
     ? prototypeMap.get(node.prototypeId)
     : undefined;
   const resolved = resolveInstance(node, prototype);
+
+  const stateMeta = statesByType.get(node.type);
+  const runtimeActive = (node.runtime as Record<string, unknown> | undefined)
+    ?.activeStates as string[] | undefined;
+  const active = runtimeActive ?? node.activeStates ?? [];
+  const stateProps = stateMeta
+    ? resolveStateProps(active, stateMeta.stateProps)
+    : {};
+  const mergedProps = { ...resolved.props, ...stateProps };
+
   const resolvedNode: SceneNode = {
     ...node,
-    props: resolved.props,
+    props: mergedProps,
     style: resolved.style,
     layout: resolved.layout as SceneNode["layout"],
   };
@@ -62,13 +76,17 @@ function renderNode(
     ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
   );
 
-  const childNodes =
-    node.children
-      ?.map((childId: string) => ctx.scene.nodes[childId])
-      .filter((c): c is SceneNode => !!c)
-      .map((child) =>
-        renderNode(child, registry, ctx, prototypeMap, onTransform),
-      ) ?? [];
+  const childNodes: React.ReactNode[] = [];
+  if (node.children) {
+    for (const childId of node.children) {
+      const c = ctx.scene.nodes[childId];
+      if (c) {
+        childNodes.push(
+          renderNode(c, registry, ctx, prototypeMap, statesByType, onTransform),
+        );
+      }
+    }
+  }
 
   const content = render(resolvedNode, ctx, childNodes);
 
@@ -238,6 +256,17 @@ export function SceneRenderer({
     return map;
   }, [context.prototypes]);
 
+  const viewportStyle: React.CSSProperties | undefined = useMemo(() => {
+    const vp = context.viewport;
+    if (!vp || vp.zoom <= 0 || (vp.zoom === 1 && vp.x === 0 && vp.y === 0)) {
+      return undefined;
+    }
+    return {
+      transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
+      transformOrigin: "0 0",
+    };
+  }, [context.viewport]);
+
   const sceneMouseDown = useCallback(
     (e: React.MouseEvent) => {
       didDragRef.current = false;
@@ -255,7 +284,6 @@ export function SceneRenderer({
         !!context.selection?.nodeIds.includes(nodeId);
       if (!isSelected) return;
       if (node.locked === true) return;
-      // Resolve instance to get effective layout for prototype-inherited nodes
       const p = node.prototypeId
         ? prototypeMap.get(node.prototypeId)
         : undefined;
@@ -267,7 +295,13 @@ export function SceneRenderer({
       if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
       moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
     },
-    [context, onTransform, prototypeMap],
+    [
+      context.mode,
+      context.scene.nodes,
+      context.selection?.nodeIds,
+      onTransform,
+      prototypeMap,
+    ],
   );
 
   const sceneClickHandler = useCallback(
@@ -281,6 +315,29 @@ export function SceneRenderer({
     [context.scene, onSelectNode],
   );
 
+  const statesByType = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        stateProps: Map<string, Record<string, unknown>>;
+        config: ComponentStatesConfig;
+      }
+    >();
+    for (const plugin of context.plugins ?? []) {
+      if (plugin.meta.states && plugin.meta.states.length > 0) {
+        const stateProps = new Map<string, Record<string, unknown>>();
+        for (const s of plugin.meta.states) {
+          stateProps.set(s.name, s.props);
+        }
+        map.set(plugin.type, {
+          stateProps,
+          config: { states: plugin.meta.states },
+        });
+      }
+    }
+    return map;
+  }, [context.plugins]);
+
   const root = context.scene.nodes[context.scene.rootId];
   if (!root) return null;
 
@@ -289,19 +346,11 @@ export function SceneRenderer({
     registry,
     context,
     prototypeMap,
+    statesByType,
     zoomAdjustedOnTransform,
   );
 
   if (context.mode === "editor") {
-    const vp = context.viewport;
-    const viewportStyle: React.CSSProperties | undefined =
-      vp && vp.zoom > 0 && (vp.zoom !== 1 || vp.x !== 0 || vp.y !== 0)
-        ? {
-            transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
-            transformOrigin: "0 0",
-          }
-        : undefined;
-
     return (
       <EditorCallbacksContext.Provider value={editorCallbacks}>
         <style>
