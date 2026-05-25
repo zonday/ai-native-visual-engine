@@ -232,3 +232,16 @@ export const allPluginDefinitions: ComponentPlugin[] = [
   dividerPlugin,
   filterPlugin,
 ];
+
+export function registerDefaultPlugins(registry: Map<string, unknown>): void {
+  for (const plugin of allPluginDefinitions) {
+    registry.set(plugin.type, {
+      type: plugin.type,
+      render: plugin.renderer as (
+        node: unknown,
+        ctx: unknown,
+        children?: unknown,
+      ) => unknown,
+    });
+  }
+}

@@ -51,11 +51,3 @@ export function DividerNode({ node }: DividerProps) {
 
   return <div style={{ borderTop: `1px ${borderStyle} #e5e7eb` }} />;
 }
-
-export function registerDivider(registry: Map<string, unknown>) {
-  registry.set("divider", {
-    type: "divider",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      DividerNode({ node, ctx: _ctx }),
-  });
-}

@@ -48,11 +48,3 @@ export function MetricValueNode({ node }: MetricValueProps) {
     </div>
   );
 }
-
-export function registerMetricValue(registry: Map<string, unknown>) {
-  registry.set("metric-value", {
-    type: "metric-value",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      MetricValueNode({ node, ctx: _ctx }),
-  });
-}

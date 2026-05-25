@@ -63,11 +63,3 @@ export function TableNode({ node }: TableProps) {
     </div>
   );
 }
-
-export function registerTable(registry: Map<string, unknown>) {
-  registry.set("table", {
-    type: "table",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      TableNode({ node, ctx: _ctx }),
-  });
-}

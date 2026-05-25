@@ -80,11 +80,3 @@ export function MetricTrendNode({ node }: MetricTrendProps) {
     </div>
   );
 }
-
-export function registerMetricTrend(registry: Map<string, unknown>) {
-  registry.set("metric-trend", {
-    type: "metric-trend",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      MetricTrendNode({ node, ctx: _ctx }),
-  });
-}

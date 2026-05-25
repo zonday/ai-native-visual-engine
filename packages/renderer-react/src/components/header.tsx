@@ -45,11 +45,3 @@ export function HeaderNode({ node }: HeaderProps) {
     </div>
   );
 }
-
-export function registerHeader(registry: Map<string, unknown>) {
-  registry.set("header", {
-    type: "header",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      HeaderNode({ node, ctx: _ctx }),
-  });
-}

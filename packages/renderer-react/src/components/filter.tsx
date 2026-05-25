@@ -91,11 +91,3 @@ export function FilterNode({ node }: FilterProps) {
     </div>
   );
 }
-
-export function registerFilter(registry: Map<string, unknown>) {
-  registry.set("filter", {
-    type: "filter",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      FilterNode({ node, ctx: _ctx }),
-  });
-}

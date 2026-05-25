@@ -47,11 +47,3 @@ export function ChartNode({ node }: ChartProps) {
     </div>
   );
 }
-
-export function registerChart(registry: Map<string, unknown>) {
-  registry.set("chart", {
-    type: "chart",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      ChartNode({ node, ctx: _ctx }),
-  });
-}

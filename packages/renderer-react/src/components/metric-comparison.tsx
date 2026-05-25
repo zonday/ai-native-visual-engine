@@ -53,11 +53,3 @@ export function MetricComparisonNode({ node }: MetricComparisonProps) {
     </div>
   );
 }
-
-export function registerMetricComparison(registry: Map<string, unknown>) {
-  registry.set("metric-comparison", {
-    type: "metric-comparison",
-    render: (node: SceneNode, _ctx: RenderContext) =>
-      MetricComparisonNode({ node, ctx: _ctx }),
-  });
-}
