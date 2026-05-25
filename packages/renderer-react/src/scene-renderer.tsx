@@ -267,7 +267,7 @@ export function SceneRenderer({
       if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
       moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
     },
-    [context, onTransform, prototypeMap],
+    [context.mode, context.scene.nodes, context.selection?.nodeIds, onTransform, prototypeMap],
   );
 
   const sceneClickHandler = useCallback(
