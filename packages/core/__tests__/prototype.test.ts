@@ -73,6 +73,25 @@ describe("resolveInstance", () => {
     const result = resolveInstance(node, proto);
     expect(result.layout).toEqual({ mode: "absolute", x: 0, y: 0, width: 200, height: 100 });
   });
+
+  it("returns raw node when prototype id does not match", () => {
+    const otherProto: PrototypeComponent = {
+      id: "proto-2",
+      name: "Other",
+      baseType: "metric-value",
+      defaultProps: { label: "Wrong", value: 999 },
+      defaultStyle: { color: "red" },
+    };
+    const node: SceneNode = {
+      id: "n1",
+      type: "metric-value",
+      prototypeId: "proto-1",
+      props: { label: "Sales" },
+    };
+    const result = resolveInstance(node, otherProto);
+    expect(result.props).toEqual({ label: "Sales" });
+    expect(result.style).toEqual({});
+  });
 });
 
 describe("createNodeFromPrototype", () => {

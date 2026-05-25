@@ -23,21 +23,16 @@ export function resolveInstance(
   if (!node.prototypeId || !prototype || prototype.id !== node.prototypeId) {
     return {
       props: node.props ?? {},
-      style: (node.style as Record<string, unknown>) ?? {},
-      layout: node.layout
-        ? { ...(node.layout as Record<string, unknown>) }
-        : undefined,
+      style: node.style ?? {},
+      layout: node.layout ? { ...node.layout } : undefined,
     };
   }
 
   return {
     props: { ...prototype.defaultProps, ...(node.props ?? {}) },
-    style: {
-      ...prototype.defaultStyle,
-      ...((node.style as Record<string, unknown>) ?? {}),
-    },
+    style: { ...prototype.defaultStyle, ...(node.style ?? {}) },
     layout: node.layout
-      ? { ...(node.layout as Record<string, unknown>) }
+      ? { ...node.layout }
       : prototype.defaultLayout
         ? { ...prototype.defaultLayout }
         : undefined,
@@ -77,10 +72,8 @@ export function createPrototypeFromNode(
     name,
     baseType: node.type,
     defaultProps: { ...(node.props ?? {}) },
-    defaultStyle: { ...((node.style as Record<string, unknown>) ?? {}) },
-    defaultLayout: (node.layout as Record<string, unknown> | undefined)
-      ? { ...(node.layout as Record<string, unknown>) }
-      : undefined,
+    defaultStyle: { ...(node.style ?? {}) },
+    defaultLayout: node.layout ? { ...node.layout } : undefined,
   };
 }
 
