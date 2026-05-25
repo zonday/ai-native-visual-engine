@@ -150,7 +150,7 @@ export function SceneRenderer({
       const drag = moveDragRef.current;
       if (!drag || !onTransformRef.current) return;
       didDragRef.current = true;
-      const zoom = zoomRef.current;
+      const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
       const deltaX = (e.clientX - drag.startX) / zoom;
       const deltaY = (e.clientY - drag.startY) / zoom;
       onTransformRef.current({
@@ -166,7 +166,7 @@ export function SceneRenderer({
       const drag = moveDragRef.current;
       if (!drag) return;
       if (onTransformRef.current && didDragRef.current) {
-        const zoom = zoomRef.current;
+        const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
         const deltaX = (e.clientX - drag.startX) / zoom;
         const deltaY = (e.clientY - drag.startY) / zoom;
         onTransformRef.current({
@@ -234,7 +234,7 @@ export function SceneRenderer({
   // for the CSS viewport transform on the scene root.
   const zoomAdjustedOnTransform = onTransform
     ? (event: TransformEvent) => {
-        const zoom = zoomRef.current;
+        const zoom = zoomRef.current > 0 ? zoomRef.current : 1;
         onTransform({
           ...event,
           deltaX: event.deltaX / zoom,
@@ -252,12 +252,13 @@ export function SceneRenderer({
 
   if (context.mode === "editor") {
     const vp = context.viewport;
-    const viewportStyle: React.CSSProperties | undefined = vp
-      ? {
-          transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
-          transformOrigin: "0 0",
-        }
-      : undefined;
+    const viewportStyle: React.CSSProperties | undefined =
+      vp && vp.zoom > 0 && (vp.zoom !== 1 || vp.x !== 0 || vp.y !== 0)
+        ? {
+            transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
+            transformOrigin: "0 0",
+          }
+        : undefined;
 
     return (
       <div

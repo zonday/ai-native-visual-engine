@@ -547,7 +547,7 @@ describe("SceneRenderer — viewport transform", () => {
     expect(html).toContain("transform-origin:0 0");
   });
 
-  it("applies identity transform for default viewport (zoom=1, x=0, y=0)", () => {
+  it("does not apply viewport transform for identity viewport (zoom=1, x=0, y=0)", () => {
     const ctx: RenderContext = {
       mode: "editor",
       pageId: "page-1",
@@ -557,8 +557,21 @@ describe("SceneRenderer — viewport transform", () => {
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
-    expect(html).toContain("scale(1)");
-    expect(html).toContain("translate(0px, 0px)");
+    expect(html).not.toContain("transform-origin");
+  });
+
+  it("treats zoom=0 as zoom=1 to avoid division by zero", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 0, x: 0, y: 0 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    // zoom=0 triggers the safety guard: viewportStyle is undefined (identity)
+    expect(html).not.toContain("transform-origin");
   });
 
   it("does not apply viewport transform when viewport is absent", () => {
@@ -650,6 +663,67 @@ describe("SceneRenderer — zoom-adjusted deltas", () => {
         expect.objectContaining({
           type: "move",
           commit: true,
+          deltaX: 10,
+          deltaY: 10,
+        }),
+      );
+    },
+  );
+
+  it(
+    "does not crash for move drag with zoom=0 (guarded to zoom=1)",
+    { timeout: 5000 },
+    async () => {
+      const { render, fireEvent } = await import("@testing-library/react");
+
+      const scene: SceneGraph = {
+        version: 0,
+        rootId: "root",
+        nodes: {
+          root: {
+            id: "root",
+            type: "container",
+            children: ["child-1"],
+          },
+          "child-1": {
+            id: "child-1",
+            type: "container",
+            parentId: "root",
+            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+          },
+        },
+      };
+
+      const onTransform = vi.fn();
+
+      const { getByTestId } = render(
+        <div data-testid="zero-zoom-wrapper">
+          <SceneRenderer
+            registry={registry}
+            context={{
+              mode: "editor",
+              pageId: "page-1",
+              scene,
+              selection: { nodeIds: ["child-1"] },
+              viewport: { zoom: 0, x: 0, y: 0 },
+            }}
+            onTransform={onTransform}
+          />
+        </div>,
+      );
+
+      const nodeEl = getByTestId("zero-zoom-wrapper").querySelector(
+        '[data-node-id="child-1"]',
+      ) as HTMLElement;
+      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
+      fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
+      fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
+
+      // zoom=0 guarded to 1, so 10 screen pixels → 10 content deltas
+      expect(onTransform).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "move",
+          commit: false,
           deltaX: 10,
           deltaY: 10,
         }),
