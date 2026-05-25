@@ -1,28 +1,24 @@
 import type { SceneNode } from "@ai-native/core";
+import { z } from "zod";
 import type { RenderContext } from "../renderer.js";
 import { useNodeProps } from "../use-node-props.js";
 
-export interface MetricComparisonNodeProps {
+export interface MetricComparisonProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-interface MetricComparisonData {
-  label?: string;
-  value?: number | string;
-  compareValue?: number | string;
-  compareLabel?: string;
-  changePercent?: number;
-}
+const metricComparisonSchema = z.object({
+  label: z.string().default("Comparison"),
+  value: z.union([z.number(), z.string()]).default(0),
+  compareValue: z.union([z.number(), z.string()]).optional(),
+  compareLabel: z.string().optional(),
+  changePercent: z.number().optional(),
+});
 
-export function MetricComparisonNode({ node }: MetricComparisonNodeProps) {
-  const {
-    label = "Comparison",
-    value = 0,
-    compareValue,
-    compareLabel,
-    changePercent,
-  } = useNodeProps<MetricComparisonData>(node);
+export function MetricComparisonNode({ node }: MetricComparisonProps) {
+  const { label, value, compareValue, compareLabel, changePercent } =
+    useNodeProps(node, metricComparisonSchema);
 
   const pct = changePercent ?? 0;
   const isPositive = pct >= 0;

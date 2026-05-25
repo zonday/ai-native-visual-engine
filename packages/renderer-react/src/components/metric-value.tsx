@@ -1,29 +1,26 @@
 import type { SceneNode } from "@ai-native/core";
+import { z } from "zod";
 import type { RenderContext } from "../renderer.js";
 import { useNodeProps } from "../use-node-props.js";
 
-export interface MetricValueNodeProps {
+export interface MetricValueProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-interface MetricValueData {
-  label?: string;
-  value?: number | string;
-  format?: string;
-  prefix?: string;
-  suffix?: string;
-  color?: string;
-}
+const metricValueSchema = z.object({
+  label: z.string().default("Metric"),
+  value: z.union([z.number(), z.string()]).default(0),
+  prefix: z.string().optional(),
+  suffix: z.string().optional(),
+  color: z.string().optional(),
+});
 
-export function MetricValueNode({ node }: MetricValueNodeProps) {
-  const {
-    label = "Metric",
-    value = 0,
-    prefix,
-    suffix,
-    color,
-  } = useNodeProps<MetricValueData>(node);
+export function MetricValueNode({ node }: MetricValueProps) {
+  const { label, value, prefix, suffix, color } = useNodeProps(
+    node,
+    metricValueSchema,
+  );
 
   const display = `${prefix ?? ""}${String(value)}${suffix ?? ""}`;
 

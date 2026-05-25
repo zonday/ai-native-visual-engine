@@ -1,33 +1,29 @@
 import type { SceneNode } from "@ai-native/core";
+import { z } from "zod";
 import type { RenderContext } from "../renderer.js";
 import { useNodeProps } from "../use-node-props.js";
 
-export interface MetricTrendNodeProps {
+export interface MetricTrendProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-interface MetricTrendData {
-  label?: string;
-  value?: number | string;
-  trendData?: number[];
-  trendDirection?: string;
-  changePercent?: number;
-}
+const metricTrendSchema = z.object({
+  label: z.string().default("Trend"),
+  value: z.union([z.number(), z.string()]).default(0),
+  trendData: z.array(z.number()).optional(),
+  trendDirection: z.string().optional(),
+  changePercent: z.number().optional(),
+});
 
 const trendConfig: Record<string, { color: string; arrow: string }> = {
   up: { color: "#16a34a", arrow: "↑" },
   down: { color: "#dc2626", arrow: "↓" },
 };
 
-export function MetricTrendNode({ node }: MetricTrendNodeProps) {
-  const {
-    label = "Trend",
-    value = 0,
-    trendData,
-    trendDirection,
-    changePercent,
-  } = useNodeProps<MetricTrendData>(node);
+export function MetricTrendNode({ node }: MetricTrendProps) {
+  const { label, value, trendData, trendDirection, changePercent } =
+    useNodeProps(node, metricTrendSchema);
 
   const t = trendConfig[trendDirection ?? ""] ?? {
     color: "#6b7280",
@@ -64,22 +60,21 @@ export function MetricTrendNode({ node }: MetricTrendNodeProps) {
             marginTop: "0.25rem",
           }}
         >
-          {trendData.map((v) => {
+          {(() => {
             const max = Math.max(...trendData, 1);
-            const h = Math.max((v / max) * 100, 4);
-            return (
+            return trendData.map((v) => (
               <div
                 key={`bar-${v}`}
                 style={{
                   flex: 1,
-                  height: `${h}%`,
+                  height: `${Math.max((v / max) * 100, 4)}%`,
                   background: t.color,
                   borderRadius: "1px",
                   opacity: 0.6,
                 }}
               />
-            );
-          })}
+            ));
+          })()}
         </div>
       )}
     </div>

@@ -1,24 +1,21 @@
 import type { SceneNode } from "@ai-native/core";
+import { z } from "zod";
 import type { RenderContext } from "../renderer.js";
 import { useNodeProps } from "../use-node-props.js";
 
-export interface ChartNodeProps {
+export interface ChartProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-interface ChartData {
-  chartType?: string;
-  title?: string;
-  height?: number;
-}
+const chartSchema = z.object({
+  chartType: z.string().default("bar"),
+  title: z.string().optional(),
+  height: z.number().default(200),
+});
 
-export function ChartNode({ node }: ChartNodeProps) {
-  const {
-    chartType = "bar",
-    title,
-    height = 200,
-  } = useNodeProps<ChartData>(node);
+export function ChartNode({ node }: ChartProps) {
+  const { chartType, title, height } = useNodeProps(node, chartSchema);
 
   return (
     <div style={{ height }}>

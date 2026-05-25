@@ -1,43 +1,42 @@
 import type { SceneNode } from "@ai-native/core";
+import { z } from "zod";
 import type { RenderContext } from "../renderer.js";
 import { useNodeProps } from "../use-node-props.js";
 
-export interface TableNodeProps {
+export interface TableProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-interface TableColumn {
-  key: string;
-  label: string;
-}
+const tableSchema = z.object({
+  columns: z.array(z.object({ key: z.string(), label: z.string() })).optional(),
+});
 
-interface TableData {
-  columns?: TableColumn[];
-}
-
-export function TableNode({ node }: TableNodeProps) {
-  const { columns } = useNodeProps<TableData>(node);
+export function TableNode({ node }: TableProps) {
+  const { columns } = useNodeProps(node, tableSchema);
+  const hasColumns = columns && columns.length > 0;
 
   return (
     <div style={{ overflow: "auto", fontSize: "0.875rem" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {columns?.map((col) => (
-              <th
-                key={col.key}
-                style={{
-                  padding: "0.5rem",
-                  textAlign: "left",
-                  borderBottom: "2px solid #e5e7eb",
-                  fontWeight: "600",
-                  color: "#374151",
-                }}
-              >
-                {col.label}
-              </th>
-            )) ?? (
+            {hasColumns ? (
+              columns.map((col) => (
+                <th
+                  key={col.key}
+                  style={{
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    borderBottom: "2px solid #e5e7eb",
+                    fontWeight: "600",
+                    color: "#374151",
+                  }}
+                >
+                  {col.label}
+                </th>
+              ))
+            ) : (
               <th
                 style={{
                   padding: "0.5rem",
@@ -53,7 +52,7 @@ export function TableNode({ node }: TableNodeProps) {
         <tbody>
           <tr>
             <td
-              colSpan={columns?.length ?? 1}
+              colSpan={Math.max(columns?.length ?? 1, 1)}
               style={{ padding: "1rem", textAlign: "center", color: "#9ca3af" }}
             >
               [data rows bound from variable]
