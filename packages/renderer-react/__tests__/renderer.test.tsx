@@ -77,6 +77,7 @@ describe("SceneRenderer", () => {
       <SceneRenderer registry={registry} context={ctx} />,
     );
     expect(html).toContain('data-component="text"');
+    expect(html).toContain("Hello");
   });
 
   it("renders missing plugin placeholder for unknown type", () => {

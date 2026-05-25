@@ -34,7 +34,7 @@ describe("extractPlainText", () => {
     expect(extractPlainText(doc)).toBe("Hello world");
   });
 
-  it("joins multiple paragraphs with newlines", () => {
+  it("concatenates text from multiple paragraphs", () => {
     const doc: DocNode = {
       type: "doc",
       content: [
@@ -48,7 +48,7 @@ describe("extractPlainText", () => {
         },
       ],
     };
-    expect(extractPlainText(doc)).toBe("First\nSecond");
+    expect(extractPlainText(doc)).toBe("FirstSecond");
   });
 
   it("handles headings", () => {
@@ -66,7 +66,7 @@ describe("extractPlainText", () => {
         },
       ],
     };
-    expect(extractPlainText(doc)).toBe("Title\nBody");
+    expect(extractPlainText(doc)).toBe("TitleBody");
   });
 
   it("returns empty string for empty document", () => {
@@ -102,7 +102,7 @@ describe("extractPlainText", () => {
         },
       ],
     };
-    expect(extractPlainText(doc)).toBe("Item 1\nItem 2");
+    expect(extractPlainText(doc)).toBe("Item 1Item 2");
   });
 });
 

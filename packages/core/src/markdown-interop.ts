@@ -1,4 +1,4 @@
-import type { BlockNode, DocNode, InlineNode } from "./rich-text.js";
+import type { BlockNode, DocNode, InlineNode, ListItemNode } from "./rich-text.js";
 
 function parseInline(text: string): InlineNode[] {
   if (text.length === 0) return [];
@@ -153,7 +153,7 @@ export function markdownToDoc(md: string): DocNode {
 
     const ul = /^- (.+)/.exec(line);
     if (ul) {
-      const items: BlockNode[] = [];
+      const items: ListItemNode[] = [];
       while (i < lines.length && /^- (.+)/.test(lines[i])) {
         const match = /^- (.+)/.exec(lines[i]);
         const text = match?.[1] ?? "";
@@ -169,7 +169,7 @@ export function markdownToDoc(md: string): DocNode {
 
     const ol = /^\d+\. (.+)/.exec(line);
     if (ol) {
-      const items: BlockNode[] = [];
+      const items: ListItemNode[] = [];
       while (i < lines.length && /^\d+\. (.+)/.test(lines[i])) {
         const match = /^\d+\. (.+)/.exec(lines[i]);
         const text = match?.[1] ?? "";
@@ -277,17 +277,17 @@ export function docToMarkdown(doc: DocNode): string {
       case "bulletList": {
         for (const item of block.content ?? []) {
           const inner = item.content
-            .filter(
-              (n): n is Exclude<typeof n, { type: "hardBreak" }> =>
-                n.type !== "hardBreak",
-            )
-            .map((n) =>
-              serializeInline(
-                "content" in n && Array.isArray(n.content)
-                  ? (n.content as InlineNode[])
-                  : [],
-              ),
-            )
+            .map((n) => {
+              if (n.type === "hardBreak") return "";
+              if (n.type === "text") return n.text;
+              if (
+                "content" in n &&
+                Array.isArray(n.content)
+              ) {
+                return serializeInline(n.content as InlineNode[]);
+              }
+              return "";
+            })
             .join("");
           lines.push(`- ${inner}`);
         }
@@ -297,17 +297,17 @@ export function docToMarkdown(doc: DocNode): string {
         let idx = 1;
         for (const item of block.content ?? []) {
           const inner = item.content
-            .filter(
-              (n): n is Exclude<typeof n, { type: "hardBreak" }> =>
-                n.type !== "hardBreak",
-            )
-            .map((n) =>
-              serializeInline(
-                "content" in n && Array.isArray(n.content)
-                  ? (n.content as InlineNode[])
-                  : [],
-              ),
-            )
+            .map((n) => {
+              if (n.type === "hardBreak") return "";
+              if (n.type === "text") return n.text;
+              if (
+                "content" in n &&
+                Array.isArray(n.content)
+              ) {
+                return serializeInline(n.content as InlineNode[]);
+              }
+              return "";
+            })
             .join("");
           lines.push(`${idx}. ${inner}`);
           idx++;

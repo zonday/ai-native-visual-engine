@@ -102,7 +102,7 @@ export const EMPTY_DOC: DocNode = {
 export function extractPlainText(doc: DocNode): string {
   const parts: string[] = [];
   walkTextNodes(doc, parts);
-  return parts.join("\n");
+  return parts.join("");
 }
 
 function walkTextNodes(node: unknown, parts: string[]): void {

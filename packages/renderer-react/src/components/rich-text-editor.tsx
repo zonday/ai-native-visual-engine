@@ -1,4 +1,5 @@
 import type { DocNode, SceneNode } from "@ai-native/core";
+import { extractPlainText } from "@ai-native/core";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -24,7 +25,14 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
     (node.props?.placeholder as string | undefined) ?? undefined;
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, Link],
+    extensions: [
+      StarterKit,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        validate: (href) => /^https?:\/\//.test(href),
+      }),
+    ],
     content,
     editable: isEditable,
     editorProps: {
@@ -40,7 +48,7 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
   });
 
   if (ctx.mode === "runtime") {
-    const html = editor?.getHTML() ?? "";
+    const html = editor?.getHTML() ?? extractPlainText(content);
     return (
       <div
         data-component="text"
@@ -54,6 +62,7 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
   return (
     <div data-component="text" data-richtext="editor">
       <EditorContent editor={editor} />
+      {!editor && <span>{extractPlainText(content)}</span>}
     </div>
   );
 }
