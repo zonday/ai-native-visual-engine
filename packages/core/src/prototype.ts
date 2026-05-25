@@ -20,11 +20,13 @@ export function resolveInstance(
   node: SceneNode,
   prototype: PrototypeComponent | undefined,
 ): ResolvedInstance {
-  if (!node.prototypeId || !prototype) {
+  if (!node.prototypeId || !prototype || prototype.id !== node.prototypeId) {
     return {
       props: node.props ?? {},
       style: (node.style as Record<string, unknown>) ?? {},
-      layout: (node.layout as Record<string, unknown> | undefined) ?? undefined,
+      layout: node.layout
+        ? { ...(node.layout as Record<string, unknown>) }
+        : undefined,
     };
   }
 
@@ -34,25 +36,35 @@ export function resolveInstance(
       ...prototype.defaultStyle,
       ...((node.style as Record<string, unknown>) ?? {}),
     },
-    layout:
-      (node.layout as Record<string, unknown> | undefined) ??
-      prototype.defaultLayout,
+    layout: node.layout
+      ? { ...(node.layout as Record<string, unknown>) }
+      : prototype.defaultLayout
+        ? { ...prototype.defaultLayout }
+        : undefined,
   };
 }
 
 export function createNodeFromPrototype(
   prototype: PrototypeComponent,
   parentId: string,
-  overrides?: Partial<SceneNode>,
+  overrides?: {
+    props?: Record<string, unknown>;
+    style?: Record<string, unknown>;
+    layout?: Record<string, unknown>;
+  },
 ): SceneNode {
   return {
-    id: `node-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     type: prototype.baseType,
     prototypeId: prototype.id,
     parentId,
     props: { ...(overrides?.props ?? {}) },
     style: { ...(overrides?.style ?? {}) },
-    layout: overrides?.layout ?? prototype.defaultLayout,
+    layout: overrides?.layout
+      ? { ...overrides.layout }
+      : prototype.defaultLayout
+        ? { ...prototype.defaultLayout }
+        : undefined,
   };
 }
 
@@ -61,7 +73,7 @@ export function createPrototypeFromNode(
   name: string,
 ): PrototypeComponent {
   return {
-    id: `proto-${crypto.randomUUID().slice(0, 8)}`,
+    id: crypto.randomUUID(),
     name,
     baseType: node.type,
     defaultProps: { ...(node.props ?? {}) },
