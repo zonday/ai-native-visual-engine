@@ -2,9 +2,9 @@ import type {
   ComponentRegistry,
   RenderContext,
   SceneRendererProps,
+  TransformEvent,
 } from "@ai-native/renderer-react";
 import { SceneRenderer } from "@ai-native/renderer-react";
-import { useMemo } from "react";
 import { useEditorStore } from "../store.js";
 
 export interface CanvasProps {
@@ -13,19 +13,6 @@ export interface CanvasProps {
 }
 
 export function Canvas({ registry, context }: CanvasProps) {
-  const nodeIds = useEditorStore((s) => s.nodeIds);
-  const viewport = useEditorStore((s) => s.viewport);
-
-  const editorContext: RenderContext = useMemo(
-    () => ({
-      ...context,
-      mode: "editor" as const,
-      selection: { nodeIds },
-      viewport,
-    }),
-    [context, nodeIds, viewport],
-  );
-
   const handleSelectNode: SceneRendererProps["onSelectNode"] = (
     id,
     options,
@@ -42,24 +29,26 @@ export function Canvas({ registry, context }: CanvasProps) {
     }
   };
 
-  const handleTransform: SceneRendererProps["onTransform"] = (event) => {
-    // TODO: dispatch update-layout runtime action via command bus
+  const handleTransform = (event: TransformEvent) => {
     void event;
+    // TODO: dispatch runtime action via command bus based on event.type:
+    //   "move" | "resize" → update-layout
+    //   "rotate"          → rotate-node
   };
 
   const handleUpdateProps: SceneRendererProps["onUpdateProps"] = (
     nodeId,
     props,
   ) => {
-    // TODO: dispatch update-props runtime action via command bus
     void nodeId;
     void props;
+    // TODO: dispatch update-props runtime action via command bus
   };
 
   return (
     <SceneRenderer
       registry={registry}
-      context={editorContext}
+      context={context}
       onSelectNode={handleSelectNode}
       onTransform={handleTransform}
       onUpdateProps={handleUpdateProps}
