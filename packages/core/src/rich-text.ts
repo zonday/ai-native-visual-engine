@@ -178,22 +178,22 @@ const blockNodeSchema: z.ZodType<BlockNode> = z.lazy(() =>
   z.discriminatedUnion("type", [
     z.object({
       type: z.literal("paragraph"),
-      content: z.array(inlineNodeSchema).optional(),
+      content: z.array(inlineNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("heading"),
       attrs: z.object({
         level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
       }),
-      content: z.array(inlineNodeSchema).optional(),
+      content: z.array(inlineNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("bulletList"),
-      content: z.array(listItemNodeSchema).optional(),
+      content: z.array(listItemNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("orderedList"),
-      content: z.array(listItemNodeSchema).optional(),
+      content: z.array(listItemNodeSchema).max(10000).optional(),
     }),
     z.object({
       type: z.literal("blockquote"),
@@ -220,7 +220,7 @@ const inlineNodeSchema: z.ZodType<InlineNode> = z.discriminatedUnion("type", [
 
 const docNodeSchema: z.ZodType<DocNode> = z.object({
   type: z.literal("doc"),
-  content: z.array(blockNodeSchema).max(10000),
+  content: z.array(blockNodeSchema).max(10000).max(10000),
 });
 
 export function validateRichText(doc: unknown): doc is DocNode {
