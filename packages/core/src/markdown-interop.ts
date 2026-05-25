@@ -25,7 +25,6 @@ function parseInline(text: string): InlineNode[] {
       if (end !== -1) {
         flush();
         const inner = text.slice(i + 2, end);
-        const content = parseInline(inner);
         nodes.push({
           type: "text",
           text: inner,
@@ -156,11 +155,12 @@ export function markdownToDoc(md: string): DocNode {
     if (ul) {
       const items: BlockNode[] = [];
       while (i < lines.length && /^- (.+)/.test(lines[i])) {
-        const match = /^- (.+)/.exec(lines[i])!;
+        const match = /^- (.+)/.exec(lines[i]);
+        const text = match?.[1] ?? "";
         items.push({
           type: "listItem",
           content: [
-            { type: "paragraph", content: parseInline(match[1]) },
+            { type: "paragraph", content: parseInline(text) },
           ],
         });
         i++;
@@ -173,11 +173,12 @@ export function markdownToDoc(md: string): DocNode {
     if (ol) {
       const items: BlockNode[] = [];
       while (i < lines.length && /^\d+\. (.+)/.test(lines[i])) {
-        const match = /^\d+\. (.+)/.exec(lines[i])!;
+        const match = /^\d+\. (.+)/.exec(lines[i]);
+        const text = match?.[1] ?? "";
         items.push({
           type: "listItem",
           content: [
-            { type: "paragraph", content: parseInline(match[1]) },
+            { type: "paragraph", content: parseInline(text) },
           ],
         });
         i++;
