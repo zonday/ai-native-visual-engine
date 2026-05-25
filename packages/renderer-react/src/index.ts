@@ -39,6 +39,13 @@ export {
 } from "./layout-style.js";
 export type { MarqueeOverlayProps } from "./marquee-select.jsx";
 export { MarqueeOverlay } from "./marquee-select.jsx";
+export { allPluginDefinitions } from "./plugin-registry.js";
+export type {
+  ComponentConstraint,
+  ComponentMeta,
+  PluginDefinition,
+  PropMeta,
+} from "./plugin-types.js";
 export type {
   ComponentRegistry,
   ComponentRenderer,
