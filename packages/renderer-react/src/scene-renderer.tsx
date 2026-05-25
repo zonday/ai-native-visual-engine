@@ -1,8 +1,4 @@
-import type {
-  ComponentStatesConfig,
-  PrototypeComponent,
-  SceneNode,
-} from "@ai-native/core";
+import type { PrototypeComponent, SceneNode } from "@ai-native/core";
 import { resolveInstance, resolveStateProps } from "@ai-native/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
@@ -45,7 +41,10 @@ function renderNode(
   registry: ComponentRegistry,
   ctx: RenderContext,
   prototypeMap: Map<string, PrototypeComponent>,
-  statesByType: Map<string, ComponentStatesConfig>,
+  statesByType: Map<
+    string,
+    { stateProps: Map<string, Record<string, unknown>> }
+  >,
   onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
@@ -55,8 +54,13 @@ function renderNode(
     : undefined;
   const resolved = resolveInstance(node, prototype);
 
-  const statesConfig = statesByType.get(node.type);
-  const stateProps = statesConfig ? resolveStateProps(node, statesConfig) : {};
+  const stateMeta = statesByType.get(node.type);
+  const runtimeActive = (node.runtime as Record<string, unknown> | undefined)
+    ?.activeStates as string[] | undefined;
+  const active = runtimeActive ?? node.activeStates ?? [];
+  const stateProps = stateMeta
+    ? resolveStateProps(active, stateMeta.stateProps)
+    : {};
   const mergedProps = { ...resolved.props, ...stateProps };
 
   const resolvedNode: SceneNode = {
@@ -312,10 +316,23 @@ export function SceneRenderer({
   );
 
   const statesByType = useMemo(() => {
-    const map = new Map<string, ComponentStatesConfig>();
+    const map = new Map<
+      string,
+      {
+        stateProps: Map<string, Record<string, unknown>>;
+        config: ComponentStatesConfig;
+      }
+    >();
     for (const plugin of context.plugins ?? []) {
       if (plugin.meta.states && plugin.meta.states.length > 0) {
-        map.set(plugin.type, { states: plugin.meta.states });
+        const stateProps = new Map<string, Record<string, unknown>>();
+        for (const s of plugin.meta.states) {
+          stateProps.set(s.name, s.props);
+        }
+        map.set(plugin.type, {
+          stateProps,
+          config: { states: plugin.meta.states },
+        });
       }
     }
     return map;

@@ -12,19 +12,16 @@ export interface ComponentStatesConfig {
 }
 
 export function resolveStateProps(
-  node: SceneNode,
-  config: ComponentStatesConfig,
+  active: string[],
+  stateProps: Map<string, Record<string, unknown>>,
 ): Record<string, unknown> {
-  const active = node.activeStates ?? [];
   let resolved: Record<string, unknown> = {};
-
   for (const stateName of active) {
-    const stateDef = config.states.find((s) => s.name === stateName);
-    if (stateDef) {
-      resolved = { ...resolved, ...stateDef.props };
+    const props = stateProps.get(stateName);
+    if (props) {
+      resolved = { ...resolved, ...props };
     }
   }
-
   return resolved;
 }
 
