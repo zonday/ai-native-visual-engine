@@ -130,7 +130,8 @@ export function autoLayoutGrid(
 
     if (x === undefined || y === undefined) {
       let found = false;
-      for (let row = 0; row < childIds.length && !found; row++) {
+      const maxRows = childIds.length + h;
+      for (let row = 0; row < maxRows && !found; row++) {
         for (let col = 0; col < columns && !found; col++) {
           let allFree = true;
           for (let r = row; r < row + h && allFree; r++) {
@@ -149,7 +150,18 @@ export function autoLayoutGrid(
       }
     }
 
-    if (x === undefined) x = 0;
+    if (x === undefined) {
+      const maxRow =
+        occupied.size === 0
+          ? 0
+          : Math.max(
+              ...Array.from(occupied.keys()).map((k) =>
+                Number.parseInt(k.split(",")[1] || "0", 10),
+              ),
+            );
+      x = 0;
+      y = maxRow + 1;
+    }
     if (y === undefined) y = 0;
 
     for (let r = y; r < y + h; r++) {
