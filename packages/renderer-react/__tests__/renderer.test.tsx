@@ -63,7 +63,12 @@ describe("SceneRenderer", () => {
           id: "text-1",
           type: "text",
           parentId: "root",
-          props: { text: "Hello" },
+          props: {
+            content: {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+            },
+          },
         },
       },
     };

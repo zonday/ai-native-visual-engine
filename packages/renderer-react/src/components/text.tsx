@@ -1,30 +1,20 @@
 import type { SceneNode } from "@ai-native/core";
 import type { RenderContext } from "../renderer.js";
+import { RichTextEditor } from "./rich-text-editor.jsx";
 
 export interface TextProps {
   node: SceneNode;
   ctx: RenderContext;
 }
 
-export function TextNode({ node }: TextProps) {
-  const text = (node.props)?.text as string | undefined;
-
-  return (
-    <div
-      data-component="text"
-      style={{
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-      }}
-    >
-      {text ?? ""}
-    </div>
-  );
+export function TextNode({ node, ctx }: TextProps) {
+  return <RichTextEditor node={node} ctx={ctx} />;
 }
 
 export function registerText(registry: Map<string, unknown>) {
   registry.set("text", {
     type: "text",
-    render: (node: SceneNode, _ctx: RenderContext) => TextNode({ node, ctx: _ctx }),
+    render: (node: SceneNode, _ctx: RenderContext) =>
+      TextNode({ node, ctx: _ctx }),
   });
 }

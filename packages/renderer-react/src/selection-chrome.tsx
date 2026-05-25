@@ -14,12 +14,18 @@ const ROTATE_OFFSET = 24;
 const STROKE_COLOR = "#3b82f6";
 const STROKE_WIDTH = 2;
 
-const corners = [
+const corners: Array<{
+  label: string;
+  top?: number;
+  left?: number;
+  right?: number;
+  bottom?: number;
+}> = [
   { label: "nw", top: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
   { label: "ne", top: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
   { label: "sw", bottom: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
   { label: "se", bottom: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
-] as const;
+];
 
 const handleStyle: React.CSSProperties = {
   position: "absolute",

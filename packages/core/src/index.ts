@@ -143,6 +143,12 @@ export type {
   ViewportState,
   VisualDocument,
 } from "./types.js";
+export type {
+  BlockNode,
+  DocNode,
+  InlineNode,
+  MarkNode,
+} from "./rich-text.js";
 export {
   AssetSchema,
   BorderTokensSchema,
@@ -247,3 +253,12 @@ export { BASE_THEME, resolveTheme, resolveToken } from "./theme.js";
 // ── Grid layout ──
 export { autoLayoutGrid, detectCollisions, resolveCollisions } from "./grid-layout.js";
 export type { CollisionInfo, GridItemPosition, LayoutResult } from "./grid-layout.js";
+
+// ── Rich text ──
+export {
+  EMPTY_DOC,
+  extractPlainText,
+  plainTextToDoc,
+  validateRichText,
+} from "./rich-text.js";
+export { docToMarkdown, markdownToDoc } from "./markdown-interop.js";
