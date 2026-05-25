@@ -4,6 +4,7 @@ import type {
   SceneRendererProps,
 } from "@ai-native/renderer-react";
 import { SceneRenderer } from "@ai-native/renderer-react";
+import { useMemo } from "react";
 import { useEditorStore } from "../store.js";
 
 export interface CanvasProps {
@@ -15,12 +16,15 @@ export function Canvas({ registry, context }: CanvasProps) {
   const nodeIds = useEditorStore((s) => s.nodeIds);
   const viewport = useEditorStore((s) => s.viewport);
 
-  const editorContext: RenderContext = {
-    ...context,
-    mode: "editor",
-    selection: { nodeIds },
-    viewport,
-  };
+  const editorContext: RenderContext = useMemo(
+    () => ({
+      ...context,
+      mode: "editor" as const,
+      selection: { nodeIds },
+      viewport,
+    }),
+    [context, nodeIds, viewport],
+  );
 
   const handleSelectNode: SceneRendererProps["onSelectNode"] = (id) => {
     useEditorStore.getState().setSelection([id]);
