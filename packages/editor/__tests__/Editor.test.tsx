@@ -10,10 +10,9 @@ function createDocument(): VisualDocument {
   const scene = { version: 0, rootId: "root", nodes: {} as Record<string, SceneNode> };
   return {
     id: "doc-1",
-    version: 1,
+    title: "Test Document",
     pages: [{ id: "page-1", name: "Page 1", sceneId: "scene-1" }],
     scenes: { "scene-1": scene },
-    activePageId: "page-1",
     activeThemeId: "base",
   };
 }
@@ -49,7 +48,9 @@ describe("Editor", () => {
 
   it("renders inspector panel heading", () => {
     const doc = createDocument();
-    doc.scenes["scene-1"].nodes["n1"] = {
+    const scene = doc.scenes["scene-1"];
+    if (!scene) throw new Error("scene-1 fixture not found");
+    scene.nodes["n1"] = {
       id: "n1",
       type: "text",
       parentId: "root",

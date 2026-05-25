@@ -7,6 +7,7 @@ export interface InspectorProps {
 
 export function Inspector({ document }: InspectorProps) {
   const nodeIds = useEditorStore((s) => s.nodeIds);
+  const activePageId = useEditorStore((s) => s.activePageId);
 
   const selectedId = nodeIds[0];
   if (!selectedId) {
@@ -17,16 +18,12 @@ export function Inspector({ document }: InspectorProps) {
     );
   }
 
-  // Find the selected node across all pages
+  // Resolve selected node from the active page's scene
   let selectedNode: SceneNode | undefined;
-  for (const page of document.pages) {
-    const scene = document.scenes[page.sceneId];
-    if (scene) {
-      const node = scene.nodes[selectedId];
-      if (node) {
-        selectedNode = node;
-        break;
-      }
+  if (activePageId) {
+    const page = document.pages.find((p) => p.id === activePageId);
+    if (page) {
+      selectedNode = document.scenes[page.sceneId]?.nodes[selectedId];
     }
   }
 

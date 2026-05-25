@@ -26,8 +26,20 @@ export function Canvas({ registry, context }: CanvasProps) {
     [context, nodeIds, viewport],
   );
 
-  const handleSelectNode: SceneRendererProps["onSelectNode"] = (id) => {
-    useEditorStore.getState().setSelection([id]);
+  const handleSelectNode: SceneRendererProps["onSelectNode"] = (
+    id,
+    options,
+  ) => {
+    if (options?.additive) {
+      const s = useEditorStore.getState();
+      if (s.nodeIds.includes(id)) {
+        s.removeFromSelection(id);
+      } else {
+        s.addToSelection(id);
+      }
+    } else {
+      useEditorStore.getState().setSelection([id]);
+    }
   };
 
   const handleTransform: SceneRendererProps["onTransform"] = (event) => {
