@@ -81,18 +81,20 @@ export function SelectionChrome({
 
     const handleMouseUp = (e: MouseEvent) => {
       const drag = dragRef.current;
-      if (!drag || !onTransformRef.current) return;
-      const deltaX = e.clientX - drag.startX;
-      const deltaY = e.clientY - drag.startY;
-      const type = drag.handle === "rotate" ? "rotate" : "resize";
-      onTransformRef.current({
-        nodeId,
-        type,
-        handle: drag.handle,
-        deltaX,
-        deltaY,
-        commit: true,
-      });
+      if (!drag) return;
+      if (onTransformRef.current) {
+        const deltaX = e.clientX - drag.startX;
+        const deltaY = e.clientY - drag.startY;
+        const type = drag.handle === "rotate" ? "rotate" : "resize";
+        onTransformRef.current({
+          nodeId,
+          type,
+          handle: drag.handle,
+          deltaX,
+          deltaY,
+          commit: true,
+        });
+      }
       dragRef.current = null;
     };
 

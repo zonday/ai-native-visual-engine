@@ -160,8 +160,8 @@ export function SceneRenderer({
 
     const handleMouseUp = (e: MouseEvent) => {
       const drag = moveDragRef.current;
-      if (!drag || !onTransformRef.current) return;
-      if (didDragRef.current) {
+      if (!drag) return;
+      if (onTransformRef.current && didDragRef.current) {
         const deltaX = e.clientX - drag.startX;
         const deltaY = e.clientY - drag.startY;
         onTransformRef.current({
