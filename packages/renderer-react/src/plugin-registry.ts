@@ -1,8 +1,22 @@
 import type { ComponentPlugin } from "@ai-native/core";
+import { ChartNode } from "./components/chart.jsx";
+import { DividerNode } from "./components/divider.jsx";
+import { FilterNode } from "./components/filter.jsx";
+import { HeaderNode } from "./components/header.jsx";
+import { MetricComparisonNode } from "./components/metric-comparison.jsx";
+import { MetricTrendNode } from "./components/metric-trend.jsx";
+import { MetricValueNode } from "./components/metric-value.jsx";
+import { TableNode } from "./components/table.jsx";
+
+function makeRenderer(
+  Component: (props: { node: unknown; ctx: unknown }) => unknown,
+) {
+  return (node: unknown, ctx: unknown) => Component({ node, ctx });
+}
 
 export const metricValuePlugin: ComponentPlugin = {
   type: "metric-value",
-  renderer: () => null,
+  renderer: makeRenderer(MetricValueNode),
   meta: {
     title: "Metric Value",
     description: "Single metric display with label and value.",
@@ -29,7 +43,7 @@ export const metricValuePlugin: ComponentPlugin = {
 
 export const metricTrendPlugin: ComponentPlugin = {
   type: "metric-trend",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Metric Trend",
     description: "Metric with inline sparkline and directional indicator.",
@@ -53,7 +67,7 @@ export const metricTrendPlugin: ComponentPlugin = {
 
 export const metricComparisonPlugin: ComponentPlugin = {
   type: "metric-comparison",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Metric Comparison",
     description: "Metric with comparison value and percentage change.",
@@ -84,7 +98,7 @@ export const metricComparisonPlugin: ComponentPlugin = {
 
 export const chartPlugin: ComponentPlugin = {
   type: "chart",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Chart",
     description: "Line, bar, or pie chart driven by data bindings.",
@@ -115,7 +129,7 @@ export const chartPlugin: ComponentPlugin = {
 
 export const tablePlugin: ComponentPlugin = {
   type: "table",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Table",
     description: "Paginated data table driven by data bindings.",
@@ -142,7 +156,7 @@ export const tablePlugin: ComponentPlugin = {
 
 export const headerPlugin: ComponentPlugin = {
   type: "header",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Header",
     description: "Page or section header with title and optional subtitle.",
@@ -161,7 +175,7 @@ export const headerPlugin: ComponentPlugin = {
 
 export const dividerPlugin: ComponentPlugin = {
   type: "divider",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Divider",
     description: "Visual separator between sections.",
@@ -180,7 +194,7 @@ export const dividerPlugin: ComponentPlugin = {
 
 export const filterPlugin: ComponentPlugin = {
   type: "filter",
-  renderer: () => null,
+  renderer: makeRenderer(MetricTrendNode),
   meta: {
     title: "Filter",
     description:
