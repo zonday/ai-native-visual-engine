@@ -46,6 +46,7 @@ These are non-negotiable. Any violation blocks implementation.
 9. Code style is enforced by biome. The biome config is the single source of truth. No per-file overrides, no inline disable comments without explicit approval.
 10. Exports must be explicit. Never use `export * from` — import and re-export only what the consumer needs.
 11. Subdirectories must not contain `index.ts` barrel files. Every module file exports its own symbols directly. The top-level `index.ts` is the only aggregation point, and it must list every export explicitly.
+12. The top-level `index.ts` must follow the minimum-exports principle: export only what external consumers actually need (public API). Internal helpers, individual plugin component exports, and layout utilities must NOT be exported from the barrel — consumers import them from the specific module file.
 
 ## Testing
 
