@@ -1,4 +1,5 @@
 import type {
+  ComponentPlugin,
   PageId,
   PrototypeComponent,
   SceneGraph,
@@ -22,6 +23,7 @@ export interface RenderContext {
   viewport?: ViewportState;
   marqueeRect?: MarqueeRect;
   prototypes?: PrototypeComponent[];
+  plugins?: ComponentPlugin[];
 }
 
 export interface ComponentRenderer {

@@ -7,7 +7,25 @@ export {
   createNewDocument,
   generateId,
 } from "./bootstrap.js";
+// ── Component states ──
+export type {
+  ComponentStateDef,
+  ComponentStatesConfig,
+  StateAPI,
+} from "./component-states.js";
+export { resolveStateProps } from "./component-states.js";
 // ── Plugin system ──
+export type {
+  ComponentCapabilities,
+  ComponentConstraint,
+  ComponentDefaults,
+  ComponentMeta,
+  ComponentPlugin,
+  EventMeta,
+  Example,
+  PropMeta,
+  SlotMeta,
+} from "./plugin-types.js";
 
 // ── Prototype components ──
 export type {
@@ -22,6 +40,12 @@ export {
 } from "./prototype.js";
 
 // ── Rich text ──
+export type {
+  BlockNode,
+  DocNode,
+  InlineNode,
+  MarkNode,
+} from "./rich-text.js";
 export {
   EMPTY_DOC,
   extractPlainText,
