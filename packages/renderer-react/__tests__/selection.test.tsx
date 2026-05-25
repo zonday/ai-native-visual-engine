@@ -10,7 +10,9 @@ describe("SelectionChrome", () => {
   });
 
   it("renders all four handle positions", () => {
-    const html = renderToString(<SelectionChrome nodeId="n1" />);
+    const html = renderToString(
+      <SelectionChrome nodeId="n1" onTransform={() => {}} />,
+    );
     expect(html).toContain('data-handle="nw"');
     expect(html).toContain('data-handle="ne"');
     expect(html).toContain('data-handle="sw"');
@@ -19,14 +21,22 @@ describe("SelectionChrome", () => {
 
   it("renders rotate handle for absolute layout", () => {
     const html = renderToString(
-      <SelectionChrome nodeId="n1" layout={{ mode: "absolute" }} />,
+      <SelectionChrome
+        nodeId="n1"
+        layout={{ mode: "absolute" }}
+        onTransform={() => {}}
+      />,
     );
     expect(html).toContain('data-handle="rotate"');
   });
 
   it("does not render rotate handle for non-absolute layout", () => {
     const html = renderToString(
-      <SelectionChrome nodeId="n1" layout={{ mode: "grid-item" }} />,
+      <SelectionChrome
+        nodeId="n1"
+        layout={{ mode: "grid-item" }}
+        onTransform={() => {}}
+      />,
     );
     expect(html).not.toContain('data-handle="rotate"');
   });

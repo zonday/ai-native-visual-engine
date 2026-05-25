@@ -11,6 +11,15 @@ export interface SelectionChromeProps {
 const HANDLE_SIZE = 8;
 const ROTATE_HANDLE_SIZE = 10;
 const ROTATE_OFFSET = 24;
+const STROKE_COLOR = "#3b82f6";
+const STROKE_WIDTH = 2;
+
+const corners = [
+  { label: "nw", top: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
+  { label: "ne", top: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
+  { label: "sw", bottom: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
+  { label: "se", bottom: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
+] as const;
 
 const handleStyle: React.CSSProperties = {
   position: "absolute",
@@ -38,13 +47,6 @@ const rotateHandleStyle: React.CSSProperties = {
   left: "50%",
   marginLeft: -ROTATE_HANDLE_SIZE / 2,
 };
-
-const corners = [
-  { label: "nw", top: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
-  { label: "ne", top: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
-  { label: "sw", bottom: -HANDLE_SIZE / 2, left: -HANDLE_SIZE / 2 },
-  { label: "se", bottom: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2 },
-];
 
 export function SelectionChrome({
   nodeId,
@@ -94,8 +96,8 @@ export function SelectionChrome({
       dragRef.current = null;
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp, { passive: true });
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
@@ -108,42 +110,77 @@ export function SelectionChrome({
     dragRef.current = { handle, startX: e.clientX, startY: e.clientY };
   };
 
-  const containerStyle: React.CSSProperties = {
+  const isAbsolute = layout?.mode === "absolute";
+  const showHandles = !!onTransform;
+
+  const svgStyle: React.CSSProperties = {
     position: "absolute",
     inset: 0,
     pointerEvents: "none",
     zIndex: 9,
+    overflow: "visible",
   };
 
-  const isAbsolute = layout?.mode === "absolute";
+  const handlesContainerStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    zIndex: 10,
+  };
 
   return (
-    <div data-selection-chrome={nodeId} style={containerStyle}>
-      {corners.map((c) => (
-        <button
-          key={c.label}
-          type="button"
-          data-handle={c.label}
-          aria-label={`resize ${c.label}`}
-          onMouseDown={startDrag(c.label)}
-          style={{
-            ...handleStyle,
-            top: c.top,
-            left: c.left,
-            right: c.right,
-            bottom: c.bottom,
-          }}
+    <>
+      <svg
+        data-selection-chrome={nodeId}
+        width="100%"
+        height="100%"
+        style={svgStyle}
+        aria-hidden="true"
+      >
+        <title>Selection</title>
+        <rect
+          x={0}
+          y={0}
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke={STROKE_COLOR}
+          strokeWidth={STROKE_WIDTH}
+          vectorEffect="non-scaling-stroke"
         />
-      ))}
-      {isAbsolute && (
-        <button
-          type="button"
-          data-handle="rotate"
-          aria-label="rotate"
-          onMouseDown={startDrag("rotate")}
-          style={rotateHandleStyle}
-        />
+      </svg>
+      {showHandles && (
+        <div
+          data-selection-chrome-handles={nodeId}
+          style={handlesContainerStyle}
+        >
+          {corners.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              data-handle={c.label}
+              aria-label={`resize ${c.label}`}
+              onMouseDown={startDrag(c.label)}
+              style={{
+                ...handleStyle,
+                top: c.top,
+                left: c.left,
+                right: c.right,
+                bottom: c.bottom,
+              }}
+            />
+          ))}
+          {isAbsolute && (
+            <button
+              type="button"
+              data-handle="rotate"
+              aria-label="rotate"
+              onMouseDown={startDrag("rotate")}
+              style={rotateHandleStyle}
+            />
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

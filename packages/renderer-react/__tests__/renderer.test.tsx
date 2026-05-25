@@ -374,10 +374,9 @@ describe("MissingPluginPlaceholder", () => {
 // and synthetic window events.
 describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
   it(
-    "fires onSelectNode on click that follows a drag-commit mouseup outside the scene root",
+    "fires onSelectNode on an unselected sibling after a drag-commit mouseup",
     { timeout: 5000 },
     async () => {
-      // Dynamically import RTL so the test file still parses in server environments.
       const { render, fireEvent } = await import("@testing-library/react");
 
       const scene: SceneGraph = {
@@ -387,13 +386,19 @@ describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
           root: {
             id: "root",
             type: "container",
-            children: ["child-1"],
+            children: ["child-1", "child-2"],
           },
           "child-1": {
             id: "child-1",
             type: "container",
             parentId: "root",
             layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+          },
+          "child-2": {
+            id: "child-2",
+            type: "container",
+            parentId: "root",
+            layout: { mode: "absolute", x: 200, y: 0, width: 100, height: 100 },
           },
         },
       };
@@ -416,44 +421,31 @@ describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
         </div>,
       );
 
-      // 1. Start a move-drag on the selected absolute child node.
       const nodeEl = getByTestId("root-wrapper").querySelector(
         '[data-node-id="child-1"]',
       ) as HTMLElement;
       fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
-
-      // 2. Move — this sets didDragRef.current = true.
       fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
-
-      // 3. Release OUTSIDE the scene root — mouseup fires on window, resets didDragRef.
       fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
 
-      // 4. Next click inside the scene on an unselected sibling should NOT be suppressed.
-      //    We simulate a click on the root wrapper (which has onSelectNode wired).
-      //    Before Fix 2: didDragRef was still true, so the click would be swallowed.
-      //    After Fix 2: didDragRef is false, the click propagates normally.
-      //    (The root node itself is filtered out by handleSceneClick, so we just assert
-      //     that onSelectNode is NOT called for root — meaning the click was not suppressed
-      //     and reached handleSceneClick, which correctly skipped the root.)
-      onSelectNode.mockClear();
-      const sceneRoot = getByTestId("root-wrapper").querySelector(
-        "[data-scene-root]",
-      ) as HTMLElement;
-      fireEvent.click(sceneRoot);
-
-      // onSelectNode should NOT have been called for the root (it is filtered),
-      // but the critical assertion is that we did NOT return early from sceneClickHandler.
-      // We verify this by confirming onSelectNode was not called (meaning the branch
-      // reached handleSceneClick, not the early-return didDragRef guard).
-      // If didDragRef had leaked, the early-return would have fired and also not called
-      // onSelectNode — so we additionally assert that onTransform was called on move
-      // (confirming the drag did happen and Fix 2 context is valid).
+      // Drag must have emitted move + commit events.
       expect(onTransform).toHaveBeenCalledWith(
         expect.objectContaining({ type: "move", commit: false }),
       );
-      // The drag-commit mouseup must have been dispatched.
       expect(onTransform).toHaveBeenCalledWith(
         expect.objectContaining({ type: "move", commit: true }),
+      );
+
+      // Click on an unselected sibling — must NOT be suppressed by stale didDragRef.
+      onSelectNode.mockClear();
+      const child2El = getByTestId("root-wrapper").querySelector(
+        '[data-node-id="child-2"]',
+      ) as HTMLElement;
+      fireEvent.click(child2El);
+
+      expect(onSelectNode).toHaveBeenCalledWith(
+        "child-2",
+        expect.objectContaining({ additive: false }),
       );
     },
   );

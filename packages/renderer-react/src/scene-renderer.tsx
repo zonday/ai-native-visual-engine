@@ -64,11 +64,6 @@ function renderNode(
     ...(node.style as React.CSSProperties | undefined),
   };
 
-  if (isSelected) {
-    style.outline = "2px solid #3b82f6";
-    style.outlineOffset = "1px";
-  }
-
   const isLocked = node.locked === true;
   if (isLocked && ctx.mode === "editor") {
     style.opacity = 0.7;
@@ -97,11 +92,11 @@ function renderNode(
       style={wrapperStyle}
     >
       {content}
-      {isSelected && isTransformable && (
+      {isSelected && (
         <SelectionChrome
           nodeId={node.id}
-          layout={{ mode: layoutMode as "absolute" | "grid-item" }}
-          onTransform={onTransform}
+          layout={layoutMode ? { mode: layoutMode } : undefined}
+          onTransform={isTransformable ? onTransform : undefined}
         />
       )}
     </div>
