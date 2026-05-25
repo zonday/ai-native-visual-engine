@@ -20,6 +20,7 @@ export type {
   MarqueeRect,
   RenderContext,
   ResolvedRenderNode,
+  TransformEvent,
 } from "./renderer.js";
 export type {
   SceneRendererProps,

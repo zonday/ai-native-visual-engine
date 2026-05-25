@@ -1,4 +1,5 @@
 import type { SceneNode } from "@ai-native/core";
+import { useEffect, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
 import { MarqueeOverlay } from "./marquee-select.jsx";
@@ -6,6 +7,7 @@ import type {
   ComponentRegistry,
   ComponentRenderer,
   RenderContext,
+  TransformEvent,
 } from "./renderer.js";
 import { SelectionChrome } from "./selection-chrome.jsx";
 
@@ -28,12 +30,14 @@ export interface SceneRendererProps {
   registry: ComponentRegistry;
   context: RenderContext;
   onSelectNode?: (nodeId: string, options?: SelectNodeOptions) => void;
+  onTransform?: (event: TransformEvent) => void;
 }
 
 function renderNode(
   node: SceneNode,
   registry: ComponentRegistry,
   ctx: RenderContext,
+  onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
 
@@ -47,7 +51,7 @@ function renderNode(
     node.children
       ?.map((childId: string) => ctx.scene.nodes[childId])
       .filter((c): c is SceneNode => !!c)
-      .map((child) => renderNode(child, registry, ctx)) ?? [];
+      .map((child) => renderNode(child, registry, ctx, onTransform)) ?? [];
 
   const content = render(node, ctx, childNodes);
 
@@ -60,14 +64,24 @@ function renderNode(
     ...(node.style as React.CSSProperties | undefined),
   };
 
-  if (isSelected) {
-    style.outline = "2px solid #3b82f6";
-    style.outlineOffset = "1px";
-  }
-
-  if (node.locked === true && ctx.mode === "editor") {
+  const isLocked = node.locked === true;
+  if (isLocked && ctx.mode === "editor") {
     style.opacity = 0.7;
     style.pointerEvents = "none";
+  }
+
+  // Only expose interactive transform chrome for non-locked nodes whose layout
+  // mode supports transform actions (absolute or grid-item).
+  const layoutMode =
+    node.layout && typeof node.layout.mode === "string"
+      ? node.layout.mode
+      : undefined;
+  const isTransformable =
+    !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
+
+  // Show move cursor on the wrapper so the user knows it can be dragged.
+  if (isSelected && isTransformable) {
+    style.cursor = "move";
   }
 
   const wrapperStyle: React.CSSProperties = {
@@ -86,10 +100,8 @@ function renderNode(
       {isSelected && (
         <SelectionChrome
           nodeId={node.id}
-          bounds={{
-            width: typeof style.width === "number" ? style.width : 200,
-            height: typeof style.height === "number" ? style.height : 100,
-          }}
+          layout={layoutMode ? { mode: layoutMode } : undefined}
+          onTransform={isTransformable ? onTransform : undefined}
         />
       )}
     </div>
@@ -117,19 +129,111 @@ export function SceneRenderer({
   registry,
   context,
   onSelectNode,
+  onTransform,
 }: SceneRendererProps) {
+  const moveDragRef = useRef<{
+    nodeId: string;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  const didDragRef = useRef(false);
+
+  const onTransformRef = useRef(onTransform);
+  onTransformRef.current = onTransform;
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = moveDragRef.current;
+      if (!drag || !onTransformRef.current) return;
+      didDragRef.current = true;
+      const deltaX = e.clientX - drag.startX;
+      const deltaY = e.clientY - drag.startY;
+      onTransformRef.current({
+        nodeId: drag.nodeId,
+        type: "move",
+        deltaX,
+        deltaY,
+        commit: false,
+      });
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const drag = moveDragRef.current;
+      if (!drag) return;
+      if (onTransformRef.current && didDragRef.current) {
+        const deltaX = e.clientX - drag.startX;
+        const deltaY = e.clientY - drag.startY;
+        onTransformRef.current({
+          nodeId: drag.nodeId,
+          type: "move",
+          deltaX,
+          deltaY,
+          commit: true,
+        });
+      }
+      moveDragRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
   const root = context.scene.nodes[context.scene.rootId];
   if (!root) return null;
 
+  const sceneMouseDown = (e: React.MouseEvent) => {
+    // Clear stale didDragRef from a previous drag that ended with mouseup
+    // outside the scene root (no click fired to consume it).
+    didDragRef.current = false;
+    if (!onTransform) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    const wrapper = target.closest("[data-node-id]");
+    if (!wrapper) return;
+    const nodeId = wrapper.getAttribute("data-node-id");
+    if (!nodeId) return;
+    const node = context.scene.nodes[nodeId];
+    if (!node) return;
+    const isSelected =
+      context.mode === "editor" &&
+      !!context.selection?.nodeIds.includes(nodeId);
+    if (!isSelected) return;
+    if (node.locked === true) return;
+    const layoutMode =
+      node.layout && typeof node.layout.mode === "string"
+        ? node.layout.mode
+        : undefined;
+    if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
+    moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
+  };
+
   const sceneClickHandler = (e: React.MouseEvent) => {
+    // Suppress the click that follows a move-drag on the same node.
+    // didDragRef is set by mousemove and consumed here; if mouseup
+    // happened outside the scene root (no click follows), the stale
+    // flag is cleared by the next mousedown via sceneMouseDown.
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
     handleSceneClick(e, context.scene, onSelectNode);
   };
 
-  const rootContent = renderNode(root, registry, context);
+  const rootContent = renderNode(root, registry, context, onTransform);
 
   if (context.mode === "editor") {
     return (
-      <div role="none" data-scene-root onClick={sceneClickHandler}>
+      <div
+        role="none"
+        data-scene-root
+        onClick={sceneClickHandler}
+        onMouseDown={sceneMouseDown}
+      >
         {rootContent}
         {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}
       </div>

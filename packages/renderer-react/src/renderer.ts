@@ -31,6 +31,15 @@ export interface ComponentRenderer {
   ) => React.ReactNode;
 }
 
+export interface TransformEvent {
+  nodeId: string;
+  type: "resize" | "move" | "rotate";
+  handle?: string;
+  deltaX: number;
+  deltaY: number;
+  commit: boolean;
+}
+
 export type ComponentRegistry = Map<string, ComponentRenderer>;
 
 export interface ResolvedRenderNode {
