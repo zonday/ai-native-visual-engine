@@ -1,4 +1,5 @@
-import type { SceneNode } from "@ai-native/core";
+import type { PrototypeComponent, SceneNode } from "@ai-native/core";
+import { resolveInstance } from "@ai-native/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
@@ -39,12 +40,24 @@ function renderNode(
   node: SceneNode,
   registry: ComponentRegistry,
   ctx: RenderContext,
+  prototypeMap: Map<string, PrototypeComponent>,
   onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
 
-  const render = resolveRenderer(node, registry);
-  const layoutStyle = resolveLayoutStyle(node);
+  const prototype = node.prototypeId
+    ? prototypeMap.get(node.prototypeId)
+    : undefined;
+  const resolved = resolveInstance(node, prototype);
+  const resolvedNode: SceneNode = {
+    ...node,
+    props: resolved.props,
+    style: resolved.style,
+    layout: resolved.layout as SceneNode["layout"],
+  };
+
+  const render = resolveRenderer(resolvedNode, registry);
+  const layoutStyle = resolveLayoutStyle(resolvedNode);
   const isSelected = !!(
     ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
   );
@@ -53,17 +66,19 @@ function renderNode(
     node.children
       ?.map((childId: string) => ctx.scene.nodes[childId])
       .filter((c): c is SceneNode => !!c)
-      .map((child) => renderNode(child, registry, ctx, onTransform)) ?? [];
+      .map((child) =>
+        renderNode(child, registry, ctx, prototypeMap, onTransform),
+      ) ?? [];
 
-  const content = render(node, ctx, childNodes);
+  const content = render(resolvedNode, ctx, childNodes);
 
-  if (!wrapperNeeded(node, isSelected)) {
+  if (!wrapperNeeded(resolvedNode, isSelected)) {
     return content;
   }
 
   const style: React.CSSProperties = {
     ...layoutStyle,
-    ...(node.style as React.CSSProperties | undefined),
+    ...(resolvedNode.style as React.CSSProperties | undefined),
   };
 
   const isLocked = node.locked === true;
@@ -75,8 +90,8 @@ function renderNode(
   // Only expose interactive transform chrome for non-locked nodes whose layout
   // mode supports transform actions (absolute or grid-item).
   const layoutMode =
-    node.layout && typeof node.layout.mode === "string"
-      ? node.layout.mode
+    resolvedNode.layout && typeof resolvedNode.layout.mode === "string"
+      ? resolvedNode.layout.mode
       : undefined;
   const isTransformable =
     !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
@@ -215,6 +230,14 @@ export function SceneRenderer({
     [onTransform],
   );
 
+  const prototypeMap = useMemo(() => {
+    const map = new Map<string, PrototypeComponent>();
+    for (const p of context.prototypes ?? []) {
+      map.set(p.id, p);
+    }
+    return map;
+  }, [context.prototypes]);
+
   const sceneMouseDown = useCallback(
     (e: React.MouseEvent) => {
       didDragRef.current = false;
@@ -232,14 +255,19 @@ export function SceneRenderer({
         !!context.selection?.nodeIds.includes(nodeId);
       if (!isSelected) return;
       if (node.locked === true) return;
+      // Resolve instance to get effective layout for prototype-inherited nodes
+      const p = node.prototypeId
+        ? prototypeMap.get(node.prototypeId)
+        : undefined;
+      const resolved = resolveInstance(node, p);
       const layoutMode =
-        node.layout && typeof node.layout.mode === "string"
-          ? node.layout.mode
+        resolved.layout && typeof resolved.layout.mode === "string"
+          ? resolved.layout.mode
           : undefined;
       if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
       moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
     },
-    [context, onTransform],
+    [context, onTransform, prototypeMap],
   );
 
   const sceneClickHandler = useCallback(
@@ -260,6 +288,7 @@ export function SceneRenderer({
     root,
     registry,
     context,
+    prototypeMap,
     zoomAdjustedOnTransform,
   );
 
