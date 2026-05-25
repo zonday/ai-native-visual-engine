@@ -272,6 +272,15 @@ export function SceneRenderer({
 
     return (
       <EditorCallbacksContext.Provider value={editorCallbacks}>
+        <style>
+          {`.ProseMirror p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            pointer-events: none;
+            float: left;
+            height: 0;
+          }`}
+        </style>
         <div
           role="none"
           data-scene-root
