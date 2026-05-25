@@ -1,4 +1,4 @@
-import type { PluginDefinition } from "./plugin-types.js";
+import type { PluginDefinition } from "@ai-native/core";
 
 export const metricValuePlugin: PluginDefinition = {
   meta: {
