@@ -30,10 +30,7 @@ export function FilterNode({ node }: FilterNodeProps) {
   const inputId = `filter-${node.id}`;
 
   return (
-    <div
-      data-component="filter"
-      style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
       <label
         htmlFor={inputId}
         style={{ fontSize: "0.75rem", fontWeight: "600", color: "#374151" }}

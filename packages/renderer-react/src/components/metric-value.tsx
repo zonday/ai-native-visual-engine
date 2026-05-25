@@ -28,7 +28,7 @@ export function MetricValueNode({ node }: MetricValueNodeProps) {
   const display = `${prefix ?? ""}${String(value)}${suffix ?? ""}`;
 
   return (
-    <div data-component="metric-value">
+    <div>
       <div
         style={{
           fontSize: "0.75rem",

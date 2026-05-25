@@ -31,7 +31,7 @@ export function HeaderNode({ node }: HeaderNodeProps) {
   const size = headerSizes[safeLevel] ?? headerSizes[1];
 
   return (
-    <div data-component="header">
+    <div>
       <Tag style={{ fontSize: size.title, fontWeight: "700", margin: 0 }}>
         {title}
       </Tag>

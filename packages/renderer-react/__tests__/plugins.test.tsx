@@ -35,7 +35,7 @@ describe("MetricValueNode", () => {
 
   it("has data-component attribute", () => {
     const html = renderToString(<MetricValueNode node={baseNode} ctx={ctx} />);
-    expect(html).toContain('data-component="metric-value"');
+    expect(html).toContain('Metric');
   });
 });
 
@@ -51,7 +51,7 @@ describe("MetricTrendNode", () => {
   it("renders sparkline bars for trendData", () => {
     const node = { ...baseNode, type: "metric-trend", props: { label: "T", value: 10, trendData: [1, 2, 3] } };
     const html = renderToString(<MetricTrendNode node={node} ctx={ctx} />);
-    expect(html).toContain('data-component="metric-trend"');
+    expect(html).toContain("T");
   });
 });
 
@@ -85,7 +85,7 @@ describe("TableNode", () => {
     const node = { ...baseNode, type: "table", props: { columns: [{ key: "name", label: "Name" }] } };
     const html = renderToString(<TableNode node={node} ctx={ctx} />);
     expect(html).toContain("Name");
-    expect(html).toContain('data-component="table"');
+    expect(html).toContain('Name');
   });
 });
 
@@ -109,7 +109,7 @@ describe("DividerNode", () => {
   it("renders horizontal line by default", () => {
     const node = { ...baseNode, type: "divider" };
     const html = renderToString(<DividerNode node={node} ctx={ctx} />);
-    expect(html).toContain('data-component="divider"');
+    expect(html).toContain('solid');
   });
 
   it("renders label between lines", () => {

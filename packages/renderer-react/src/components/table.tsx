@@ -20,10 +20,7 @@ export function TableNode({ node }: TableNodeProps) {
   const { columns } = useNodeProps<TableData>(node);
 
   return (
-    <div
-      data-component="table"
-      style={{ overflow: "auto", fontSize: "0.875rem" }}
-    >
+    <div style={{ overflow: "auto", fontSize: "0.875rem" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>

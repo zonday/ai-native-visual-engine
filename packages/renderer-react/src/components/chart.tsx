@@ -21,7 +21,7 @@ export function ChartNode({ node }: ChartNodeProps) {
   } = useNodeProps<ChartData>(node);
 
   return (
-    <div data-component="chart" style={{ height }}>
+    <div style={{ height }}>
       {title && (
         <div
           style={{

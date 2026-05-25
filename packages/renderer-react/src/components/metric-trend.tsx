@@ -35,7 +35,7 @@ export function MetricTrendNode({ node }: MetricTrendNodeProps) {
   };
 
   return (
-    <div data-component="metric-trend">
+    <div>
       <div
         style={{
           fontSize: "0.75rem",

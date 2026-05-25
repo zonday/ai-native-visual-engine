@@ -29,7 +29,7 @@ export function MetricComparisonNode({ node }: MetricComparisonNodeProps) {
   const pctColor = isPositive ? "#16a34a" : "#dc2626";
 
   return (
-    <div data-component="metric-comparison">
+    <div>
       <div
         style={{
           fontSize: "0.75rem",

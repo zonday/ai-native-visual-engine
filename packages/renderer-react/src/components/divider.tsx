@@ -25,7 +25,6 @@ export function DividerNode({ node }: DividerNodeProps) {
   if (orientation === "vertical") {
     return (
       <div
-        data-component="divider"
         style={{
           width: "1px",
           minHeight: "24px",
@@ -39,7 +38,6 @@ export function DividerNode({ node }: DividerNodeProps) {
   if (label) {
     return (
       <div
-        data-component="divider"
         style={{
           display: "flex",
           alignItems: "center",
@@ -55,12 +53,7 @@ export function DividerNode({ node }: DividerNodeProps) {
     );
   }
 
-  return (
-    <div
-      data-component="divider"
-      style={{ borderTop: `1px ${borderStyle} #e5e7eb` }}
-    />
-  );
+  return <div style={{ borderTop: `1px ${borderStyle} #e5e7eb` }} />;
 }
 
 export function registerDivider(registry: Map<string, unknown>) {
