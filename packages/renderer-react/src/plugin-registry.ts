@@ -1,14 +1,16 @@
-import type { PluginDefinition } from "@ai-native/core";
+import type { ComponentPlugin } from "@ai-native/core";
 
-export const metricValuePlugin: PluginDefinition = {
+export const metricValuePlugin: ComponentPlugin = {
+  type: "metric-value",
+  renderer: () => null,
   meta: {
-    type: "metric-value",
     title: "Metric Value",
-    description: "Single KPI display with label and value.",
+    description: "Single metric display with label and value.",
     category: "display",
     props: [
       { key: "label", type: "string", default: "Metric" },
       { key: "value", type: "number", default: 0 },
+      { key: "format", type: "string", default: "number" },
       { key: "prefix", type: "string" },
       { key: "suffix", type: "string" },
       { key: "color", type: "string" },
@@ -20,14 +22,17 @@ export const metricValuePlugin: PluginDefinition = {
       ],
     },
   },
-  constraints: [],
+  constraints: [
+    { type: "semantic", rule: "value must be a valid number or string" },
+  ],
 };
 
-export const metricTrendPlugin: PluginDefinition = {
+export const metricTrendPlugin: ComponentPlugin = {
+  type: "metric-trend",
+  renderer: () => null,
   meta: {
-    type: "metric-trend",
     title: "Metric Trend",
-    description: "Metric with sparkline and directional indicator.",
+    description: "Metric with inline sparkline and directional indicator.",
     category: "display",
     props: [
       { key: "label", type: "string", default: "Trend" },
@@ -35,6 +40,7 @@ export const metricTrendPlugin: PluginDefinition = {
       { key: "trendData", type: "json", default: [] },
       { key: "trendDirection", type: "string", default: "flat" },
       { key: "changePercent", type: "number" },
+      { key: "format", type: "string", default: "number" },
     ],
     ai: {
       usage: ["revenue trend", "growth metric", "time-series KPI"],
@@ -45,9 +51,10 @@ export const metricTrendPlugin: PluginDefinition = {
   constraints: [{ type: "semantic", rule: "trendData.length >= 2" }],
 };
 
-export const metricComparisonPlugin: PluginDefinition = {
+export const metricComparisonPlugin: ComponentPlugin = {
+  type: "metric-comparison",
+  renderer: () => null,
   meta: {
-    type: "metric-comparison",
     title: "Metric Comparison",
     description: "Metric with comparison value and percentage change.",
     category: "display",
@@ -57,44 +64,59 @@ export const metricComparisonPlugin: PluginDefinition = {
       { key: "compareValue", type: "number" },
       { key: "compareLabel", type: "string" },
       { key: "changePercent", type: "number" },
+      { key: "format", type: "string", default: "number" },
     ],
     ai: {
       usage: ["YoY comparison", "MoM change", "budget vs actual"],
       antiPatterns: [
-        "using metric-comparison without compareValue or changePercent",
+        "using metric-comparison without providing compareValue or changePercent",
       ],
+      relatedComponents: ["metric-value", "metric-trend"],
     },
   },
-  constraints: [],
+  constraints: [
+    {
+      type: "semantic",
+      rule: "at least one of compareValue or changePercent should be present",
+    },
+  ],
 };
 
-export const chartPlugin: PluginDefinition = {
+export const chartPlugin: ComponentPlugin = {
+  type: "chart",
+  renderer: () => null,
   meta: {
-    type: "chart",
     title: "Chart",
     description: "Line, bar, or pie chart driven by data bindings.",
     category: "display",
     props: [
       { key: "chartType", type: "string", default: "bar" },
+      { key: "xKey", type: "string" },
+      { key: "yKey", type: "string" },
       { key: "title", type: "string" },
-      { key: "height", type: "number", default: 200 },
+      { key: "stacked", type: "boolean", default: false },
+      { key: "showLegend", type: "boolean", default: true },
+      { key: "height", type: "number", default: 300 },
     ],
     ai: {
-      usage: ["data visualization", "time-series plot", "distribution view"],
+      usage: ["revenue by month", "sales by region", "category breakdown"],
       antiPatterns: [
-        "using chart without data binding",
-        "pie chart with more than 10 categories",
+        "using pie chart for more than 10 categories",
+        "using bar chart for time-series data",
       ],
+      relatedComponents: ["metric-value", "table"],
     },
   },
   constraints: [
-    { type: "semantic", rule: "chartType must be line, bar, or pie" },
+    { type: "semantic", rule: "must have data binding to a dataset" },
+    { type: "layout", rule: "height >= 100" },
   ],
 };
 
-export const tablePlugin: PluginDefinition = {
+export const tablePlugin: ComponentPlugin = {
+  type: "table",
+  renderer: () => null,
   meta: {
-    type: "table",
     title: "Table",
     description: "Paginated data table driven by data bindings.",
     category: "display",
@@ -105,16 +127,23 @@ export const tablePlugin: PluginDefinition = {
       { key: "striped", type: "boolean", default: true },
     ],
     ai: {
-      usage: ["data listing", "report table", "data export view"],
-      antiPatterns: ["using table for layout", "table with 50+ columns"],
+      usage: ["detailed data view", "transaction list", "raw data inspection"],
+      antiPatterns: [
+        "using table for a single row of data",
+        "using table when a chart is more appropriate",
+      ],
+      relatedComponents: ["chart"],
     },
   },
-  constraints: [],
+  constraints: [
+    { type: "semantic", rule: "must have data binding to a dataset" },
+  ],
 };
 
-export const headerPlugin: PluginDefinition = {
+export const headerPlugin: ComponentPlugin = {
+  type: "header",
+  renderer: () => null,
   meta: {
-    type: "header",
     title: "Header",
     description: "Page or section header with title and optional subtitle.",
     category: "layout",
@@ -124,19 +153,16 @@ export const headerPlugin: PluginDefinition = {
       { key: "level", type: "number", default: 1 },
     ],
     ai: {
-      usage: ["page title", "section heading", "dashboard title"],
-      antiPatterns: [
-        "using header without title text",
-        "nesting headers too deeply (beyond h4)",
-      ],
+      usage: ["page title", "dashboard name", "section heading"],
+      antiPatterns: ["using header for body text"],
     },
   },
-  constraints: [{ type: "semantic", rule: "level must be 1, 2, or 3" }],
 };
 
-export const dividerPlugin: PluginDefinition = {
+export const dividerPlugin: ComponentPlugin = {
+  type: "divider",
+  renderer: () => null,
   meta: {
-    type: "divider",
     title: "Divider",
     description: "Visual separator between sections.",
     category: "layout",
@@ -146,19 +172,19 @@ export const dividerPlugin: PluginDefinition = {
       { key: "style", type: "string", default: "solid" },
     ],
     ai: {
-      usage: ["section separator", "visual grouping", "form partition"],
-      antiPatterns: ["using multiple dividers in sequence"],
+      usage: ["section separator", "visual grouping boundary"],
+      antiPatterns: ["using multiple dividers without content between them"],
     },
   },
-  constraints: [],
 };
 
-export const filterPlugin: PluginDefinition = {
+export const filterPlugin: ComponentPlugin = {
+  type: "filter",
+  renderer: () => null,
   meta: {
-    type: "filter",
     title: "Filter",
     description:
-      "Interactive filter control driving data bindings on the same page.",
+      "Interactive filter control that drives data bindings on the same page.",
     category: "interaction",
     props: [
       { key: "filterType", type: "string", default: "dropdown" },
@@ -168,17 +194,21 @@ export const filterPlugin: PluginDefinition = {
       { key: "options", type: "json" },
     ],
     ai: {
-      usage: ["data filtering", "dashboard interactivity", "search bar"],
+      usage: ["date filter for dashboard", "category selector", "search box"],
       antiPatterns: [
-        "using dropdown filter with 100+ options",
-        "filter without data binding",
+        "placing filter on a different page from the data it affects",
       ],
     },
   },
-  constraints: [],
+  constraints: [
+    {
+      type: "semantic",
+      rule: "dataKey must reference a variable or dataset column",
+    },
+  ],
 };
 
-export const allPluginDefinitions: PluginDefinition[] = [
+export const allPluginDefinitions: ComponentPlugin[] = [
   metricValuePlugin,
   metricTrendPlugin,
   metricComparisonPlugin,

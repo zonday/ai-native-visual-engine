@@ -1,6 +1,6 @@
-import type { DocumentSnapshot } from "./types.js";
 import type { DocumentEventLog } from "./document/event-log.js";
 import type { RuntimeEventLog } from "./runtime/event-log.js";
+import type { DocumentSnapshot } from "./types.js";
 
 export const DEFAULT_SNAPSHOT_INTERVAL = 100;
 export const MAX_DOCUMENT_EVENT_LOG_ACTIONS = 1000;
@@ -16,7 +16,12 @@ export interface SnapshotManager {
   getSnapshot(): DocumentSnapshot;
   getDocumentEventLog(): DocumentEventLog;
   shouldCompact(): boolean;
-  compact(replay: (snapshot: DocumentSnapshot, actions: DocumentEventLog) => DocumentSnapshot): DocumentSnapshot;
+  compact(
+    replay: (
+      snapshot: DocumentSnapshot,
+      actions: DocumentEventLog,
+    ) => DocumentSnapshot,
+  ): DocumentSnapshot;
 }
 
 export function createSnapshotManager(

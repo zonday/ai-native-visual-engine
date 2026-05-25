@@ -34,9 +34,9 @@ export function replayRuntimeEvents(
     if (entry.action.type === "update-selection") continue;
     const result = dispatch(entry.action);
     if (!result.ok) {
-      throw new Error(`Replay failed at action ${entry.action.type}: ${result.error?.message}`);
+      throw new Error(
+        `Replay failed at action ${entry.action.type}: ${result.error?.message}`,
+      );
     }
   }
 }
-
-

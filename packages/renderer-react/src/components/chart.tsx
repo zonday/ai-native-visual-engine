@@ -11,7 +11,7 @@ export interface ChartProps {
 const chartSchema = z.object({
   chartType: z.string().default("bar"),
   title: z.string().optional(),
-  height: z.number().default(200),
+  height: z.number().default(300),
 });
 
 export function ChartNode({ node }: ChartProps) {

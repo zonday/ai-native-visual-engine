@@ -1,5 +1,5 @@
-import type { RuntimeMiddleware } from "../middleware.js";
 import { isDev } from "../../engine/command-bus.js";
+import type { RuntimeMiddleware } from "../middleware.js";
 
 export const runtimeLoggerMiddleware: RuntimeMiddleware = (
   action,

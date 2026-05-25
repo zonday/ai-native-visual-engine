@@ -86,10 +86,15 @@ export type { ExportOptions, ImportResult } from "./import-export.js";
 export { exportDocument, importDocument } from "./import-export.js";
 export { docToMarkdown, markdownToDoc } from "./markdown-interop.js";
 export type {
+  ComponentCapabilities,
   ComponentConstraint,
+  ComponentDefaults,
   ComponentMeta,
-  PluginDefinition,
+  ComponentPlugin,
+  EventMeta,
+  Example,
   PropMeta,
+  SlotMeta,
 } from "./plugin-types.js";
 export type {
   BlockNode,

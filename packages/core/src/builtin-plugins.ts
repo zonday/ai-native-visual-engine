@@ -1,8 +1,9 @@
-import type { PluginDefinition } from "./plugin-types.js";
+import type { ComponentPlugin } from "./plugin-types.js";
 
-export const containerPlugin: PluginDefinition = {
+export const containerPlugin: ComponentPlugin = {
+  type: "container",
+  renderer: () => null,
   meta: {
-    type: "container",
     title: "Container",
     description: "Generic flex layout container for grouping child nodes.",
     category: "container",
@@ -15,50 +16,54 @@ export const containerPlugin: PluginDefinition = {
   constraints: [{ type: "structural", rule: "children.length >= 0" }],
 };
 
-export const gridPlugin: PluginDefinition = {
+export const gridPlugin: ComponentPlugin = {
+  type: "grid",
+  renderer: () => null,
   meta: {
-    type: "grid",
     title: "Grid",
-    description: "CSS grid layout container with configurable columns.",
+    description: "Responsive grid layout container.",
     category: "container",
-    props: [
-      { key: "columns", type: "number", default: 12 },
-      { key: "rowHeight", type: "number" },
-      { key: "gap", type: "number", default: 8 },
-      { key: "autoFlow", type: "string", default: "row" },
-      { key: "padding", type: "number" },
-    ],
+    props: [],
     ai: {
-      usage: ["dashboard grid", "card layout", "gallery", "responsive grid"],
-      antiPatterns: ["using grid without grid-item children"],
+      usage: ["dashboard page layout", "KPI card grid", "chart grid"],
+      antiPatterns: [
+        "placing grid inside another grid without explicit intention",
+      ],
     },
   },
   constraints: [
-    { type: "structural", rule: "children must be grid-item layout" },
+    { type: "layout", rule: "columns >= 1" },
+    { type: "layout", rule: "rowHeight >= 1" },
+    { type: "layout", rule: "all children must use grid-item layout" },
   ],
 };
 
-export const textPlugin: PluginDefinition = {
+export const textPlugin: ComponentPlugin = {
+  type: "text",
+  renderer: () => null,
   meta: {
-    type: "text",
     title: "Text",
     description:
       "Rich text block powered by Tiptap. Supports headings, lists, inline formatting, and links.",
     category: "display",
     props: [
-      { key: "content", type: "json" },
+      {
+        key: "content",
+        type: "json",
+        default: '{"type":"doc","content":[{"type":"paragraph"}]}',
+      },
       { key: "placeholder", type: "string" },
       { key: "editable", type: "boolean", default: true },
     ],
     ai: {
       usage: [
-        "text content",
-        "descriptions",
-        "narrative sections",
-        "rich text blocks",
+        "page title",
+        "section description",
+        "annotation",
+        "data footnote",
       ],
       antiPatterns: [
-        "using text for data display instead of metric components",
+        "using text block for structured data that belongs in a table or chart",
       ],
     },
   },
@@ -70,7 +75,7 @@ export const textPlugin: PluginDefinition = {
   ],
 };
 
-export const builtinPluginDefinitions: PluginDefinition[] = [
+export const builtinPluginDefinitions: ComponentPlugin[] = [
   containerPlugin,
   gridPlugin,
   textPlugin,
