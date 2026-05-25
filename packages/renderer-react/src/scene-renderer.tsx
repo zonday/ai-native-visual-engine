@@ -227,12 +227,21 @@ export function SceneRenderer({
   const rootContent = renderNode(root, registry, context, onTransform);
 
   if (context.mode === "editor") {
+    const vp = context.viewport;
+    const viewportStyle: React.CSSProperties | undefined = vp
+      ? {
+          transform: `scale(${vp.zoom}) translate(${-vp.x}px, ${-vp.y}px)`,
+          transformOrigin: "0 0",
+        }
+      : undefined;
+
     return (
       <div
         role="none"
         data-scene-root
         onClick={sceneClickHandler}
         onMouseDown={sceneMouseDown}
+        style={viewportStyle}
       >
         {rootContent}
         {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}

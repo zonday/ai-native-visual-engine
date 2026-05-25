@@ -523,3 +523,67 @@ describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
   );
 });
 
+describe("SceneRenderer — viewport transform", () => {
+  const scene: SceneGraph = {
+    version: 0,
+    rootId: "root",
+    nodes: {
+      root: { id: "root", type: "container", children: [] },
+    },
+  };
+
+  it("applies scale and translate transform for zoomed viewport in editor mode", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 2, x: 100, y: 50 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain("scale(2)");
+    expect(html).toContain("translate(-100px, -50px)");
+    expect(html).toContain("transform-origin:0 0");
+  });
+
+  it("applies identity transform for default viewport (zoom=1, x=0, y=0)", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 1, x: 0, y: 0 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).toContain("scale(1)");
+    expect(html).toContain("translate(0px, 0px)");
+  });
+
+  it("does not apply viewport transform when viewport is absent", () => {
+    const ctx: RenderContext = {
+      mode: "editor",
+      pageId: "page-1",
+      scene,
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("transform-origin");
+  });
+
+  it("does not apply viewport transform in runtime mode", () => {
+    const ctx: RenderContext = {
+      mode: "runtime",
+      pageId: "page-1",
+      scene,
+      viewport: { zoom: 2, x: 100, y: 50 },
+    };
+    const html = renderToString(
+      <SceneRenderer registry={registry} context={ctx} />,
+    );
+    expect(html).not.toContain("transform-origin");
+  });
+});
+
