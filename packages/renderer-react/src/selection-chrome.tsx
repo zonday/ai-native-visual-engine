@@ -120,21 +120,20 @@ export function SelectionChrome({
 
   const isAbsolute = layout?.mode === "absolute";
   const showHandles = !!onTransform;
+const SVG_STYLE: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 9,
+  overflow: "visible",
+};
 
-  const svgStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    pointerEvents: "none",
-    zIndex: 9,
-    overflow: "visible",
-  };
-
-  const handlesContainerStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    pointerEvents: "none",
-    zIndex: 10,
-  };
+const HANDLES_CONTAINER_STYLE: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 10,
+};
 
   return (
     <>
@@ -142,7 +141,7 @@ export function SelectionChrome({
         data-selection-chrome={nodeId}
         width="100%"
         height="100%"
-        style={svgStyle}
+        style={SVG_STYLE}
         aria-hidden="true"
       >
         <title>Selection</title>
@@ -160,7 +159,7 @@ export function SelectionChrome({
       {showHandles && (
         <div
           data-selection-chrome-handles={nodeId}
-          style={handlesContainerStyle}
+          style={HANDLES_CONTAINER_STYLE}
         >
           {corners.map((c) => (
             <button

@@ -19,58 +19,57 @@ function parseInline(text: string): InlineNode[] {
   }
 
   while (i < text.length) {
-    if (text[i] === "\\" && i + 1 < text.length) {
+    const ch = text[i];
+
+    if (ch === "\\" && i + 1 < text.length) {
       plain += text[i + 1];
       i += 2;
       continue;
     }
-    const bold = text.indexOf("**", i);
-    if (bold === i) {
+
+    if (ch === "*" && text[i + 1] === "*") {
       const end = text.indexOf("**", i + 2);
       if (end !== -1) {
         flush();
-        const inner = text.slice(i + 2, end);
         nodes.push({
           type: "text",
-          text: inner,
+          text: text.slice(i + 2, end),
           marks: [{ type: "bold" }],
         });
         i = end + 2;
         continue;
       }
     }
-    const italic = text.indexOf("*", i);
-    if (italic === i && text[i + 1] !== "*") {
+
+    if (ch === "*" && text[i + 1] !== "*") {
       const end = text.indexOf("*", i + 1);
       if (end !== -1) {
         flush();
-        const inner = text.slice(i + 1, end);
         nodes.push({
           type: "text",
-          text: inner,
+          text: text.slice(i + 1, end),
           marks: [{ type: "italic" }],
         });
         i = end + 1;
         continue;
       }
     }
-    const strike = text.indexOf("~~", i);
-    if (strike === i) {
+
+    if (ch === "~" && text[i + 1] === "~") {
       const end = text.indexOf("~~", i + 2);
       if (end !== -1) {
         flush();
-        const inner = text.slice(i + 2, end);
         nodes.push({
           type: "text",
-          text: inner,
+          text: text.slice(i + 2, end),
           marks: [{ type: "strike" }],
         });
         i = end + 2;
         continue;
       }
     }
-    const code = text.indexOf("`", i);
-    if (code === i) {
+
+    if (ch === "`") {
       const end = text.indexOf("`", i + 1);
       if (end !== -1) {
         flush();
@@ -83,27 +82,32 @@ function parseInline(text: string): InlineNode[] {
         continue;
       }
     }
-    const link = text.indexOf("[", i);
-    if (link === i) {
+
+    if (ch === "[") {
       const closeBracket = text.indexOf("]", i + 1);
-      const openParen = text.indexOf("(", closeBracket);
-      if (closeBracket !== -1 && openParen === closeBracket + 1) {
-        const closeParen = text.indexOf(")", openParen + 1);
+      if (closeBracket !== -1 && text[closeBracket + 1] === "(") {
+        const closeParen = text.indexOf(")", closeBracket + 2);
         if (closeParen !== -1) {
           flush();
-          const linkText = text.slice(i + 1, closeBracket);
-          const href = text.slice(openParen + 1, closeParen);
           nodes.push({
             type: "text",
-            text: linkText,
-            marks: [{ type: "link", attrs: { href } }],
+            text: text.slice(i + 1, closeBracket),
+            marks: [
+              {
+                type: "link",
+                attrs: {
+                  href: text.slice(closeBracket + 2, closeParen),
+                },
+              },
+            ],
           });
           i = closeParen + 1;
           continue;
         }
       }
     }
-    plain += text[i];
+
+    plain += ch;
     i++;
   }
   flush();
@@ -159,12 +163,12 @@ export function markdownToDoc(md: string): DocNode {
     const ul = /^- (.+)/.exec(line);
     if (ul) {
       const items: ListItemNode[] = [];
-      while (i < lines.length && /^- (.+)/.test(lines[i])) {
+      while (i < lines.length) {
         const match = /^- (.+)/.exec(lines[i]);
-        const text = match?.[1] ?? "";
+        if (!match) break;
         items.push({
           type: "listItem",
-          content: [{ type: "paragraph", content: parseInline(text) }],
+          content: [{ type: "paragraph", content: parseInline(match[1]) }],
         });
         i++;
       }
@@ -175,12 +179,12 @@ export function markdownToDoc(md: string): DocNode {
     const ol = /^\d+\. (.+)/.exec(line);
     if (ol) {
       const items: ListItemNode[] = [];
-      while (i < lines.length && /^\d+\. (.+)/.test(lines[i])) {
+      while (i < lines.length) {
         const match = /^\d+\. (.+)/.exec(lines[i]);
-        const text = match?.[1] ?? "";
+        if (!match) break;
         items.push({
           type: "listItem",
-          content: [{ type: "paragraph", content: parseInline(text) }],
+          content: [{ type: "paragraph", content: parseInline(match[1]) }],
         });
         i++;
       }
