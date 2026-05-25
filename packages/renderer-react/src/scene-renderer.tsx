@@ -10,6 +10,10 @@ import type {
   TransformEvent,
 } from "./renderer.js";
 import { SelectionChrome } from "./selection-chrome.jsx";
+import {
+  EditorCallbacksContext,
+  useEditorCallbacks,
+} from "./editor-callbacks.js";
 
 function missingPluginFallback(n: SceneNode, ctx: RenderContext) {
   return MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
@@ -31,6 +35,7 @@ export interface SceneRendererProps {
   context: RenderContext;
   onSelectNode?: (nodeId: string, options?: SelectNodeOptions) => void;
   onTransform?: (event: TransformEvent) => void;
+  onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
 }
 
 function renderNode(
@@ -130,6 +135,7 @@ export function SceneRenderer({
   context,
   onSelectNode,
   onTransform,
+  onUpdateProps,
 }: SceneRendererProps) {
   const moveDragRef = useRef<{
     nodeId: string;
@@ -250,6 +256,14 @@ export function SceneRenderer({
     zoomAdjustedOnTransform,
   );
 
+  const editorCallbacks = {
+    onUpdateProps,
+    onContentChange: onUpdateProps
+      ? (nodeId: string, content: unknown) =>
+          onUpdateProps(nodeId, { content })
+      : undefined,
+  };
+
   if (context.mode === "editor") {
     const vp = context.viewport;
     const viewportStyle: React.CSSProperties | undefined =
@@ -261,18 +275,24 @@ export function SceneRenderer({
         : undefined;
 
     return (
-      <div
-        role="none"
-        data-scene-root
-        onClick={sceneClickHandler}
-        onMouseDown={sceneMouseDown}
-        style={viewportStyle}
-      >
-        {rootContent}
-        {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}
-      </div>
+      <EditorCallbacksContext.Provider value={editorCallbacks}>
+        <div
+          role="none"
+          data-scene-root
+          onClick={sceneClickHandler}
+          onMouseDown={sceneMouseDown}
+          style={viewportStyle}
+        >
+          {rootContent}
+          {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}
+        </div>
+      </EditorCallbacksContext.Provider>
     );
   }
 
-  return <>{rootContent}</>;
+  return (
+    <EditorCallbacksContext.Provider value={editorCallbacks}>
+      <>{rootContent}</>
+    </EditorCallbacksContext.Provider>
+  );
 }
