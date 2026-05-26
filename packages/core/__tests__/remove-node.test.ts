@@ -37,7 +37,7 @@ describe("removeNodeHandler", () => {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
-      expect((e as RuntimeHandlerError).nodeId).toBe("missing");
+      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing");
     }
   });
 
@@ -50,7 +50,7 @@ describe("removeNodeHandler", () => {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as RuntimeHandlerError).code).toBe("scene.root-mutation");
-      expect((e as RuntimeHandlerError).nodeId).toBe("root");
+      expect((e as RuntimeHandlerError).context.nodeId).toBe("root");
     }
   });
 });

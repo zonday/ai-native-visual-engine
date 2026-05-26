@@ -5,7 +5,7 @@ import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
 import { DocumentHandlerError } from "../src/document/error.js";
-import { createUndoHistoryMiddleware } from "../src/document/history-middleware.js";
+import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { DocumentHistoryState } from "../src/document/history.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { normalizeRoute } from "../src/document/handlers/update-page-route.js";

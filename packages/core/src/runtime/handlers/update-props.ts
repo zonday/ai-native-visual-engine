@@ -1,7 +1,7 @@
 import type { UpdatePropsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   scene,

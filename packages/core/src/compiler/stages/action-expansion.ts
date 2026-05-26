@@ -1,10 +1,9 @@
 import { createEmptyScene, generateId } from "../../bootstrap.js";
 import type { DocumentAction } from "../../document/actions.js";
 import type { RuntimeAction } from "../../runtime/actions.js";
-import { unsupportedAction } from "../diagnostics.js";
+import { createStage } from "../diagnostics.js";
 import type {
   CompilerContext,
-  CompilerStage,
   ExecutionPlan,
   NormalizedAutoLayoutAction,
   NormalizedCreateDashboardAction,
@@ -14,41 +13,38 @@ import type {
   StageOutcome,
 } from "../types.js";
 
-export const actionExpansionStage: CompilerStage<
+export const actionExpansionStage = createStage<
   NormalizedSemanticAction,
   ExecutionPlan
-> = {
-  name: "action-expansion",
-
-  run(
-    action: NormalizedSemanticAction,
-    context: CompilerContext,
-  ): StageOutcome<ExecutionPlan> {
-    switch (action.type) {
-      case "create-dashboard": {
-        return expandCreateDashboard(action);
-      }
-      case "insert-chart": {
-        return expandInsertChart(action);
-      }
-      case "auto-layout": {
-        return expandAutoLayout(action, context);
-      }
-      case "update-theme-intent": {
-        return expandUpdateThemeIntent(action);
-      }
-      default: {
-        const unsupported = action as { type: string };
-        return {
-          ok: false,
-          diagnostics: [
-            unsupportedAction("action-expansion", unsupported.type),
-          ],
-        };
-      }
-    }
+>("action-expansion", {
+  "create-dashboard": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<ExecutionPlan> => {
+    return expandCreateDashboard(action as NormalizedCreateDashboardAction);
   },
-};
+
+  "insert-chart": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<ExecutionPlan> => {
+    return expandInsertChart(action as NormalizedInsertChartAction);
+  },
+
+  "auto-layout": (
+    action,
+    context: CompilerContext,
+  ): StageOutcome<ExecutionPlan> => {
+    return expandAutoLayout(action as NormalizedAutoLayoutAction, context);
+  },
+
+  "update-theme-intent": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<ExecutionPlan> => {
+    return expandUpdateThemeIntent(action as NormalizedUpdateThemeIntentAction);
+  },
+});
 
 function expandCreateDashboard(
   action: NormalizedCreateDashboardAction,
@@ -114,7 +110,11 @@ function expandAutoLayout(
   const documentActions: DocumentAction[] = [];
   const runtimeActions: RuntimeAction[] = [];
 
-  if (context.scene) {
+  if (
+    context.scene &&
+    typeof context.scene === "object" &&
+    "nodes" in context.scene
+  ) {
     const scene = context.scene as {
       nodes?: Record<
         string,

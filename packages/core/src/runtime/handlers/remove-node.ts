@@ -1,9 +1,9 @@
 import type { SceneNode } from "../../types.js";
 import type { RemoveNodeAction, RuntimeAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 function collectDescendants(
   nodeId: string,
@@ -26,11 +26,11 @@ export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   const node = expectNode(scene, action.nodeId, "remove-node");
 
   if (action.nodeId === scene.rootId) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.root-mutation",
       "Cannot remove the root node",
       "remove-node",
-      action.nodeId,
+      { nodeId: action.nodeId },
     );
   }
 

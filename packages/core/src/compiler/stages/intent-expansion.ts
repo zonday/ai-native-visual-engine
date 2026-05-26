@@ -1,7 +1,6 @@
-import { unsupportedAction } from "../diagnostics.js";
+import { createStage } from "../diagnostics.js";
 import type {
   CompilerContext,
-  CompilerStage,
   DashboardWidgetIntent,
   LayoutStrategy,
   NormalizedSemanticAction,
@@ -95,43 +94,46 @@ function computeWidgetLayout(
   }
 }
 
-export const intentExpansionStage: CompilerStage<
+export const intentExpansionStage = createStage<
   NormalizedSemanticAction,
   NormalizedSemanticAction
-> = {
-  name: "intent-expansion",
-
-  run(
-    action: NormalizedSemanticAction,
+>("intent-expansion", {
+  "create-dashboard": (
+    action,
     _context: CompilerContext,
-  ): StageOutcome<NormalizedSemanticAction> {
-    switch (action.type) {
-      case "create-dashboard": {
-        const positioned = computeWidgetLayout(action.widgets, action.layout);
-        return {
-          ok: true,
-          output: {
-            ...action,
-            widgets: positioned,
-          },
-        };
-      }
-
-      case "insert-chart":
-      case "auto-layout":
-      case "update-theme-intent": {
-        return { ok: true, output: action };
-      }
-
-      default: {
-        const unsupported = action as { type: string };
-        return {
-          ok: false,
-          diagnostics: [
-            unsupportedAction("intent-expansion", unsupported.type),
-          ],
-        };
-      }
-    }
+  ): StageOutcome<NormalizedSemanticAction> => {
+    const a = action as Extract<
+      NormalizedSemanticAction,
+      { type: "create-dashboard" }
+    >;
+    const positioned = computeWidgetLayout(a.widgets, a.layout);
+    return {
+      ok: true,
+      output: { ...a, widgets: positioned },
+    };
   },
-};
+
+  "insert-chart": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+
+  "auto-layout": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+
+  "update-theme-intent": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+});

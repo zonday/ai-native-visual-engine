@@ -1,7 +1,7 @@
 import type { UpdatePageRouteAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 const ROUTE_REGEX = /^\//;
 const TRAILING_SLASH_REGEX = /\/+$/;
@@ -25,31 +25,31 @@ export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
 ) => {
   const exists = document.pages.some((p) => p.id === action.pageId);
   if (!exists)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.page-not-found",
       `Page "${action.pageId}" not found`,
       "update-page-route",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const normalized = normalizeRoute(action.route);
   if (!normalized)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.invalid-route",
       `Route is empty after normalization`,
       "update-page-route",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const duplicate = document.pages.find(
     (p) => p.route === normalized && p.id !== action.pageId,
   );
   if (duplicate)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.duplicate-route",
       `Route "${normalized}" already assigned to page "${duplicate.id}"`,
       "update-page-route",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const pages = document.pages.map((p) =>

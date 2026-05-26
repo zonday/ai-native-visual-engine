@@ -1,8 +1,8 @@
 import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   scene,
@@ -11,20 +11,20 @@ export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
 ) => {
   const parent = scene.nodes[action.parentId];
   if (!parent) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.invalid-parent",
       `Parent node "${action.parentId}" not found`,
       "create-node",
-      action.parentId,
+      { nodeId: action.parentId },
     );
   }
 
   if (scene.nodes[action.node.id]) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.duplicate-node-id",
       `Node "${action.node.id}" already exists`,
       "create-node",
-      action.node.id,
+      { nodeId: action.node.id },
     );
   }
 

@@ -1,7 +1,6 @@
-import { createDiagnosticFactory, unsupportedAction } from "../diagnostics.js";
+import { createDiagnosticFactory, createStage } from "../diagnostics.js";
 import type {
   CompilerContext,
-  CompilerStage,
   NormalizedSemanticAction,
   SemanticDiagnostic,
   StageOutcome,
@@ -18,77 +17,86 @@ type SceneNode = {
 
 function collectAllNodeIds(context: CompilerContext): Set<string> {
   const ids = new Set<string>();
-  const scene = context.scene as
-    | { nodes?: Record<string, SceneNode> }
-    | undefined;
-  if (scene?.nodes) {
-    for (const id of Object.keys(scene.nodes)) {
+  const scene = context.scene;
+  if (
+    scene &&
+    typeof scene === "object" &&
+    "nodes" in scene &&
+    typeof scene.nodes === "object" &&
+    scene.nodes !== null
+  ) {
+    for (const id of Object.keys(scene.nodes as Record<string, unknown>)) {
       ids.add(id);
     }
   }
   return ids;
 }
 
-export const constraintPrecheckStage: CompilerStage<
+export const constraintPrecheckStage = createStage<
   NormalizedSemanticAction,
   NormalizedSemanticAction
-> = {
-  name: "constraint-precheck",
-
-  run(
-    action: NormalizedSemanticAction,
+>("constraint-precheck", {
+  "insert-chart": (
+    action,
     context: CompilerContext,
-  ): StageOutcome<NormalizedSemanticAction> {
+  ): StageOutcome<NormalizedSemanticAction> => {
+    const a = action as Extract<
+      NormalizedSemanticAction,
+      { type: "insert-chart" }
+    >;
     const diagnostics: SemanticDiagnostic[] = [];
-
-    switch (action.type) {
-      case "insert-chart": {
-        if (context.scene) {
-          const nodeIds = collectAllNodeIds(context);
-          if (!nodeIds.has(action.containerId)) {
-            diagnostics.push(
-              diag(
-                "compiler.container-not-found",
-                `Container "${action.containerId}" not found in scene`,
-              ),
-            );
-          }
-        }
-        break;
-      }
-
-      case "auto-layout": {
-        if (context.scene) {
-          const nodeIds = collectAllNodeIds(context);
-          if (!nodeIds.has(action.pageId)) {
-            diagnostics.push(
-              diag(
-                "compiler.page-not-found",
-                `Page "${action.pageId}" not found in scene`,
-              ),
-            );
-          }
-        }
-        break;
-      }
-
-      case "create-dashboard":
-      case "update-theme-intent": {
-        break;
-      }
-
-      default: {
-        const unsupported = action as { type: string };
+    if (context.scene) {
+      const nodeIds = collectAllNodeIds(context);
+      if (!nodeIds.has(a.containerId)) {
         diagnostics.push(
-          unsupportedAction("constraint-precheck", unsupported.type),
+          diag(
+            "compiler.container-not-found",
+            `Container "${a.containerId}" not found in scene`,
+          ),
         );
       }
     }
-
-    if (diagnostics.length > 0) {
-      return { ok: false, diagnostics };
-    }
-
-    return { ok: true, output: action };
+    if (diagnostics.length > 0) return { ok: false, diagnostics };
+    return { ok: true, output: a };
   },
-};
+
+  "auto-layout": (
+    action,
+    context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => {
+    const a = action as Extract<
+      NormalizedSemanticAction,
+      { type: "auto-layout" }
+    >;
+    const diagnostics: SemanticDiagnostic[] = [];
+    if (context.scene) {
+      const nodeIds = collectAllNodeIds(context);
+      if (!nodeIds.has(a.pageId)) {
+        diagnostics.push(
+          diag(
+            "compiler.page-not-found",
+            `Page "${a.pageId}" not found in scene`,
+          ),
+        );
+      }
+    }
+    if (diagnostics.length > 0) return { ok: false, diagnostics };
+    return { ok: true, output: a };
+  },
+
+  "create-dashboard": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+
+  "update-theme-intent": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+});

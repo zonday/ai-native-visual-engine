@@ -4,7 +4,7 @@ import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
 import type { RuntimeHistoryState } from "../src/runtime/history.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import { createUndoHistoryMiddleware } from "../src/runtime/history-middleware.js";
+import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
 import { baseNode, makeScene, emptyScene } from "./helpers.js";

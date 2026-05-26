@@ -1,8 +1,8 @@
 import type { Page } from "../../types.js";
 import type { CreatePageAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 import { normalizeRoute } from "./update-page-route.js";
 
 export const createPageHandler: DocumentHandler<CreatePageAction> = (
@@ -12,16 +12,16 @@ export const createPageHandler: DocumentHandler<CreatePageAction> = (
 ) => {
   const existingPage = document.pages.find((p) => p.id === action.page.id);
   if (existingPage)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.duplicate-page-id",
       `Page ID "${action.page.id}" already exists`,
       "create-page",
-      action.page.id,
+      { pageId: action.page.id },
     );
 
   const existingScene = document.scenes[action.page.sceneId];
   if (existingScene)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.duplicate-scene-id",
       `Scene ID "${action.page.sceneId}" already in use`,
       "create-page",
@@ -31,11 +31,11 @@ export const createPageHandler: DocumentHandler<CreatePageAction> = (
     const canonicalRoute = normalizeRoute(action.page.route);
     const dup = document.pages.find((p) => p.route === canonicalRoute);
     if (dup)
-      throw new DocumentHandlerError(
+      throw new HandlerError(
         "document.duplicate-route",
         `Route "${canonicalRoute}" already assigned to page "${dup.id}"`,
         "create-page",
-        action.page.id,
+        { pageId: action.page.id },
       );
   }
 
