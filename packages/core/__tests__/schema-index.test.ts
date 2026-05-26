@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ComponentPluginRegistry } from "../src/plugins/registry.js";
-import { buildSchemaIndex } from "../src/compiler/schema-index.js";
+import { buildSchemaIndex, schemaIndexToSnapshot } from "../src/compiler/schema-index.js";
 import type { ComponentPlugin } from "../src/plugin-types.js";
 
 function makePlugin(
@@ -134,5 +134,31 @@ describe("buildSchemaIndex", () => {
 
     expect(entry?.layoutCapabilities).toBeUndefined();
     expect(entry?.constraints).toBeUndefined();
+  });
+
+  it("schemaIndexToSnapshot converts Map to Record for serialization", () => {
+    const registry = new ComponentPluginRegistry();
+    registry.register(makePlugin("chart", {
+      meta: {
+        title: "Chart",
+        description: "Chart component",
+        props: [],
+      },
+    }));
+    registry.register(makePlugin("table", {
+      meta: {
+        title: "Table",
+        description: "Table component",
+        props: [],
+      },
+    }));
+
+    const index = buildSchemaIndex(registry);
+    const snapshot = schemaIndexToSnapshot(index);
+
+    expect(Object.keys(snapshot.components).sort()).toEqual(["chart", "table"]);
+    expect(snapshot.components["chart"]?.name).toBe("Chart");
+    expect(snapshot.components["table"]?.name).toBe("Table");
+    expect(snapshot.componentTypes.sort()).toEqual(["chart", "table"]);
   });
 });

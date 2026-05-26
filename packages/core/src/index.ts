@@ -13,8 +13,12 @@ export type {
   AiComponentEntry,
   AiPropEntry,
   AiSchemaIndex,
+  AiSchemaIndexSnapshot,
 } from "./compiler/schema-index.js";
-export { buildSchemaIndex } from "./compiler/schema-index.js";
+export {
+  buildSchemaIndex,
+  schemaIndexToSnapshot,
+} from "./compiler/schema-index.js";
 // ── Compiler / Semantic Actions ──
 export type {
   CompileFailure,
@@ -44,7 +48,10 @@ export type {
   SlotMeta,
 } from "./plugin-types.js";
 // ── Plugin registry ──
-export { ComponentPluginRegistry } from "./plugins/registry.js";
+export {
+  ComponentPluginRegistry,
+  createPluginRegistry,
+} from "./plugins/registry.js";
 // ── Prototype components ──
 export type {
   PrototypeComponent,

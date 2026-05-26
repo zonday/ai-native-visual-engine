@@ -34,6 +34,11 @@ export interface AiSchemaIndex {
   componentTypes: string[];
 }
 
+export interface AiSchemaIndexSnapshot {
+  components: Record<string, AiComponentEntry>;
+  componentTypes: string[];
+}
+
 function toAiPropEntry(prop: {
   key: string;
   type: string;
@@ -77,5 +82,19 @@ export function buildSchemaIndex(
   return {
     components,
     componentTypes: [...components.keys()],
+  };
+}
+
+export function schemaIndexToSnapshot(
+  index: AiSchemaIndex,
+): AiSchemaIndexSnapshot {
+  const entries = [...index.components.entries()];
+  const record: Record<string, AiComponentEntry> = {};
+  for (const [key, value] of entries) {
+    record[key] = value;
+  }
+  return {
+    components: record,
+    componentTypes: index.componentTypes,
   };
 }

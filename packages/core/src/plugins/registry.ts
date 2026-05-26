@@ -32,3 +32,13 @@ export class ComponentPluginRegistry {
     return this.plugins.size;
   }
 }
+
+export function createPluginRegistry(
+  plugins: ComponentPlugin[],
+): ComponentPluginRegistry {
+  const registry = new ComponentPluginRegistry();
+  for (const plugin of plugins) {
+    registry.register(plugin);
+  }
+  return registry;
+}

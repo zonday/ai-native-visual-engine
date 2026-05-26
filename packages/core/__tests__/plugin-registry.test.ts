@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ComponentPluginRegistry } from "../src/plugins/registry.js";
+import { ComponentPluginRegistry, createPluginRegistry } from "../src/plugins/registry.js";
 import type { ComponentPlugin } from "../src/plugin-types.js";
 
 function makePlugin(type: string, overrides?: Partial<ComponentPlugin>): ComponentPlugin {
@@ -76,5 +76,19 @@ describe("ComponentPluginRegistry", () => {
 
     registry.register(makePlugin("table"));
     expect(registry.size).toBe(2);
+  });
+
+  it("createPluginRegistry builds registry from array", () => {
+    const registry = createPluginRegistry([makePlugin("chart"), makePlugin("table")]);
+
+    expect(registry.size).toBe(2);
+    expect(registry.has("chart")).toBe(true);
+    expect(registry.has("table")).toBe(true);
+  });
+
+  it("createPluginRegistry rejects duplicates in array", () => {
+    expect(() =>
+      createPluginRegistry([makePlugin("chart"), makePlugin("chart")]),
+    ).toThrow(/already registered/);
   });
 });
