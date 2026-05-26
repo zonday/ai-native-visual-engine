@@ -1,32 +1,18 @@
 import { actionExpansionStage } from "./stages/action-expansion.js";
+import { constraintPrecheckStage } from "./stages/constraint-precheck.js";
+import { intentExpansionStage } from "./stages/intent-expansion.js";
+import { layoutPlanningStage } from "./stages/layout-planning.js";
 import { normalizeStage } from "./stages/normalize.js";
+import { validationStage } from "./stages/validation.js";
 import type {
   CompileResult,
   CompilerContext,
   CompilerStage,
   ExecutionPlan,
-  NormalizedSemanticAction,
   SemanticAction,
   SemanticDiagnostic,
 } from "./types.js";
-
-function passThroughStage<T>(name: string): CompilerStage<T, T> {
-  return {
-    name,
-    run(input: T, _context: CompilerContext) {
-      return { ok: true as const, output: input };
-    },
-  };
-}
-
-const intentExpansionStage =
-  passThroughStage<NormalizedSemanticAction>("intent-expansion");
-const constraintPrecheckStage = passThroughStage<NormalizedSemanticAction>(
-  "constraint-precheck",
-);
-const layoutPlanningStage =
-  passThroughStage<NormalizedSemanticAction>("layout-planning");
-const validationStage = passThroughStage<ExecutionPlan>("validation");
+import { SemanticActionSchema } from "./types.js";
 
 const stages: CompilerStage<unknown, unknown>[] = [
   normalizeStage,
@@ -41,9 +27,25 @@ export function compileSemanticAction(
   action: SemanticAction,
   context: CompilerContext = {},
 ): CompileResult {
+  const parsed = SemanticActionSchema.safeParse(action);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          code: "compiler.invalid-action",
+          message: parsed.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; "),
+          severity: "error",
+        },
+      ],
+    };
+  }
+
   const diagnostics: SemanticDiagnostic[] = [];
 
-  let current: unknown = action;
+  let current: unknown = parsed.data;
 
   for (const stage of stages) {
     const result = stage.run(current, context);
@@ -56,6 +58,5 @@ export function compileSemanticAction(
     current = result.output;
   }
 
-  // Invariant: after validationStage, current is guaranteed to be ExecutionPlan
   return { ok: true, plan: current as ExecutionPlan };
 }
