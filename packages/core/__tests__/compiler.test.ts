@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
+import type { SemanticAction } from "../src/compiler/types.js";
 import { compileSemanticAction } from "../src/compiler/pipeline.js";
 
 describe("compileSemanticAction", () => {
   it("rejects unknown action type with unsupported-action diagnostic", () => {
-    const action = { type: "unknown-action" } as never;
+    const action = { type: "unknown-action" } as unknown as SemanticAction;
     const result = compileSemanticAction(action);
 
     expect(result.ok).toBe(false);
@@ -14,7 +15,7 @@ describe("compileSemanticAction", () => {
   });
 
   it("rejects create-dashboard without title", () => {
-    const action = { type: "create-dashboard" } as never;
+    const action = { type: "create-dashboard" } as unknown as SemanticAction;
     const result = compileSemanticAction(action);
 
     expect(result.ok).toBe(false);
@@ -27,7 +28,7 @@ describe("compileSemanticAction", () => {
     const action = {
       type: "insert-chart",
       chartType: "chart",
-    } as never;
+    } as unknown as SemanticAction;
     const result = compileSemanticAction(action);
 
     expect(result.ok).toBe(false);
@@ -37,7 +38,9 @@ describe("compileSemanticAction", () => {
   });
 
   it("short-circuits on first stage failure", () => {
-    const action = { type: "create-dashboard" } as never;
+    const action = {
+      type: "create-dashboard",
+    } as unknown as SemanticAction;
     const result = compileSemanticAction(action);
 
     expect(result.ok).toBe(false);
@@ -105,7 +108,7 @@ describe("compileSemanticAction", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("fills default layout strategy as balanced for create-dashboard", () => {
+  it("accepts create-dashboard without explicit layout", () => {
     const result = compileSemanticAction({
       type: "create-dashboard",
       title: "Default Dashboard",
@@ -115,7 +118,7 @@ describe("compileSemanticAction", () => {
   });
 
   it("rejects null action", () => {
-    const result = compileSemanticAction(null as never);
+    const result = compileSemanticAction(null as unknown as SemanticAction);
 
     expect(result.ok).toBe(false);
   });

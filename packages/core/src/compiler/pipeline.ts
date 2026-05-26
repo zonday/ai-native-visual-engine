@@ -56,5 +56,6 @@ export function compileSemanticAction(
     current = result.output;
   }
 
+  // Invariant: after validationStage, current is guaranteed to be ExecutionPlan
   return { ok: true, plan: current as ExecutionPlan };
 }

@@ -61,7 +61,7 @@ function expandCreateDashboard(
   action: NormalizedCreateDashboardAction,
 ): StageOutcome<ExecutionPlan> {
   const runtimeActions: RuntimeAction[] = [];
-  const rootId = "root";
+  const rootId = generateId("root");
   const pageId = generateId("page");
   const sceneId = generateId("scene");
   const scene = createEmptyScene(rootId);

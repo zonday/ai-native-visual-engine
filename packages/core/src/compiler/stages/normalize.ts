@@ -72,6 +72,17 @@ export const normalizeStage: CompilerStage<
             ],
           };
         }
+        if (!action.chartType) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.missing-chart-type",
+                "insert-chart requires a chartType",
+              ),
+            ],
+          };
+        }
         return {
           ok: true,
           output: {
