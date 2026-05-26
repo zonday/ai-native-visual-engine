@@ -9,7 +9,33 @@ import type {
   PageId,
   SceneGraph,
   SceneNode,
+  RuntimeState,
 } from "./types.js";
+
+function getNodeId(
+  action: RuntimeAction,
+): string {
+  if ("nodeId" in action && typeof action.nodeId === "string") {
+    return action.nodeId;
+  }
+  return "";
+}
+
+function getNodeRuntime(node: SceneNode): Record<string, unknown> {
+  const rt = node.runtime;
+  if (rt && typeof rt === "object") {
+    return rt as Record<string, unknown>;
+  }
+  return {};
+}
+
+function getRuntimeActiveStates(
+  node: SceneNode,
+): string[] {
+  const rt = getNodeRuntime(node);
+  const states = rt.activeStates;
+  return Array.isArray(states) ? states as string[] : [];
+}
 
 export interface NodeAPI {
   get(nodeId: NodeId): SceneNode | undefined;
@@ -144,7 +170,8 @@ export function createEngineAPI(
       (action.type === "remove-node" || action.type === "move-node") &&
       "nodeId" in action
     ) {
-      const node = scene.nodes[action.nodeId as string];
+      const nodeId = getNodeId(action);
+      const node = scene.nodes[nodeId];
       if (!node) {
         return {
           ok: false,
@@ -153,7 +180,7 @@ export function createEngineAPI(
             code: "scene.node-not-found",
             message: `Node "${action.nodeId}" not found`,
             actionType: action.type,
-            nodeId: action.nodeId as string,
+            nodeId: getNodeId(action),
           },
         };
       }
@@ -165,7 +192,7 @@ export function createEngineAPI(
             code: "scene.locked",
             message: `Node "${action.nodeId}" is locked`,
             actionType: "remove-node",
-            nodeId: action.nodeId as string,
+            nodeId: getNodeId(action),
           },
         };
       }
@@ -178,7 +205,7 @@ export function createEngineAPI(
       action.type === "update-bindings" ||
       action.type === "update-runtime"
     ) {
-      if ("nodeId" in action && !scene.nodes[action.nodeId as string]) {
+      if ("nodeId" in action && !scene.nodes[getNodeId(action)]) {
         return {
           ok: false,
           scene,
@@ -186,7 +213,7 @@ export function createEngineAPI(
             code: "scene.node-not-found",
             message: `Node "${action.nodeId}" not found`,
             actionType: action.type,
-            nodeId: action.nodeId as string,
+            nodeId: getNodeId(action),
           },
         };
       }
@@ -242,7 +269,7 @@ export function createEngineAPI(
   const sceneAPI: SceneAPI = {
     getRoot() {
       const root = getScene().nodes[getScene().rootId];
-      return root as SceneNode;
+      return root ?? ({} as SceneNode);
     },
     getActivePageId() {
       return pageId;
@@ -320,11 +347,11 @@ export function createEngineAPI(
     },
     undo() {
       const result = undoRuntimeAction(getHistory());
-      if (result) dispatchAndNotify(result.inverseAction as RuntimeAction);
+      if (result) dispatchAndNotify(result.inverseAction);
     },
     redo() {
       const result = redoRuntimeAction(getHistory());
-      if (result) dispatchAndNotify(result.action as RuntimeAction);
+      if (result) dispatchAndNotify(result.action);
     },
     getUndoStackSize() {
       return getHistory().undoStack.length;
@@ -371,13 +398,7 @@ export function createEngineAPI(
     setState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
-      const active = ((node.runtime as Record<string, unknown> | undefined)
-        ?.activeStates as string[] | undefined)
-        ? [
-            ...((node.runtime as Record<string, unknown>)
-              ?.activeStates as string[]),
-          ]
-        : [];
+      const active = getRuntimeActiveStates(node);
       const idx = active.indexOf(state);
       if (idx >= 0) active.splice(idx, 1);
       active.push(state);
@@ -390,11 +411,7 @@ export function createEngineAPI(
     clearState(nodeId, state) {
       const node = getScene().nodes[nodeId];
       if (!node) return;
-      const active = (
-        ((node.runtime as Record<string, unknown> | undefined)?.activeStates as
-          | string[]
-          | undefined) ?? []
-      ).filter((s) => s !== state);
+      const active = getRuntimeActiveStates(node).filter((s) => s !== state);
       dispatchAndNotify({
         type: "update-runtime",
         nodeId,
@@ -405,8 +422,7 @@ export function createEngineAPI(
       const all = getAllNodes(getScene());
       const actions: RuntimeAction[] = [];
       for (const n of all) {
-        const existing = (n.runtime as Record<string, unknown> | undefined)
-          ?.activeStates as string[] | undefined;
+        const existing = getRuntimeActiveStates(n);
         if (n.id !== nodeId && existing?.includes(state)) {
           actions.push({
             type: "update-runtime",
@@ -417,10 +433,7 @@ export function createEngineAPI(
       }
       const thisNode = getScene().nodes[nodeId];
       if (thisNode) {
-        const runtimeActive = (
-          thisNode.runtime as Record<string, unknown> | undefined
-        )?.activeStates as string[] | undefined;
-        const active = runtimeActive ? [...runtimeActive] : [];
+        const active = getRuntimeActiveStates(thisNode);
         const idx = active.indexOf(state);
         if (idx >= 0) active.splice(idx, 1);
         active.push(state);
@@ -435,13 +448,9 @@ export function createEngineAPI(
       }
     },
     getActiveStates(nodeId) {
-      return (
-        ((
-          getScene().nodes[nodeId]?.runtime as
-            | Record<string, unknown>
-            | undefined
-        )?.activeStates as string[]) ?? []
-      );
+      const node = getScene().nodes[nodeId];
+      if (!node) return [];
+      return getRuntimeActiveStates(node);
     },
   };
 
