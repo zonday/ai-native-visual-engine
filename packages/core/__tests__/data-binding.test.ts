@@ -213,6 +213,27 @@ describe("resolveBinding", () => {
     ).toThrow(BindingError);
   });
 
+  it("throws BindingError for invalid row index (non-numeric)", () => {
+    registry.registerDataset(makeDataset());
+    expect(() =>
+      resolveBinding({ key: "x", source: "dataset-1.abc" }, registry),
+    ).toThrow(/Invalid row index/);
+  });
+
+  it("throws BindingError for row index with decimal", () => {
+    registry.registerDataset(makeDataset());
+    expect(() =>
+      resolveBinding({ key: "x", source: "dataset-1.1point5.revenue" }, registry),
+    ).toThrow(/Invalid row index/);
+  });
+
+  it("throws BindingError for deeply nested path", () => {
+    registry.registerDataset(makeDataset());
+    expect(() =>
+      resolveBinding({ key: "x", source: "dataset-1.0.revenue.extra" }, registry),
+    ).toThrow(/path too deep/);
+  });
+
   it("applies a registered transform", () => {
     clearTransformers();
     registerTransformer("double", (v) => (v as number) * 2);

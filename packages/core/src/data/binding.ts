@@ -63,12 +63,31 @@ function resolveSourcePath(
     );
   }
 
-  const rowIndex = parseInt(rowIndexStr, 10);
+  const rowIndex = Number(rowIndexStr);
+  if (
+    !Number.isFinite(rowIndex) ||
+    rowIndex < 0 ||
+    !Number.isInteger(rowIndex)
+  ) {
+    throw new BindingError(
+      "binding.invalid-row-index",
+      `Invalid row index "${rowIndexStr}" in binding source "${source}"`,
+      source,
+    );
+  }
   const row = dataset.rows[rowIndex];
   if (!row) {
     throw new BindingError(
       "binding.row-not-found",
       `Row index ${rowIndex} not found in dataset "${rootId}"`,
+      source,
+    );
+  }
+
+  if (parts.length > 3) {
+    throw new BindingError(
+      "binding.invalid-path",
+      `Invalid binding path: "${source}" — path too deep (max depth: dataset.row.column)`,
       source,
     );
   }
@@ -177,7 +196,7 @@ export function reResolveOnSourceChange(
 
     try {
       const current = resolveSourcePath(registry, binding.source);
-      if (current !== previous.value) {
+      if (JSON.stringify(current) !== JSON.stringify(previous.value)) {
         changed = true;
       }
     } catch {
