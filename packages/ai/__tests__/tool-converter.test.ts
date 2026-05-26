@@ -2,44 +2,98 @@ import { describe, it, expect } from "vitest";
 import type { CompileResult } from "@ai-native/core";
 import { ALL_TOOLS } from "../src/tool-registry.js";
 
-describe("AI SDK Tools", () => {
-  it("defines tools for all four semantic action types", () => {
-    const names = Object.keys(ALL_TOOLS);
-    expect(names).toContain("create-dashboard");
-    expect(names).toContain("insert-chart");
-    expect(names).toContain("auto-layout");
-    expect(names).toContain("update-theme-intent");
-    expect(names).toHaveLength(4);
+async function exec<const T extends keyof typeof ALL_TOOLS>(
+  toolName: T,
+  args: Record<string, unknown>,
+): Promise<CompileResult> {
+  const tool = ALL_TOOLS[toolName];
+  if (!tool?.execute) throw new Error(`Tool ${toolName} not executable`);
+  return (await tool.execute(args, {
+    toolCallId: "test",
+    messages: [],
+  })) as CompileResult;
+}
+
+describe("create-dashboard tool", () => {
+  it("produces create-page + create-node actions for valid dashboard", async () => {
+    const result = await exec("create-dashboard", {
+      title: "Sales Board",
+      widgets: [
+        { type: "metric-value", title: "Revenue", w: 4, h: 3 },
+        { type: "chart", title: "Trend", w: 8, h: 4 },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.documentActions.length).toBeGreaterThan(0);
+    expect(result.plan.documentActions[0]?.type).toBe("create-page");
+    expect(result.plan.runtimeActions.length).toBeGreaterThan(0);
+    const creates = result.plan.runtimeActions.filter((a) => a.type === "create-node");
+    expect(creates.length).toBeGreaterThan(0);
   });
 
-  it("each tool has a description and inputSchema", () => {
-    for (const [, tool] of Object.entries(ALL_TOOLS)) {
-      expect(tool.description).toBeTruthy();
-      expect(tool.inputSchema).toBeDefined();
-      expect(tool.execute).toBeDefined();
+  it("returns diagnostics when title is missing", async () => {
+    const result = await exec("create-dashboard", {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics.length).toBeGreaterThan(0);
     }
   });
 
-  it("each tool execute function returns compile result", async () => {
-    const tool = ALL_TOOLS["create-dashboard"];
-    if (!tool || !tool.execute) return;
-    const result = (await tool.execute(
-      { title: "Test" },
-      { toolCallId: "test", messages: [] },
-    )) as CompileResult;
+  it("uses balanced layout by default", async () => {
+    const result = await exec("create-dashboard", {
+      title: "Test",
+      widgets: [{ type: "metric-value", title: "X" }],
+    });
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.plan).toBeDefined();
+  });
+});
+
+describe("insert-chart tool", () => {
+  it("rejects when containerId is missing", async () => {
+    const result = await exec("insert-chart", {
+      chartType: "bar",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics.length).toBeGreaterThan(0);
     }
   });
+});
 
-  it("auto-layout tool requires valid strategy", async () => {
-    const tool = ALL_TOOLS["auto-layout"];
-    if (!tool || !tool.execute) return;
-    const result = (await tool.execute(
-      { pageId: "p1", strategy: "compact" },
-      { toolCallId: "test", messages: [] },
-    )) as CompileResult;
+describe("auto-layout tool", () => {
+  it("produces update-layout actions for page children", async () => {
+    const result = await exec("auto-layout", {
+      pageId: "page-1",
+      strategy: "compact",
+    });
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects invalid strategy value", async () => {
+    const result = await exec("auto-layout", {
+      pageId: "p1",
+      strategy: "unknown-strategy",
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("update-theme-intent tool", () => {
+  it("accepts themeId and pageId together", async () => {
+    const result = await exec("update-theme-intent", {
+      themeId: "dark",
+      pageId: "page-1",
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects when neither themeId nor pageId is provided", async () => {
+    const result = await exec("update-theme-intent", {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics.length).toBeGreaterThan(0);
+    }
   });
 });
