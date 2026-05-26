@@ -25,7 +25,6 @@ function createActionTool(
     inputSchema,
     execute: async (
       args,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _options,
     ) => {
       const action = { type: name, ...args };
