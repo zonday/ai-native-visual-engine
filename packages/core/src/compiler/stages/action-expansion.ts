@@ -1,12 +1,15 @@
 import { createEmptyScene, generateId } from "../../bootstrap.js";
+import type { DocumentAction } from "../../document/actions.js";
 import type { RuntimeAction } from "../../runtime/actions.js";
 import type {
   CompilerContext,
   CompilerStage,
   ExecutionPlan,
+  NormalizedAutoLayoutAction,
   NormalizedCreateDashboardAction,
   NormalizedInsertChartAction,
   NormalizedSemanticAction,
+  NormalizedUpdateThemeIntentAction,
   SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
@@ -27,7 +30,7 @@ export const actionExpansionStage: CompilerStage<
 
   run(
     action: NormalizedSemanticAction,
-    _context: CompilerContext,
+    context: CompilerContext,
   ): StageOutcome<ExecutionPlan> {
     switch (action.type) {
       case "create-dashboard": {
@@ -36,17 +39,11 @@ export const actionExpansionStage: CompilerStage<
       case "insert-chart": {
         return expandInsertChart(action);
       }
-      case "auto-layout":
+      case "auto-layout": {
+        return expandAutoLayout(action, context);
+      }
       case "update-theme-intent": {
-        return {
-          ok: false,
-          diagnostics: [
-            diagnostic(
-              "compiler.not-implemented",
-              `Expansion for ${action.type} is not yet implemented`,
-            ),
-          ],
-        };
+        return expandUpdateThemeIntent(action);
       }
       default: {
         return {
@@ -95,8 +92,8 @@ function expandCreateDashboard(
         props: { title: widget.title ?? widget.type },
         layout: {
           mode: "grid-item",
-          x: 0,
-          y: 0,
+          x: widget.x ?? 0,
+          y: widget.y ?? 0,
           w: widget.w ?? 4,
           h: widget.h ?? 3,
         },
@@ -117,6 +114,76 @@ function expandCreateDashboard(
       ],
       runtimeActions,
     },
+  };
+}
+
+function expandAutoLayout(
+  action: NormalizedAutoLayoutAction,
+  context: CompilerContext,
+): StageOutcome<ExecutionPlan> {
+  const documentActions: DocumentAction[] = [];
+  const runtimeActions: RuntimeAction[] = [];
+
+  if (context.scene) {
+    const scene = context.scene as {
+      nodes?: Record<
+        string,
+        {
+          id: string;
+          type: string;
+          layout?: Record<string, unknown>;
+          children?: string[];
+        }
+      >;
+    };
+    if (scene.nodes) {
+      const root = Object.values(scene.nodes).find(
+        (n) => n.id === action.pageId || n.type === "container",
+      );
+      if (root?.children) {
+        for (const childId of root.children) {
+          runtimeActions.push({
+            type: "update-layout",
+            nodeId: childId,
+            layout: { mode: "grid-item" },
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    output: { documentActions, runtimeActions },
+  };
+}
+
+function expandUpdateThemeIntent(
+  action: NormalizedUpdateThemeIntentAction,
+): StageOutcome<ExecutionPlan> {
+  const documentActions: DocumentAction[] = [];
+
+  if (action.themeId && action.pageId) {
+    documentActions.push({
+      type: "set-page-theme",
+      pageId: action.pageId,
+      themeId: action.themeId,
+    });
+  } else if (action.themeId) {
+    documentActions.push({
+      type: "set-document-theme",
+      themeId: action.themeId,
+    });
+  } else if (action.pageId) {
+    documentActions.push({
+      type: "set-page-theme",
+      pageId: action.pageId,
+    });
+  }
+
+  return {
+    ok: true,
+    output: { documentActions, runtimeActions: [] },
   };
 }
 

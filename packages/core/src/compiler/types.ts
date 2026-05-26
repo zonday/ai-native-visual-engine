@@ -40,6 +40,8 @@ export type SemanticAction =
 export type DashboardWidgetIntent = {
   type: string;
   title?: string;
+  x?: number;
+  y?: number;
   w?: number;
   h?: number;
 };

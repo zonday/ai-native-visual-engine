@@ -123,16 +123,17 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("rejects auto-layout action because expansion is not yet implemented", () => {
+  it("accepts auto-layout action and produces empty plan when no scene context", () => {
     const result = compileSemanticAction({
       type: "auto-layout",
       pageId: "page-1",
       strategy: "balanced",
     });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.not-implemented");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.documentActions).toHaveLength(0);
+      expect(result.plan.runtimeActions).toHaveLength(0);
     }
   });
 
@@ -190,15 +191,17 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("rejects update-theme-intent action because expansion is not yet implemented", () => {
+  it("accepts update-theme-intent with themeId and produces set-document-theme action", () => {
     const result = compileSemanticAction({
       type: "update-theme-intent",
       themeId: "dark",
     });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.not-implemented");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.documentActions).toHaveLength(1);
+      expect(result.plan.documentActions[0]?.type).toBe("set-document-theme");
+      expect(result.plan.runtimeActions).toHaveLength(0);
     }
   });
 
@@ -222,6 +225,190 @@ describe("compileSemanticAction", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
+    }
+  });
+
+  it("produces different widget positions for compact vs balanced layout strategies", () => {
+    const compactResult = compileSemanticAction({
+      type: "create-dashboard",
+      title: "Compact",
+      layout: "compact",
+      widgets: [
+        { type: "chart", w: 6, h: 3 },
+        { type: "metric-value", w: 6, h: 3 },
+      ],
+    });
+
+    const balancedResult = compileSemanticAction({
+      type: "create-dashboard",
+      title: "Balanced",
+      layout: "balanced",
+      widgets: [
+        { type: "chart", w: 6, h: 3 },
+        { type: "metric-value", w: 6, h: 3 },
+      ],
+    });
+
+    expect(compactResult.ok).toBe(true);
+    expect(balancedResult.ok).toBe(true);
+
+    if (compactResult.ok && balancedResult.ok) {
+      const compactWidgets = compactResult.plan.runtimeActions.filter(
+        (a) => a.type === "create-node" && a.node.type !== "grid",
+      );
+      const balancedWidgets = balancedResult.plan.runtimeActions.filter(
+        (a) => a.type === "create-node" && a.node.type !== "grid",
+      );
+
+      expect(compactWidgets.length).toBe(balancedWidgets.length);
+
+      const compactPositions = compactWidgets.map(
+        (w) => `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
+      ).join(";");
+      const balancedPositions = balancedWidgets.map(
+        (w) => `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
+      ).join(";");
+
+      expect(compactPositions).not.toBe(balancedPositions);
+    }
+  });
+
+  it("rejects insert-chart with missing container producing ContainerNotFound diagnostic", () => {
+    const result = compileSemanticAction(
+      {
+        type: "insert-chart",
+        containerId: "nonexistent-container",
+        chartType: "chart",
+      },
+      { scene: { nodes: { "existing-node": { id: "existing-node", type: "container", children: [] } } } },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.container-not-found");
+    }
+  });
+
+  it("passes insert-chart when container exists in scene context", () => {
+    const result = compileSemanticAction(
+      {
+        type: "insert-chart",
+        containerId: "grid-1",
+        chartType: "chart",
+        dimensions: ["year"],
+        metrics: ["revenue"],
+      },
+      { scene: { nodes: { "grid-1": { id: "grid-1", type: "grid", children: [] } } } },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects auto-layout with missing page producing PageNotFound diagnostic", () => {
+    const result = compileSemanticAction(
+      {
+        type: "auto-layout",
+        pageId: "nonexistent-page",
+        strategy: "balanced",
+      },
+      { scene: { nodes: { "existing-node": { id: "existing-node", type: "container", children: [] } } } },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.page-not-found");
+    }
+  });
+
+  it("accepts update-theme-intent with themeId and pageId producing set-page-theme action", () => {
+    const result = compileSemanticAction({
+      type: "update-theme-intent",
+      themeId: "dark",
+      pageId: "page-1",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.documentActions).toHaveLength(1);
+      expect(result.plan.documentActions[0]?.type).toBe("set-page-theme");
+      const action = result.plan.documentActions[0] as { type: string; pageId: string; themeId: string };
+      expect(action.pageId).toBe("page-1");
+      expect(action.themeId).toBe("dark");
+    }
+  });
+
+  it("accepts update-theme-intent with pageId only producing set-page-theme without themeId", () => {
+    const result = compileSemanticAction({
+      type: "update-theme-intent",
+      pageId: "page-1",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.documentActions).toHaveLength(1);
+      expect(result.plan.documentActions[0]?.type).toBe("set-page-theme");
+    }
+  });
+
+  it("produces update-layout runtime actions for auto-layout when scene context has children", () => {
+    const result = compileSemanticAction(
+      {
+        type: "auto-layout",
+        pageId: "page-1",
+        strategy: "balanced",
+      },
+      {
+        scene: {
+          nodes: {
+            "page-1": { id: "page-1", type: "container", children: ["widget-1", "widget-2"] },
+            "widget-1": { id: "widget-1", type: "chart", layout: { mode: "grid-item" } },
+            "widget-2": { id: "widget-2", type: "metric-value", layout: { mode: "grid-item" } },
+          },
+        },
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.runtimeActions.length).toBeGreaterThan(0);
+      const allUpdateLayout = result.plan.runtimeActions.every(
+        (a) => a.type === "update-layout",
+      );
+      expect(allUpdateLayout).toBe(true);
+    }
+  });
+
+  it("produces presentation layout with centered widgets", () => {
+    const result = compileSemanticAction({
+      type: "create-dashboard",
+      title: "Presentation",
+      layout: "presentation",
+      widgets: [
+        { type: "chart", w: 8, h: 6 },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const widgetNodes = result.plan.runtimeActions.filter(
+        (a) => a.type === "create-node" && a.node.type !== "grid",
+      );
+      expect(widgetNodes).toHaveLength(1);
+      const layout = (widgetNodes[0] as unknown as { node: { layout: { x: number; w: number } } }).node.layout;
+      expect(layout.x).toBe(2);
+      expect(layout.w).toBe(8);
+    }
+  });
+
+  it("rejects auto-layout action with unsupported strategy via normalize stage", () => {
+    const result = compileSemanticAction({
+      type: "auto-layout",
+      pageId: "page-1",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.missing-strategy");
     }
   });
 });
