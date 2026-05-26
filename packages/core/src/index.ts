@@ -45,6 +45,18 @@ export {
   resolveBindings,
   subscribeBinding,
 } from "./data/binding.js";
+// ── Data interaction ──
+export {
+  type CrossFilterSubscription,
+  createDataInteractionAPI,
+  type DataInteractionAPI,
+  type DrillDimension,
+  type DrillState,
+  type DrillThroughTarget,
+  type FilterChangeEvent,
+  type SelectionEvent,
+} from "./data/interaction.js";
+export type { FilterParam } from "./data/types.js";
 export {
   type BindingSchema,
   type DataColumn,

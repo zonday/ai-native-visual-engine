@@ -34,6 +34,25 @@ export const BindingSchema = z.object({
 
 export type Binding = z.infer<typeof BindingSchema>;
 
+export interface FilterParam {
+  key: string;
+  value: unknown;
+  operator:
+    | "eq"
+    | "neq"
+    | "in"
+    | "gt"
+    | "gte"
+    | "lt"
+    | "lte"
+    | "between"
+    | "like";
+}
+
+export interface InteractiveBinding extends Binding {
+  filterParams?: Record<string, unknown>;
+}
+
 export interface ResolvedBinding {
   binding: Binding;
   value: unknown;
