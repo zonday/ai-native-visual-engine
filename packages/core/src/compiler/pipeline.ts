@@ -12,6 +12,7 @@ import type {
   SemanticAction,
   SemanticDiagnostic,
 } from "./types.js";
+import { SemanticActionSchema } from "./types.js";
 
 const stages: CompilerStage<unknown, unknown>[] = [
   normalizeStage,
@@ -26,9 +27,25 @@ export function compileSemanticAction(
   action: SemanticAction,
   context: CompilerContext = {},
 ): CompileResult {
+  const parsed = SemanticActionSchema.safeParse(action);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          code: "compiler.invalid-action",
+          message: parsed.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; "),
+          severity: "error",
+        },
+      ],
+    };
+  }
+
   const diagnostics: SemanticDiagnostic[] = [];
 
-  let current: unknown = action;
+  let current: unknown = parsed.data;
 
   for (const stage of stages) {
     const result = stage.run(current, context);

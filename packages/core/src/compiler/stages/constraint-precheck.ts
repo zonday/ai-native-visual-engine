@@ -1,3 +1,4 @@
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -5,14 +6,6 @@ import type {
   SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
-
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "constraint-precheck",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
 
 type SceneNode = {
   id: string;
@@ -55,6 +48,7 @@ export const constraintPrecheckStage: CompilerStage<
               diagnostic(
                 "compiler.container-not-found",
                 `Container "${action.containerId}" not found in scene`,
+                "constraint-precheck",
               ),
             );
           }
@@ -70,6 +64,7 @@ export const constraintPrecheckStage: CompilerStage<
               diagnostic(
                 "compiler.page-not-found",
                 `Page "${action.pageId}" not found in document`,
+                "constraint-precheck",
               ),
             );
           }
@@ -77,10 +72,7 @@ export const constraintPrecheckStage: CompilerStage<
         break;
       }
 
-      case "create-dashboard": {
-        break;
-      }
-
+      case "create-dashboard":
       case "update-theme-intent": {
         break;
       }
@@ -91,6 +83,7 @@ export const constraintPrecheckStage: CompilerStage<
           diagnostic(
             "compiler.unsupported-action",
             `Unsupported action type: ${unsupported.type}`,
+            "constraint-precheck",
           ),
         );
       }

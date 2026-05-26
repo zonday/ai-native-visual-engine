@@ -1,5 +1,6 @@
 import { DocumentActionSchema } from "../../document/actions.js";
 import { RuntimeActionSchema } from "../../runtime/actions.js";
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -7,14 +8,6 @@ import type {
   SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
-
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "validation",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
 
 export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
   name: "validation",
@@ -32,6 +25,7 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
           diagnostic(
             "compiler.invalid-plan",
             "ExecutionPlan must be a non-null object",
+            "validation",
           ),
         ],
       };
@@ -42,6 +36,7 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
         diagnostic(
           "compiler.invalid-document-actions",
           "documentActions must be an array",
+          "validation",
         ),
       );
     } else {
@@ -52,6 +47,7 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
             diagnostic(
               "compiler.invalid-document-action",
               `Invalid document action: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
+              "validation",
             ),
           );
         }
@@ -63,6 +59,7 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
         diagnostic(
           "compiler.invalid-runtime-actions",
           "runtimeActions must be an array",
+          "validation",
         ),
       );
     } else {
@@ -73,6 +70,7 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
             diagnostic(
               "compiler.invalid-runtime-action",
               `Invalid runtime action: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
+              "validation",
             ),
           );
         }

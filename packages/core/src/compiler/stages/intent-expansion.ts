@@ -1,23 +1,17 @@
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
   DashboardWidgetIntent,
   LayoutStrategy,
   NormalizedSemanticAction,
-  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
 
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "intent-expansion",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
-
 const GRID_COLUMNS = 12;
 const MIN_WIDGET_WIDTH = 4;
+const BALANCED_GAP = 1;
+const PRESENTATION_GAP = 2;
 
 function computeCompactLayout(
   widgets: DashboardWidgetIntent[],
@@ -48,22 +42,21 @@ function computeCompactLayout(
 function computeBalancedLayout(
   widgets: DashboardWidgetIntent[],
 ): DashboardWidgetIntent[] {
+  if (widgets.length === 0) return [];
+  const cols = Math.min(widgets.length, GRID_COLUMNS);
+  const colWidth = Math.floor(GRID_COLUMNS / cols);
+  const colHeights = new Array<number>(cols).fill(0);
   const positioned: DashboardWidgetIntent[] = [];
-  let cursorY = 0;
-  let row = 0;
 
   for (const widget of widgets) {
     const w = Math.min(widget.w ?? MIN_WIDGET_WIDTH, GRID_COLUMNS);
     const h = widget.h ?? 3;
-    const cols = Math.max(1, widgets.length);
-    const colSpan = Math.floor(GRID_COLUMNS / Math.min(cols, GRID_COLUMNS));
-
-    const x = (row * colSpan) % GRID_COLUMNS;
-    const y = cursorY;
+    const colIdx = colHeights.indexOf(Math.min(...colHeights));
+    const x = colIdx * colWidth;
+    const y = colHeights[colIdx];
 
     positioned.push({ ...widget, x, y, w, h });
-    cursorY += h + 1;
-    row++;
+    colHeights[colIdx] += h + BALANCED_GAP;
   }
 
   return positioned;
@@ -81,7 +74,7 @@ function computePresentationLayout(
     const x = Math.floor((GRID_COLUMNS - w) / 2);
 
     positioned.push({ ...widget, x, y: cursorY, w, h });
-    cursorY += h + 2;
+    cursorY += h + PRESENTATION_GAP;
   }
 
   return positioned;
@@ -111,18 +104,6 @@ export const intentExpansionStage: CompilerStage<
     action: NormalizedSemanticAction,
     _context: CompilerContext,
   ): StageOutcome<NormalizedSemanticAction> {
-    if (!action || typeof action !== "object") {
-      return {
-        ok: false,
-        diagnostics: [
-          diagnostic(
-            "compiler.invalid-action",
-            "Action must be a non-null object",
-          ),
-        ],
-      };
-    }
-
     switch (action.type) {
       case "create-dashboard": {
         const positioned = computeWidgetLayout(action.widgets, action.layout);
@@ -149,6 +130,7 @@ export const intentExpansionStage: CompilerStage<
             diagnostic(
               "compiler.unsupported-action",
               `Unsupported action type: ${unsupported.type}`,
+              "intent-expansion",
             ),
           ],
         };

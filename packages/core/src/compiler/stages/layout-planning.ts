@@ -1,22 +1,16 @@
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
   DashboardWidgetIntent,
+  LayoutStrategy,
   NormalizedInsertChartAction,
   NormalizedSemanticAction,
-  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
 
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "layout-planning",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
-
 const GRID_COLUMNS = 12;
+const MAX_GRID_ROWS = 1000;
 
 function findFreeSlot(
   occupied: Set<string>,
@@ -24,7 +18,7 @@ function findFreeSlot(
   h: number,
   startY = 0,
 ): { x: number; y: number } {
-  for (let y = startY; ; y++) {
+  for (let y = startY; y < MAX_GRID_ROWS; y++) {
     for (let x = 0; x <= GRID_COLUMNS - w; x++) {
       let free = true;
       for (let dx = 0; dx < w && free; dx++) {
@@ -90,14 +84,10 @@ function resolveCollisions(
 
 function computeAutoLayout(
   pageId: string,
-  strategy: string,
+  strategy: LayoutStrategy,
   _context: CompilerContext,
 ): NormalizedSemanticAction {
-  return {
-    type: "auto-layout",
-    pageId,
-    strategy: strategy as "compact" | "balanced" | "presentation",
-  };
+  return { type: "auto-layout", pageId, strategy };
 }
 
 function planInsertChart(
@@ -117,18 +107,6 @@ export const layoutPlanningStage: CompilerStage<
     action: NormalizedSemanticAction,
     context: CompilerContext,
   ): StageOutcome<NormalizedSemanticAction> {
-    if (!action || typeof action !== "object") {
-      return {
-        ok: false,
-        diagnostics: [
-          diagnostic(
-            "compiler.invalid-action",
-            "Action must be a non-null object",
-          ),
-        ],
-      };
-    }
-
     switch (action.type) {
       case "create-dashboard": {
         const resolved = resolveCollisions(action.widgets);
@@ -164,6 +142,7 @@ export const layoutPlanningStage: CompilerStage<
             diagnostic(
               "compiler.unsupported-action",
               `Unsupported action type: ${unsupported.type}`,
+              "layout-planning",
             ),
           ],
         };

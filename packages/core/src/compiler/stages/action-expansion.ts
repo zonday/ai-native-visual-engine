@@ -1,6 +1,7 @@
 import { createEmptyScene, generateId } from "../../bootstrap.js";
 import type { DocumentAction } from "../../document/actions.js";
 import type { RuntimeAction } from "../../runtime/actions.js";
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -10,17 +11,8 @@ import type {
   NormalizedInsertChartAction,
   NormalizedSemanticAction,
   NormalizedUpdateThemeIntentAction,
-  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
-
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "action-expansion",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
 
 export const actionExpansionStage: CompilerStage<
   NormalizedSemanticAction,
@@ -52,6 +44,7 @@ export const actionExpansionStage: CompilerStage<
             diagnostic(
               "compiler.unsupported-action",
               `Cannot expand unsupported action: ${(action as { type: string }).type}`,
+              "action-expansion",
             ),
           ],
         };
@@ -138,7 +131,7 @@ function expandAutoLayout(
     };
     if (scene.nodes) {
       const root = Object.values(scene.nodes).find(
-        (n) => n.id === action.pageId || n.type === "container",
+        (n) => n.id === action.pageId,
       );
       if (root?.children) {
         for (const childId of root.children) {

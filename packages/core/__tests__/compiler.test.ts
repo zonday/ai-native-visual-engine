@@ -3,14 +3,13 @@ import type { SemanticAction } from "../src/compiler/types.js";
 import { compileSemanticAction } from "../src/compiler/pipeline.js";
 
 describe("compileSemanticAction", () => {
-  it("rejects unknown action type with unsupported-action diagnostic", () => {
+  it("rejects unknown action type with invalid-action diagnostic from Zod", () => {
     const action = { type: "unknown-action" } as unknown as SemanticAction;
     const result = compileSemanticAction(action);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics.length).toBeGreaterThan(0);
-      expect(result.diagnostics[0]?.code).toBe("compiler.unsupported-action");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -20,7 +19,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.missing-title");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -33,15 +32,23 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.missing-container");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
-  it("short-circuits on first stage failure", () => {
-    const action = {
-      type: "create-dashboard",
-    } as unknown as SemanticAction;
-    const result = compileSemanticAction(action);
+  it("short-circuits on first stage failure with single diagnostic", () => {
+    const result = compileSemanticAction(
+      {
+        type: "insert-chart",
+        containerId: "missing-container",
+        chartType: "chart",
+      },
+      {
+        scene: {
+          nodes: { "existing": { id: "existing", type: "container", children: [] } },
+        },
+      },
+    );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -68,8 +75,9 @@ describe("compileSemanticAction", () => {
         (a) => a.type === "create-node",
       );
       expect(createNodes.length).toBe(3);
-      const gridNode = createNodes.find((n) => n.node.type === "grid")!;
-      expect(gridNode.node.layout).toMatchObject({ mode: "grid", columns: 12 });
+      const gridNode = createNodes.find((n) => n.node.type === "grid");
+      expect(gridNode).toBeDefined();
+      expect(gridNode?.node.layout).toMatchObject({ mode: "grid", columns: 12 });
       const widgetNodes = createNodes.filter((n) => n.node.type !== "grid");
       for (const wn of widgetNodes) {
         expect(wn.node.layout).toMatchObject({ mode: "grid-item" });
@@ -107,7 +115,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.missing-page-id");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -119,7 +127,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.missing-strategy");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -146,7 +154,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-widgets");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -160,7 +168,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-dimensions");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -174,7 +182,7 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-metrics");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 
@@ -205,7 +213,7 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("accepts create-dashboard without explicit layout and defaults to balanced", () => {
+  it("accepts create-dashboard without widgets or explicit layout", () => {
     const result = compileSemanticAction({
       type: "create-dashboard",
       title: "Default Dashboard",
@@ -234,8 +242,9 @@ describe("compileSemanticAction", () => {
       title: "Compact",
       layout: "compact",
       widgets: [
-        { type: "chart", w: 6, h: 3 },
-        { type: "metric-value", w: 6, h: 3 },
+        { type: "chart", w: 8, h: 3 },
+        { type: "metric-value", w: 4, h: 5 },
+        { type: "kpi", w: 4, h: 2 },
       ],
     });
 
@@ -244,8 +253,9 @@ describe("compileSemanticAction", () => {
       title: "Balanced",
       layout: "balanced",
       widgets: [
-        { type: "chart", w: 6, h: 3 },
-        { type: "metric-value", w: 6, h: 3 },
+        { type: "chart", w: 8, h: 3 },
+        { type: "metric-value", w: 4, h: 5 },
+        { type: "kpi", w: 4, h: 2 },
       ],
     });
 
@@ -400,15 +410,16 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("rejects auto-layout action with unsupported strategy via normalize stage", () => {
+  it("rejects auto-layout with invalid strategy value via Zod validation", () => {
     const result = compileSemanticAction({
       type: "auto-layout",
       pageId: "page-1",
+      strategy: "invalid-strategy",
     } as unknown as SemanticAction);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.missing-strategy");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
     }
   });
 });

@@ -1,7 +1,14 @@
+import { z } from "zod/v4";
 import type { DocumentAction } from "../document/actions.js";
 import type { RuntimeAction } from "../runtime/actions.js";
 
 export type LayoutStrategy = "compact" | "balanced" | "presentation";
+
+export const LayoutStrategySchema = z.enum([
+  "compact",
+  "balanced",
+  "presentation",
+]);
 
 export type CreateDashboardAction = {
   type: "create-dashboard";
@@ -9,6 +16,22 @@ export type CreateDashboardAction = {
   layout?: LayoutStrategy;
   widgets?: DashboardWidgetIntent[];
 };
+
+export const DashboardWidgetIntentSchema = z.object({
+  type: z.string().min(1),
+  title: z.string().optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  w: z.number().optional(),
+  h: z.number().optional(),
+});
+
+export const CreateDashboardActionSchema = z.object({
+  type: z.literal("create-dashboard"),
+  title: z.string().min(1),
+  layout: LayoutStrategySchema.optional(),
+  widgets: z.array(DashboardWidgetIntentSchema).optional(),
+});
 
 export type InsertChartAction = {
   type: "insert-chart";
@@ -19,11 +42,26 @@ export type InsertChartAction = {
   metrics?: string[];
 };
 
+export const InsertChartActionSchema = z.object({
+  type: z.literal("insert-chart"),
+  containerId: z.string().min(1),
+  chartType: z.string().min(1),
+  dataSource: z.string().optional(),
+  dimensions: z.array(z.string()).optional(),
+  metrics: z.array(z.string()).optional(),
+});
+
 export type AutoLayoutAction = {
   type: "auto-layout";
   pageId: string;
   strategy: LayoutStrategy;
 };
+
+export const AutoLayoutActionSchema = z.object({
+  type: z.literal("auto-layout"),
+  pageId: z.string().min(1),
+  strategy: LayoutStrategySchema,
+});
 
 export type UpdateThemeIntentAction = {
   type: "update-theme-intent";
@@ -31,11 +69,20 @@ export type UpdateThemeIntentAction = {
   pageId?: string;
 };
 
-export type SemanticAction =
-  | CreateDashboardAction
-  | InsertChartAction
-  | AutoLayoutAction
-  | UpdateThemeIntentAction;
+export const UpdateThemeIntentActionSchema = z.object({
+  type: z.literal("update-theme-intent"),
+  themeId: z.string().optional(),
+  pageId: z.string().optional(),
+});
+
+export const SemanticActionSchema = z.discriminatedUnion("type", [
+  CreateDashboardActionSchema,
+  InsertChartActionSchema,
+  AutoLayoutActionSchema,
+  UpdateThemeIntentActionSchema,
+]);
+
+export type SemanticAction = z.infer<typeof SemanticActionSchema>;
 
 export type DashboardWidgetIntent = {
   type: string;
