@@ -15,11 +15,12 @@ function toDocumentError(
   actionType: string,
 ): DocumentRuntimeError {
   if (err instanceof HandlerError) {
+    const rawPageId = err.context.pageId;
     return {
       code: err.code,
       message: err.message,
       actionType: err.actionType ?? actionType,
-      pageId: err.context.pageId as string | undefined,
+      pageId: typeof rawPageId === "string" ? rawPageId : undefined,
     };
   }
   return {

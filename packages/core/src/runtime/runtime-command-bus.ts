@@ -9,11 +9,12 @@ import type { RuntimeMiddleware } from "./middleware.js";
 
 function toRuntimeError(err: unknown, actionType: string): RuntimeError {
   if (err instanceof HandlerError) {
+    const rawNodeId = err.context.nodeId;
     return {
       code: err.code,
       message: err.message,
       actionType: err.actionType ?? actionType,
-      nodeId: err.context.nodeId as string | undefined,
+      nodeId: typeof rawNodeId === "string" ? rawNodeId : undefined,
     };
   }
   return {

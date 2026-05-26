@@ -64,7 +64,7 @@ export const constraintPrecheckStage: CompilerStage<
             diagnostics.push(
               diag(
                 "compiler.page-not-found",
-                `Page "${action.pageId}" not found in document`,
+                `Page "${action.pageId}" not found in scene`,
               ),
             );
           }

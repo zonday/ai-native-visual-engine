@@ -62,13 +62,32 @@ function resolveCollisions(widgets: DashboardWidgetIntent[]): {
   const occupied = new Set<string>();
 
   for (const widget of widgets) {
-    const w = widget.w ?? 4;
-    const h = widget.h ?? 3;
+    const rawW = widget.w ?? 4;
+    const rawH = widget.h ?? 3;
     const prefX = widget.x ?? 0;
     const prefY = widget.y ?? 0;
 
+    const w = Math.max(1, Math.min(rawW, GRID_COLUMNS));
+    const h = Math.max(1, rawH);
+
+    if (rawW <= 0 || rawH <= 0 || rawW > GRID_COLUMNS) {
+      diagnostics.push({
+        code: "compiler.invalid-widget-size",
+        message: `Widget "${widget.type}" has invalid dimensions: w=${rawW}, h=${rawH} (w must be 1-${GRID_COLUMNS}, h must be >= 1)`,
+        severity: "error",
+        stage: "layout-planning",
+      });
+      continue;
+    }
+
     let slot: { x: number; y: number } | null = null;
-    if (isSlotFree(occupied, prefX, prefY, w, h)) {
+    if (
+      prefX >= 0 &&
+      prefY >= 0 &&
+      prefX + w <= GRID_COLUMNS &&
+      prefY + h <= MAX_GRID_ROWS &&
+      isSlotFree(occupied, prefX, prefY, w, h)
+    ) {
       slot = { x: prefX, y: prefY };
     } else {
       slot = findFreeSlot(occupied, w, h, prefY);
