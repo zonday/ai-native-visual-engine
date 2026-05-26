@@ -1,15 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import {
   autoLayoutGrid,
   detectCollisions,
   resolveCollisions,
 } from "../src/grid-layout.js";
 import type { GridItemPosition } from "../src/grid-layout.js";
-
-function makeScene(nodes: Record<string, SceneNode>): SceneGraph {
-  return { version: 0, rootId: "root", nodes };
-}
+import { makeScene } from "./helpers.js";
 
 function getItem(
   positions: GridItemPosition[],

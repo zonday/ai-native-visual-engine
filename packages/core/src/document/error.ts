@@ -9,7 +9,7 @@ export class DocumentHandlerError extends HandlerError {
     actionType?: string,
     pageId?: string,
   ) {
-    super(code, message, actionType);
+    super(code, message, actionType, pageId ? { pageId } : {});
     this.name = "DocumentHandlerError";
     this.pageId = pageId;
   }

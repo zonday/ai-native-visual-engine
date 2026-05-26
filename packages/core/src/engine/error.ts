@@ -19,12 +19,6 @@ export interface EngineError {
   context?: Record<string, unknown>;
 }
 
-export interface CompilerDiagnostic {
-  level: "error" | "warning";
-  code: string;
-  message: string;
-}
-
 export interface RendererError extends EngineError {
   domain: "renderer";
   nodeId: string;
@@ -34,11 +28,18 @@ export interface RendererError extends EngineError {
 export class HandlerError extends Error {
   readonly code: string;
   readonly actionType?: string;
+  readonly context: Record<string, unknown>;
 
-  constructor(code: string, message: string, actionType?: string) {
+  constructor(
+    code: string,
+    message: string,
+    actionType?: string,
+    context: Record<string, unknown> = {},
+  ) {
     super(message);
     this.name = "HandlerError";
     this.code = code;
     this.actionType = actionType;
+    this.context = context;
   }
 }

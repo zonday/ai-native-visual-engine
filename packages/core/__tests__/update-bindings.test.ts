@@ -1,18 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { updateBindingsHandler, updateBindingsInverse } from "../src/runtime/handlers/update-bindings.js";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-import type { SceneGraph, SceneNode, Binding } from "../src/types.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
+import type { SceneGraph, Binding } from "../src/types.js";
+import { makeScene, baseNode } from "./helpers.js";
 
 const binding1: Binding = { key: "text", source: "state.count" };
 const binding2: Binding = { key: "value", source: "state.name" };

@@ -1,23 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
 import type { RuntimeMiddleware } from "../src/runtime/middleware.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
-
-const emptyScene: SceneGraph = makeScene({ root: { id: "root", type: "container", children: [] } });
+import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {
   it("dispatches a valid action and returns ok with updated scene", () => {

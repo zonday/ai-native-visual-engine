@@ -1,6 +1,6 @@
 import { DocumentActionSchema } from "../../document/actions.js";
 import { RuntimeActionSchema } from "../../runtime/actions.js";
-import { diagnostic } from "../diagnostics.js";
+import { createDiagnosticFactory, formatZodIssues } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -8,6 +8,8 @@ import type {
   SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
+
+const diag = createDiagnosticFactory("validation");
 
 export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
   name: "validation",
@@ -22,10 +24,9 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
       return {
         ok: false,
         diagnostics: [
-          diagnostic(
+          diag(
             "compiler.invalid-plan",
             "ExecutionPlan must be a non-null object",
-            "validation",
           ),
         ],
       };
@@ -33,10 +34,9 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
 
     if (!Array.isArray(plan.documentActions)) {
       diagnostics.push(
-        diagnostic(
+        diag(
           "compiler.invalid-document-actions",
           "documentActions must be an array",
-          "validation",
         ),
       );
     } else {
@@ -44,10 +44,9 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
         const parsed = DocumentActionSchema.safeParse(action);
         if (!parsed.success) {
           diagnostics.push(
-            diagnostic(
+            diag(
               "compiler.invalid-document-action",
-              `Invalid document action: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
-              "validation",
+              `Invalid document action: ${formatZodIssues(parsed.error)}`,
             ),
           );
         }
@@ -56,10 +55,9 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
 
     if (!Array.isArray(plan.runtimeActions)) {
       diagnostics.push(
-        diagnostic(
+        diag(
           "compiler.invalid-runtime-actions",
           "runtimeActions must be an array",
-          "validation",
         ),
       );
     } else {
@@ -67,10 +65,9 @@ export const validationStage: CompilerStage<ExecutionPlan, ExecutionPlan> = {
         const parsed = RuntimeActionSchema.safeParse(action);
         if (!parsed.success) {
           diagnostics.push(
-            diagnostic(
+            diag(
               "compiler.invalid-runtime-action",
-              `Invalid runtime action: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
-              "validation",
+              `Invalid runtime action: ${formatZodIssues(parsed.error)}`,
             ),
           );
         }

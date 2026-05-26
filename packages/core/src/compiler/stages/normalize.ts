@@ -1,4 +1,4 @@
-import { diagnostic } from "../diagnostics.js";
+import { createDiagnosticFactory } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -6,6 +6,8 @@ import type {
   SemanticAction,
   StageOutcome,
 } from "../types.js";
+
+const diag = createDiagnosticFactory("normalize");
 
 export const normalizeStage: CompilerStage<
   SemanticAction,
@@ -17,45 +19,8 @@ export const normalizeStage: CompilerStage<
     action: SemanticAction,
     _context: CompilerContext,
   ): StageOutcome<NormalizedSemanticAction> {
-    if (!action || typeof action !== "object") {
-      return {
-        ok: false,
-        diagnostics: [
-          diagnostic(
-            "compiler.invalid-action",
-            "Action must be a non-null object",
-            "normalize",
-          ),
-        ],
-      };
-    }
-
     switch (action.type) {
       case "create-dashboard": {
-        if (!action.title) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.missing-title",
-                "create-dashboard requires a title",
-                "normalize",
-              ),
-            ],
-          };
-        }
-        if (action.widgets !== undefined && !Array.isArray(action.widgets)) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.invalid-widgets",
-                "create-dashboard widgets must be an array",
-                "normalize",
-              ),
-            ],
-          };
-        }
         return {
           ok: true,
           output: {
@@ -68,57 +33,6 @@ export const normalizeStage: CompilerStage<
       }
 
       case "insert-chart": {
-        if (!action.containerId) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.missing-container",
-                "insert-chart requires a containerId",
-                "normalize",
-              ),
-            ],
-          };
-        }
-        if (!action.chartType) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.missing-chart-type",
-                "insert-chart requires a chartType",
-                "normalize",
-              ),
-            ],
-          };
-        }
-        if (
-          action.dimensions !== undefined &&
-          !Array.isArray(action.dimensions)
-        ) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.invalid-dimensions",
-                "insert-chart dimensions must be an array",
-                "normalize",
-              ),
-            ],
-          };
-        }
-        if (action.metrics !== undefined && !Array.isArray(action.metrics)) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.invalid-metrics",
-                "insert-chart metrics must be an array",
-                "normalize",
-              ),
-            ],
-          };
-        }
         return {
           ok: true,
           output: {
@@ -133,30 +47,6 @@ export const normalizeStage: CompilerStage<
       }
 
       case "auto-layout": {
-        if (!action.pageId) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.missing-page-id",
-                "auto-layout requires a pageId",
-                "normalize",
-              ),
-            ],
-          };
-        }
-        if (!action.strategy) {
-          return {
-            ok: false,
-            diagnostics: [
-              diagnostic(
-                "compiler.missing-strategy",
-                "auto-layout requires a strategy",
-                "normalize",
-              ),
-            ],
-          };
-        }
         return {
           ok: true,
           output: {
@@ -172,10 +62,9 @@ export const normalizeStage: CompilerStage<
           return {
             ok: false,
             diagnostics: [
-              diagnostic(
+              diag(
                 "compiler.missing-theme-or-page",
                 "update-theme-intent requires at least one of themeId or pageId",
-                "normalize",
               ),
             ],
           };
@@ -194,10 +83,9 @@ export const normalizeStage: CompilerStage<
         return {
           ok: false,
           diagnostics: [
-            diagnostic(
+            diag(
               "compiler.unsupported-action",
               `Unsupported semantic action type: ${(action as { type: string }).type}`,
-              "normalize",
             ),
           ],
         };

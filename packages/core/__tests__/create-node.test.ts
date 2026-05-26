@@ -1,22 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-import type { SceneGraph, SceneNode } from "../src/types.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const root: SceneNode = { id: "root", type: "container", children: [] };
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
-
-const emptyScene: SceneGraph = makeScene({ root });
+import type { SceneGraph } from "../src/types.js";
+import { makeScene, baseNode, emptyScene } from "./helpers.js";
 
 describe("createNodeHandler", () => {
   it("creates a node and appends it to parent children when index is omitted", () => {

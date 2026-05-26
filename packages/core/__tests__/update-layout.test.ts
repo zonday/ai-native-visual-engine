@@ -1,18 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { updateLayoutHandler, updateLayoutInverse } from "../src/runtime/handlers/update-layout.js";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-import type { SceneGraph, SceneNode } from "../src/types.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
+import type { SceneGraph } from "../src/types.js";
+import { makeScene, baseNode } from "./helpers.js";
 
 const sceneWithNode: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a"] },

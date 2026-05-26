@@ -1,44 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { createPageHandler } from "../src/document/handlers/create-page.js";
 import { DocumentHandlerError } from "../src/document/error.js";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
+import type { VisualDocument } from "../src/types.js";
+import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 describe("createPageHandler", () => {
   it("adds a new page and scene to the document", () => {
     const action = {
       type: "create-page" as const,
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
     const result = createPageHandler(emptyDoc, action, { now: Date.now });
     expect(result.pages).toHaveLength(1);
     expect(result.pages[0]?.name).toBe("Page 1");
-    expect(result.scenes.s1).toBe(emptyScene);
+    expect(result.scenes.s1).toBe(emptyPersistedScene);
   });
 
   it("appends a second page without affecting the first", () => {
     const doc: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
     const action = {
       type: "create-page" as const,
       page: { id: "p2", name: "Page 2", sceneId: "s2" },
-      scene: { ...emptyScene, version: 1 },
+      scene: { ...emptyPersistedScene, version: 1 },
     };
     const result = createPageHandler(doc, action, { now: Date.now });
     expect(result.pages).toHaveLength(2);
@@ -49,12 +37,12 @@ describe("createPageHandler", () => {
     const docWithPage: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
     const action = {
       type: "create-page" as const,
       page: { id: "p1", name: "Dup", sceneId: "s2" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
     expect(() => createPageHandler(docWithPage, action, { now: Date.now })).toThrow(
       DocumentHandlerError,
@@ -70,12 +58,12 @@ describe("createPageHandler", () => {
     const doc: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
     const action = {
       type: "create-page" as const,
       page: { id: "p2", name: "Dup Scene", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
     expect(() => createPageHandler(doc, action, { now: Date.now })).toThrow(
       DocumentHandlerError,
@@ -91,12 +79,12 @@ describe("createPageHandler", () => {
     const docWithRoute: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/dashboard" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
     const action = {
       type: "create-page" as const,
       page: { id: "p2", name: "Dup Route", sceneId: "s2", route: "/dashboard" },
-      scene: { ...emptyScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+      scene: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
     };
     expect(() => createPageHandler(docWithRoute, action, { now: Date.now })).toThrow(
       DocumentHandlerError,
@@ -112,7 +100,7 @@ describe("createPageHandler", () => {
     const action = {
       type: "create-page" as const,
       page: { id: "p1", name: "Page 1", sceneId: "s1", route: "Dashboard" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
     const result = createPageHandler(emptyDoc, action, { now: Date.now });
     expect(result.pages[0]?.route).toBe("/dashboard");

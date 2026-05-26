@@ -1,24 +1,11 @@
 import { describe, it, expect } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentHistoryState } from "../src/document/history.js";
 import {
   createDefaultDocumentRegistries,
 } from "../src/document/inverse.js";
 import { createUndoHistoryMiddleware } from "../src/document/history-middleware.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes history entry on successful dispatch", () => {
@@ -38,7 +25,7 @@ describe("createUndoHistoryMiddleware", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const next = () => ({
@@ -46,7 +33,7 @@ describe("createUndoHistoryMiddleware", () => {
       state: {
         ...emptyDoc,
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-        scenes: { s1: emptyScene },
+        scenes: { s1: emptyPersistedScene },
       },
     });
 
@@ -74,7 +61,7 @@ describe("createUndoHistoryMiddleware", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const next = () => ({
@@ -134,7 +121,7 @@ describe("createUndoHistoryMiddleware", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const next = () => ({
@@ -142,7 +129,7 @@ describe("createUndoHistoryMiddleware", () => {
       state: {
         ...emptyDoc,
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-        scenes: { s1: emptyScene },
+        scenes: { s1: emptyPersistedScene },
       },
     });
 

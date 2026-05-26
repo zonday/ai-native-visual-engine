@@ -1,13 +1,8 @@
 import { describe, it, expect } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import { removePageHandler } from "../src/document/handlers/remove-page.js";
 import { DocumentHandlerError } from "../src/document/error.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
+import { emptyPersistedScene } from "./helpers.js";
 
 const doc: VisualDocument = {
   id: "doc-1",
@@ -16,7 +11,7 @@ const doc: VisualDocument = {
     { id: "p1", name: "Page 1", sceneId: "s1" },
     { id: "p2", name: "Page 2", sceneId: "s2" },
   ],
-  scenes: { s1: emptyScene, s2: { ...emptyScene, version: 1 } },
+  scenes: { s1: emptyPersistedScene, s2: { ...emptyPersistedScene, version: 1 } },
 };
 
 describe("removePageHandler", () => {

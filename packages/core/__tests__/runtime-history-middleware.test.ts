@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
 import type { RuntimeHistoryState } from "../src/runtime/history.js";
@@ -7,19 +7,7 @@ import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { createUndoHistoryMiddleware } from "../src/runtime/history-middleware.js";
 import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
-
-const emptyScene: SceneGraph = makeScene({ root: { id: "root", type: "container", children: [] } });
+import { baseNode, makeScene, emptyScene } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes an undo entry after a successful action", () => {

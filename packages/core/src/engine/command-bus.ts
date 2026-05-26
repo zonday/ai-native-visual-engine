@@ -1,5 +1,5 @@
 import type { RuntimeContext } from "./handler.js";
-import type { HandlerRegistry, InverseComputer } from "./handler-registry.js";
+import type { HandlerRegistry } from "./handler-registry.js";
 
 export interface DispatchResult<TState> {
   ok: boolean;

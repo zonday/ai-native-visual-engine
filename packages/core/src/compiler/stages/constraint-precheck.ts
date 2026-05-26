@@ -1,4 +1,4 @@
-import { diagnostic } from "../diagnostics.js";
+import { createDiagnosticFactory, unsupportedAction } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -6,6 +6,8 @@ import type {
   SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
+
+const diag = createDiagnosticFactory("constraint-precheck");
 
 type SceneNode = {
   id: string;
@@ -45,10 +47,9 @@ export const constraintPrecheckStage: CompilerStage<
           const nodeIds = collectAllNodeIds(context);
           if (!nodeIds.has(action.containerId)) {
             diagnostics.push(
-              diagnostic(
+              diag(
                 "compiler.container-not-found",
                 `Container "${action.containerId}" not found in scene`,
-                "constraint-precheck",
               ),
             );
           }
@@ -61,10 +62,9 @@ export const constraintPrecheckStage: CompilerStage<
           const nodeIds = collectAllNodeIds(context);
           if (!nodeIds.has(action.pageId)) {
             diagnostics.push(
-              diagnostic(
+              diag(
                 "compiler.page-not-found",
                 `Page "${action.pageId}" not found in document`,
-                "constraint-precheck",
               ),
             );
           }
@@ -80,11 +80,7 @@ export const constraintPrecheckStage: CompilerStage<
       default: {
         const unsupported = action as { type: string };
         diagnostics.push(
-          diagnostic(
-            "compiler.unsupported-action",
-            `Unsupported action type: ${unsupported.type}`,
-            "constraint-precheck",
-          ),
+          unsupportedAction("constraint-precheck", unsupported.type),
         );
       }
     }
