@@ -1,58 +1,54 @@
 import { tool } from "ai";
-import type { CompileResult, SemanticAction } from "@ai-native/core";
 import { compileSemanticAction } from "@ai-native/core";
+import type { CompileResult, SemanticAction } from "@ai-native/core";
 import {
+  AutoLayoutActionSchema,
   CreateDashboardActionSchema,
   InsertChartActionSchema,
-  AutoLayoutActionSchema,
   UpdateThemeIntentActionSchema,
 } from "@ai-native/core";
 import { z } from "zod/v4";
 
-export { type Tool } from "ai";
-
-function createActionTool(
+function createTool(
   name: string,
   description: string,
   schema: z.ZodObject<z.ZodRawShape>,
 ) {
-  const inputSchema = schema.omit({ type: true });
-
   return tool({
     description,
-    inputSchema,
-    execute: async (args, _options) => {
-      const action = { type: name, ...args } as SemanticAction;
-      return compileSemanticAction(action) as CompileResult;
-    },
+    inputSchema: schema.omit({ type: true }),
+    execute: async (args): Promise<CompileResult> =>
+      compileSemanticAction({ type: name, ...args } as SemanticAction),
   });
 }
 
-export const createDashboardTool = createActionTool(
+type AnyTool = ReturnType<typeof createTool>;
+
+export const createDashboardTool = createTool(
   "create-dashboard",
-  "Create a new dashboard page with specified title, layout strategy, and widgets. Use when you need to build a dashboard, add charts, or set up visual components.",
+  "Create a new dashboard page with specified title, layout strategy, and widgets.",
   CreateDashboardActionSchema,
 );
 
-export const insertChartTool = createActionTool(
+export const insertChartTool = createTool(
   "insert-chart",
-  "Insert a chart component into an existing container on a page. Specify container ID, chart type, data source, dimensions, and metrics. Use when adding visualizations to an existing dashboard.",
+  "Insert a chart into an existing container. Specify container ID, chart type, data source, dimensions, and metrics.",
   InsertChartActionSchema,
 );
 
-export const autoLayoutTool = createActionTool(
+export const autoLayoutTool = createTool(
   "auto-layout",
-  "Automatically arrange child elements within a page using a layout strategy. Supports compact, balanced, or presentation layouts.",
+  "Auto-arrange elements within a page using a layout strategy: compact, balanced, or presentation.",
   AutoLayoutActionSchema,
 );
 
-export const updateThemeIntentTool = createActionTool(
+export const updateThemeIntentTool = createTool(
   "update-theme-intent",
-  "Update the theme for a document or specific page. Specify themeId for document-level changes or pageId for page-level overrides.",
+  "Update theme for a document or page. Requires at least one of themeId or pageId.",
   UpdateThemeIntentActionSchema,
 );
 
-export const ALL_TOOLS: Record<string, ReturnType<typeof createActionTool>> = {
+export const ALL_TOOLS: Record<string, AnyTool> = {
   "create-dashboard": createDashboardTool,
   "insert-chart": insertChartTool,
   "auto-layout": autoLayoutTool,

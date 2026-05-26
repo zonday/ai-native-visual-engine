@@ -26,7 +26,8 @@ export async function executeToolCall(
   }
 
   try {
-    if (!tool.execute) {
+    const { execute } = tool;
+    if (!execute) {
       return {
         toolName,
         ok: false,
@@ -34,7 +35,7 @@ export async function executeToolCall(
         diagnostics: [`Tool "${toolName}" has no execute function`],
       };
     }
-    const result = await tool.execute(args, {
+    const result = await execute(args, {
       toolCallId: "manual",
       messages: [],
     });
