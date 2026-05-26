@@ -7,6 +7,7 @@ import type {
   NormalizedCreateDashboardAction,
   NormalizedInsertChartAction,
   NormalizedSemanticAction,
+  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
 
@@ -14,7 +15,7 @@ function diagnostic(
   code: string,
   message: string,
   stage = "action-expansion",
-): import("../types.js").SemanticDiagnostic {
+): SemanticDiagnostic {
   return { code, message, severity: "error", stage };
 }
 

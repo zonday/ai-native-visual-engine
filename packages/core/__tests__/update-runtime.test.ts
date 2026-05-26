@@ -20,14 +20,14 @@ const sceneWithNode: SceneGraph = makeScene({
 });
 
 describe("updateRuntimeHandler", () => {
-  it("shallow-merges runtime state onto existing runtime", () => {
+  it("replaces runtime state entirely", () => {
     const action = {
       type: "update-runtime" as const,
       nodeId: "a",
       runtime: { isLoading: false },
     };
     const result = updateRuntimeHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: false, count: 5 });
+    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: false });
     expect(result.version).toBe(1);
   });
 
@@ -64,7 +64,7 @@ describe("updateRuntimeHandler", () => {
 });
 
 describe("updateRuntimeInverse", () => {
-  it("produces an update-runtime inverse that deletes the changed keys", () => {
+  it("produces an update-runtime inverse that captures the full prior runtime state", () => {
     const action = {
       type: "update-runtime" as const,
       nodeId: "a",
@@ -74,7 +74,7 @@ describe("updateRuntimeInverse", () => {
     expect(inverse).toEqual({
       type: "update-runtime",
       nodeId: "a",
-      runtime: { isLoading: true },
+      runtime: { isLoading: true, count: 5 },
     });
   });
 

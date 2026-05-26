@@ -1,6 +1,7 @@
-import type { SceneGraph, SceneNode } from "../../types.js";
+import type { SceneNode } from "../../types.js";
 import type { MoveNodeAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -26,15 +27,7 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "move-node",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "move-node");
 
   const newParent = scene.nodes[action.parentId];
   if (!newParent) {

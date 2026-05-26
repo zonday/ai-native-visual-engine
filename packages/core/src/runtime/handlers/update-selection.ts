@@ -1,4 +1,3 @@
-import type { SceneGraph } from "../../types.js";
 import type { UpdateSelectionAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
 import type { RuntimeHandler } from "../handler.js";

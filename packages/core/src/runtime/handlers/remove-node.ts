@@ -1,6 +1,7 @@
-import type { SceneGraph, SceneNode } from "../../types.js";
-import type { RemoveNodeAction } from "../actions.js";
+import type { SceneNode } from "../../types.js";
+import type { RemoveNodeAction, RuntimeAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -22,15 +23,7 @@ export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "remove-node",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "remove-node");
 
   if (action.nodeId === scene.rootId) {
     throw new RuntimeHandlerError(
@@ -67,20 +60,24 @@ export const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
   if (!node) return undefined;
 
   const descendants = collectDescendants(action.nodeId, sceneBefore.nodes);
-  const nodesToRestore: Record<string, SceneNode> = {};
+
+  const createActions: RuntimeAction[] = [];
   for (const id of descendants) {
     const n = sceneBefore.nodes[id];
-    if (n) nodesToRestore[id] = n;
+    if (!n) continue;
+    createActions.push({
+      type: "create-node",
+      node: { ...n, children: undefined },
+      parentId: n.parentId ?? sceneBefore.rootId,
+      index: n.parentId
+        ? (sceneBefore.nodes[n.parentId]?.children ?? []).indexOf(id)
+        : undefined,
+    });
   }
 
-  return {
-    type: "create-node",
-    node: node,
-    parentId: node.parentId ?? sceneBefore.rootId,
-    index: node.parentId
-      ? (sceneBefore.nodes[node.parentId]?.children ?? []).indexOf(
-          action.nodeId,
-        )
-      : undefined,
-  };
+  const first = createActions[0];
+  if (createActions.length === 1 && first) {
+    return first;
+  }
+  return { type: "batch-actions", actions: createActions };
 };

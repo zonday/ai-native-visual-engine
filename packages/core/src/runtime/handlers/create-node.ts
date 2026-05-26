@@ -1,4 +1,4 @@
-import type { SceneGraph, SceneNode } from "../../types.js";
+import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
 import type { RuntimeHandler } from "../handler.js";

@@ -1,6 +1,5 @@
-import type { SceneGraph } from "../../types.js";
 import type { UpdateStyleAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -9,15 +8,7 @@ export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "update-style",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "update-style");
 
   const updatedNode = {
     ...node,

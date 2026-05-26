@@ -1,6 +1,5 @@
-import type { SceneGraph } from "../../types.js";
 import type { UpdateRuntimeAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -9,19 +8,11 @@ export const updateRuntimeHandler: RuntimeHandler<UpdateRuntimeAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "update-runtime",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "update-runtime");
 
   const updatedNode = {
     ...node,
-    runtime: { ...(node.runtime ?? {}), ...action.runtime },
+    runtime: { ...action.runtime },
   };
 
   return {
@@ -39,16 +30,9 @@ export const updateRuntimeInverse: InverseComputer<UpdateRuntimeAction> = (
   const node = sceneBefore.nodes[action.nodeId];
   if (!node) return undefined;
 
-  const previousRuntime: Record<string, unknown> = {};
-  for (const key of Object.keys(action.runtime)) {
-    if (node.runtime && key in node.runtime) {
-      previousRuntime[key] = node.runtime[key];
-    }
-  }
-
   return {
     type: "update-runtime",
     nodeId: action.nodeId,
-    runtime: previousRuntime,
+    runtime: { ...(node.runtime ?? {}) },
   };
 };

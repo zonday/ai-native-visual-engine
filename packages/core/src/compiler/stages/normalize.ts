@@ -3,6 +3,7 @@ import type {
   CompilerStage,
   NormalizedSemanticAction,
   SemanticAction,
+  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
 
@@ -10,7 +11,7 @@ function diagnostic(
   code: string,
   message: string,
   stage = "normalize",
-): import("../types.js").SemanticDiagnostic {
+): SemanticDiagnostic {
   return { code, message, severity: "error", stage };
 }
 
@@ -49,6 +50,17 @@ export const normalizeStage: CompilerStage<
             ],
           };
         }
+        if (action.widgets !== undefined && !Array.isArray(action.widgets)) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.invalid-widgets",
+                "create-dashboard widgets must be an array",
+              ),
+            ],
+          };
+        }
         return {
           ok: true,
           output: {
@@ -79,6 +91,31 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-chart-type",
                 "insert-chart requires a chartType",
+              ),
+            ],
+          };
+        }
+        if (
+          action.dimensions !== undefined &&
+          !Array.isArray(action.dimensions)
+        ) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.invalid-dimensions",
+                "insert-chart dimensions must be an array",
+              ),
+            ],
+          };
+        }
+        if (action.metrics !== undefined && !Array.isArray(action.metrics)) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.invalid-metrics",
+                "insert-chart metrics must be an array",
               ),
             ],
           };
@@ -130,6 +167,17 @@ export const normalizeStage: CompilerStage<
       }
 
       case "update-theme-intent": {
+        if (!action.themeId && !action.pageId) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.missing-theme-or-page",
+                "update-theme-intent requires at least one of themeId or pageId",
+              ),
+            ],
+          };
+        }
         return {
           ok: true,
           output: {

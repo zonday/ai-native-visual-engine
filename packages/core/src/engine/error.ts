@@ -41,21 +41,4 @@ export class HandlerError extends Error {
     this.code = code;
     this.actionType = actionType;
   }
-
-  toEngineError(): EngineError {
-    const domain: ErrorDomain = this.code.startsWith("document.")
-      ? "document"
-      : this.code.startsWith("scene.")
-        ? "scene"
-        : "validation";
-
-    return {
-      code: this.code,
-      message: this.message,
-      severity: "error",
-      domain,
-      recoverable: true,
-      context: this.actionType ? { actionType: this.actionType } : undefined,
-    };
-  }
 }

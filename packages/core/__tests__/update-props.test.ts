@@ -20,14 +20,14 @@ const sceneWithNode: SceneGraph = makeScene({
 });
 
 describe("updatePropsHandler", () => {
-  it("shallow-merges props onto existing props", () => {
+  it("replaces props entirely", () => {
     const action = {
       type: "update-props" as const,
       nodeId: "a",
       props: { label: "World" },
     };
     const result = updatePropsHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.props).toEqual({ label: "World", count: 1 });
+    expect(result.nodes["a"]?.props).toEqual({ label: "World" });
     expect(result.version).toBe(1);
   });
 
@@ -64,7 +64,7 @@ describe("updatePropsHandler", () => {
 });
 
 describe("updatePropsInverse", () => {
-  it("produces an update-props inverse that deletes the changed keys", () => {
+  it("produces an update-props inverse that captures the full prior props state", () => {
     const action = {
       type: "update-props" as const,
       nodeId: "a",
@@ -74,7 +74,7 @@ describe("updatePropsInverse", () => {
     expect(inverse).toEqual({
       type: "update-props",
       nodeId: "a",
-      props: { label: "Hello" },
+      props: { label: "Hello", count: 1 },
     });
   });
 

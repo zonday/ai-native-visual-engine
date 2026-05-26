@@ -91,9 +91,11 @@ describe("compileSemanticAction", () => {
     if (result.ok) {
       expect(result.plan.documentActions).toHaveLength(0);
       expect(result.plan.runtimeActions).toHaveLength(1);
-      const action = result.plan.runtimeActions[0]!;
-      expect(action.type).toBe("create-node");
-      expect(action.node.layout).toMatchObject({ mode: "grid-item" });
+      expect(result.plan.runtimeActions[0]?.type).toBe("create-node");
+      expect(
+        (result.plan.runtimeActions[0] as { node: { layout: Record<string, unknown> } } | undefined)
+          ?.node.layout,
+      ).toMatchObject({ mode: "grid-item" });
     }
   });
 
@@ -134,6 +136,60 @@ describe("compileSemanticAction", () => {
     }
   });
 
+  it("rejects create-dashboard with non-array widgets", () => {
+    const result = compileSemanticAction({
+      type: "create-dashboard",
+      title: "Bad Dashboard",
+      widgets: "not-an-array",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-widgets");
+    }
+  });
+
+  it("rejects insert-chart with non-array dimensions", () => {
+    const result = compileSemanticAction({
+      type: "insert-chart",
+      containerId: "grid-1",
+      chartType: "chart",
+      dimensions: "not-an-array",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-dimensions");
+    }
+  });
+
+  it("rejects insert-chart with non-array metrics", () => {
+    const result = compileSemanticAction({
+      type: "insert-chart",
+      containerId: "grid-1",
+      chartType: "chart",
+      metrics: "not-an-array",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-metrics");
+    }
+  });
+
+  it("rejects update-theme-intent without themeId or pageId", () => {
+    const result = compileSemanticAction({
+      type: "update-theme-intent",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe(
+        "compiler.missing-theme-or-page",
+      );
+    }
+  });
+
   it("rejects update-theme-intent action because expansion is not yet implemented", () => {
     const result = compileSemanticAction({
       type: "update-theme-intent",
@@ -146,18 +202,26 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("accepts create-dashboard without explicit layout", () => {
+  it("accepts create-dashboard without explicit layout and defaults to balanced", () => {
     const result = compileSemanticAction({
       type: "create-dashboard",
       title: "Default Dashboard",
     });
 
     expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.documentActions).toHaveLength(1);
+      expect(result.plan.documentActions[0]?.type).toBe("create-page");
+      expect(result.plan.runtimeActions).toHaveLength(1);
+    }
   });
 
-  it("rejects null action", () => {
+  it("rejects null action with invalid-action diagnostic", () => {
     const result = compileSemanticAction(null as unknown as SemanticAction);
 
     expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
+    }
   });
 });

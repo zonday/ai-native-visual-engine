@@ -77,11 +77,20 @@ describe("removeNodeInverse", () => {
     });
   });
 
-  it("produces a create-node inverse that includes descendants for subtree removal", () => {
+  it("produces a batch-actions inverse that restores all descendants for subtree removal", () => {
     const action = { type: "remove-node" as const, nodeId: "a" };
     const inverse = removeNodeInverse(sceneWithTree, action, { now: Date.now });
-    expect(inverse?.type).toBe("create-node");
-    expect((inverse as any).node.id).toBe("a");
+    expect(inverse).toBeDefined();
+    if (inverse?.type === "batch-actions") {
+      expect(inverse.actions).toHaveLength(2);
+      expect(inverse.actions[0]?.type).toBe("create-node");
+      expect((inverse.actions[0] as any).node.id).toBe("a");
+      expect(inverse.actions[1]?.type).toBe("create-node");
+      expect((inverse.actions[1] as any).node.id).toBe("a1");
+    } else {
+      // Single-node removal still returns a single create-node
+      expect(inverse?.type).toBe("create-node");
+    }
   });
 
   it("returns undefined when node does not exist in sceneBefore", () => {

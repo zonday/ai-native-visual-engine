@@ -1,5 +1,6 @@
 import type { UpdateLayoutAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -55,15 +56,7 @@ export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "update-layout",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "update-layout");
 
   const merged = { ...(node.layout ?? {}), ...action.layout };
   validateLayout(merged, action.nodeId);

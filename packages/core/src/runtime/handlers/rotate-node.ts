@@ -1,5 +1,6 @@
 import type { RotateNodeAction } from "../actions.js";
 import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -13,15 +14,7 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   action,
   ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "rotate-node",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "rotate-node");
 
   const layout = node.layout as Record<string, unknown> | undefined;
   if (!layout || layout.mode !== "absolute") {

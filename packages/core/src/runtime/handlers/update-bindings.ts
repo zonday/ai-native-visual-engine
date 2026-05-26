@@ -1,6 +1,5 @@
-import type { Binding, SceneGraph } from "../../types.js";
 import type { UpdateBindingsAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../inverse-registry.js";
 
@@ -9,15 +8,7 @@ export const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   action,
   _ctx,
 ) => {
-  const node = scene.nodes[action.nodeId];
-  if (!node) {
-    throw new RuntimeHandlerError(
-      "scene.node-not-found",
-      `Node "${action.nodeId}" not found`,
-      "update-bindings",
-      action.nodeId,
-    );
-  }
+  const node = expectNode(scene, action.nodeId, "update-bindings");
 
   const updatedNode = {
     ...node,
