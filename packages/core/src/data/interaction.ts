@@ -48,6 +48,7 @@ export interface DataInteractionAPI {
   drillThrough(componentId: NodeId, target: DrillThroughTarget): void;
   setFilter(componentId: NodeId, dimension: string, value: unknown): void;
   clearFilter(componentId: NodeId): void;
+  clearAllFilters(): void;
   getDrillState(componentId: NodeId): DrillState | undefined;
   getFilterState(componentId: NodeId): FilterParam[];
   subscribe(
@@ -106,7 +107,19 @@ export function createDataInteractionAPI(
   return {
     crossFilter(selection: SelectionEvent): void {
       activeFilters.set(selection.dimension, selection.value);
-      notifyCrossFilter(selection.dimension);
+      for (const [subKey, subs] of crossSubscribers) {
+        if (subKey.endsWith(`:${selection.dimension}`)) {
+          const subscriberComponentId = subKey.split(":")[0];
+          if (subscriberComponentId === selection.sourceComponentId) continue;
+          const params: FilterParam[] = [];
+          for (const [key, value] of activeFilters) {
+            params.push({ key, value, operator: "eq" });
+          }
+          for (const cb of subs) {
+            cb(params);
+          }
+        }
+      }
     },
 
     drillDown(componentId: NodeId, dimension: string, value: string): void {
@@ -163,6 +176,15 @@ export function createDataInteractionAPI(
         activeFilters.delete(dimension);
       }
       state.filters.clear();
+    },
+
+    clearAllFilters(): void {
+      for (const [, state] of states) {
+        for (const [dimension] of state.filters) {
+          activeFilters.delete(dimension);
+        }
+        state.filters.clear();
+      }
     },
 
     getDrillState(componentId: NodeId): DrillState | undefined {

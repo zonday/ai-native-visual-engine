@@ -15,7 +15,7 @@ describe("DataInteractionAPI", () => {
   describe("crossFilter", () => {
     it("broadcasts filter params to subscribed components on matching dimension", () => {
       let received: unknown = null;
-      api.subscribe("chart-1", ["region"], (params) => {
+      api.subscribe("table-1", ["region"], (params) => {
         received = params;
       });
 
@@ -102,7 +102,7 @@ describe("DataInteractionAPI", () => {
 
     it("unsubscribe removes callback", () => {
       let callCount = 0;
-      const unsub = api.subscribe("chart-1", ["region"], () => {
+      const unsub = api.subscribe("table-1", ["region"], () => {
         callCount++;
       });
 
@@ -125,6 +125,23 @@ describe("DataInteractionAPI", () => {
         label: "Asia",
       });
       expect(callCount).toBe(1);
+    });
+
+    it("source component is not cross-filtered by its own selection", () => {
+      let received = 0;
+      api.subscribe("chart-1", ["region"], () => {
+        received++;
+      });
+
+      api.crossFilter({
+        sourceComponentId: "chart-1",
+        sourceComponentType: "chart",
+        dimension: "region",
+        value: "APAC",
+        label: "Asia",
+      });
+
+      expect(received).toBe(0);
     });
   });
 
@@ -224,6 +241,16 @@ describe("DataInteractionAPI", () => {
       const state = api.getFilterState("filter-1");
       expect(state).toEqual([{ key: "region", value: "EMEA", operator: "eq" }]);
     });
+
+    it("clearAllFilters resets all filters across all components", () => {
+      api.setFilter("filter-1", "region", "EMEA");
+      api.setFilter("filter-2", "quarter", "Q1");
+
+      api.clearAllFilters();
+
+      expect(api.getFilterState("filter-1")).toEqual([]);
+      expect(api.getFilterState("filter-2")).toEqual([]);
+    });
   });
 
   describe("async resolution pipeline", () => {
@@ -245,7 +272,7 @@ describe("DataInteractionAPI", () => {
 
     it("subscribe callback fires synchronously on crossFilter", () => {
       let fired = false;
-      api.subscribe("chart-1", ["region"], () => {
+      api.subscribe("table-1", ["region"], () => {
         fired = true;
       });
 
