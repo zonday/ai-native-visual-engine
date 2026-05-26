@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentMiddleware } from "../src/document/middleware.js";
@@ -8,24 +8,12 @@ import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
 import {
   createDefaultDocumentRegistries,
 } from "../src/document/inverse.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 const docWithPage: VisualDocument = {
   ...emptyDoc,
   pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-  scenes: { s1: emptyScene },
+  scenes: { s1: emptyPersistedScene },
 };
 
 const context: DocumentRuntimeContext = { now: Date.now };
@@ -40,7 +28,7 @@ describe("createDocumentCommandBus", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const result = bus.dispatch(action);
@@ -72,7 +60,7 @@ describe("createDocumentCommandBus", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Dup", sceneId: "s2" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const result = bus.dispatch(action);
@@ -101,7 +89,7 @@ describe("createDocumentCommandBus", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const result = bus.dispatch(action);
@@ -119,7 +107,7 @@ describe("createDocumentCommandBus", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const result = bus.dispatch(action);
@@ -141,7 +129,7 @@ describe("createDocumentCommandBus", () => {
     const action: DocumentAction = {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     };
 
     const result = bus.dispatch(action);

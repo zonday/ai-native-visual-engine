@@ -1,4 +1,4 @@
-import { diagnostic } from "../diagnostics.js";
+import { unsupportedAction } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -128,11 +128,7 @@ export const intentExpansionStage: CompilerStage<
         return {
           ok: false,
           diagnostics: [
-            diagnostic(
-              "compiler.unsupported-action",
-              `Unsupported action type: ${unsupported.type}`,
-              "intent-expansion",
-            ),
+            unsupportedAction("intent-expansion", unsupported.type),
           ],
         };
       }

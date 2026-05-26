@@ -1,24 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
 import { createBatchHandler, computeBatchInverse, batchInverse } from "../src/runtime/handlers/batch.js";
 import { createNodeHandler } from "../src/runtime/handlers/create-node.js";
 import { removeNodeHandler } from "../src/runtime/handlers/remove-node.js";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
-
-const emptyScene: SceneGraph = makeScene({ root: { id: "root", type: "container", children: [] } });
+import { baseNode, makeScene, emptyScene } from "./helpers.js";
 
 function makeDispatch(initialScene: SceneGraph) {
   let currentScene = initialScene;

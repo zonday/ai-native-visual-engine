@@ -2,7 +2,9 @@ import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 import type { DocumentRuntimeContext } from "./handler.js";
 
-export type InverseComputer<TAction extends DocumentAction = DocumentAction> = (
+export type InverseComputer<
+  TAction extends DocumentAction = DocumentAction,
+> = (
   documentBefore: VisualDocument,
   action: TAction,
   context: DocumentRuntimeContext,

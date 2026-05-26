@@ -74,7 +74,7 @@ describe("DocumentHistoryState", () => {
   describe("undoDocumentAction", () => {
     it("returns null when undo stack is empty", () => {
       const state = createDocumentHistoryState();
-      const result = undoDocumentAction(state, makeDoc(), { now: Date.now });
+      const result = undoDocumentAction(state);
       expect(result).toBeNull();
     });
 
@@ -83,7 +83,7 @@ describe("DocumentHistoryState", () => {
         undoStack: [{ action: { type: "rename-page", pageId: "p1", name: "New" }, timestamp: 0 }],
         redoStack: [],
       };
-      const result = undoDocumentAction(state, makeDoc(), { now: Date.now });
+      const result = undoDocumentAction(state);
       expect(result).toBeNull();
     });
 
@@ -101,7 +101,7 @@ describe("DocumentHistoryState", () => {
         undoStack: [entry],
         redoStack: [],
       };
-      const result = undoDocumentAction(state, makeDoc(), { now: Date.now });
+      const result = undoDocumentAction(state);
       expect(result).not.toBeNull();
       expect(result!.state.undoStack).toHaveLength(0);
       expect(result!.state.redoStack).toHaveLength(1);
@@ -122,12 +122,10 @@ describe("DocumentHistoryState", () => {
         undoStack: [entry1, entry2],
         redoStack: [],
       };
-      const result1 = undoDocumentAction(state, makeDoc(), { now: Date.now });
+      const result1 = undoDocumentAction(state);
       expect(result1!.inverseAction).toEqual(entry2.inverseAction);
 
-      const result2 = undoDocumentAction(result1!.state, makeDoc(), {
-        now: Date.now,
-      });
+      const result2 = undoDocumentAction(result1!.state);
       expect(result2!.inverseAction).toEqual(entry1.inverseAction);
       expect(result2!.state.undoStack).toHaveLength(0);
       expect(result2!.state.redoStack).toHaveLength(2);
@@ -183,7 +181,7 @@ describe("DocumentHistoryState", () => {
         redoStack: [],
       };
 
-      const undoResult = undoDocumentAction(state, makeDoc(), { now: Date.now });
+      const undoResult = undoDocumentAction(state);
       expect(undoResult).not.toBeNull();
       state = undoResult!.state;
       expect(state.undoStack).toHaveLength(0);
@@ -198,12 +196,3 @@ describe("DocumentHistoryState", () => {
     });
   });
 });
-
-function makeDoc(): import("../src/types.js").VisualDocument {
-  return {
-    id: "doc-1",
-    title: "Test",
-    pages: [],
-    scenes: {},
-  };
-}

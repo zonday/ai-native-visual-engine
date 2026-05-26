@@ -1,29 +1,14 @@
 import { describe, it, expect } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import {
   createDefaultDocumentRegistries,
 } from "../src/document/inverse.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
+import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
 const context: DocumentRuntimeContext = { now: Date.now };
-
-function makeDoc(overrides?: Partial<VisualDocument>): VisualDocument {
-  return {
-    id: "doc-1",
-    title: "Test",
-    pages: [],
-    scenes: {},
-    ...overrides,
-  };
-}
 
 function applyAction(
   registries: ReturnType<typeof createDefaultDocumentRegistries>,
@@ -43,14 +28,14 @@ describe("inverse round-trip — action → inverse restores state", () => {
     const doc1 = applyAction(registries, makeDoc(), {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     });
     expect(doc1.pages).toHaveLength(1);
 
     const inverse = registries.inverseRegistry.get("create-page")!(makeDoc(), {
       type: "create-page",
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyScene,
+      scene: emptyPersistedScene,
     }, context);
     expect(inverse).toBeDefined();
 
@@ -66,7 +51,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/dashboard" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     });
 
     const doc1 = applyAction(registries, docWithPage, {
@@ -86,7 +71,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
     expect(doc2.pages[0]?.id).toBe("p1");
     expect(doc2.pages[0]?.name).toBe("Page 1");
     expect(doc2.pages[0]?.route).toBe("/dashboard");
-    expect(doc2.scenes.s1).toBe(emptyScene);
+    expect(doc2.scenes.s1).toBe(emptyPersistedScene);
   });
 
   it("rename-page → rename-page (inverse) restores original name", () => {
@@ -96,7 +81,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     });
 
     const doc1 = applyAction(registries, docWithPage, {
@@ -128,8 +113,8 @@ describe("inverse round-trip — action → inverse restores state", () => {
         { id: "p2", name: "Page 2", sceneId: "s2" },
       ],
       scenes: {
-        s1: emptyScene,
-        s2: { ...emptyScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+        s1: emptyPersistedScene,
+        s2: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
       },
     });
 
@@ -159,7 +144,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/original" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     });
 
     const doc1 = applyAction(registries, docWithPage, {
@@ -192,7 +177,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
         { id: "theme-light", name: "Light", tokens: {} },
       ],
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     });
 
     const doc1 = applyAction(registries, docWithTheme, {
@@ -222,7 +207,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
         { id: "theme-light", name: "Light", tokens: {} },
       ],
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", themeId: "theme-dark" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     });
 
     const doc1 = applyAction(registries, docWithTheme, {

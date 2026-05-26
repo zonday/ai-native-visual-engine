@@ -19,14 +19,7 @@ export type RuntimeHistoryState = HistoryState;
 export const DEFAULT_MAX_RUNTIME_UNDO_STACK = DEFAULT_MAX_UNDO_STACK;
 
 export const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
-
-export function pushRuntimeUndo(
-  state: RuntimeHistoryState,
-  entry: RuntimeHistoryEntry,
-  maxStackSize?: number,
-): RuntimeHistoryState {
-  return pushUndo(state, entry, maxStackSize);
-}
+export const pushRuntimeUndo = pushUndo<RuntimeAction>;
 
 export function undoRuntimeAction(
   state: RuntimeHistoryState,

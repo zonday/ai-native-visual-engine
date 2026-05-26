@@ -1,28 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { PersistedSceneGraph, SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
   createRuntimeEventLog,
   appendRuntimeEvent,
   replayRuntimeEvents,
 } from "../src/runtime/event-log.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const emptyPersistedScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root",
-  nodes: { root: { id: "root", type: "container", children: [] } },
-};
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
+import { baseNode, makeScene, emptyPersistedScene } from "./helpers.js";
 
 describe("createRuntimeEventLog", () => {
   it("creates an event log with the initial scene and empty actions", () => {

@@ -2,13 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createInverseRegistry, computeInverseAction } from "../src/document/inverse-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyDoc } from "./helpers.js";
 
 describe("createInverseRegistry", () => {
   it("creates a Map from a record of computers", () => {

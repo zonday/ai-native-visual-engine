@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
@@ -11,19 +11,7 @@ import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { normalizeRoute } from "../src/document/handlers/update-page-route.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
 import { updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 const context: DocumentRuntimeContext = { now: Date.now };
 
@@ -46,7 +34,7 @@ describe("command bus - error response branches", () => {
     expect(result.error?.actionType).toBe("test-action");
   });
 
-  it("returns handler-error with 'Unknown error' when handler throws non-Error", () => {
+  it("preserves thrown value in error message when handler throws non-Error", () => {
     const registry = new Map<string, DocumentHandlerEntry>([
       [
         "test-action",
@@ -61,7 +49,7 @@ describe("command bus - error response branches", () => {
     const result = bus.dispatch({ type: "test-action" } as unknown as DocumentAction);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toBe("Unknown error");
+    expect(result.error?.message).toBe("string error");
   });
 });
 
@@ -109,7 +97,7 @@ describe("computeBatchInverse", () => {
     const docWithPage: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
 
     const inverseOf = (_doc: VisualDocument, _act: DocumentAction, _ctx: DocumentRuntimeContext) => {
@@ -130,7 +118,7 @@ describe("computeBatchInverse", () => {
     const docWithPage: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
 
     let step = 0;
@@ -166,7 +154,7 @@ describe("computeBatchInverse", () => {
     const docWithPage: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
 
     const result = computeBatchInverse(
@@ -186,7 +174,7 @@ describe("computeBatchInverse", () => {
     const docWithPage: VisualDocument = {
       ...emptyDoc,
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-      scenes: { s1: emptyScene },
+      scenes: { s1: emptyPersistedScene },
     };
 
     let callCount = 0;
@@ -232,7 +220,7 @@ describe("setPageThemeHandler - branch coverage", () => {
         { id: "p1", name: "Page 1", sceneId: "s1" },
         { id: "p2", name: "Page 2", sceneId: "s2" },
       ],
-      scenes: { s1: emptyScene, s2: emptyScene },
+      scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
     const result = setPageThemeHandler(doc, { type: "set-page-theme", pageId: "p1", themeId: "t1" }, { now: Date.now });
@@ -250,7 +238,7 @@ describe("updatePageRouteHandler - map callback branches", () => {
         { id: "p1", name: "Page 1", sceneId: "s1", route: "/old" },
         { id: "p2", name: "Page 2", sceneId: "s2", route: "/other" },
       ],
-      scenes: { s1: emptyScene, s2: emptyScene },
+      scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
     const result = updatePageRouteHandler(doc, { type: "update-page-route", pageId: "p1", route: "/new" }, { now: Date.now });

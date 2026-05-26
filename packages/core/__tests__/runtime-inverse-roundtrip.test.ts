@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
 import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
@@ -13,17 +13,7 @@ import { updateBindingsHandler, updateBindingsInverse } from "../src/runtime/han
 import { updateRuntimeHandler, updateRuntimeInverse } from "../src/runtime/handlers/update-runtime.js";
 import { updateSelectionHandler, updateSelectionInverse } from "../src/runtime/handlers/update-selection.js";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
+import { baseNode, makeScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
 

@@ -410,16 +410,41 @@ describe("compileSemanticAction", () => {
     }
   });
 
-  it("rejects auto-layout with invalid strategy value via Zod validation", () => {
+  it("rejects create-dashboard with invalid widget dimensions", () => {
     const result = compileSemanticAction({
-      type: "auto-layout",
-      pageId: "page-1",
-      strategy: "invalid-strategy",
-    } as unknown as SemanticAction);
+      type: "create-dashboard",
+      title: "Test",
+      widgets: [
+        { type: "metric", title: "Bad", w: 0, h: 0 },
+      ],
+    });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-action");
+      expect(result.diagnostics[0]?.code).toBe("compiler.invalid-widget-size");
+      expect(result.diagnostics[0]?.message).toContain("invalid dimensions");
+    }
+  });
+
+  it("rejects create-dashboard when grid overflows from too many widgets", () => {
+    const widgets = Array.from({ length: 100 }, (_, i) => ({
+      type: "metric-value",
+      title: `Widget ${i}`,
+      w: 12,
+      h: 11,
+    }));
+    const result = compileSemanticAction({
+      type: "create-dashboard",
+      title: "Overflow Dashboard",
+      layout: "compact",
+      widgets,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics.some(
+        (d) => d.code === "compiler.grid-overflow",
+      )).toBe(true);
     }
   });
 });

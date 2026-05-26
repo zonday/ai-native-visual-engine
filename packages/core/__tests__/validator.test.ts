@@ -1,14 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { documentValidatorMiddleware } from "../src/document/middleware/validator.js";
-import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyDoc } from "./helpers.js";
 
 describe("documentValidatorMiddleware", () => {
   it("passes valid action through to next", () => {

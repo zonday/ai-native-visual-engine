@@ -1,13 +1,10 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode, PageId } from "../src/types.js";
+import type { SceneGraph, PageId } from "../src/types.js";
 import { createEngineAPI } from "../src/engine-api.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import { createRuntimeHistoryState } from "../src/runtime/history.js";
-
-function makeScene(nodes: Record<string, SceneNode>): SceneGraph {
-  return { version: 0, rootId: "root", nodes };
-}
+import { makeScene } from "./helpers.js";
 
 describe("createEngineAPI", () => {
   function setup(customScene?: SceneGraph) {

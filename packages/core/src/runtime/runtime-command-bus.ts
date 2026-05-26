@@ -1,11 +1,28 @@
 import { createCommandBus } from "../engine/command-bus.js";
+import { HandlerError } from "../engine/error.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
-import type { DispatchResult } from "./command-bus.js";
-import { RuntimeHandlerError } from "./error.js";
+import type { DispatchResult, RuntimeError } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
 import type { RuntimeHandlerRegistry } from "./handler-registry.js";
 import type { RuntimeMiddleware } from "./middleware.js";
+
+function toRuntimeError(err: unknown, actionType: string): RuntimeError {
+  if (err instanceof HandlerError) {
+    const rawNodeId = err.context.nodeId;
+    return {
+      code: err.code,
+      message: err.message,
+      actionType: err.actionType ?? actionType,
+      nodeId: typeof rawNodeId === "string" ? rawNodeId : undefined,
+    };
+  }
+  return {
+    code: "scene.handler-error",
+    message: err instanceof Error ? err.message : String(err),
+    actionType,
+  };
+}
 
 export function createRuntimeCommandBus(
   registry: RuntimeHandlerRegistry,
@@ -21,29 +38,19 @@ export function createRuntimeCommandBus(
         return {
           ok: result.ok,
           scene: result.state,
-          error: result.error,
+          error: result.error
+            ? {
+                code: result.error.code,
+                message: result.error.message,
+                actionType: result.error.actionType,
+              }
+            : undefined,
         };
       } catch (err) {
-        if (err instanceof RuntimeHandlerError) {
-          return {
-            ok: false,
-            scene: bus.getState(),
-            error: {
-              code: err.code,
-              message: err.message,
-              actionType: err.actionType ?? action.type,
-              nodeId: err.nodeId,
-            },
-          };
-        }
         return {
           ok: false,
           scene: bus.getState(),
-          error: {
-            code: "scene.handler-error",
-            message: err instanceof Error ? err.message : "Unknown error",
-            actionType: action.type,
-          },
+          error: toRuntimeError(err, action.type),
         };
       }
     },

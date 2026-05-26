@@ -1,13 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createDocumentEventLog, appendDocumentEvent } from "../src/document/event-log.js";
-import type { VisualDocument } from "../src/types.js";
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyDoc } from "./helpers.js";
 
 describe("DocumentEventLog", () => {
   it("createDocumentEventLog creates log with initial document and empty actions", () => {

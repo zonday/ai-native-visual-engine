@@ -1,3 +1,4 @@
+import { formatZodIssues } from "./diagnostics.js";
 import { actionExpansionStage } from "./stages/action-expansion.js";
 import { constraintPrecheckStage } from "./stages/constraint-precheck.js";
 import { intentExpansionStage } from "./stages/intent-expansion.js";
@@ -34,9 +35,7 @@ export function compileSemanticAction(
       diagnostics: [
         {
           code: "compiler.invalid-action",
-          message: parsed.error.issues
-            .map((i) => `${i.path.join(".")}: ${i.message}`)
-            .join("; "),
+          message: formatZodIssues(parsed.error),
           severity: "error",
         },
       ],

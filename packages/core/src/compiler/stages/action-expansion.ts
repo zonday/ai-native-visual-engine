@@ -1,7 +1,7 @@
 import { createEmptyScene, generateId } from "../../bootstrap.js";
 import type { DocumentAction } from "../../document/actions.js";
 import type { RuntimeAction } from "../../runtime/actions.js";
-import { diagnostic } from "../diagnostics.js";
+import { unsupportedAction } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
@@ -38,14 +38,11 @@ export const actionExpansionStage: CompilerStage<
         return expandUpdateThemeIntent(action);
       }
       default: {
+        const unsupported = action as { type: string };
         return {
           ok: false,
           diagnostics: [
-            diagnostic(
-              "compiler.unsupported-action",
-              `Cannot expand unsupported action: ${(action as { type: string }).type}`,
-              "action-expansion",
-            ),
+            unsupportedAction("action-expansion", unsupported.type),
           ],
         };
       }
@@ -130,13 +127,12 @@ function expandAutoLayout(
       >;
     };
     if (scene.nodes) {
-      const root = Object.values(scene.nodes).find(
-        (n) => n.id === action.pageId,
-      );
+      const root = scene.nodes[action.pageId];
       if (root?.children) {
         const cols = Math.min(root.children.length, 12);
         const colWidth = Math.floor(12 / Math.max(cols, 1));
         let y = 0;
+        let rowMaxH = 0;
 
         for (let i = 0; i < root.children.length; i++) {
           const childId = root.children[i];
@@ -155,8 +151,10 @@ function expandAutoLayout(
           const x = (i % cols) * colWidth;
 
           if (i > 0 && i % cols === 0) {
-            y += h + 1;
+            y += rowMaxH + 1;
+            rowMaxH = 0;
           }
+          rowMaxH = Math.max(rowMaxH, h);
 
           runtimeActions.push({
             type: "update-layout",

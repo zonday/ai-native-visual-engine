@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
@@ -10,19 +10,7 @@ import {
 import { DocumentHandlerError } from "../src/document/error.js";
 import { computeInverseAction } from "../src/document/inverse-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
-
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
-
-const emptyDoc: VisualDocument = {
-  id: "doc-1",
-  title: "Test",
-  pages: [],
-  scenes: {},
-};
+import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 const docWithTwoPages: VisualDocument = {
   ...emptyDoc,
@@ -31,8 +19,8 @@ const docWithTwoPages: VisualDocument = {
     { id: "p2", name: "Page 2", sceneId: "s2", route: "/settings" },
   ],
   scenes: {
-    s1: emptyScene,
-    s2: { ...emptyScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+    s1: emptyPersistedScene,
+    s2: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
   },
 };
 

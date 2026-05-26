@@ -2,7 +2,9 @@ import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { RuntimeContext } from "./handler.js";
 
-export type InverseComputer<TAction extends RuntimeAction = RuntimeAction> = (
+export type InverseComputer<
+  TAction extends RuntimeAction = RuntimeAction,
+> = (
   sceneBefore: SceneGraph,
   action: TAction,
   context: RuntimeContext,

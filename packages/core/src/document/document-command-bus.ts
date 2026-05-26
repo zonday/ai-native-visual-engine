@@ -1,11 +1,34 @@
 import { createCommandBus } from "../engine/command-bus.js";
+import { HandlerError } from "../engine/error.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
-import type { DocumentDispatchResult } from "./command-bus.js";
-import { DocumentHandlerError } from "./error.js";
+import type {
+  DocumentDispatchResult,
+  DocumentRuntimeError,
+} from "./command-bus.js";
 import type { DocumentRuntimeContext } from "./handler.js";
 import type { DocumentHandlerRegistry } from "./handler-registry.js";
 import type { DocumentMiddleware } from "./middleware.js";
+
+function toDocumentError(
+  err: unknown,
+  actionType: string,
+): DocumentRuntimeError {
+  if (err instanceof HandlerError) {
+    const rawPageId = err.context.pageId;
+    return {
+      code: err.code,
+      message: err.message,
+      actionType: err.actionType ?? actionType,
+      pageId: typeof rawPageId === "string" ? rawPageId : undefined,
+    };
+  }
+  return {
+    code: "document.handler-error",
+    message: err instanceof Error ? err.message : String(err),
+    actionType,
+  };
+}
 
 export function createDocumentCommandBus(
   registry: DocumentHandlerRegistry,
@@ -21,29 +44,19 @@ export function createDocumentCommandBus(
         return {
           ok: result.ok,
           document: result.state,
-          error: result.error,
+          error: result.error
+            ? {
+                code: result.error.code,
+                message: result.error.message,
+                actionType: result.error.actionType,
+              }
+            : undefined,
         };
       } catch (err) {
-        if (err instanceof DocumentHandlerError) {
-          return {
-            ok: false,
-            document: bus.getState(),
-            error: {
-              code: err.code,
-              message: err.message,
-              actionType: err.actionType ?? action.type,
-              pageId: err.pageId,
-            },
-          };
-        }
         return {
           ok: false,
           document: bus.getState(),
-          error: {
-            code: "document.handler-error",
-            message: err instanceof Error ? err.message : "Unknown error",
-            actionType: action.type,
-          },
+          error: toDocumentError(err, action.type),
         };
       }
     },

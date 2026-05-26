@@ -9,7 +9,7 @@ export class RuntimeHandlerError extends HandlerError {
     actionType?: string,
     nodeId?: string,
   ) {
-    super(code, message, actionType);
+    super(code, message, actionType, nodeId ? { nodeId } : {});
     this.name = "RuntimeHandlerError";
     this.nodeId = nodeId;
   }

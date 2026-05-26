@@ -1,24 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
 import type { InverseComputer } from "../src/runtime/inverse-registry.js";
 import { createInverseRegistry, computeInverseAction } from "../src/runtime/inverse-registry.js";
 import { createNodeInverse } from "../src/runtime/handlers/create-node.js";
 import { removeNodeInverse } from "../src/runtime/handlers/remove-node.js";
-
-const baseNode = (id: string, type = "container"): SceneNode => ({
-  id,
-  type,
-});
-
-const makeScene = (nodes: Record<string, SceneNode>, rootId = "root"): SceneGraph => ({
-  version: 0,
-  rootId,
-  nodes,
-});
-
-const emptyScene: SceneGraph = makeScene({ root: { id: "root", type: "container", children: [] } });
+import { baseNode, emptyScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
 

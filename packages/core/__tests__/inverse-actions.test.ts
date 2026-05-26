@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { computeInverseAction } from "../src/document/inverse-registry.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import type { InverseRegistry } from "../src/document/inverse.js";
-import type { VisualDocument, PersistedSceneGraph } from "../src/types.js";
+import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
+import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
 const { inverseRegistry: defaultInverseRegistry } = createDefaultDocumentRegistries(
   () => ({ ok: true, document: makeDoc() }),
@@ -12,25 +13,9 @@ const { inverseRegistry: defaultInverseRegistry } = createDefaultDocumentRegistr
 
 const defaultContext: DocumentRuntimeContext = { now: Date.now };
 
-const emptyScene: PersistedSceneGraph = {
-  version: 0,
-  rootId: "root-1",
-  nodes: { "root-1": { id: "root-1", type: "container" } },
-};
-
-function makeDoc(overrides?: Partial<VisualDocument>): VisualDocument {
-  return {
-    id: "doc-1",
-    title: "Test",
-    pages: [],
-    scenes: {},
-    ...overrides,
-  };
-}
-
 const docWithPage: VisualDocument = makeDoc({
   pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/dashboard" }],
-  scenes: { s1: emptyScene },
+  scenes: { s1: emptyPersistedScene },
 });
 
 const docWithTwoPages: VisualDocument = makeDoc({
@@ -38,7 +23,7 @@ const docWithTwoPages: VisualDocument = makeDoc({
     { id: "p1", name: "Page 1", sceneId: "s1", route: "/dashboard" },
     { id: "p2", name: "Page 2", sceneId: "s2", route: "/settings" },
   ],
-  scenes: { s1: emptyScene, s2: { ...emptyScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } } },
+  scenes: { s1: emptyPersistedScene, s2: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } } },
 });
 
 const docWithTheme: VisualDocument = makeDoc({
@@ -48,7 +33,7 @@ const docWithTheme: VisualDocument = makeDoc({
     { id: "theme-light", name: "Light", tokens: {} },
   ],
   pages: [{ id: "p1", name: "Page 1", sceneId: "s1", themeId: "theme-dark" }],
-  scenes: { s1: emptyScene },
+  scenes: { s1: emptyPersistedScene },
 });
 
 describe("computeInverseAction with registry", () => {
@@ -57,7 +42,7 @@ describe("computeInverseAction with registry", () => {
       const action: DocumentAction = {
         type: "create-page",
         page: { id: "p1", name: "Page 1", sceneId: "s1" },
-        scene: emptyScene,
+        scene: emptyPersistedScene,
       };
       const inverse = computeInverseAction(defaultInverseRegistry, docWithPage, action, defaultContext);
       expect(inverse).toEqual({
@@ -70,7 +55,7 @@ describe("computeInverseAction with registry", () => {
       const action: DocumentAction = {
         type: "create-page",
         page: { id: "p1", name: "Page 1", sceneId: "s1" },
-        scene: emptyScene,
+        scene: emptyPersistedScene,
       };
       const inverse = computeInverseAction(defaultInverseRegistry, makeDoc(), action, defaultContext);
       expect(inverse).toEqual({
@@ -123,7 +108,7 @@ describe("computeInverseAction with registry", () => {
           themeId: undefined,
           metadata: undefined,
         },
-        scene: emptyScene,
+        scene: emptyPersistedScene,
       });
     });
 
@@ -181,7 +166,7 @@ describe("computeInverseAction with registry", () => {
     it("computes inverse with empty string when page has no route", () => {
       const docNoRoute = makeDoc({
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-        scenes: { s1: emptyScene },
+        scenes: { s1: emptyPersistedScene },
       });
       const action: DocumentAction = {
         type: "update-page-route",
@@ -223,7 +208,7 @@ describe("computeInverseAction with registry", () => {
     it("computes inverse clearing theme when document has no activeThemeId", () => {
       const docNoTheme = makeDoc({
         pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
-        scenes: { s1: emptyScene },
+        scenes: { s1: emptyPersistedScene },
       });
       const action: DocumentAction = {
         type: "set-document-theme",
