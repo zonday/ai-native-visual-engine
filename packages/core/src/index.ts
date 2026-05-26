@@ -35,6 +35,28 @@ export type {
   StateAPI,
 } from "./component-states.js";
 export { resolveStateProps } from "./component-states.js";
+// ── Data binding ──
+export {
+  cleanupBindings,
+  clearTransformers,
+  registerTransformer,
+  reResolveOnSourceChange,
+  resolveBinding,
+  resolveBindings,
+  subscribeBinding,
+} from "./data/binding.js";
+export {
+  type BindingSchema,
+  type DataColumn,
+  type DataSourceId,
+  type DataSourceRegistry,
+  type Dataset,
+  type DatasetEntrySchema,
+  type DatasetId,
+  type DatasetSchema,
+  InMemoryDataSourceRegistry,
+  type ResolvedBinding,
+} from "./data/types.js";
 // ── Plugin system ──
 export type {
   ComponentCapabilities,
