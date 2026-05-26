@@ -17,13 +17,6 @@ export function createConstraintMiddleware(
       action,
     };
 
-    if (action.type === "create-node" || action.type === "update-layout") {
-      const nodeId = "nodeId" in action ? action.nodeId : action.node.id;
-      input.node = state.nodes[nodeId] ?? ("node" in action ? action.node : undefined);
-    } else if ("nodeId" in action) {
-      input.node = state.nodes[action.nodeId];
-    }
-
     const report = registry.validate(input);
     if (!report.pass) {
       return {
