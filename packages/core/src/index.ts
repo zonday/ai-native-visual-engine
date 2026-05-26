@@ -139,6 +139,16 @@ export type { StorageBackend } from "./storage-backend.js";
 export { InMemoryStorageBackend } from "./storage-backend.js";
 // ── Theme ──
 export { BASE_THEME, resolveTheme, resolveToken } from "./theme.js";
+// ── Compiler / Semantic Actions ──
+export type {
+  CompileResult,
+  CompileFailure,
+  CompileSuccess,
+  ExecutionPlan,
+  SemanticAction,
+  SemanticDiagnostic,
+} from "./compiler/types.js";
+export { compileSemanticAction } from "./compiler/pipeline.js";
 // ── Core types ──
 export type {
   AbsoluteLayout,
