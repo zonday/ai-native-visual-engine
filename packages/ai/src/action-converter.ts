@@ -1,13 +1,10 @@
+import type { CompileResult } from "@ai-native/core";
 import { ALL_TOOLS } from "./tool-registry.js";
 
 export interface ToolCallResult {
   toolName: string;
   ok: boolean;
-  compileResult: {
-    ok: boolean;
-    diagnostics: Array<{ code: string; message: string }>;
-    plan?: unknown;
-  };
+  compileResult: CompileResult;
   diagnostics: string[];
 }
 
@@ -37,18 +34,14 @@ export async function executeToolCall(
         diagnostics: [`Tool "${toolName}" has no execute function`],
       };
     }
-    const result = (await tool.execute(args, {
+    const result = await tool.execute(args, {
       toolCallId: "manual",
       messages: [],
-    })) as {
-      ok: boolean;
-      diagnostics: Array<{ code: string; message: string }>;
-      plan?: unknown;
-    };
+    });
     return {
       toolName,
       ok: true,
-      compileResult: result,
+      compileResult: result as CompileResult,
       diagnostics: [],
     };
   } catch (err) {

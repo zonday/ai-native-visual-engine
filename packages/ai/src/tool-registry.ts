@@ -7,56 +7,48 @@ import {
   AutoLayoutActionSchema,
   UpdateThemeIntentActionSchema,
 } from "@ai-native/core";
-import { z as zodImpl } from "zod/v4";
+import { z } from "zod/v4";
 
 export { type Tool } from "ai";
 
 function createActionTool(
   name: string,
   description: string,
-  schema: zodImpl.ZodObject<Record<string, zodImpl.ZodType>>,
+  schema: z.ZodObject<z.ZodRawShape>,
 ) {
-  const inputSchema = schema.omit({ type: true }) as zodImpl.ZodObject<
-    Record<string, zodImpl.ZodType>
-  >;
+  const inputSchema = schema.omit({ type: true });
 
   return tool({
     description,
     inputSchema,
-    execute: async (
-      args,
-      _options,
-    ) => {
-      const action = { type: name, ...args };
-      const result = compileSemanticAction(
-        action as unknown as SemanticAction,
-      );
-      return result as unknown as CompileResult;
+    execute: async (args, _options) => {
+      const action = { type: name, ...args } as SemanticAction;
+      return compileSemanticAction(action) as CompileResult;
     },
   });
 }
 
 export const createDashboardTool = createActionTool(
   "create-dashboard",
-  "Create a new dashboard page with specified title, layout strategy, and widgets. Use when the user asks to build or create a dashboard, add charts, or set up visual components.",
+  "Create a new dashboard page with specified title, layout strategy, and widgets. Use when you need to build a dashboard, add charts, or set up visual components.",
   CreateDashboardActionSchema,
 );
 
 export const insertChartTool = createActionTool(
   "insert-chart",
-  "Insert a chart component into an existing container on a page. Specify the container ID, chart type, data source, dimensions, and metrics. Use when adding visualizations to an existing dashboard.",
+  "Insert a chart component into an existing container on a page. Specify container ID, chart type, data source, dimensions, and metrics. Use when adding visualizations to an existing dashboard.",
   InsertChartActionSchema,
 );
 
 export const autoLayoutTool = createActionTool(
   "auto-layout",
-  "Automatically arrange child elements within a page using a layout strategy. Supports compact (dense packing), balanced (equal column distribution), or presentation (centered) layouts.",
+  "Automatically arrange child elements within a page using a layout strategy. Supports compact, balanced, or presentation layouts.",
   AutoLayoutActionSchema,
 );
 
 export const updateThemeIntentTool = createActionTool(
   "update-theme-intent",
-  "Update the theme for a document or specific page. Specify themeId for document-level theme changes or pageId for page-level theme overrides. At least one of themeId or pageId is required.",
+  "Update the theme for a document or specific page. Specify themeId for document-level changes or pageId for page-level overrides.",
   UpdateThemeIntentActionSchema,
 );
 
