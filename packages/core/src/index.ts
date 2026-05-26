@@ -1,9 +1,20 @@
 // ── Bootstrap ──
-export { createEmptyScene, createNewDocument, generateId } from "./bootstrap.js";
+export {
+  createEmptyScene,
+  createNewDocument,
+  generateId,
+} from "./bootstrap.js";
 
 // ── Compiler ──
 export { compileSemanticAction } from "./compiler/pipeline.js";
 export type { CompileResult, SemanticAction, SemanticDiagnostic } from "./compiler/types.js";
+export { SemanticActionSchema } from "./compiler/types.js";
+export {
+  AutoLayoutActionSchema,
+  CreateDashboardActionSchema,
+  InsertChartActionSchema,
+  UpdateThemeIntentActionSchema,
+} from "./compiler/types.js";
 
 // ── Component states ──
 export { resolveStateProps } from "./component-states.js";
@@ -37,23 +48,23 @@ export {
 
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
-
-// ── Prototype components ──
-export type { PrototypeComponent } from "./types.js";
 export type { ResolvedInstance } from "./prototype.js";
-export { createNodeFromPrototype, detachInstance, resolveInstance } from "./prototype.js";
-
+export {
+  createNodeFromPrototype,
+  detachInstance,
+  resolveInstance,
+} from "./prototype.js";
 // ── Rich text ──
 export type { DocNode } from "./rich-text.js";
 export { extractPlainText } from "./rich-text.js";
-
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/actions.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
-
 // ── Serialization ──
-export { CURRENT_SERIALIZATION_VERSION, serializeDocument } from "./serialization.js";
-
+export {
+  CURRENT_SERIALIZATION_VERSION,
+  serializeDocument,
+} from "./serialization.js";
 // ── Session ──
 export type {
   DocumentSession,
@@ -64,10 +75,9 @@ export {
   openDocumentFromSnapshot,
   openDocumentSession,
 } from "./session.js";
-
 // ── Theme ──
 export { BASE_THEME, resolveTheme } from "./theme.js";
-
+// ── Prototype components ──
 // ── Core types ──
 export type {
   Binding,
@@ -76,6 +86,7 @@ export type {
   NodeId,
   Page,
   PageId,
+  PrototypeComponent,
   SceneGraph,
   SceneNode,
   SelectionState,
