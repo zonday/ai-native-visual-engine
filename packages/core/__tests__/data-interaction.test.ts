@@ -180,13 +180,32 @@ describe("DataInteractionAPI", () => {
     it("returns undefined for unknown component", () => {
       expect(api.getDrillState("unknown")).toBeUndefined();
     });
+
+    it("populates availableDimensions from drill hierarchy", () => {
+      const api2 = createDataInteractionAPI({
+        drillHierarchies: {
+          year: { name: "year", children: [{ name: "quarter", children: [{ name: "month" }] }] },
+        },
+      });
+      api2.drillDown("chart-1", "year", "2026");
+
+      const state = api2.getDrillState("chart-1");
+      expect(state?.availableDimensions).toEqual(["quarter"]);
+    });
+
+    it("empty availableDimensions when no hierarchy configured", () => {
+      api.drillDown("chart-1", "year", "2026");
+      expect(api.getDrillState("chart-1")?.availableDimensions).toEqual([]);
+    });
   });
 
   describe("drillThrough", () => {
     it("invokes onDrillThrough callback with target", () => {
       let captured: unknown = null;
-      const api2 = createDataInteractionAPI(undefined, (target) => {
-        captured = target;
+      const api2 = createDataInteractionAPI({
+        onDrillThrough: (target) => {
+          captured = target;
+        },
       });
 
       api2.drillThrough("table-1", {

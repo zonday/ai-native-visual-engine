@@ -66,16 +66,19 @@ interface ComponentState {
   subscriptions: Map<string, CrossFilterCallback>;
 }
 
-export function createDataInteractionAPI(
-  activePageId?: () => PageId | undefined,
-  onDrillThrough?: (target: DrillThroughTarget) => void,
-): DataInteractionAPI {
+export function createDataInteractionAPI(options?: {
+  activePageId?: () => PageId | undefined;
+  onDrillThrough?: (target: DrillThroughTarget) => void;
+  drillHierarchies?: Record<string, DrillDimension>;
+}): DataInteractionAPI {
   const states = new Map<NodeId, ComponentState>();
   const activeFilters = new Map<string, unknown>();
   const crossSubscribers = new Map<
     `${string}:${string}`,
     Set<CrossFilterCallback>
   >();
+  const drillHierarchies = options?.drillHierarchies ?? {};
+  const onDrillThrough = options?.onDrillThrough;
 
   function getState(componentId: NodeId): ComponentState {
     let state = states.get(componentId);
@@ -90,11 +93,16 @@ export function createDataInteractionAPI(
     return state;
   }
 
-  function notifyCrossFilter(dimension: string): void {
+  function buildFilterParams(): FilterParam[] {
     const params: FilterParam[] = [];
     for (const [key, value] of activeFilters) {
       params.push({ key, value, operator: "eq" });
     }
+    return params;
+  }
+
+  function notifyCrossFilter(dimension: string): void {
+    const params = buildFilterParams();
     for (const [subKey, subs] of crossSubscribers) {
       if (subKey.endsWith(`:${dimension}`) || subKey === `*:${dimension}`) {
         for (const cb of subs) {
@@ -111,10 +119,7 @@ export function createDataInteractionAPI(
         if (subKey.endsWith(`:${selection.dimension}`)) {
           const subscriberComponentId = subKey.split(":")[0];
           if (subscriberComponentId === selection.sourceComponentId) continue;
-          const params: FilterParam[] = [];
-          for (const [key, value] of activeFilters) {
-            params.push({ key, value, operator: "eq" });
-          }
+          const params = buildFilterParams();
           for (const cb of subs) {
             cb(params);
           }
@@ -125,6 +130,8 @@ export function createDataInteractionAPI(
     drillDown(componentId: NodeId, dimension: string, value: string): void {
       const state = getState(componentId);
       const current = state.drill;
+      const hierarchy = drillHierarchies[dimension];
+      const availableDimensions = hierarchy?.children?.map((c) => c.name) ?? [];
       state.drill = {
         currentDimension: dimension,
         currentValue: value,
@@ -137,7 +144,7 @@ export function createDataInteractionAPI(
               },
             ]
           : [],
-        availableDimensions: [],
+        availableDimensions,
       };
     },
 
@@ -146,13 +153,17 @@ export function createDataInteractionAPI(
       if (state.drill && state.drill.parentPath.length > 0) {
         const parent =
           state.drill.parentPath[state.drill.parentPath.length - 1];
+        const restoredDimension = parent
+          ? parent.dimension
+          : state.drill.currentDimension;
+        const hierarchy = drillHierarchies[restoredDimension];
+        const availableDimensions =
+          hierarchy?.children?.map((c) => c.name) ?? [];
         state.drill = {
-          currentDimension: parent
-            ? parent.dimension
-            : state.drill.currentDimension,
+          currentDimension: restoredDimension,
           currentValue: parent ? parent.value : null,
           parentPath: state.drill.parentPath.slice(0, -1),
-          availableDimensions: [],
+          availableDimensions,
         };
       }
     },
