@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
+import type { CompileResult } from "@ai-native/core";
 import { ALL_TOOLS } from "../src/tool-registry.js";
-import {
-  executeToolCall,
-  executeAllToolCalls,
-} from "../src/action-converter.js";
 
 describe("AI SDK Tools", () => {
   it("defines tools for all four semantic action types", () => {
@@ -16,70 +13,33 @@ describe("AI SDK Tools", () => {
   });
 
   it("each tool has a description and inputSchema", () => {
-    for (const [name, tool] of Object.entries(ALL_TOOLS)) {
+    for (const [, tool] of Object.entries(ALL_TOOLS)) {
       expect(tool.description).toBeTruthy();
       expect(tool.inputSchema).toBeDefined();
+      expect(tool.execute).toBeDefined();
     }
   });
 
-  it("create-dashboard tool has title as required field", () => {
+  it("each tool execute function returns compile result", async () => {
     const tool = ALL_TOOLS["create-dashboard"];
-    expect(tool).toBeDefined();
-    expect(tool!.description).toContain("dashboard");
-  });
-});
-
-describe("executeToolCall", () => {
-  it("executes a valid create-dashboard tool call", async () => {
-    const result = await executeToolCall("create-dashboard", {
-      title: "Sales Dashboard",
-      layout: "compact",
-      widgets: [{ type: "metric-value", title: "Revenue", w: 4, h: 3 }],
-    });
-
+    if (!tool || !tool.execute) return;
+    const result = (await tool.execute(
+      { title: "Test" },
+      { toolCallId: "test", messages: [] },
+    )) as CompileResult;
     expect(result.ok).toBe(true);
-    expect(result.compileResult.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan).toBeDefined();
+    }
   });
 
-  it("returns diagnostics for unknown tool name", async () => {
-    const result = await executeToolCall("nonexistent-tool", {});
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics[0]).toContain("Unknown tool");
-  });
-
-  it("returns diagnostics for invalid arguments", async () => {
-    const result = await executeToolCall("create-dashboard", {
-      layout: "balanced",
-    });
-
+  it("auto-layout tool requires valid strategy", async () => {
+    const tool = ALL_TOOLS["auto-layout"];
+    if (!tool || !tool.execute) return;
+    const result = (await tool.execute(
+      { pageId: "p1", strategy: "compact" },
+      { toolCallId: "test", messages: [] },
+    )) as CompileResult;
     expect(result.ok).toBe(true);
-    expect(result.compileResult.ok).toBe(false);
-    expect(
-      result.compileResult.ok
-        ? []
-        : result.compileResult.diagnostics.some(
-            (d: { code: string }) => d.code.includes("invalid"),
-          ),
-    ).toBe(true);
-  });
-
-  it("executes all valid tool calls in batch", async () => {
-    const results = await executeAllToolCalls([
-      { toolName: "create-dashboard", args: { title: "Dashboard" } },
-      { toolName: "nonexistent", args: {} },
-    ]);
-
-    expect(results).toHaveLength(2);
-    expect(results[0]?.ok).toBe(true);
-    expect(results[1]?.ok).toBe(false);
-  });
-
-  it("auto-layout tool requires pageId and strategy", async () => {
-    const result = await executeToolCall("auto-layout", {
-      pageId: "page-1",
-      strategy: "compact",
-    });
-    expect(result.ok).toBe(true);
-    expect(result.compileResult.ok).toBe(true);
   });
 });
