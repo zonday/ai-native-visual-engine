@@ -68,6 +68,12 @@ describe("compileSemanticAction", () => {
         (a) => a.type === "create-node",
       );
       expect(createNodes.length).toBe(3);
+      const gridNode = createNodes.find((n) => n.node.type === "grid")!;
+      expect(gridNode.node.layout).toMatchObject({ mode: "grid", columns: 12 });
+      const widgetNodes = createNodes.filter((n) => n.node.type !== "grid");
+      for (const wn of widgetNodes) {
+        expect(wn.node.layout).toMatchObject({ mode: "grid-item" });
+      }
     }
   });
 
@@ -85,27 +91,59 @@ describe("compileSemanticAction", () => {
     if (result.ok) {
       expect(result.plan.documentActions).toHaveLength(0);
       expect(result.plan.runtimeActions).toHaveLength(1);
-      expect(result.plan.runtimeActions[0]?.type).toBe("create-node");
+      const action = result.plan.runtimeActions[0]!;
+      expect(action.type).toBe("create-node");
+      expect(action.node.layout).toMatchObject({ mode: "grid-item" });
     }
   });
 
-  it("accepts auto-layout action", () => {
+  it("rejects auto-layout without pageId", () => {
+    const result = compileSemanticAction({
+      type: "auto-layout",
+      strategy: "balanced",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.missing-page-id");
+    }
+  });
+
+  it("rejects auto-layout without strategy", () => {
+    const result = compileSemanticAction({
+      type: "auto-layout",
+      pageId: "page-1",
+    } as unknown as SemanticAction);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.missing-strategy");
+    }
+  });
+
+  it("rejects auto-layout action because expansion is not yet implemented", () => {
     const result = compileSemanticAction({
       type: "auto-layout",
       pageId: "page-1",
       strategy: "balanced",
     });
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.not-implemented");
+    }
   });
 
-  it("accepts update-theme-intent action", () => {
+  it("rejects update-theme-intent action because expansion is not yet implemented", () => {
     const result = compileSemanticAction({
       type: "update-theme-intent",
       themeId: "dark",
     });
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.code).toBe("compiler.not-implemented");
+    }
   });
 
   it("accepts create-dashboard without explicit layout", () => {

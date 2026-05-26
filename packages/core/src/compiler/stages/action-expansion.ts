@@ -38,8 +38,13 @@ export const actionExpansionStage: CompilerStage<
       case "auto-layout":
       case "update-theme-intent": {
         return {
-          ok: true,
-          output: { documentActions: [], runtimeActions: [] },
+          ok: false,
+          diagnostics: [
+            diagnostic(
+              "compiler.not-implemented",
+              `Expansion for ${action.type} is not yet implemented`,
+            ),
+          ],
         };
       }
       default: {
@@ -73,7 +78,7 @@ function expandCreateDashboard(
       id: gridId,
       type: "grid",
       parentId: rootId,
-      layout: { columns: 12, rowHeight: 80, gap: 12 },
+      layout: { mode: "grid", columns: 12, rowHeight: 80, gap: 12 },
     },
     parentId: rootId,
   });
@@ -87,7 +92,13 @@ function expandCreateDashboard(
         type: widget.type,
         parentId: gridId,
         props: { title: widget.title ?? widget.type },
-        layout: { x: 0, y: 0, w: widget.w ?? 4, h: widget.h ?? 3 },
+        layout: {
+          mode: "grid-item",
+          x: 0,
+          y: 0,
+          w: widget.w ?? 4,
+          h: widget.h ?? 3,
+        },
       },
       parentId: gridId,
     });
@@ -129,7 +140,7 @@ function expandInsertChart(
               dimensions: action.dimensions,
               metrics: action.metrics,
             },
-            layout: { x: 0, y: 0, w: 6, h: 4 },
+            layout: { mode: "grid-item", x: 0, y: 0, w: 6, h: 4 },
           },
           parentId: action.containerId,
         },

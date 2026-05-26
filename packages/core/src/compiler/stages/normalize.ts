@@ -97,6 +97,28 @@ export const normalizeStage: CompilerStage<
       }
 
       case "auto-layout": {
+        if (!action.pageId) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.missing-page-id",
+                "auto-layout requires a pageId",
+              ),
+            ],
+          };
+        }
+        if (!action.strategy) {
+          return {
+            ok: false,
+            diagnostics: [
+              diagnostic(
+                "compiler.missing-strategy",
+                "auto-layout requires a strategy",
+              ),
+            ],
+          };
+        }
         return {
           ok: true,
           output: {
