@@ -52,11 +52,12 @@ function computeBalancedLayout(
     const w = Math.min(widget.w ?? MIN_WIDGET_WIDTH, GRID_COLUMNS);
     const h = widget.h ?? 3;
     const colIdx = colHeights.indexOf(Math.min(...colHeights));
+    if (colIdx === -1) continue;
     const x = colIdx * colWidth;
-    const y = colHeights[colIdx];
+    const y = colHeights[colIdx] ?? 0;
 
     positioned.push({ ...widget, x, y, w, h });
-    colHeights[colIdx] += h + BALANCED_GAP;
+    colHeights[colIdx] = (colHeights[colIdx] ?? 0) + h + BALANCED_GAP;
   }
 
   return positioned;

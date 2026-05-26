@@ -7,6 +7,27 @@ export {
   createNewDocument,
   generateId,
 } from "./bootstrap.js";
+export { compileSemanticAction } from "./compiler/pipeline.js";
+// ── AI Schema Index ──
+export type {
+  AiComponentEntry,
+  AiPropEntry,
+  AiSchemaIndex,
+  AiSchemaIndexSnapshot,
+} from "./compiler/schema-index.js";
+export {
+  buildSchemaIndex,
+  schemaIndexToSnapshot,
+} from "./compiler/schema-index.js";
+// ── Compiler / Semantic Actions ──
+export type {
+  CompileFailure,
+  CompileResult,
+  CompileSuccess,
+  ExecutionPlan,
+  SemanticAction,
+  SemanticDiagnostic,
+} from "./compiler/types.js";
 // ── Component states ──
 export type {
   ComponentStateDef,
@@ -26,7 +47,11 @@ export type {
   PropMeta,
   SlotMeta,
 } from "./plugin-types.js";
-
+// ── Plugin registry ──
+export {
+  ComponentPluginRegistry,
+  createPluginRegistry,
+} from "./plugins/registry.js";
 // ── Prototype components ──
 export type {
   PrototypeComponent,
@@ -38,7 +63,6 @@ export {
   detachInstance,
   resolveInstance,
 } from "./prototype.js";
-
 // ── Rich text ──
 export type {
   BlockNode,
@@ -139,16 +163,6 @@ export type { StorageBackend } from "./storage-backend.js";
 export { InMemoryStorageBackend } from "./storage-backend.js";
 // ── Theme ──
 export { BASE_THEME, resolveTheme, resolveToken } from "./theme.js";
-// ── Compiler / Semantic Actions ──
-export type {
-  CompileResult,
-  CompileFailure,
-  CompileSuccess,
-  ExecutionPlan,
-  SemanticAction,
-  SemanticDiagnostic,
-} from "./compiler/types.js";
-export { compileSemanticAction } from "./compiler/pipeline.js";
 // ── Core types ──
 export type {
   AbsoluteLayout,

@@ -140,6 +140,7 @@ function expandAutoLayout(
 
         for (let i = 0; i < root.children.length; i++) {
           const childId = root.children[i];
+          if (!childId) continue;
           const node = scene.nodes[childId];
           const w = Math.min(
             ((node?.layout as Record<string, unknown> | undefined)?.w as
@@ -160,16 +161,7 @@ function expandAutoLayout(
           runtimeActions.push({
             type: "update-layout",
             nodeId: childId,
-            layout: {
-              mode: "grid-item",
-              x,
-              y,
-              w,
-              h:
-                ((node?.layout as Record<string, unknown> | undefined)?.h as
-                  | number
-                  | undefined) ?? 3,
-            },
+            layout: { mode: "grid-item", x, y, w, h },
           });
         }
       }
