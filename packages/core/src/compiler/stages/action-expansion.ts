@@ -134,11 +134,42 @@ function expandAutoLayout(
         (n) => n.id === action.pageId,
       );
       if (root?.children) {
-        for (const childId of root.children) {
+        const cols = Math.min(root.children.length, 12);
+        const colWidth = Math.floor(12 / Math.max(cols, 1));
+        let y = 0;
+
+        for (let i = 0; i < root.children.length; i++) {
+          const childId = root.children[i];
+          const node = scene.nodes[childId];
+          const w = Math.min(
+            ((node?.layout as Record<string, unknown> | undefined)?.w as
+              | number
+              | undefined) ?? colWidth,
+            12,
+          );
+          const h =
+            ((node?.layout as Record<string, unknown> | undefined)?.h as
+              | number
+              | undefined) ?? 3;
+          const x = (i % cols) * colWidth;
+
+          if (i > 0 && i % cols === 0) {
+            y += h + 1;
+          }
+
           runtimeActions.push({
             type: "update-layout",
             nodeId: childId,
-            layout: { mode: "grid-item" },
+            layout: {
+              mode: "grid-item",
+              x,
+              y,
+              w,
+              h:
+                ((node?.layout as Record<string, unknown> | undefined)?.h as
+                  | number
+                  | undefined) ?? 3,
+            },
           });
         }
       }

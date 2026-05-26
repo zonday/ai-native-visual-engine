@@ -1,19 +1,11 @@
+import { diagnostic } from "../diagnostics.js";
 import type {
   CompilerContext,
   CompilerStage,
   NormalizedSemanticAction,
   SemanticAction,
-  SemanticDiagnostic,
   StageOutcome,
 } from "../types.js";
-
-function diagnostic(
-  code: string,
-  message: string,
-  stage = "normalize",
-): SemanticDiagnostic {
-  return { code, message, severity: "error", stage };
-}
 
 export const normalizeStage: CompilerStage<
   SemanticAction,
@@ -32,6 +24,7 @@ export const normalizeStage: CompilerStage<
           diagnostic(
             "compiler.invalid-action",
             "Action must be a non-null object",
+            "normalize",
           ),
         ],
       };
@@ -46,6 +39,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-title",
                 "create-dashboard requires a title",
+                "normalize",
               ),
             ],
           };
@@ -57,6 +51,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.invalid-widgets",
                 "create-dashboard widgets must be an array",
+                "normalize",
               ),
             ],
           };
@@ -80,6 +75,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-container",
                 "insert-chart requires a containerId",
+                "normalize",
               ),
             ],
           };
@@ -91,6 +87,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-chart-type",
                 "insert-chart requires a chartType",
+                "normalize",
               ),
             ],
           };
@@ -105,6 +102,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.invalid-dimensions",
                 "insert-chart dimensions must be an array",
+                "normalize",
               ),
             ],
           };
@@ -116,6 +114,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.invalid-metrics",
                 "insert-chart metrics must be an array",
+                "normalize",
               ),
             ],
           };
@@ -141,6 +140,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-page-id",
                 "auto-layout requires a pageId",
+                "normalize",
               ),
             ],
           };
@@ -152,6 +152,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-strategy",
                 "auto-layout requires a strategy",
+                "normalize",
               ),
             ],
           };
@@ -174,6 +175,7 @@ export const normalizeStage: CompilerStage<
               diagnostic(
                 "compiler.missing-theme-or-page",
                 "update-theme-intent requires at least one of themeId or pageId",
+                "normalize",
               ),
             ],
           };
@@ -195,6 +197,7 @@ export const normalizeStage: CompilerStage<
             diagnostic(
               "compiler.unsupported-action",
               `Unsupported semantic action type: ${(action as { type: string }).type}`,
+              "normalize",
             ),
           ],
         };

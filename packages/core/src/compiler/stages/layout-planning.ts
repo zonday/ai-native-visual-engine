@@ -4,7 +4,6 @@ import type {
   CompilerStage,
   DashboardWidgetIntent,
   LayoutStrategy,
-  NormalizedInsertChartAction,
   NormalizedSemanticAction,
   StageOutcome,
 } from "../types.js";
@@ -33,6 +32,7 @@ function findFreeSlot(
       }
     }
   }
+  return { x: 0, y: startY };
 }
 
 function isSlotFree(
@@ -90,13 +90,6 @@ function computeAutoLayout(
   return { type: "auto-layout", pageId, strategy };
 }
 
-function planInsertChart(
-  action: NormalizedInsertChartAction,
-  _context: CompilerContext,
-): NormalizedInsertChartAction {
-  return action;
-}
-
 export const layoutPlanningStage: CompilerStage<
   NormalizedSemanticAction,
   NormalizedSemanticAction
@@ -117,8 +110,7 @@ export const layoutPlanningStage: CompilerStage<
       }
 
       case "insert-chart": {
-        const planned = planInsertChart(action, context);
-        return { ok: true, output: planned };
+        return { ok: true, output: action };
       }
 
       case "auto-layout": {
