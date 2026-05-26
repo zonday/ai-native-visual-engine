@@ -2,41 +2,28 @@ import { z } from "zod/v4";
 
 export type DataSourceId = string;
 export type DatasetId = string;
-export type VariableId = string;
 
 export const DataColumnSchema = z.object({
-  name: z.string().min(1),
+  key: z.string().min(1),
   type: z.enum(["string", "number", "boolean", "date"]),
 });
 
 export type DataColumn = z.infer<typeof DataColumnSchema>;
 
-export const DataSourceSchema = z.object({
-  id: z.string().min(1),
-  type: z.string().min(1),
-  config: z.record(z.string(), z.unknown()).optional(),
+export const DatasetSchema = z.object({
+  columns: z.array(DataColumnSchema),
 });
 
-export type DataSource = z.infer<typeof DataSourceSchema>;
+export type DatasetSchema = z.infer<typeof DatasetSchema>;
 
-export const DatasetSchema = z.object({
+export const DatasetEntrySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  sourceId: z.string().min(1),
-  columns: z.array(DataColumnSchema),
+  schema: DatasetSchema,
   rows: z.array(z.record(z.string(), z.unknown())),
 });
 
-export type Dataset = z.infer<typeof DatasetSchema>;
-
-export const VariableSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  defaultValue: z.unknown(),
-  currentValue: z.unknown(),
-});
-
-export type DataRegistryVariable = z.infer<typeof VariableSchema>;
+export type Dataset = z.infer<typeof DatasetEntrySchema>;
 
 export const BindingSchema = z.object({
   key: z.string().min(1),
@@ -45,95 +32,127 @@ export const BindingSchema = z.object({
   transform: z.string().optional(),
 });
 
-export type DataBinding = z.infer<typeof BindingSchema>;
-
-export class BindingError extends Error {
-  readonly code: string;
-  readonly bindingKey: string;
-
-  constructor(code: string, message: string, bindingKey: string) {
-    super(message);
-    this.name = "BindingError";
-    this.code = code;
-    this.bindingKey = bindingKey;
-  }
-}
+export type Binding = z.infer<typeof BindingSchema>;
 
 export interface ResolvedBinding {
-  key: string;
+  binding: Binding;
   value: unknown;
-  source: string;
-  rawValue: unknown;
+  resolvedAt: number;
+  status: "ok" | "error" | "pending";
+  error?: string;
 }
 
-export class DataSourceRegistry {
-  private sources = new Map<DataSourceId, DataSource>();
-  private datasets = new Map<DatasetId, Dataset>();
-  private variables = new Map<VariableId, DataRegistryVariable>();
+export type BindingCallback = (value: unknown) => void;
+export type Unsubscribe = () => void;
 
-  registerSource(source: DataSource): void {
-    this.sources.set(source.id, source);
-  }
+export interface DataSourceRegistry {
+  getDataset(id: string): Promise<Dataset | undefined>;
+  getVariable(id: string): Promise<unknown | undefined>;
+  resolveValue(source: string, path?: string): Promise<unknown>;
+  subscribe(
+    source: string,
+    path: string | undefined,
+    callback: BindingCallback,
+  ): Unsubscribe;
+}
 
-  unregisterSource(sourceId: DataSourceId): boolean {
-    return this.sources.delete(sourceId);
-  }
+export class InMemoryDataSourceRegistry implements DataSourceRegistry {
+  private datasets = new Map<string, Dataset>();
+  private variables = new Map<string, unknown>();
+  private subscribers = new Map<string, Set<BindingCallback>>();
 
   registerDataset(dataset: Dataset): void {
     this.datasets.set(dataset.id, dataset);
   }
 
-  unregisterDataset(datasetId: DatasetId): boolean {
-    return this.datasets.delete(datasetId);
+  registerVariable(id: string, value: unknown): void {
+    this.variables.set(id, value);
+    this.notify(`variable:${id}`, value);
   }
 
-  registerVariable(variable: DataRegistryVariable): void {
-    this.variables.set(variable.id, variable);
+  async getDataset(id: string): Promise<Dataset | undefined> {
+    return this.datasets.get(id);
   }
 
-  unregisterVariable(variableId: VariableId): boolean {
-    return this.variables.delete(variableId);
+  async getVariable(id: string): Promise<unknown | undefined> {
+    return this.variables.get(id);
   }
 
-  getSource(sourceId: DataSourceId): DataSource | undefined {
-    return this.sources.get(sourceId);
+  async resolveValue(source: string, path?: string): Promise<unknown> {
+    if (source.startsWith("dataset:")) {
+      const datasetId = source.slice("dataset:".length);
+      const dataset = this.datasets.get(datasetId);
+      if (!dataset) return undefined;
+      if (!path) return dataset.rows;
+      return this.traversePath(dataset.rows, path);
+    }
+    if (source.startsWith("variable:")) {
+      const varId = source.slice("variable:".length);
+      return this.variables.get(varId);
+    }
+    return undefined;
   }
 
-  getDataset(datasetId: DatasetId): Dataset | undefined {
-    return this.datasets.get(datasetId);
+  subscribe(
+    source: string,
+    _path: string | undefined,
+    callback: BindingCallback,
+  ): Unsubscribe {
+    const key = `${source}:${_path ?? ""}`;
+    let subs = this.subscribers.get(key);
+    if (!subs) {
+      subs = new Set();
+      this.subscribers.set(key, subs);
+    }
+    subs.add(callback);
+    return () => {
+      subs?.delete(callback);
+      if (subs && subs.size === 0) {
+        this.subscribers.delete(key);
+      }
+    };
   }
 
-  getVariable(variableId: VariableId): DataRegistryVariable | undefined {
-    return this.variables.get(variableId);
+  private notify(source: string, value: unknown): void {
+    for (const [key, subs] of this.subscribers) {
+      if (key.startsWith(source)) {
+        for (const cb of subs) {
+          cb(value);
+        }
+      }
+    }
   }
 
-  hasSource(sourceId: DataSourceId): boolean {
-    return this.sources.has(sourceId);
+  updateDatasetValue(
+    datasetId: string,
+    rowIndex: number,
+    column: string,
+    value: unknown,
+  ): void {
+    const dataset = this.datasets.get(datasetId);
+    if (!dataset || !dataset.rows[rowIndex]) return;
+    dataset.rows[rowIndex]![column] = value;
+    this.notify(`dataset:${datasetId}`, dataset.rows);
   }
 
-  hasDataset(datasetId: DatasetId): boolean {
-    return this.datasets.has(datasetId);
-  }
-
-  hasVariable(variableId: VariableId): boolean {
-    return this.variables.has(variableId);
-  }
-
-  listSources(): DataSource[] {
-    return [...this.sources.values()];
-  }
-
-  listDatasets(): Dataset[] {
-    return [...this.datasets.values()];
-  }
-
-  listVariables(): DataRegistryVariable[] {
-    return [...this.variables.values()];
-  }
-
-  clear(): void {
-    this.sources.clear();
-    this.datasets.clear();
-    this.variables.clear();
+  private traversePath(data: unknown, path: string): unknown {
+    const segments = path.split(".");
+    let current: unknown = data;
+    for (const segment of segments) {
+      if (current === null || current === undefined) return undefined;
+      if (
+        typeof current === "object" &&
+        segment in (current as Record<string, unknown>)
+      ) {
+        current = (current as Record<string, unknown>)[segment];
+      } else if (Array.isArray(current)) {
+        const idx = Number(segment);
+        if (!Number.isFinite(idx) || idx < 0) return undefined;
+        current = current[idx];
+      } else {
+        return undefined;
+      }
+    }
+    return current;
   }
 }

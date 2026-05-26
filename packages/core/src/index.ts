@@ -35,6 +35,7 @@ export type {
   StateAPI,
 } from "./component-states.js";
 export { resolveStateProps } from "./component-states.js";
+// ── Data binding ──
 export {
   cleanupBindings,
   clearTransformers,
@@ -42,21 +43,19 @@ export {
   reResolveOnSourceChange,
   resolveBinding,
   resolveBindings,
-  watchBinding,
+  subscribeBinding,
 } from "./data/binding.js";
-// ── Data binding ──
 export {
-  BindingError,
-  type DataBinding,
+  type BindingSchema,
   type DataColumn,
-  type DataRegistryVariable,
-  type DataSource,
   type DataSourceId,
-  DataSourceRegistry,
+  type DataSourceRegistry,
   type Dataset,
+  type DatasetEntrySchema,
   type DatasetId,
+  type DatasetSchema,
+  InMemoryDataSourceRegistry,
   type ResolvedBinding,
-  type VariableId,
 } from "./data/types.js";
 // ── Plugin system ──
 export type {

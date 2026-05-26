@@ -1,244 +1,141 @@
+import type { Binding } from "../types.js";
 import type {
-  DataBinding,
   DataSourceRegistry,
   ResolvedBinding,
+  Unsubscribe,
 } from "./types.js";
-import { BindingError } from "./types.js";
 
-type BindingTransformer = (value: unknown) => unknown;
+const sourceSubscriptions = new WeakMap<ResolvedBinding, Unsubscribe>();
 
-const transformers = new Map<string, BindingTransformer>();
+export async function resolveBinding(
+  binding: Binding,
+  registry: DataSourceRegistry,
+): Promise<ResolvedBinding> {
+  const resolvedAt = Date.now();
+  try {
+    const sourceId = binding.source;
+    if (sourceId.startsWith("dataset:")) {
+      const dataset = await registry.getDataset(
+        sourceId.slice("dataset:".length),
+      );
+      if (!dataset) {
+        return {
+          binding,
+          value: undefined,
+          resolvedAt,
+          status: "error",
+          error: `Dataset "${sourceId}" not found`,
+        };
+      }
+    } else if (sourceId.startsWith("variable:")) {
+      const variable = await registry.getVariable(
+        sourceId.slice("variable:".length),
+      );
+      if (variable === undefined) {
+        return {
+          binding,
+          value: undefined,
+          resolvedAt,
+          status: "error",
+          error: `Variable "${sourceId}" not found`,
+        };
+      }
+    } else {
+      return {
+        binding,
+        value: undefined,
+        resolvedAt,
+        status: "error",
+        error: `Unknown source format: "${sourceId}"`,
+      };
+    }
+    const raw = await registry.resolveValue(binding.source, binding.path);
+    let value = raw;
+    if (binding.transform && raw !== undefined) {
+      value = applyTransform(binding.transform, raw);
+    }
+    return {
+      binding,
+      value,
+      resolvedAt,
+      status: "ok",
+      error: undefined,
+    };
+  } catch (err) {
+    return {
+      binding,
+      value: undefined,
+      resolvedAt,
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+export async function resolveBindings(
+  bindings: Binding[],
+  registry: DataSourceRegistry,
+): Promise<ResolvedBinding[]> {
+  const results: ResolvedBinding[] = [];
+  for (const binding of bindings) {
+    results.push(await resolveBinding(binding, registry));
+  }
+  return results;
+}
+
+export async function reResolveOnSourceChange(
+  previous: ResolvedBinding[],
+  registry: DataSourceRegistry,
+): Promise<ResolvedBinding[]> {
+  const results: ResolvedBinding[] = [];
+  for (const resolved of previous) {
+    results.push(await resolveBinding(resolved.binding, registry));
+  }
+  return results;
+}
+
+export function subscribeBinding(
+  resolved: ResolvedBinding,
+  registry: DataSourceRegistry,
+  onChange: (updated: ResolvedBinding) => void,
+): void {
+  const unsubscribe = registry.subscribe(
+    resolved.binding.source,
+    resolved.binding.path,
+    async () => {
+      const updated = await resolveBinding(resolved.binding, registry);
+      onChange(updated);
+    },
+  );
+  sourceSubscriptions.set(resolved, unsubscribe);
+}
+
+export function cleanupBindings(resolved: ResolvedBinding[]): void {
+  for (const r of resolved) {
+    const unsubscribe = sourceSubscriptions.get(r);
+    if (unsubscribe) {
+      unsubscribe();
+      sourceSubscriptions.delete(r);
+    }
+  }
+}
+
+const transforms: Record<string, (value: unknown) => unknown> = {};
 
 export function registerTransformer(
   name: string,
-  fn: BindingTransformer,
+  fn: (value: unknown) => unknown,
 ): void {
-  transformers.set(name, fn);
+  transforms[name] = fn;
 }
 
 export function clearTransformers(): void {
-  transformers.clear();
-}
-
-type DatasetRow = Record<string, unknown>;
-
-function resolveSourcePath(
-  registry: DataSourceRegistry,
-  source: string,
-  path: string | undefined,
-  bindingKey: string,
-): unknown {
-  const effectiveSource = path ? `${source}.${path}` : source;
-  const parts = effectiveSource.split(".");
-  const rootId = parts[0];
-  if (!rootId) {
-    throw new BindingError(
-      "binding.invalid-source",
-      `Invalid binding source: "${source}" — empty path`,
-      bindingKey,
-    );
-  }
-
-  const dataset: { id: string; rows: DatasetRow[] } | undefined =
-    registry.getDataset(rootId);
-  if (!dataset) {
-    const variable = registry.getVariable(rootId);
-    if (variable) {
-      return variable.currentValue;
-    }
-    throw new BindingError(
-      "binding.source-not-found",
-      `Source "${rootId}" not found in registry`,
-      bindingKey,
-    );
-  }
-
-  if (parts.length === 1) {
-    return dataset.rows;
-  }
-
-  const rowIndexStr = parts[1];
-  if (!rowIndexStr) {
-    throw new BindingError(
-      "binding.invalid-path",
-      `Invalid binding path: "${source}"`,
-      bindingKey,
-    );
-  }
-
-  const rowIndex = Number(rowIndexStr);
-  if (
-    !Number.isFinite(rowIndex) ||
-    rowIndex < 0 ||
-    !Number.isInteger(rowIndex)
-  ) {
-    throw new BindingError(
-      "binding.invalid-row-index",
-      `Invalid row index "${rowIndexStr}" in binding source "${source}"`,
-      bindingKey,
-    );
-  }
-  const row = dataset.rows[rowIndex];
-  if (!row) {
-    throw new BindingError(
-      "binding.row-not-found",
-      `Row index ${rowIndex} not found in dataset "${rootId}"`,
-      bindingKey,
-    );
-  }
-
-  if (parts.length > 3) {
-    throw new BindingError(
-      "binding.invalid-path",
-      `Invalid binding path: "${source}" — path too deep (max depth: dataset.row.column)`,
-      bindingKey,
-    );
-  }
-
-  if (parts.length === 2) {
-    return row;
-  }
-
-  const columnPart = parts[2];
-  if (!columnPart) {
-    throw new BindingError(
-      "binding.invalid-path",
-      `Invalid binding path: "${source}"`,
-      bindingKey,
-    );
-  }
-
-  if (columnPart in row) {
-    return row[columnPart];
-  }
-
-  throw new BindingError(
-    "binding.column-not-found",
-    `Column "${columnPart}" not found in dataset "${rootId}"`,
-    bindingKey,
-  );
-}
-
-export function resolveBinding(
-  binding: DataBinding,
-  registry: DataSourceRegistry,
-): ResolvedBinding {
-  try {
-    const rawValue = resolveSourcePath(
-      registry,
-      binding.source,
-      binding.path,
-      binding.key,
-    );
-    let value = rawValue;
-    if (binding.transform) {
-      const transformer = transformers.get(binding.transform);
-      if (transformer) {
-        value = transformer(rawValue);
-      }
-    }
-    return { key: binding.key, value, source: binding.source, rawValue };
-  } catch (err) {
-    if (err instanceof BindingError) {
-      throw err;
-    }
-    throw new BindingError(
-      "binding.resolve-failed",
-      `Failed to resolve binding "${binding.key}": ${err instanceof Error ? err.message : String(err)}`,
-      binding.key,
-    );
+  for (const key of Object.keys(transforms)) {
+    delete transforms[key];
   }
 }
 
-export function resolveBindings(
-  bindings: DataBinding[],
-  registry: DataSourceRegistry,
-): ResolvedBinding[] {
-  const errors: BindingError[] = [];
-  const resolved: ResolvedBinding[] = [];
-
-  for (const binding of bindings) {
-    try {
-      resolved.push(resolveBinding(binding, registry));
-    } catch (err) {
-      if (err instanceof BindingError) {
-        errors.push(err);
-      } else {
-        errors.push(
-          new BindingError(
-            "binding.resolve-failed",
-            `Failed to resolve binding "${binding.key}": ${err instanceof Error ? err.message : String(err)}`,
-            binding.key,
-          ),
-        );
-      }
-    }
-  }
-
-  if (errors.length > 0) {
-    throw new AggregateError(
-      errors,
-      `Failed to resolve ${errors.length} binding(s)`,
-    );
-  }
-
-  return resolved;
-}
-
-export function reResolveOnSourceChange(
-  previousBindings: DataBinding[],
-  previousResolved: ResolvedBinding[],
-  registry: DataSourceRegistry,
-): ResolvedBinding[] | null {
-  if (previousBindings.length !== previousResolved.length) {
-    return resolveBindings(previousBindings, registry);
-  }
-
-  let changed = false;
-  for (let i = 0; i < previousBindings.length; i++) {
-    const binding = previousBindings[i];
-    const previous = previousResolved[i];
-    if (!binding || !previous) {
-      return resolveBindings(previousBindings, registry);
-    }
-
-    try {
-      const current = resolveSourcePath(
-        registry,
-        binding.source,
-        binding.path,
-        binding.key,
-      );
-      if (JSON.stringify(current) !== JSON.stringify(previous.rawValue)) {
-        changed = true;
-      }
-    } catch {
-      return resolveBindings(previousBindings, registry);
-    }
-  }
-
-  if (!changed) {
-    return null;
-  }
-
-  return resolveBindings(previousBindings, registry);
-}
-
-const watcherMap = new WeakMap<ResolvedBinding, () => void>();
-
-export function cleanupBindings(resolved: ResolvedBinding[]): void {
-  for (const resolvedBinding of resolved) {
-    const watcher = watcherMap.get(resolvedBinding);
-    if (watcher) {
-      watcher();
-      watcherMap.delete(resolvedBinding);
-    }
-  }
-}
-
-export function watchBinding(
-  resolved: ResolvedBinding,
-  onDispose: () => void,
-): void {
-  watcherMap.set(resolved, onDispose);
+function applyTransform(name: string, value: unknown): unknown {
+  const fn = transforms[name];
+  return fn ? fn(value) : value;
 }
