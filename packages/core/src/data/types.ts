@@ -36,11 +36,12 @@ export const VariableSchema = z.object({
   currentValue: z.unknown(),
 });
 
-export type DataVariable = z.infer<typeof VariableSchema>;
+export type DataRegistryVariable = z.infer<typeof VariableSchema>;
 
 export const BindingSchema = z.object({
   key: z.string().min(1),
   source: z.string().min(1),
+  path: z.string().optional(),
   transform: z.string().optional(),
 });
 
@@ -62,12 +63,13 @@ export interface ResolvedBinding {
   key: string;
   value: unknown;
   source: string;
+  rawValue: unknown;
 }
 
 export class DataSourceRegistry {
   private sources = new Map<DataSourceId, DataSource>();
   private datasets = new Map<DatasetId, Dataset>();
-  private variables = new Map<VariableId, DataVariable>();
+  private variables = new Map<VariableId, DataRegistryVariable>();
 
   registerSource(source: DataSource): void {
     this.sources.set(source.id, source);
@@ -85,7 +87,7 @@ export class DataSourceRegistry {
     return this.datasets.delete(datasetId);
   }
 
-  registerVariable(variable: DataVariable): void {
+  registerVariable(variable: DataRegistryVariable): void {
     this.variables.set(variable.id, variable);
   }
 
@@ -101,7 +103,7 @@ export class DataSourceRegistry {
     return this.datasets.get(datasetId);
   }
 
-  getVariable(variableId: VariableId): DataVariable | undefined {
+  getVariable(variableId: VariableId): DataRegistryVariable | undefined {
     return this.variables.get(variableId);
   }
 
@@ -125,7 +127,7 @@ export class DataSourceRegistry {
     return [...this.datasets.values()];
   }
 
-  listVariables(): DataVariable[] {
+  listVariables(): DataRegistryVariable[] {
     return [...this.variables.values()];
   }
 

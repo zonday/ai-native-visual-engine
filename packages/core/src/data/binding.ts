@@ -25,14 +25,17 @@ type DatasetRow = Record<string, unknown>;
 function resolveSourcePath(
   registry: DataSourceRegistry,
   source: string,
+  path: string | undefined,
+  bindingKey: string,
 ): unknown {
-  const parts = source.split(".");
+  const effectiveSource = path ? `${source}.${path}` : source;
+  const parts = effectiveSource.split(".");
   const rootId = parts[0];
   if (!rootId) {
     throw new BindingError(
       "binding.invalid-source",
       `Invalid binding source: "${source}" — empty path`,
-      source,
+      bindingKey,
     );
   }
 
@@ -46,7 +49,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.source-not-found",
       `Source "${rootId}" not found in registry`,
-      source,
+      bindingKey,
     );
   }
 
@@ -59,7 +62,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.invalid-path",
       `Invalid binding path: "${source}"`,
-      source,
+      bindingKey,
     );
   }
 
@@ -72,7 +75,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.invalid-row-index",
       `Invalid row index "${rowIndexStr}" in binding source "${source}"`,
-      source,
+      bindingKey,
     );
   }
   const row = dataset.rows[rowIndex];
@@ -80,7 +83,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.row-not-found",
       `Row index ${rowIndex} not found in dataset "${rootId}"`,
-      source,
+      bindingKey,
     );
   }
 
@@ -88,7 +91,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.invalid-path",
       `Invalid binding path: "${source}" — path too deep (max depth: dataset.row.column)`,
-      source,
+      bindingKey,
     );
   }
 
@@ -101,7 +104,7 @@ function resolveSourcePath(
     throw new BindingError(
       "binding.invalid-path",
       `Invalid binding path: "${source}"`,
-      source,
+      bindingKey,
     );
   }
 
@@ -112,7 +115,7 @@ function resolveSourcePath(
   throw new BindingError(
     "binding.column-not-found",
     `Column "${columnPart}" not found in dataset "${rootId}"`,
-    source,
+    bindingKey,
   );
 }
 
@@ -121,7 +124,12 @@ export function resolveBinding(
   registry: DataSourceRegistry,
 ): ResolvedBinding {
   try {
-    const rawValue = resolveSourcePath(registry, binding.source);
+    const rawValue = resolveSourcePath(
+      registry,
+      binding.source,
+      binding.path,
+      binding.key,
+    );
     let value = rawValue;
     if (binding.transform) {
       const transformer = transformers.get(binding.transform);
@@ -129,7 +137,7 @@ export function resolveBinding(
         value = transformer(rawValue);
       }
     }
-    return { key: binding.key, value, source: binding.source };
+    return { key: binding.key, value, source: binding.source, rawValue };
   } catch (err) {
     if (err instanceof BindingError) {
       throw err;
@@ -195,8 +203,13 @@ export function reResolveOnSourceChange(
     }
 
     try {
-      const current = resolveSourcePath(registry, binding.source);
-      if (JSON.stringify(current) !== JSON.stringify(previous.value)) {
+      const current = resolveSourcePath(
+        registry,
+        binding.source,
+        binding.path,
+        binding.key,
+      );
+      if (JSON.stringify(current) !== JSON.stringify(previous.rawValue)) {
         changed = true;
       }
     } catch {

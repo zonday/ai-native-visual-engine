@@ -5,7 +5,7 @@ import {
   type DataBinding,
   type DataSource,
   type Dataset,
-  type DataVariable,
+  type DataRegistryVariable,
 } from "../src/data/types.js";
 import {
   resolveBindings,
@@ -43,7 +43,7 @@ function makeDataset(overrides?: Partial<Dataset>): Dataset {
   };
 }
 
-function makeVariable(overrides?: Partial<DataVariable>): DataVariable {
+function makeVariable(overrides?: Partial<DataRegistryVariable>): DataRegistryVariable {
   return {
     id: "var-1",
     name: "Threshold",
@@ -179,6 +179,15 @@ describe("resolveBinding", () => {
     registry.registerDataset(makeDataset());
     const result = resolveBinding(
       { key: "revenue", source: "dataset-1.0.revenue" },
+      registry,
+    );
+    expect(result.value).toBe(100);
+  });
+
+  it("resolves using separate path field", () => {
+    registry.registerDataset(makeDataset());
+    const result = resolveBinding(
+      { key: "revenue", source: "dataset-1", path: "0.revenue" },
       registry,
     );
     expect(result.value).toBe(100);

@@ -49,12 +49,12 @@ export {
   BindingError,
   type DataBinding,
   type DataColumn,
+  type DataRegistryVariable,
   type DataSource,
   type DataSourceId,
   DataSourceRegistry,
   type Dataset,
   type DatasetId,
-  type DataVariable,
   type ResolvedBinding,
   type VariableId,
 } from "./data/types.js";
