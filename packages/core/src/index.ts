@@ -8,6 +8,7 @@ export {
 // ── Compiler ──
 export { compileSemanticAction } from "./compiler/pipeline.js";
 export type { CompileResult, SemanticAction, SemanticDiagnostic } from "./compiler/types.js";
+export type { AiSchemaIndexSnapshot } from "./compiler/schema-index.js";
 export { SemanticActionSchema } from "./compiler/types.js";
 export {
   AutoLayoutActionSchema,
