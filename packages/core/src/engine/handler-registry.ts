@@ -29,6 +29,8 @@ export function computeInverseAction<TState, TAction extends { type: string }>(
 ): TAction | undefined {
   const computer = registry.get(action.type);
   if (!computer) return undefined;
+  // Registry stores InverseComputer<unknown, TAction, ...> for heterogeneous
+  // storage; the cast assumes the caller provided the correct state type.
   return computer(stateBefore, action, context) as TAction | undefined;
 }
 

@@ -21,9 +21,7 @@ export const actionExpansionStage = createStage<
     action,
     _context: CompilerContext,
   ): StageOutcome<ExecutionPlan> => {
-    return expandCreateDashboard(
-      action as NormalizedCreateDashboardAction,
-    );
+    return expandCreateDashboard(action as NormalizedCreateDashboardAction);
   },
 
   "insert-chart": (
@@ -44,9 +42,7 @@ export const actionExpansionStage = createStage<
     action,
     _context: CompilerContext,
   ): StageOutcome<ExecutionPlan> => {
-    return expandUpdateThemeIntent(
-      action as NormalizedUpdateThemeIntentAction,
-    );
+    return expandUpdateThemeIntent(action as NormalizedUpdateThemeIntentAction);
   },
 });
 
@@ -114,7 +110,11 @@ function expandAutoLayout(
   const documentActions: DocumentAction[] = [];
   const runtimeActions: RuntimeAction[] = [];
 
-  if (context.scene) {
+  if (
+    context.scene &&
+    typeof context.scene === "object" &&
+    "nodes" in context.scene
+  ) {
     const scene = context.scene as {
       nodes?: Record<
         string,

@@ -34,7 +34,7 @@ export function unsupportedAction(
   actionType: string,
 ): SemanticDiagnostic {
   return {
-    code: "compiler.unsupported-action",
+    code: `compiler.${stageName}.unsupported-action`,
     message: `Unsupported action type: ${actionType}`,
     severity: "error",
     stage: stageName,

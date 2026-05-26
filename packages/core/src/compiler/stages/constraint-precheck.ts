@@ -17,11 +17,15 @@ type SceneNode = {
 
 function collectAllNodeIds(context: CompilerContext): Set<string> {
   const ids = new Set<string>();
-  const scene = context.scene as
-    | { nodes?: Record<string, SceneNode> }
-    | undefined;
-  if (scene?.nodes) {
-    for (const id of Object.keys(scene.nodes)) {
+  const scene = context.scene;
+  if (
+    scene &&
+    typeof scene === "object" &&
+    "nodes" in scene &&
+    typeof scene.nodes === "object" &&
+    scene.nodes !== null
+  ) {
+    for (const id of Object.keys(scene.nodes as Record<string, unknown>)) {
       ids.add(id);
     }
   }
