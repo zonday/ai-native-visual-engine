@@ -21,3 +21,25 @@ export function appendEvent<TInitialState, TAction>(
 ): EventLog<TInitialState, TAction> {
   return { ...log, actions: [...log.actions, entry] };
 }
+
+export function replayEvents<
+  TState,
+  TAction extends { type: string },
+>(
+  log: EventLog<TState, TAction>,
+  dispatch: (action: TAction) => {
+    ok: boolean;
+    error?: { message?: string };
+  },
+  skipActionTypes?: string[],
+): void {
+  for (const entry of log.actions) {
+    if (skipActionTypes?.includes(entry.action.type)) continue;
+    const result = dispatch(entry.action);
+    if (!result.ok) {
+      throw new Error(
+        `Replay failed at action ${entry.action.type}: ${result.error?.message}`,
+      );
+    }
+  }
+}

@@ -4,7 +4,7 @@ import type { DocumentHistoryState } from "../src/document/history.js";
 import {
   createDefaultDocumentRegistries,
 } from "../src/document/inverse.js";
-import { createUndoHistoryMiddleware } from "../src/document/history-middleware.js";
+import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {

@@ -1,3 +1,4 @@
+import { expect } from "vitest";
 import type {
   SceneGraph,
   SceneNode,
@@ -18,12 +19,6 @@ export const makeScene = (
   rootId,
   nodes,
 });
-
-export const rootNode: SceneNode = {
-  id: "root",
-  type: "container",
-  children: [],
-};
 
 export const emptyScene: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: [] },
@@ -46,4 +41,17 @@ export function makeDoc(
   overrides?: Partial<VisualDocument>,
 ): VisualDocument {
   return { id: "doc-1", title: "Test", pages: [], scenes: {}, ...overrides };
+}
+
+export function expectThrowsWithCode(
+  fn: () => void,
+  expectedCode: string,
+): void {
+  try {
+    fn();
+  } catch (e) {
+    expect((e as { code?: string }).code).toBe(expectedCode);
+    return;
+  }
+  throw new Error("Expected function to throw, but it did not");
 }

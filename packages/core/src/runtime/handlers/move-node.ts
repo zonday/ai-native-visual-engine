@@ -1,9 +1,9 @@
 import type { SceneNode } from "../../types.js";
 import type { MoveNodeAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 function isDescendantOf(
   nodeId: string,
@@ -31,29 +31,29 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
 
   const newParent = scene.nodes[action.parentId];
   if (!newParent) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.invalid-parent",
       `New parent "${action.parentId}" not found`,
       "move-node",
-      action.parentId,
+      { nodeId: action.parentId },
     );
   }
 
   if (action.nodeId === action.parentId) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.cycle-detected",
       "Cannot move a node into itself",
       "move-node",
-      action.nodeId,
+      { nodeId: action.nodeId },
     );
   }
 
   if (isDescendantOf(action.parentId, action.nodeId, scene.nodes)) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.cycle-detected",
       `Moving "${action.nodeId}" into "${action.parentId}" would create a cycle`,
       "move-node",
-      action.nodeId,
+      { nodeId: action.nodeId },
     );
   }
 

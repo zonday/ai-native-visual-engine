@@ -25,7 +25,8 @@ function makeDispatch(initialScene: SceneGraph) {
       return { ok: false, scene: currentScene, error: { code: "scene.unknown-action-type", message: "Unknown", actionType: action.type } };
     } catch (e) {
       if (e instanceof RuntimeHandlerError) {
-        return { ok: false, scene: currentScene, error: { code: e.code, message: e.message, actionType: action.type, nodeId: e.nodeId } };
+        const rawNodeId = e.context.nodeId;
+        return { ok: false, scene: currentScene, error: { code: e.code, message: e.message, actionType: action.type, nodeId: typeof rawNodeId === "string" ? rawNodeId : undefined } };
       }
       return { ok: false, scene: currentScene, error: { code: "scene.handler-error", message: (e as Error).message, actionType: action.type } };
     }

@@ -2,9 +2,9 @@ import type { VisualDocument } from "../../types.js";
 import type { BatchDocumentActions, DocumentAction } from "../actions.js";
 import { DocumentActionSchema } from "../actions.js";
 import type { DocumentDispatchResult } from "../command-bus.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler, DocumentRuntimeContext } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 function flattenBatchActions(actions: DocumentAction[]): DocumentAction[] {
   const flat: DocumentAction[] = [];
@@ -31,7 +31,7 @@ export function createBatchHandler(
       // Validate each child action before dispatch
       const parsed = DocumentActionSchema.safeParse(child);
       if (!parsed.success) {
-        throw new DocumentHandlerError(
+        throw new HandlerError(
           "document.batch-invalid-child-action",
           `Child action validation failed: ${parsed.error.message}`,
           "batch-document-actions",

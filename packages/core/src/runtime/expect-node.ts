@@ -1,5 +1,5 @@
+import { HandlerError } from "../engine/error.js";
 import type { SceneGraph, SceneNode } from "../types.js";
-import { RuntimeHandlerError } from "./error.js";
 
 export function expectNode(
   scene: SceneGraph,
@@ -8,11 +8,11 @@ export function expectNode(
 ): SceneNode {
   const node = scene.nodes[nodeId];
   if (!node) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.node-not-found",
       `Node not found for action: ${actionType}`,
       actionType,
-      nodeId,
+      { nodeId },
     );
   }
   return node;

@@ -1,7 +1,6 @@
-import { unsupportedAction } from "../diagnostics.js";
+import { createStage } from "../diagnostics.js";
 import type {
   CompilerContext,
-  CompilerStage,
   DashboardWidgetIntent,
   LayoutStrategy,
   NormalizedSemanticAction,
@@ -121,52 +120,53 @@ function computeAutoLayout(
   return { type: "auto-layout", pageId, strategy };
 }
 
-export const layoutPlanningStage: CompilerStage<
+export const layoutPlanningStage = createStage<
   NormalizedSemanticAction,
   NormalizedSemanticAction
-> = {
-  name: "layout-planning",
-
-  run(
-    action: NormalizedSemanticAction,
-    context: CompilerContext,
-  ): StageOutcome<NormalizedSemanticAction> {
-    switch (action.type) {
-      case "create-dashboard": {
-        const { resolved, diagnostics } = resolveCollisions(action.widgets);
-        if (diagnostics.length > 0) {
-          return { ok: false, diagnostics };
-        }
-        return {
-          ok: true,
-          output: { ...action, widgets: resolved },
-        };
-      }
-
-      case "insert-chart": {
-        return { ok: true, output: action };
-      }
-
-      case "auto-layout": {
-        const expanded = computeAutoLayout(
-          action.pageId,
-          action.strategy,
-          context,
-        );
-        return { ok: true, output: expanded };
-      }
-
-      case "update-theme-intent": {
-        return { ok: true, output: action };
-      }
-
-      default: {
-        const unsupported = action as { type: string };
-        return {
-          ok: false,
-          diagnostics: [unsupportedAction("layout-planning", unsupported.type)],
-        };
-      }
+>("layout-planning", {
+  "create-dashboard": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => {
+    const a = action as Extract<
+      NormalizedSemanticAction,
+      { type: "create-dashboard" }
+    >;
+    const { resolved, diagnostics } = resolveCollisions(a.widgets);
+    if (diagnostics.length > 0) {
+      return { ok: false, diagnostics };
     }
+    return {
+      ok: true,
+      output: { ...a, widgets: resolved },
+    };
   },
-};
+
+  "insert-chart": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+
+  "auto-layout": (
+    action,
+    context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => {
+    const a = action as Extract<
+      NormalizedSemanticAction,
+      { type: "auto-layout" }
+    >;
+    const expanded = computeAutoLayout(a.pageId, a.strategy, context);
+    return { ok: true, output: expanded };
+  },
+
+  "update-theme-intent": (
+    action,
+    _context: CompilerContext,
+  ): StageOutcome<NormalizedSemanticAction> => ({
+    ok: true,
+    output: action,
+  }),
+});

@@ -62,7 +62,7 @@ describe("createNodeHandler", () => {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
       expect((e as RuntimeHandlerError).code).toBe("scene.invalid-parent");
-      expect((e as RuntimeHandlerError).nodeId).toBe("missing-parent");
+      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing-parent");
     }
   });
 
@@ -79,7 +79,7 @@ describe("createNodeHandler", () => {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
       expect((e as RuntimeHandlerError).code).toBe("scene.duplicate-node-id");
-      expect((e as RuntimeHandlerError).nodeId).toBe("root");
+      expect((e as RuntimeHandlerError).context.nodeId).toBe("root");
     }
   });
 });

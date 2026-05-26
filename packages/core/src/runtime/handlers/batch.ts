@@ -2,9 +2,9 @@ import type { SceneGraph } from "../../types.js";
 import type { BatchActions, RuntimeAction } from "../actions.js";
 import { RuntimeActionSchema } from "../actions.js";
 import type { DispatchResult } from "../command-bus.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { RuntimeContext, RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 function flattenBatchActions(actions: RuntimeAction[]): RuntimeAction[] {
   const flat: RuntimeAction[] = [];
@@ -29,7 +29,7 @@ export function createBatchHandler(
     for (const child of flat) {
       const parsed = RuntimeActionSchema.safeParse(child);
       if (!parsed.success) {
-        throw new RuntimeHandlerError(
+        throw new HandlerError(
           "scene.batch-item-failed",
           `Child action validation failed: ${parsed.error.message}`,
           "batch-actions",

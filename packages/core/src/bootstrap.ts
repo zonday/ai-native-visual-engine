@@ -7,9 +7,9 @@ import type {
   VisualDocument,
 } from "./types.js";
 
-export function generateId(prefix: string): string {
+export function generateId(prefix = ""): string {
   const uuid = crypto.randomUUID();
-  return `${prefix}-${uuid}`;
+  return prefix ? `${prefix}-${uuid}` : uuid;
 }
 
 export function createEmptyScene(rootId?: string): PersistedSceneGraph {

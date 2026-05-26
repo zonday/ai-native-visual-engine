@@ -1,7 +1,7 @@
 import type { RenamePageAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const renamePageHandler: DocumentHandler<RenamePageAction> = (
   document,
@@ -10,11 +10,11 @@ export const renamePageHandler: DocumentHandler<RenamePageAction> = (
 ) => {
   const exists = document.pages.some((p) => p.id === action.pageId);
   if (!exists)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.page-not-found",
       `Page "${action.pageId}" not found`,
       "rename-page",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const pages = document.pages.map((p) =>

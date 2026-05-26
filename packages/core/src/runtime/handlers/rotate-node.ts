@@ -1,8 +1,8 @@
 import type { RotateNodeAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 function normalizeRotation(degrees: number): number {
   const normalized = ((degrees % 360) + 360) % 360;
@@ -18,22 +18,22 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
 
   const layout = node.layout as Record<string, unknown> | undefined;
   if (!layout || layout.mode !== "absolute") {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.invalid-layout-for-rotation",
       `Node "${action.nodeId}" does not use absolute layout`,
       "rotate-node",
-      action.nodeId,
+      { nodeId: action.nodeId },
     );
   }
 
   if (ctx.registry) {
     const caps = ctx.registry.getCapabilities(node.type);
     if (caps && caps.allowsRotation === false) {
-      throw new RuntimeHandlerError(
+      throw new HandlerError(
         "scene.rotate-not-allowed",
         `Plugin for type "${node.type}" does not allow rotation`,
         "rotate-node",
-        action.nodeId,
+        { nodeId: action.nodeId },
       );
     }
   }

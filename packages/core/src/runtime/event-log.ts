@@ -1,12 +1,10 @@
 import type { PersistedSceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
+import type { EventLogEntry } from "../engine/event-log.js";
+import { replayEvents } from "../engine/event-log.js";
 
-export interface RuntimeEventLogEntry {
-  action: RuntimeAction;
-  actorId?: string;
-  timestamp: number;
-}
+export type RuntimeEventLogEntry = EventLogEntry<RuntimeAction>;
 
 export interface RuntimeEventLog {
   initialScene: PersistedSceneGraph;
@@ -30,13 +28,5 @@ export function replayRuntimeEvents(
   log: RuntimeEventLog,
   dispatch: (action: RuntimeAction) => DispatchResult,
 ): void {
-  for (const entry of log.actions) {
-    if (entry.action.type === "update-selection") continue;
-    const result = dispatch(entry.action);
-    if (!result.ok) {
-      throw new Error(
-        `Replay failed at action ${entry.action.type}: ${result.error?.message}`,
-      );
-    }
-  }
+  replayEvents(log, dispatch, ["update-selection"]);
 }

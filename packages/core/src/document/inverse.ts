@@ -30,14 +30,18 @@ import {
   updatePageRouteHandler,
   updatePageRouteInverse,
 } from "./handlers/update-page-route.js";
-import type { InverseComputer, InverseRegistry } from "./inverse-registry.js";
-import { createInverseRegistry } from "./inverse-registry.js";
+import type { InverseComputer, InverseRegistry } from "./handler-registry.js";
+import { buildRegistriesFromEntries } from "../engine/handler-registry.js";
+import {
+  computeInverseAction,
+  createInverseRegistry,
+} from "./handler-registry.js";
 
-export type { InverseComputer, InverseRegistry } from "./inverse-registry.js";
+export type { InverseComputer, InverseRegistry } from "./handler-registry.js";
 export {
   computeInverseAction,
   createInverseRegistry,
-} from "./inverse-registry.js";
+} from "./handler-registry.js";
 
 export function createDefaultDocumentRegistries(
   batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
@@ -111,11 +115,10 @@ export function createDefaultDocumentRegistries(
     ],
   ];
 
-  const handlerRegistry = new Map<string, DocumentHandlerEntry>(entries);
-
-  const inverseRegistry = createInverseRegistry(
-    Object.fromEntries(entries.map(([key, entry]) => [key, entry.inverse])),
-  );
-
-  return { handlerRegistry, inverseRegistry };
+  const { handlerRegistry, inverseRegistry } =
+    buildRegistriesFromEntries(entries);
+  return {
+    handlerRegistry: handlerRegistry as Map<string, DocumentHandlerEntry>,
+    inverseRegistry: inverseRegistry as InverseRegistry,
+  };
 }

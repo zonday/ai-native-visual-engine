@@ -1,7 +1,6 @@
-import { createDiagnosticFactory } from "../diagnostics.js";
+import { createDiagnosticFactory, createStage } from "../diagnostics.js";
 import type {
   CompilerContext,
-  CompilerStage,
   NormalizedSemanticAction,
   SemanticAction,
   StageOutcome,
@@ -9,87 +8,82 @@ import type {
 
 const diag = createDiagnosticFactory("normalize");
 
-export const normalizeStage: CompilerStage<
-  SemanticAction,
-  NormalizedSemanticAction
-> = {
-  name: "normalize",
+export const normalizeStage = createStage<SemanticAction, NormalizedSemanticAction>(
+  "normalize",
+  {
+    "create-dashboard": (
+      action,
+      _context: CompilerContext,
+    ): StageOutcome<NormalizedSemanticAction> => {
+      const a = action as Extract<SemanticAction, { type: "create-dashboard" }>;
+      return {
+        ok: true,
+        output: {
+          type: "create-dashboard",
+          title: a.title,
+          layout: a.layout ?? "balanced",
+          widgets: a.widgets ?? [],
+        },
+      };
+    },
 
-  run(
-    action: SemanticAction,
-    _context: CompilerContext,
-  ): StageOutcome<NormalizedSemanticAction> {
-    switch (action.type) {
-      case "create-dashboard": {
-        return {
-          ok: true,
-          output: {
-            type: "create-dashboard",
-            title: action.title,
-            layout: action.layout ?? "balanced",
-            widgets: action.widgets ?? [],
-          },
-        };
-      }
+    "insert-chart": (
+      action,
+      _context: CompilerContext,
+    ): StageOutcome<NormalizedSemanticAction> => {
+      const a = action as Extract<SemanticAction, { type: "insert-chart" }>;
+      return {
+        ok: true,
+        output: {
+          type: "insert-chart",
+          containerId: a.containerId,
+          chartType: a.chartType,
+          dataSource: a.dataSource,
+          dimensions: a.dimensions ?? [],
+          metrics: a.metrics ?? [],
+        },
+      };
+    },
 
-      case "insert-chart": {
-        return {
-          ok: true,
-          output: {
-            type: "insert-chart",
-            containerId: action.containerId,
-            chartType: action.chartType,
-            dataSource: action.dataSource,
-            dimensions: action.dimensions ?? [],
-            metrics: action.metrics ?? [],
-          },
-        };
-      }
+    "auto-layout": (
+      action,
+      _context: CompilerContext,
+    ): StageOutcome<NormalizedSemanticAction> => {
+      const a = action as Extract<SemanticAction, { type: "auto-layout" }>;
+      return {
+        ok: true,
+        output: {
+          type: "auto-layout",
+          pageId: a.pageId,
+          strategy: a.strategy,
+        },
+      };
+    },
 
-      case "auto-layout": {
-        return {
-          ok: true,
-          output: {
-            type: "auto-layout",
-            pageId: action.pageId,
-            strategy: action.strategy,
-          },
-        };
-      }
-
-      case "update-theme-intent": {
-        if (!action.themeId && !action.pageId) {
-          return {
-            ok: false,
-            diagnostics: [
-              diag(
-                "compiler.missing-theme-or-page",
-                "update-theme-intent requires at least one of themeId or pageId",
-              ),
-            ],
-          };
-        }
-        return {
-          ok: true,
-          output: {
-            type: "update-theme-intent",
-            themeId: action.themeId,
-            pageId: action.pageId,
-          },
-        };
-      }
-
-      default: {
+    "update-theme-intent": (
+      action,
+      _context: CompilerContext,
+    ): StageOutcome<NormalizedSemanticAction> => {
+      const a = action as Extract<SemanticAction, { type: "update-theme-intent" }>;
+      if (!a.themeId && !a.pageId) {
         return {
           ok: false,
           diagnostics: [
             diag(
-              "compiler.unsupported-action",
-              `Unsupported semantic action type: ${(action as { type: string }).type}`,
+              "compiler.missing-theme-or-page",
+              "update-theme-intent requires at least one of themeId or pageId",
             ),
           ],
         };
       }
-    }
+      return {
+        ok: true,
+        output: {
+          type: "update-theme-intent",
+          themeId: a.themeId,
+          pageId: a.pageId,
+        },
+      };
+    },
   },
-};
+);

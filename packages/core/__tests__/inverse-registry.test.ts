@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInverseRegistry, computeInverseAction } from "../src/document/inverse-registry.js";
+import { createInverseRegistry, computeInverseAction } from "../src/document/handler-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import { emptyDoc } from "./helpers.js";

@@ -1,7 +1,7 @@
 import type { UpdateSelectionAction } from "../actions.js";
-import { RuntimeHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   scene,
@@ -10,7 +10,7 @@ export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
 ) => {
   const uniqueIds = new Set(action.nodeIds);
   if (uniqueIds.size !== action.nodeIds.length) {
-    throw new RuntimeHandlerError(
+    throw new HandlerError(
       "scene.duplicate-selection",
       "Selection nodeIds must not contain duplicates",
       "update-selection",
@@ -19,11 +19,11 @@ export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
 
   for (const nodeId of action.nodeIds) {
     if (!scene.nodes[nodeId]) {
-      throw new RuntimeHandlerError(
+      throw new HandlerError(
         "scene.node-not-found",
         `Node "${nodeId}" not found in scene`,
         "update-selection",
-        nodeId,
+        { nodeId },
       );
     }
   }

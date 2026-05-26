@@ -1,7 +1,6 @@
 import type {
   HandlerEntry,
   HandlerRegistry,
-  InverseComputer,
 } from "../engine/handler-registry.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
@@ -19,4 +18,32 @@ export type DocumentHandlerRegistry = HandlerRegistry<
   DocumentRuntimeContext
 >;
 
-export type { InverseComputer };
+// Return type is the wider DocumentAction (not TAction) because inverse
+// computers often produce a different action type than they consume
+// (e.g., create-page inverse returns remove-page).
+export type InverseComputer<
+  TAction extends DocumentAction = DocumentAction,
+> = (
+  documentBefore: VisualDocument,
+  action: TAction,
+  context: DocumentRuntimeContext,
+) => DocumentAction | undefined;
+
+export type InverseRegistry = Map<string, InverseComputer>;
+
+export function createInverseRegistry(
+  computers: Record<string, InverseComputer>,
+): InverseRegistry {
+  return new Map(Object.entries(computers));
+}
+
+export function computeInverseAction(
+  registry: InverseRegistry,
+  documentBefore: VisualDocument,
+  action: DocumentAction,
+  context: DocumentRuntimeContext,
+): DocumentAction | undefined {
+  const computer = registry.get(action.type);
+  if (!computer) return undefined;
+  return computer(documentBefore, action, context);
+}

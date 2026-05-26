@@ -1,7 +1,7 @@
 import type { SetDocumentThemeAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const setDocumentThemeHandler: DocumentHandler<
   SetDocumentThemeAction
@@ -9,7 +9,7 @@ export const setDocumentThemeHandler: DocumentHandler<
   if (action.themeId !== undefined && document.themes) {
     const found = document.themes.some((t) => t.id === action.themeId);
     if (!found)
-      throw new DocumentHandlerError(
+      throw new HandlerError(
         "document.theme-not-found",
         `Theme "${action.themeId}" not found in document themes`,
         "set-document-theme",

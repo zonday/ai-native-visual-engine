@@ -1,7 +1,7 @@
 import type { ReorderPageAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   document,
@@ -10,19 +10,19 @@ export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
 ) => {
   const idx = document.pages.findIndex((p) => p.id === action.pageId);
   if (idx === -1)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.page-not-found",
       `Page "${action.pageId}" not found`,
       "reorder-page",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   if (action.index < 0 || action.index >= document.pages.length)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.index-out-of-bounds",
       `Index ${action.index} is out of bounds for ${document.pages.length} pages`,
       "reorder-page",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const pages = [...document.pages];

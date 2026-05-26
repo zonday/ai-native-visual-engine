@@ -8,7 +8,7 @@ import {
   createDefaultDocumentRegistries,
 } from "../src/document/inverse.js";
 import { DocumentHandlerError } from "../src/document/error.js";
-import { computeInverseAction } from "../src/document/inverse-registry.js";
+import { computeInverseAction } from "../src/document/handler-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
 import { emptyPersistedScene, emptyDoc } from "./helpers.js";
 

@@ -1,7 +1,7 @@
 import type { RemovePageAction } from "../actions.js";
-import { DocumentHandlerError } from "../error.js";
+import { HandlerError } from "../../engine/error.js";
 import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../inverse-registry.js";
+import type { InverseComputer } from "../handler-registry.js";
 
 export const removePageHandler: DocumentHandler<RemovePageAction> = (
   document,
@@ -10,11 +10,11 @@ export const removePageHandler: DocumentHandler<RemovePageAction> = (
 ) => {
   const page = document.pages.find((p) => p.id === action.pageId);
   if (!page)
-    throw new DocumentHandlerError(
+    throw new HandlerError(
       "document.page-not-found",
       `Page "${action.pageId}" not found`,
       "remove-page",
-      action.pageId,
+      { pageId: action.pageId },
     );
 
   const pages = document.pages.filter((p) => p.id !== action.pageId);

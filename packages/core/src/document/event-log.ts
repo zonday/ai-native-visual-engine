@@ -1,11 +1,8 @@
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
+import type { EventLogEntry } from "../engine/event-log.js";
 
-export interface DocumentEventLogEntry {
-  action: DocumentAction;
-  actorId?: string;
-  timestamp: number;
-}
+export type DocumentEventLogEntry = EventLogEntry<DocumentAction>;
 
 export interface DocumentEventLog {
   initialDocument: VisualDocument;
