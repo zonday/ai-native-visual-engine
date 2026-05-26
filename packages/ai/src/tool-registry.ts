@@ -1,132 +1,69 @@
-import { SemanticActionSchema } from "@ai-native/core";
+import { tool } from "ai";
+import type { CompileResult, SemanticAction } from "@ai-native/core";
+import { compileSemanticAction } from "@ai-native/core";
+import {
+  CreateDashboardActionSchema,
+  InsertChartActionSchema,
+  AutoLayoutActionSchema,
+  UpdateThemeIntentActionSchema,
+} from "@ai-native/core";
 import { z as zodImpl } from "zod/v4";
 
-export interface ToolDefinition {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
+export { type Tool } from "ai";
+
+function createActionTool(
+  name: string,
+  description: string,
+  schema: zodImpl.ZodObject<Record<string, zodImpl.ZodType>>,
+) {
+  const inputSchema = schema.omit({ type: true }) as zodImpl.ZodObject<
+    Record<string, zodImpl.ZodType>
+  >;
+
+  return tool({
+    description,
+    inputSchema,
+    execute: async (
+      args,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _options,
+    ) => {
+      const action = { type: name, ...args };
+      const result = compileSemanticAction(
+        action as unknown as SemanticAction,
+      );
+      return result as unknown as CompileResult;
+    },
+  });
 }
 
-export interface ToolRegistry {
-  getDefinitions(): ToolDefinition[];
-  getActionType(toolName: string): string | undefined;
-}
+export const createDashboardTool = createActionTool(
+  "create-dashboard",
+  "Create a new dashboard page with specified title, layout strategy, and widgets. Use when the user asks to build or create a dashboard, add charts, or set up visual components.",
+  CreateDashboardActionSchema,
+);
 
-const TOOL_MAP: Record<string, { description: string }> = {
-  "create-dashboard": {
-    description:
-      "Create a new dashboard page with specified title, layout strategy, and widgets. Use when user asks to build a dashboard or add visual components.",
-  },
-  "insert-chart": {
-    description:
-      "Insert a chart component into an existing container. Specify chart type, data source, dimensions, and metrics.",
-  },
-  "auto-layout": {
-    description:
-      "Automatically arrange child elements within a page using a layout strategy (compact, balanced, or presentation).",
-  },
-  "update-theme-intent": {
-    description:
-      "Update the theme for a document or specific page. Specify themeId for document-level or pageId for page-level changes.",
-  },
+export const insertChartTool = createActionTool(
+  "insert-chart",
+  "Insert a chart component into an existing container on a page. Specify the container ID, chart type, data source, dimensions, and metrics. Use when adding visualizations to an existing dashboard.",
+  InsertChartActionSchema,
+);
+
+export const autoLayoutTool = createActionTool(
+  "auto-layout",
+  "Automatically arrange child elements within a page using a layout strategy. Supports compact (dense packing), balanced (equal column distribution), or presentation (centered) layouts.",
+  AutoLayoutActionSchema,
+);
+
+export const updateThemeIntentTool = createActionTool(
+  "update-theme-intent",
+  "Update the theme for a document or specific page. Specify themeId for document-level theme changes or pageId for page-level theme overrides. At least one of themeId or pageId is required.",
+  UpdateThemeIntentActionSchema,
+);
+
+export const ALL_TOOLS: Record<string, ReturnType<typeof createActionTool>> = {
+  "create-dashboard": createDashboardTool,
+  "insert-chart": insertChartTool,
+  "auto-layout": autoLayoutTool,
+  "update-theme-intent": updateThemeIntentTool,
 };
-
-export function createToolRegistry(): ToolRegistry {
-  const definitions: ToolDefinition[] = [];
-  const actionTypeMap = new Map<string, string>();
-
-  const toolSchemas = SemanticActionSchema.options as zodImpl.ZodType[];
-  for (const schema of toolSchemas) {
-    const parsed = schema.safeParse({ type: "" });
-    if (!parsed.success) {
-      const shape = (
-        schema as zodImpl.ZodObject<Record<string, zodImpl.ZodType>>
-      ).shape;
-      if (shape && "type" in shape) {
-        const typeSchema = shape.type as zodImpl.ZodLiteral<string>;
-        const typeValue = typeSchema.value;
-        const toolName = typeValue;
-        const jsonSchema = zodToJsonSchema(schema, typeValue);
-        const meta = TOOL_MAP[toolName] ?? {
-          description: `${toolName} action`,
-        };
-
-        definitions.push({
-          type: "function" as const,
-          function: {
-            name: toolName,
-            description: meta.description,
-            parameters: jsonSchema,
-          },
-        });
-        actionTypeMap.set(toolName, typeValue);
-      }
-    }
-  }
-
-  return {
-    getDefinitions(): ToolDefinition[] {
-      return definitions;
-    },
-    getActionType(toolName: string): string | undefined {
-      return actionTypeMap.get(toolName);
-    },
-  };
-}
-
-function zodToJsonSchema(
-  schema: zodImpl.ZodType,
-  _typeName: string,
-): Record<string, unknown> {
-  const shape: Record<string, unknown> = {
-    type: "object",
-    properties: {},
-    required: [],
-  };
-
-  if (schema instanceof zodImpl.ZodObject) {
-    const schemaShape = (
-      schema as zodImpl.ZodObject<Record<string, zodImpl.ZodType>>
-    ).shape;
-    for (const [key, valueSchema] of Object.entries(schemaShape)) {
-      if (key === "type") continue;
-      const def = zodFieldToJsonSchema(valueSchema);
-      (shape.properties as Record<string, unknown>)[key] = def;
-
-      const isRequired = !(valueSchema instanceof zodImpl.ZodOptional);
-      if (isRequired) {
-        (shape.required as string[]).push(key);
-      }
-    }
-  }
-
-  return shape;
-}
-
-function zodFieldToJsonSchema(
-  schema: zodImpl.ZodType,
-): Record<string, unknown> {
-  if (schema instanceof zodImpl.ZodOptional) {
-    return zodFieldToJsonSchema(
-      (schema as zodImpl.ZodOptional<zodImpl.ZodType>).unwrap(),
-    );
-  }
-  if (schema instanceof zodImpl.ZodString) {
-    return { type: "string" };
-  }
-  if (schema instanceof zodImpl.ZodNumber) {
-    return { type: "number" };
-  }
-  if (schema instanceof zodImpl.ZodEnum) {
-    const values = (schema as unknown as { options?: string[] }).options ?? [];
-    return { type: "string", enum: values };
-  }
-  if (schema instanceof zodImpl.ZodArray) {
-    const itemSchema = (schema as zodImpl.ZodArray<zodImpl.ZodType>).element;
-    return { type: "array", items: zodFieldToJsonSchema(itemSchema) };
-  }
-  return { type: "string" };
-}

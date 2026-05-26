@@ -7,12 +7,14 @@ export {
 
 // ── Compiler ──
 export { compileSemanticAction } from "./compiler/pipeline.js";
-export type {
-  CompileResult,
-  SemanticAction,
-  SemanticDiagnostic,
-} from "./compiler/types.js";
+export type { CompileResult, SemanticAction, SemanticDiagnostic } from "./compiler/types.js";
 export { SemanticActionSchema } from "./compiler/types.js";
+export {
+  AutoLayoutActionSchema,
+  CreateDashboardActionSchema,
+  InsertChartActionSchema,
+  UpdateThemeIntentActionSchema,
+} from "./compiler/types.js";
 
 // ── Component states ──
 export { resolveStateProps } from "./component-states.js";

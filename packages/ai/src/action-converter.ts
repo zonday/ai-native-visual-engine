@@ -1,77 +1,70 @@
-import {
-  type CompileResult,
-  compileSemanticAction,
-  type SemanticAction,
-} from "@ai-native/core";
-import type { ToolRegistry } from "./tool-registry.js";
+import { ALL_TOOLS } from "./tool-registry.js";
 
-export interface ModelToolCall {
-  id: string;
-  type: "function";
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
-
-export interface ConvertResult {
+export interface ToolCallResult {
+  toolName: string;
   ok: boolean;
-  action?: SemanticAction;
-  compileResult?: CompileResult;
+  compileResult: {
+    ok: boolean;
+    diagnostics: Array<{ code: string; message: string }>;
+    plan?: unknown;
+  };
   diagnostics: string[];
 }
 
-export function convertModelResponse(
-  toolCall: ModelToolCall,
-  registry: ToolRegistry,
-): ConvertResult {
-  const diagnostics: string[] = [];
-  const toolName = toolCall.function.name;
-  const actionType = registry.getActionType(toolName);
+export async function executeToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<ToolCallResult> {
+  const tool = ALL_TOOLS[toolName];
 
-  if (!actionType) {
-    diagnostics.push(`Unknown tool: "${toolName}"`);
-    return { ok: false, diagnostics };
-  }
-
-  let rawArgs: Record<string, unknown>;
-  try {
-    rawArgs = JSON.parse(toolCall.function.arguments);
-  } catch {
-    diagnostics.push(`Invalid JSON in tool arguments for "${toolName}"`);
-    return { ok: false, diagnostics };
-  }
-
-  const semanticAction: Record<string, unknown> = {
-    type: actionType,
-    ...rawArgs,
-  };
-
-  const compileResult = compileSemanticAction(semanticAction as SemanticAction);
-
-  if (!compileResult.ok) {
-    const messages = compileResult.diagnostics.map(
-      (d: { code: string; message: string }) => `[${d.code}] ${d.message}`,
-    );
+  if (!tool) {
     return {
+      toolName,
       ok: false,
-      action: semanticAction as SemanticAction,
-      compileResult,
-      diagnostics: [`Compilation failed for "${toolName}":`, ...messages],
+      compileResult: { ok: false, diagnostics: [] },
+      diagnostics: [
+        `Unknown tool: "${toolName}". Available: ${Object.keys(ALL_TOOLS).join(", ")}`,
+      ],
     };
   }
 
-  return {
-    ok: true,
-    action: semanticAction as SemanticAction,
-    compileResult,
-    diagnostics: [],
-  };
+  try {
+    if (!tool.execute) {
+      return {
+        toolName,
+        ok: false,
+        compileResult: { ok: false, diagnostics: [] },
+        diagnostics: [`Tool "${toolName}" has no execute function`],
+      };
+    }
+    const result = (await tool.execute(args, {
+      toolCallId: "manual",
+      messages: [],
+    })) as {
+      ok: boolean;
+      diagnostics: Array<{ code: string; message: string }>;
+      plan?: unknown;
+    };
+    return {
+      toolName,
+      ok: true,
+      compileResult: result,
+      diagnostics: [],
+    };
+  } catch (err) {
+    return {
+      toolName,
+      ok: false,
+      compileResult: { ok: false, diagnostics: [] },
+      diagnostics: [
+        `Tool execution failed for "${toolName}": ${err instanceof Error ? err.message : String(err)}`,
+      ],
+    };
+  }
 }
 
-export function processModelResponse(
-  toolCalls: ModelToolCall[],
-  registry: ToolRegistry,
-): ConvertResult[] {
-  return toolCalls.map((call) => convertModelResponse(call, registry));
+export async function executeAllToolCalls(
+  calls: Array<{ toolName: string; args: Record<string, unknown> }>,
+): Promise<ToolCallResult[]> {
+  return Promise.all(calls.map((c) => executeToolCall(c.toolName, c.args)));
 }

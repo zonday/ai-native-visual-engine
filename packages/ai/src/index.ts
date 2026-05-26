@@ -1,11 +1,13 @@
 export {
-  type ConvertResult,
-  convertModelResponse,
-  type ModelToolCall,
-  processModelResponse,
-} from "./action-converter.js";
-export {
-  createToolRegistry,
-  type ToolDefinition,
-  type ToolRegistry,
+  ALL_TOOLS,
+  autoLayoutTool,
+  createDashboardTool,
+  insertChartTool,
+  updateThemeIntentTool,
+  type Tool,
 } from "./tool-registry.js";
+export {
+  executeAllToolCalls,
+  executeToolCall,
+  type ToolCallResult,
+} from "./action-converter.js";

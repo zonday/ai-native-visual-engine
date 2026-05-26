@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@ai-native/core": "workspace:*",
+    "ai": "^6.0.191",
     "zod": "^4.4.0"
   }
 }
