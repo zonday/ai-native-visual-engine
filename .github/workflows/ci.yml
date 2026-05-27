@@ -22,7 +22,7 @@ jobs:
       - name: Build + Typecheck
         run: pnpm build && pnpm exec turbo run typecheck
       - name: Test
-        run: pnpm -r test
+        run: pnpm test
 
   build:
     runs-on: ubuntu-latest
