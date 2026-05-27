@@ -180,6 +180,13 @@ export interface RuntimeState {
   [key: string]: unknown;
 }
 
+export interface NodeMetadata {
+  label?: string;
+  description?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 // ── Page ──
 export const FilterPresetSchema = z.object({
   filterComponentId: z.string(),

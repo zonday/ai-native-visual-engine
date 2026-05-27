@@ -77,7 +77,6 @@ function App() {
       scene,
       error: { code: "nested", message: "nested" },
     }));
-
     const middlewares = [
       createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
       createConstraintMiddleware(constraintRegistry),
@@ -106,6 +105,7 @@ function App() {
         handler: createBatchHandler((action) =>
           bus.dispatch(action),
         ) as typeof batchEntry.handler,
+        inverse: handlerRegistry.get("batch-actions")?.inverse,
       });
     }
 
@@ -118,7 +118,6 @@ function App() {
       document: doc,
       error: { code: "nested", message: "nested" },
     }));
-
     const middlewares = [
       createValidatorMiddleware<VisualDocument, DocumentAction>(
         DocumentActionSchema,
@@ -148,6 +147,7 @@ function App() {
         handler: createDocumentBatchHandler((action) =>
           bus.dispatch(action),
         ) as typeof batchDocEntry.handler,
+        inverse: handlerRegistry.get("batch-document-actions")?.inverse,
       });
     }
 
@@ -219,8 +219,8 @@ function App() {
           type: "update-layout",
           nodeId: event.nodeId,
           layout: {
-            x: ((layout.x as number) ?? 0) + event.deltaX,
-            y: ((layout.y as number) ?? 0) + event.deltaY,
+            x: (Number(layout.x) || 0) + event.deltaX,
+            y: (Number(layout.y) || 0) + event.deltaY,
           },
         });
       } else if (event.type === "resize") {
@@ -228,12 +228,12 @@ function App() {
           type: "update-layout",
           nodeId: event.nodeId,
           layout: {
-            width: ((layout.width as number) ?? 100) + event.deltaX,
-            height: ((layout.height as number) ?? 100) + event.deltaY,
+            width: (Number(layout.width) || 100) + event.deltaX,
+            height: (Number(layout.height) || 100) + event.deltaY,
           },
         });
       } else if (event.type === "rotate") {
-        const rotation = ((layout.rotation as number) ?? 0) + event.deltaX;
+        const rotation = (Number(layout.rotation) || 0) + event.deltaX;
         dispatchRuntime({
           type: "rotate-node",
           nodeId: event.nodeId,

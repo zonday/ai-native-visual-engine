@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./src/collab/worker.ts",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
@@ -12,5 +12,8 @@
     "@cloudflare/workers-types": "^4.20250527.0",
     "typescript": "^5.9.0",
     "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "yjs": "^13.0.0"
   }
 }

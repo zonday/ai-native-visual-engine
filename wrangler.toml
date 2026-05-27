@@ -6,26 +6,3 @@ pages_build_output_dir = "packages/editor/dist"
 [env.production]
   [[env.production.migrations]]
     tag = "prod"
-
-# Cloudflare Workers — Collaboration Relay
-[[workers]]
-  name = "collab-relay"
-  main = "packages/collab-worker/src/index.ts"
-  compatibility_date = "2026-05-27"
-
-  [workers.durable_objects]
-    bindings = [
-      { name = "COLLAB_ROOM", class_name = "CollabRoom" },
-    ]
-
-  [workers.r2_buckets]
-    bindings = [
-      { name = "R2_LOGS", bucket_name = "collab-action-logs" },
-    ]
-
-  [workers.env]
-    JWT_SECRET = "${JWT_SECRET}"
-
-[[migrations]]
-  tag = "v1"
-  new_classes = ["CollabRoom"]

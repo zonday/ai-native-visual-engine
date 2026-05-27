@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm exec biome check
       - name: Typecheck
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
 
@@ -49,13 +49,13 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Publish PR preview
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/editor/dist --project-name=ai-native-visual --branch=${{ github.head_ref }}
+          command: pages deploy packages/editor/dist --project-name=ai-native-editor --branch=${{ github.head_ref }}
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -68,10 +68,10 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Deploy to production
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/editor/dist --project-name=ai-native-visual --branch=main
+          command: pages deploy packages/editor/dist --project-name=ai-native-editor --branch=main

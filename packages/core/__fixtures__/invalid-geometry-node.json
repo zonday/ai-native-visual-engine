@@ -1,0 +1,1 @@
+{"id":"doc-1","title":"Invalid Geometry Node","pages":[{"id":"page-1","name":"Invalid","sceneId":"scene-1"}],"scenes":{"scene-1":{"version":0,"rootId":"root","nodes":{"root":{"id":"root","type":"container","children":["bad-1"]},"bad-1":{"id":"bad-1","type":"chart","layout":{"mode":"grid-item","x":-10,"y":0,"w":0,"h":0}}}}}}
