@@ -17,7 +17,10 @@ import {
   createNewDocument,
   createRuntimeCommandBus,
   createRuntimeHistoryState,
+  createRuntimeTransactionManager,
+  createScheduler,
   createTransactionFlag,
+  createTransactionMiddleware,
   createUndoHistoryMiddleware,
   createValidatorMiddleware,
   DEFAULT_LAYOUT_CONSTRAINTS,
@@ -73,29 +76,47 @@ function App() {
     return reg;
   }, []);
 
+  const runtimeRegistries = useMemo(
+    () =>
+      createDefaultRuntimeRegistries(() => ({
+        ok: false,
+        scene: { version: 0, rootId: "", nodes: {} },
+        error: { code: "nested", message: "nested" },
+      })),
+    [],
+  );
+
   const transactionFlagRef = useRef(createTransactionFlag());
 
+  const runtimeTm = useMemo(
+    () =>
+      createRuntimeTransactionManager(
+        runtimeRegistries.handlerRegistry,
+        runtimeRegistries.inverseRegistry,
+      ),
+    [runtimeRegistries],
+  );
+
+  const schedulerRef = useRef(createScheduler({ mode: "sync" }));
+
   const runtimeBus = useMemo(() => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
-      ok: false,
-      scene,
-      error: { code: "nested", message: "nested" },
-    }));
+    const { handlerRegistry } = runtimeRegistries;
     const middlewares = [
       createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
       createConstraintMiddleware(constraintRegistry),
-      createUndoHistoryMiddleware(
-        () => runtimeHistoryRef.current,
-        (s) => {
+      createTransactionMiddleware({
+        transactionManager: runtimeTm,
+        transactionFlag: transactionFlagRef.current,
+        handlerRegistry,
+        getContext: () => ({ now: Date.now, actorId: "editor" }),
+        getActorId: () => "editor",
+        getHistory: () => runtimeHistoryRef.current,
+        setHistory: (s) => {
           runtimeHistoryRef.current = s;
           syncHistoryState();
         },
-        () => "editor",
-        handlerRegistry,
-        () => ({ now: Date.now, actorId: "editor" }),
-        () => isUndoingRef.current,
-        () => transactionFlagRef.current.isActive(),
-      ),
+        markDirty: (nodeIds) => schedulerRef.current.markDirty(nodeIds),
+      }),
     ];
 
     const bus = createRuntimeCommandBus(handlerRegistry, middlewares, scene, {
@@ -114,7 +135,13 @@ function App() {
     }
 
     return bus;
-  }, [scene, constraintRegistry, syncHistoryState]);
+  }, [
+    scene,
+    constraintRegistry,
+    syncHistoryState,
+    runtimeTm,
+    runtimeRegistries,
+  ]);
 
   const documentBus = useMemo(() => {
     const { handlerRegistry } = createDefaultDocumentRegistries(() => ({

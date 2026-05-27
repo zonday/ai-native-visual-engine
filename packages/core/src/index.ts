@@ -82,6 +82,7 @@ export {
 export { pushUndoTransaction } from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
+export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export {
   createTransactionFlag,
