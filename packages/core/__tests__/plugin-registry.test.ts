@@ -1,8 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { ComponentPluginRegistry, createPluginRegistry } from "../src/plugins/registry.js";
+import { describe, expect, it } from "vitest";
 import type { ComponentPlugin } from "../src/plugin-types.js";
+import {
+  ComponentPluginRegistry,
+  createPluginRegistry,
+} from "../src/plugins/registry.js";
 
-function makePlugin(type: string, overrides?: Partial<ComponentPlugin>): ComponentPlugin {
+function makePlugin(
+  type: string,
+  overrides?: Partial<ComponentPlugin>,
+): ComponentPlugin {
   return {
     type,
     renderer: () => null,
@@ -79,7 +85,10 @@ describe("ComponentPluginRegistry", () => {
   });
 
   it("createPluginRegistry builds registry from array", () => {
-    const registry = createPluginRegistry([makePlugin("chart"), makePlugin("table")]);
+    const registry = createPluginRegistry([
+      makePlugin("chart"),
+      makePlugin("table"),
+    ]);
 
     expect(registry.size).toBe(2);
     expect(registry.has("chart")).toBe(true);

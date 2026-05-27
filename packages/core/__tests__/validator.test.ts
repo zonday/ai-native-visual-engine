@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { documentValidatorMiddleware } from "../src/document/middleware/validator.js";
+import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
+import { documentValidatorMiddleware } from "../src/document/middleware/validator.js";
 import { emptyDoc } from "./helpers.js";
 
 describe("documentValidatorMiddleware", () => {
@@ -40,7 +40,11 @@ describe("documentValidatorMiddleware", () => {
 
   it("includes actionType in error for invalid actions", () => {
     const result = documentValidatorMiddleware(
-      { type: "reorder-page", pageId: "p1", index: "not-a-number" } as unknown as DocumentAction,
+      {
+        type: "reorder-page",
+        pageId: "p1",
+        index: "not-a-number",
+      } as unknown as DocumentAction,
       emptyDoc,
       () => ({ ok: true, state: emptyDoc }),
     );

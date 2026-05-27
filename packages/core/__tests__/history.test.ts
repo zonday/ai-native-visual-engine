@@ -39,7 +39,11 @@ describe("DocumentHistoryState", () => {
   describe("pushDocumentUndo", () => {
     it("pushes entry onto undo stack", () => {
       const state = createDocumentHistoryState();
-      const entry = makeEntry({ type: "rename-page", pageId: "p1", name: "New" });
+      const entry = makeEntry({
+        type: "rename-page",
+        pageId: "p1",
+        name: "New",
+      });
       const next = pushDocumentUndo(state, entry);
       expect(next.undoStack).toHaveLength(1);
       expect(next.undoStack[0]).toBe(entry);
@@ -52,7 +56,11 @@ describe("DocumentHistoryState", () => {
           makeEntry({ type: "rename-page", pageId: "p1", name: "Old" }),
         ],
       };
-      const entry = makeEntry({ type: "rename-page", pageId: "p1", name: "New" });
+      const entry = makeEntry({
+        type: "rename-page",
+        pageId: "p1",
+        name: "New",
+      });
       const next = pushDocumentUndo(state, entry);
       expect(next.redoStack).toHaveLength(0);
     });
@@ -80,7 +88,12 @@ describe("DocumentHistoryState", () => {
 
     it("returns null when top entry has no inverseAction", () => {
       const state: DocumentHistoryState = {
-        undoStack: [{ action: { type: "rename-page", pageId: "p1", name: "New" }, timestamp: 0 }],
+        undoStack: [
+          {
+            action: { type: "rename-page", pageId: "p1", name: "New" },
+            timestamp: 0,
+          },
+        ],
         redoStack: [],
       };
       const result = undoDocumentAction(state);
@@ -103,10 +116,10 @@ describe("DocumentHistoryState", () => {
       };
       const result = undoDocumentAction(state);
       expect(result).not.toBeNull();
-      expect(result!.state.undoStack).toHaveLength(0);
-      expect(result!.state.redoStack).toHaveLength(1);
-      expect(result!.state.redoStack[0]).toBe(entry);
-      expect(result!.inverseAction).toEqual(inverseAction);
+      expect(result?.state.undoStack).toHaveLength(0);
+      expect(result?.state.redoStack).toHaveLength(1);
+      expect(result?.state.redoStack[0]).toBe(entry);
+      expect(result?.inverseAction).toEqual(inverseAction);
     });
 
     it("undoes multiple actions in LIFO order", () => {
@@ -123,12 +136,12 @@ describe("DocumentHistoryState", () => {
         redoStack: [],
       };
       const result1 = undoDocumentAction(state);
-      expect(result1!.inverseAction).toEqual(entry2.inverseAction);
+      expect(result1?.inverseAction).toEqual(entry2.inverseAction);
 
-      const result2 = undoDocumentAction(result1!.state);
-      expect(result2!.inverseAction).toEqual(entry1.inverseAction);
-      expect(result2!.state.undoStack).toHaveLength(0);
-      expect(result2!.state.redoStack).toHaveLength(2);
+      const result2 = undoDocumentAction(result1?.state);
+      expect(result2?.inverseAction).toEqual(entry1.inverseAction);
+      expect(result2?.state.undoStack).toHaveLength(0);
+      expect(result2?.state.redoStack).toHaveLength(2);
     });
   });
 
@@ -156,9 +169,9 @@ describe("DocumentHistoryState", () => {
       };
       const result = redoDocumentAction(state);
       expect(result).not.toBeNull();
-      expect(result!.state.redoStack).toHaveLength(0);
-      expect(result!.state.undoStack).toHaveLength(1);
-      expect(result!.action).toEqual(action);
+      expect(result?.state.redoStack).toHaveLength(0);
+      expect(result?.state.undoStack).toHaveLength(1);
+      expect(result?.action).toEqual(action);
     });
   });
 
@@ -183,16 +196,16 @@ describe("DocumentHistoryState", () => {
 
       const undoResult = undoDocumentAction(state);
       expect(undoResult).not.toBeNull();
-      state = undoResult!.state;
+      state = undoResult?.state;
       expect(state.undoStack).toHaveLength(0);
       expect(state.redoStack).toHaveLength(1);
 
       const redoResult = redoDocumentAction(state);
       expect(redoResult).not.toBeNull();
-      state = redoResult!.state;
+      state = redoResult?.state;
       expect(state.undoStack).toHaveLength(1);
       expect(state.redoStack).toHaveLength(0);
-      expect(redoResult!.action).toEqual(action);
+      expect(redoResult?.action).toEqual(action);
     });
   });
 });

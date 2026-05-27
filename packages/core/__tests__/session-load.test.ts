@@ -1,9 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import {
-  openDocumentFromSnapshot,
-  loadDocument,
-} from "../src/session.js";
+import { loadDocument, openDocumentFromSnapshot } from "../src/session.js";
 import type { DocumentSnapshot } from "../src/types.js";
 
 describe("loadDocument", () => {
@@ -33,7 +30,9 @@ describe("loadDocument", () => {
   });
 
   it("returns diagnostics for invalid document", () => {
-    const result = loadDocument({ document: { foo: "bar" } } as unknown as DocumentSnapshot);
+    const result = loadDocument({
+      document: { foo: "bar" },
+    } as unknown as DocumentSnapshot);
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
@@ -49,7 +48,9 @@ describe("openDocumentFromSnapshot", () => {
   });
 
   it("throws SessionError for invalid snapshot", () => {
-    const snapshot = { document: { invalid: true } } as unknown as DocumentSnapshot;
+    const snapshot = {
+      document: { invalid: true },
+    } as unknown as DocumentSnapshot;
     expect(() => openDocumentFromSnapshot(snapshot)).toThrow();
   });
 });

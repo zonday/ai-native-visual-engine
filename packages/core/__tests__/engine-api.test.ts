@@ -1,25 +1,50 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph, PageId } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import { createEngineAPI } from "../src/engine-api.js";
-import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import { createRuntimeHistoryState } from "../src/runtime/history.js";
+import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
+import type { PageId, SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
 describe("createEngineAPI", () => {
   function setup(customScene?: SceneGraph) {
-    const scene = customScene ?? makeScene({
-      root: { id: "root", type: "container", children: ["a", "b"] },
-      a: { id: "a", type: "text", parentId: "root", props: { text: "hello" }, layout: { mode: "absolute", x: 10, y: 20 } as any, bindings: [{ key: "v", source: "s" }], style: { color: "red" } },
-      b: { id: "b", type: "text", parentId: "root", visible: false, locked: true },
-    });
+    const scene =
+      customScene ??
+      makeScene({
+        root: { id: "root", type: "container", children: ["a", "b"] },
+        a: {
+          id: "a",
+          type: "text",
+          parentId: "root",
+          props: { text: "hello" },
+          layout: { mode: "absolute" as const, x: 10, y: 20 },
+          bindings: [{ key: "v", source: "s" }],
+          style: { color: "red" },
+        },
+        b: {
+          id: "b",
+          type: "text",
+          parentId: "root",
+          visible: false,
+          locked: true,
+        },
+      });
 
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene, error: { code: "fail", message: "noop" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], scene, { now: Date.now });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene,
+      error: { code: "fail", message: "noop" },
+    }));
+    const bus = createRuntimeCommandBus(handlerRegistry, [], scene, {
+      now: Date.now,
+    });
     const history = createRuntimeHistoryState();
-    const api = createEngineAPI(() => bus.getScene(), "page-1" as PageId, bus, () => history);
+    const api = createEngineAPI(
+      () => bus.getScene(),
+      "page-1" as PageId,
+      bus,
+      () => history,
+    );
 
     return { api, bus };
   }
@@ -38,7 +63,11 @@ describe("createEngineAPI", () => {
   });
 
   it("node.getChildren returns children array", () => {
-    expect(setup().api.node.getChildren("root").map((n) => n.id)).toEqual(["a", "b"]);
+    expect(
+      setup()
+        .api.node.getChildren("root")
+        .map((n) => n.id),
+    ).toEqual(["a", "b"]);
   });
 
   it("node.getChildren returns empty for leaf", () => {
@@ -135,18 +164,21 @@ describe("createEngineAPI", () => {
     const { api, bus } = setup();
     const result = api.dispatch.createNode({ id: "c", type: "text" }, "root");
     expect(result.ok).toBe(true);
-    expect(bus.getScene().nodes["c"]).toBeDefined();
+    expect(bus.getScene().nodes.c).toBeDefined();
   });
 
   it("dispatch.removeNode removes node", () => {
     const { api, bus } = setup();
     const result = api.dispatch.removeNode("a");
     expect(result.ok).toBe(true);
-    expect(bus.getScene().nodes["a"]).toBeUndefined();
+    expect(bus.getScene().nodes.a).toBeUndefined();
   });
 
   it("dispatch.rejects create-node with invalid parent", () => {
-    const result = setup().api.dispatch.createNode({ id: "x", type: "text" }, "missing");
+    const result = setup().api.dispatch.createNode(
+      { id: "x", type: "text" },
+      "missing",
+    );
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("scene.invalid-parent");
   });

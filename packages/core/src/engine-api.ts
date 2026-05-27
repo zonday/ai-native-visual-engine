@@ -1,7 +1,14 @@
+import type { ActiveTransaction } from "./engine/transaction-manager.js";
+import type {
+  TransactionResult,
+  TransactionSource,
+} from "./engine/transaction-types.js";
 import type { RuntimeAction } from "./runtime/actions.js";
 import type { CommandBus, DispatchResult } from "./runtime/command-bus.js";
+import type { RuntimeContext } from "./runtime/handler.js";
 import type { RuntimeHistoryState } from "./runtime/history.js";
 import { redoRuntimeAction, undoRuntimeAction } from "./runtime/history.js";
+import type { RuntimeTransactionManager } from "./runtime/transaction.js";
 import type {
   Binding,
   Layout,
@@ -10,6 +17,12 @@ import type {
   SceneGraph,
   SceneNode,
 } from "./types.js";
+
+type RuntimeActiveTransaction = ActiveTransaction<
+  SceneGraph,
+  RuntimeAction,
+  RuntimeContext
+>;
 
 function getNodeId(action: RuntimeAction): string {
   if ("nodeId" in action && typeof action.nodeId === "string") {
@@ -29,7 +42,7 @@ function getNodeRuntime(node: SceneNode): Record<string, unknown> {
 function getRuntimeActiveStates(node: SceneNode): string[] {
   const rt = getNodeRuntime(node);
   const states = rt.activeStates;
-  return Array.isArray(states) ? (states as string[]) : [];
+  return Array.isArray(states) ? [...(states as string[])] : [];
 }
 
 export interface NodeAPI {
@@ -98,6 +111,20 @@ export interface StateAPI {
   getActiveStates(nodeId: NodeId): string[];
 }
 
+export interface TransactionAPI {
+  begin(
+    source: TransactionSource,
+    metadata?: Record<string, unknown>,
+  ): RuntimeActiveTransaction;
+  applyAction(
+    active: RuntimeActiveTransaction,
+    action: RuntimeAction,
+  ): DispatchResult;
+  commit(active: RuntimeActiveTransaction): TransactionResult<SceneGraph>;
+  rollback(active: RuntimeActiveTransaction): SceneGraph;
+  getActive(): RuntimeActiveTransaction | undefined;
+}
+
 export interface EngineAPI {
   node: NodeAPI;
   scene: SceneAPI;
@@ -105,6 +132,7 @@ export interface EngineAPI {
   history: HistoryAPI;
   dispatch: DispatchAPI;
   states: StateAPI;
+  transaction: TransactionAPI;
   subscribeToNode(
     nodeId: NodeId,
     callback: (node: SceneNode) => void,
@@ -124,6 +152,7 @@ export function createEngineAPI(
   pageId: PageId,
   commandBus: CommandBus,
   getHistory: () => RuntimeHistoryState,
+  transactionManager?: RuntimeTransactionManager,
 ): EngineAPI {
   const subscribers = new Map<string, Set<Subscriber<unknown>>>();
   const notifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -342,11 +371,19 @@ export function createEngineAPI(
     },
     undo() {
       const result = undoRuntimeAction(getHistory());
-      if (result) dispatchAndNotify(result.inverseAction);
+      if (result) {
+        for (const inv of result.inverseActions) {
+          dispatchAndNotify(inv);
+        }
+      }
     },
     redo() {
       const result = redoRuntimeAction(getHistory());
-      if (result) dispatchAndNotify(result.action);
+      if (result) {
+        for (const act of result.actions) {
+          dispatchAndNotify(act);
+        }
+      }
     },
     getUndoStackSize() {
       return getHistory().undoStack.length;
@@ -449,6 +486,61 @@ export function createEngineAPI(
     },
   };
 
+  const transactionAPI: TransactionAPI = {
+    begin(source, metadata) {
+      if (!transactionManager) {
+        throw new Error("TransactionManager not configured");
+      }
+      const scene = getScene();
+      const context = { now: Date.now };
+      return transactionManager.begin(source, scene, context, metadata);
+    },
+    applyAction(active, action) {
+      if (!transactionManager) {
+        return {
+          ok: false,
+          scene: getScene(),
+          error: {
+            code: "transaction.not-configured",
+            message: "TransactionManager not configured",
+            actionType: action.type,
+          },
+        };
+      }
+      const result = transactionManager.applyAction(active, action);
+      if (result.ok) {
+        notify("scene", getScene());
+        notify("selection", getScene().selection?.nodeIds ?? []);
+      }
+      return {
+        ok: result.ok,
+        scene: active.currentState,
+        error: result.error
+          ? {
+              code: result.error.code,
+              message: result.error.message,
+              actionType: result.error.actionType,
+            }
+          : undefined,
+      };
+    },
+    commit(active) {
+      if (!transactionManager) {
+        throw new Error("TransactionManager not configured");
+      }
+      return transactionManager.commit(active);
+    },
+    rollback(active) {
+      if (!transactionManager) {
+        throw new Error("TransactionManager not configured");
+      }
+      return transactionManager.rollback(active);
+    },
+    getActive() {
+      return transactionManager?.getActiveTransaction();
+    },
+  };
+
   return {
     node: nodeAPI,
     scene: sceneAPI,
@@ -456,6 +548,7 @@ export function createEngineAPI(
     history: historyAPI,
     dispatch: dispatchAPI,
     states: stateAPI,
+    transaction: transactionAPI,
     subscribeToNode(nodeId, callback) {
       const key = `node:${nodeId}`;
       if (!subscribers.has(key)) subscribers.set(key, new Set());

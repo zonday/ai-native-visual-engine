@@ -1,14 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
-import type { VisualDocument } from "../src/types.js";
+import { describe, expect, it, vi } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import type { DocumentMiddleware } from "../src/document/middleware.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
+import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
-import {
-  createDefaultDocumentRegistries,
-} from "../src/document/inverse.js";
-import { emptyPersistedScene, emptyDoc } from "./helpers.js";
+import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import type { DocumentMiddleware } from "../src/document/middleware.js";
+import type { VisualDocument } from "../src/types.js";
+import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 const docWithPage: VisualDocument = {
   ...emptyDoc,
@@ -20,10 +18,20 @@ const context: DocumentRuntimeContext = { now: Date.now };
 
 describe("createDocumentCommandBus", () => {
   it("dispatches a valid action and returns ok with updated document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [],
+      emptyDoc,
+      context,
     );
-    const bus = createDocumentCommandBus(handlerRegistry, [], emptyDoc, context);
 
     const action: DocumentAction = {
       type: "create-page",
@@ -38,12 +46,25 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [],
+      emptyDoc,
+      context,
     );
-    const bus = createDocumentCommandBus(handlerRegistry, [], emptyDoc, context);
 
-    const action = { type: "nonexistent", foo: "bar" } as unknown as DocumentAction;
+    const action = {
+      type: "nonexistent",
+      foo: "bar",
+    } as unknown as DocumentAction;
     const result = bus.dispatch(action);
 
     expect(result.ok).toBe(false);
@@ -52,10 +73,20 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns handler error code when DocumentHandlerError is thrown", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [],
+      docWithPage,
+      context,
     );
-    const bus = createDocumentCommandBus(handlerRegistry, [], docWithPage, context);
 
     const action: DocumentAction = {
       type: "create-page",
@@ -73,7 +104,9 @@ describe("createDocumentCommandBus", () => {
       [
         "create-page",
         {
-          handler: () => { throw new Error("Kaboom!"); },
+          handler: () => {
+            throw new Error("Kaboom!");
+          },
           inverse: () => undefined,
         } as DocumentHandlerEntry,
       ],
@@ -99,10 +132,20 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [undefined as unknown as DocumentMiddleware],
+      emptyDoc,
+      context,
     );
-    const bus = createDocumentCommandBus(handlerRegistry, [undefined as unknown as DocumentMiddleware], emptyDoc, context);
 
     const action: DocumentAction = {
       type: "create-page",
@@ -116,15 +159,25 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
     let middlewareCalled = false;
     const trackingMiddleware: DocumentMiddleware = (_action, _doc, next) => {
       middlewareCalled = true;
       return next();
     };
-    const bus = createDocumentCommandBus(handlerRegistry, [trackingMiddleware], emptyDoc, context);
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [trackingMiddleware],
+      emptyDoc,
+      context,
+    );
 
     const action: DocumentAction = {
       type: "create-page",
@@ -151,9 +204,16 @@ describe("createDocumentCommandBus", () => {
       ],
     ]);
 
-    const bus = createDocumentCommandBus(mutatingHandler, [], emptyDoc, context);
+    const bus = createDocumentCommandBus(
+      mutatingHandler,
+      [],
+      emptyDoc,
+      context,
+    );
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = bus.dispatch({ type: "test-action" } as unknown as DocumentAction);
+    const result = bus.dispatch({
+      type: "test-action",
+    } as unknown as DocumentAction);
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("document.handler-error");
@@ -174,7 +234,9 @@ describe("createDocumentCommandBus", () => {
     const bus = createDocumentCommandBus(sameRefHandler, [], emptyDoc, context);
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const result = bus.dispatch({ type: "test-action" } as unknown as DocumentAction);
+    const result = bus.dispatch({
+      type: "test-action",
+    } as unknown as DocumentAction);
 
     expect(result.ok).toBe(true);
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -184,10 +246,20 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("getDocument returns the current document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const bus = createDocumentCommandBus(
+      handlerRegistry,
+      [],
+      emptyDoc,
+      context,
     );
-    const bus = createDocumentCommandBus(handlerRegistry, [], emptyDoc, context);
 
     const doc = bus.getDocument();
     expect(doc).toBe(emptyDoc);

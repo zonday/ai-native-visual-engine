@@ -1,12 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { updateLayoutHandler, updateLayoutInverse } from "../src/runtime/handlers/update-layout.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  updateLayoutHandler,
+  updateLayoutInverse,
+} from "../src/runtime/handlers/update-layout.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithNode: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a"] },
-  a: { id: "a", type: "container", parentId: "root", layout: { x: 0, y: 0, width: 100, height: 100 } },
+  a: {
+    id: "a",
+    type: "container",
+    parentId: "root",
+    layout: { x: 0, y: 0, width: 100, height: 100 },
+  },
 });
 
 describe("updateLayoutHandler", () => {
@@ -16,8 +24,15 @@ describe("updateLayoutHandler", () => {
       nodeId: "a",
       layout: { x: 50, y: 50 },
     };
-    const result = updateLayoutHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.layout).toEqual({ x: 50, y: 50, width: 100, height: 100 });
+    const result = updateLayoutHandler(sceneWithNode, action, {
+      now: Date.now,
+    });
+    expect(result.nodes.a?.layout).toEqual({
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+    });
     expect(result.version).toBe(1);
   });
 
@@ -32,7 +47,7 @@ describe("updateLayoutHandler", () => {
       layout: { x: 10, y: 20 },
     };
     const result = updateLayoutHandler(scene, action, { now: Date.now });
-    expect(result.nodes["a"]?.layout).toEqual({ x: 10, y: 20 });
+    expect(result.nodes.a?.layout).toEqual({ x: 10, y: 20 });
   });
 
   it("rejects update-layout when node does not exist", () => {
@@ -41,9 +56,9 @@ describe("updateLayoutHandler", () => {
       nodeId: "missing",
       layout: { x: 0 },
     };
-    expect(() => updateLayoutHandler(sceneWithNode, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      updateLayoutHandler(sceneWithNode, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       updateLayoutHandler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
@@ -60,7 +75,9 @@ describe("updateLayoutInverse", () => {
       nodeId: "a",
       layout: { x: 50 },
     };
-    const inverse = updateLayoutInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateLayoutInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "update-layout",
       nodeId: "a",
@@ -74,7 +91,9 @@ describe("updateLayoutInverse", () => {
       nodeId: "missing",
       layout: { x: 0 },
     };
-    const inverse = updateLayoutInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateLayoutInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toBeUndefined();
   });
 });

@@ -1,22 +1,27 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentHistoryState } from "../src/document/history.js";
-import {
-  createDefaultDocumentRegistries,
-} from "../src/document/inverse.js";
+import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
-import { emptyPersistedScene, emptyDoc } from "./helpers.js";
+import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes history entry on successful dispatch", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
       () => history,
-      (s) => { history = s; },
+      (s) => {
+        history = s;
+      },
       () => "actor-from-getter",
       handlerRegistry,
       () => ({ now: Date.now, actorId: "actor-from-context" }),
@@ -45,14 +50,21 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("does not push history entry when dispatch fails", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
       () => history,
-      (s) => { history = s; },
+      (s) => {
+        history = s;
+      },
       () => "test-actor",
       handlerRegistry,
       () => ({ now: Date.now }),
@@ -76,14 +88,21 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("does not push history entry when inverse computer returns undefined", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
       () => history,
-      (s) => { history = s; },
+      (s) => {
+        history = s;
+      },
       () => "test-actor",
       handlerRegistry,
       () => ({ now: Date.now }),
@@ -105,14 +124,21 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("uses actorId from context when getActorId returns undefined", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
       () => history,
-      (s) => { history = s; },
+      (s) => {
+        history = s;
+      },
       () => undefined,
       handlerRegistry,
       () => ({ now: Date.now, actorId: "actor-from-context" }),

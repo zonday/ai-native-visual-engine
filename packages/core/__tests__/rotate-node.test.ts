@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { rotateNodeHandler, rotateNodeInverse } from "../src/runtime/handlers/rotate-node.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
-import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import {
+  rotateNodeHandler,
+  rotateNodeInverse,
+} from "../src/runtime/handlers/rotate-node.js";
+import type { AbsoluteLayout, SceneGraph } from "../src/types.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithAbsoluteNode: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a"] },
@@ -10,7 +13,14 @@ const sceneWithAbsoluteNode: SceneGraph = makeScene({
     id: "a",
     type: "container",
     parentId: "root",
-    layout: { mode: "absolute" as const, x: 0, y: 0, width: 100, height: 100, rotation: 0 },
+    layout: {
+      mode: "absolute" as const,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotation: 0,
+    },
   },
 });
 
@@ -21,8 +31,10 @@ describe("rotateNodeHandler", () => {
       nodeId: "a",
       rotation: 45,
     };
-    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now });
-    expect((result.nodes["a"]?.layout as any)?.rotation).toBe(45);
+    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
+      now: Date.now,
+    });
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(45);
     expect(result.version).toBe(1);
   });
 
@@ -32,8 +44,10 @@ describe("rotateNodeHandler", () => {
       nodeId: "a",
       rotation: 400,
     };
-    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now });
-    expect((result.nodes["a"]?.layout as any)?.rotation).toBe(40);
+    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
+      now: Date.now,
+    });
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(40);
   });
 
   it("normalizes negative rotation into [0, 360) range", () => {
@@ -42,8 +56,10 @@ describe("rotateNodeHandler", () => {
       nodeId: "a",
       rotation: -90,
     };
-    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now });
-    expect((result.nodes["a"]?.layout as any)?.rotation).toBe(270);
+    const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
+      now: Date.now,
+    });
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(270);
   });
 
   it("rejects rotate-node when node does not exist", () => {
@@ -52,9 +68,9 @@ describe("rotateNodeHandler", () => {
       nodeId: "missing",
       rotation: 45,
     };
-    expect(() => rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now });
     } catch (e) {
@@ -84,7 +100,9 @@ describe("rotateNodeHandler", () => {
     try {
       rotateNodeHandler(scene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.invalid-layout-for-rotation");
+      expect((e as RuntimeHandlerError).code).toBe(
+        "scene.invalid-layout-for-rotation",
+      );
     }
   });
 
@@ -104,7 +122,9 @@ describe("rotateNodeHandler", () => {
     try {
       rotateNodeHandler(scene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.invalid-layout-for-rotation");
+      expect((e as RuntimeHandlerError).code).toBe(
+        "scene.invalid-layout-for-rotation",
+      );
     }
   });
 });
@@ -116,7 +136,9 @@ describe("rotateNodeInverse", () => {
       nodeId: "a",
       rotation: 90,
     };
-    const inverse = rotateNodeInverse(sceneWithAbsoluteNode, action, { now: Date.now });
+    const inverse = rotateNodeInverse(sceneWithAbsoluteNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "rotate-node",
       nodeId: "a",
@@ -130,7 +152,9 @@ describe("rotateNodeInverse", () => {
       nodeId: "missing",
       rotation: 45,
     };
-    const inverse = rotateNodeInverse(sceneWithAbsoluteNode, action, { now: Date.now });
+    const inverse = rotateNodeInverse(sceneWithAbsoluteNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toBeUndefined();
   });
 });

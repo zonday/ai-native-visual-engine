@@ -1,17 +1,19 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
 import { DocumentHandlerError } from "../src/document/error.js";
-import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
-import type { DocumentHistoryState } from "../src/document/history.js";
+import type { DocumentRuntimeContext } from "../src/document/handler.js";
+import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
-import { normalizeRoute } from "../src/document/handlers/update-page-route.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
-import { updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
-import { emptyPersistedScene, emptyDoc } from "./helpers.js";
+import {
+  normalizeRoute,
+  updatePageRouteHandler,
+} from "../src/document/handlers/update-page-route.js";
+import type { DocumentHistoryState } from "../src/document/history.js";
+import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
+import type { VisualDocument } from "../src/types.js";
+import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 const context: DocumentRuntimeContext = { now: Date.now };
 
@@ -21,14 +23,21 @@ describe("command bus - error response branches", () => {
       [
         "test-action",
         {
-          handler: () => { throw new DocumentHandlerError("document.custom-error", "no actionType on this error"); },
+          handler: () => {
+            throw new DocumentHandlerError(
+              "document.custom-error",
+              "no actionType on this error",
+            );
+          },
           inverse: () => undefined,
         } as DocumentHandlerEntry,
       ],
     ]);
 
     const bus = createDocumentCommandBus(registry, [], emptyDoc, context);
-    const result = bus.dispatch({ type: "test-action" } as unknown as DocumentAction);
+    const result = bus.dispatch({
+      type: "test-action",
+    } as unknown as DocumentAction);
 
     expect(result.ok).toBe(false);
     expect(result.error?.actionType).toBe("test-action");
@@ -39,14 +48,18 @@ describe("command bus - error response branches", () => {
       [
         "test-action",
         {
-          handler: () => { throw "string error"; },
+          handler: () => {
+            throw "string error";
+          },
           inverse: () => undefined,
         } as DocumentHandlerEntry,
       ],
     ]);
 
     const bus = createDocumentCommandBus(registry, [], emptyDoc, context);
-    const result = bus.dispatch({ type: "test-action" } as unknown as DocumentAction);
+    const result = bus.dispatch({
+      type: "test-action",
+    } as unknown as DocumentAction);
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toBe("string error");
@@ -59,7 +72,11 @@ describe("history middleware - branch for entry without inverse", () => {
       [
         "no-inverse-action",
         {
-          handler: (doc: VisualDocument, _action: DocumentAction, _ctx: DocumentRuntimeContext) => doc,
+          handler: (
+            doc: VisualDocument,
+            _action: DocumentAction,
+            _ctx: DocumentRuntimeContext,
+          ) => doc,
         } as unknown as DocumentHandlerEntry,
       ],
     ]);
@@ -67,7 +84,9 @@ describe("history middleware - branch for entry without inverse", () => {
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
       () => history,
-      (s) => { history = s; },
+      (s) => {
+        history = s;
+      },
       () => "test-actor",
       registry,
       () => ({ now: Date.now }),
@@ -100,18 +119,33 @@ describe("computeBatchInverse", () => {
       scenes: { s1: emptyPersistedScene },
     };
 
-    const inverseOf = (_doc: VisualDocument, _act: DocumentAction, _ctx: DocumentRuntimeContext) => {
-      return { type: "rename-page", pageId: "p1", name: "Old" } as DocumentAction;
+    const inverseOf = (
+      _doc: VisualDocument,
+      _act: DocumentAction,
+      _ctx: DocumentRuntimeContext,
+    ) => {
+      return {
+        type: "rename-page",
+        pageId: "p1",
+        name: "Old",
+      } as DocumentAction;
     };
 
     const result = computeBatchInverse(
       docWithPage,
-      { type: "batch-document-actions", actions: [{ type: "rename-page", pageId: "p1", name: "New" }] },
+      {
+        type: "batch-document-actions",
+        actions: [{ type: "rename-page", pageId: "p1", name: "New" }],
+      },
       () => ({ ok: true, document: docWithPage }),
       { now: Date.now },
       inverseOf,
     );
-    expect(result).toEqual({ type: "rename-page", pageId: "p1", name: "Old" } as DocumentAction);
+    expect(result).toEqual({
+      type: "rename-page",
+      pageId: "p1",
+      name: "Old",
+    } as DocumentAction);
   });
 
   it("computes inverse for multiple child actions in reverse order", () => {
@@ -122,9 +156,17 @@ describe("computeBatchInverse", () => {
     };
 
     let step = 0;
-    const inverseOf = (_doc: VisualDocument, _act: DocumentAction, _ctx: DocumentRuntimeContext) => {
+    const inverseOf = (
+      _doc: VisualDocument,
+      _act: DocumentAction,
+      _ctx: DocumentRuntimeContext,
+    ) => {
       step++;
-      return { type: "rename-page", pageId: "p1", name: `inverse-step-${step}` } as DocumentAction;
+      return {
+        type: "rename-page",
+        pageId: "p1",
+        name: `inverse-step-${step}`,
+      } as DocumentAction;
     };
     const dispatch = () => ({ ok: true as const, document: docWithPage });
 
@@ -178,11 +220,23 @@ describe("computeBatchInverse", () => {
     };
 
     let callCount = 0;
-    const inverseOf = (_doc: VisualDocument, _act: DocumentAction, _ctx: DocumentRuntimeContext) => {
+    const inverseOf = (
+      _doc: VisualDocument,
+      _act: DocumentAction,
+      _ctx: DocumentRuntimeContext,
+    ) => {
       callCount++;
-      return { type: "rename-page", pageId: "p1", name: `inverse-${callCount}` } as DocumentAction;
+      return {
+        type: "rename-page",
+        pageId: "p1",
+        name: `inverse-${callCount}`,
+      } as DocumentAction;
     };
-    const dispatch = () => ({ ok: false as const, document: docWithPage, error: { code: "error", message: "fail" } });
+    const dispatch = () => ({
+      ok: false as const,
+      document: docWithPage,
+      error: { code: "error", message: "fail" },
+    });
 
     const result = computeBatchInverse(
       docWithPage,
@@ -198,7 +252,11 @@ describe("computeBatchInverse", () => {
       inverseOf,
     );
     expect(callCount).toBe(1);
-    expect(result).toEqual({ type: "rename-page", pageId: "p1", name: "inverse-1" });
+    expect(result).toEqual({
+      type: "rename-page",
+      pageId: "p1",
+      name: "inverse-1",
+    });
   });
 });
 
@@ -212,7 +270,6 @@ describe("normalizeRoute edge cases", () => {
 
 describe("setPageThemeHandler - branch coverage", () => {
   it("updates theme on matching page and leaves others unchanged", () => {
-
     const doc: VisualDocument = {
       ...emptyDoc,
       themes: [{ id: "t1", name: "Theme 1", tokens: {} }],
@@ -223,7 +280,11 @@ describe("setPageThemeHandler - branch coverage", () => {
       scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
-    const result = setPageThemeHandler(doc, { type: "set-page-theme", pageId: "p1", themeId: "t1" }, { now: Date.now });
+    const result = setPageThemeHandler(
+      doc,
+      { type: "set-page-theme", pageId: "p1", themeId: "t1" },
+      { now: Date.now },
+    );
     expect(result.pages[0]?.themeId).toBe("t1");
     expect(result.pages[1]?.themeId).toBeUndefined();
   });
@@ -231,7 +292,6 @@ describe("setPageThemeHandler - branch coverage", () => {
 
 describe("updatePageRouteHandler - map callback branches", () => {
   it("updates route on matching page and leaves others unchanged", () => {
-
     const doc: VisualDocument = {
       ...emptyDoc,
       pages: [
@@ -241,7 +301,11 @@ describe("updatePageRouteHandler - map callback branches", () => {
       scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
-    const result = updatePageRouteHandler(doc, { type: "update-page-route", pageId: "p1", route: "/new" }, { now: Date.now });
+    const result = updatePageRouteHandler(
+      doc,
+      { type: "update-page-route", pageId: "p1", route: "/new" },
+      { now: Date.now },
+    );
     expect(result.pages[0]?.route).toBe("/new");
     expect(result.pages[1]?.route).toBe("/other");
   });

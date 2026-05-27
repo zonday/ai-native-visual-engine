@@ -1,10 +1,14 @@
-import type { VisualDocument } from "@ai-native/core";
+import type {
+  DocumentAction,
+  RuntimeAction,
+  VisualDocument,
+} from "@ai-native/core";
 import type {
   ComponentRegistry,
   RenderContext,
   TransformEvent,
 } from "@ai-native/renderer-react";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Canvas } from "./canvas/Canvas.js";
 import { Inspector } from "./panels/inspector.js";
 import { Layers } from "./panels/layers.js";
@@ -17,6 +21,8 @@ export interface EditorProps {
   context: RenderContext;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
+  onDispatchRuntime?: (action: RuntimeAction) => void;
+  onDispatchDocument?: (action: DocumentAction) => void;
 }
 
 export function Editor({
@@ -25,6 +31,8 @@ export function Editor({
   context,
   onTransform,
   onUpdateProps,
+  onDispatchRuntime,
+  onDispatchDocument,
 }: EditorProps) {
   const activePageId = useEditorStore((s) => s.activePageId);
   const setActivePage = useEditorStore((s) => s.setActivePage);
@@ -55,19 +63,27 @@ export function Editor({
     [context, currentPage, currentScene, nodeIds, viewport],
   );
 
+  const handleRenamePage = useCallback(
+    (pageId: string, name: string) => {
+      onDispatchDocument?.({ type: "rename-page", pageId, name });
+    },
+    [onDispatchDocument],
+  );
+
+  const handleRenameNode = useCallback(
+    (nodeId: string, name: string) => {
+      onDispatchRuntime?.({ type: "update-props", nodeId, props: { name } });
+    },
+    [onDispatchRuntime],
+  );
+
   return (
-    <div className="editor-shell" style={{ display: "flex", height: "100vh" }}>
-      <aside
-        style={{
-          width: 240,
-          borderRight: "1px solid #e2e8f0",
-          overflow: "auto",
-        }}
-      >
-        <PageList document={document} />
-        <Layers document={document} />
+    <div className="flex flex-1 min-h-0">
+      <aside className="w-60 border-r border-slate-200 overflow-auto shrink-0">
+        <PageList document={document} onRenamePage={handleRenamePage} />
+        <Layers document={document} onRenameNode={handleRenameNode} />
       </aside>
-      <main style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+      <main className="flex-1 relative overflow-hidden">
         <Canvas
           registry={registry}
           context={editorContext}
@@ -75,14 +91,8 @@ export function Editor({
           onUpdateProps={onUpdateProps}
         />
       </main>
-      <aside
-        style={{
-          width: 280,
-          borderLeft: "1px solid #e2e8f0",
-          overflow: "auto",
-        }}
-      >
-        <Inspector document={document} />
+      <aside className="w-72 border-l border-slate-200 overflow-auto shrink-0">
+        <Inspector document={document} onDispatchRuntime={onDispatchRuntime} />
       </aside>
     </div>
   );

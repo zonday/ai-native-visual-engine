@@ -1,19 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  InMemoryDataSourceRegistry,
-  type Dataset,
-  type ResolvedBinding,
-} from "../src/data/types.js";
-import type { DataSourceRegistry } from "../src/data/types.js";
-import {
-  resolveBindings,
-  resolveBinding,
-  reResolveOnSourceChange,
   cleanupBindings,
-  subscribeBinding,
   clearTransformers,
   registerTransformer,
+  reResolveOnSourceChange,
+  resolveBinding,
+  resolveBindings,
+  subscribeBinding,
 } from "../src/data/binding.js";
+import type { DataSourceRegistry } from "../src/data/types.js";
+import {
+  type Dataset,
+  InMemoryDataSourceRegistry,
+  type ResolvedBinding,
+} from "../src/data/types.js";
 
 function makeDataset(overrides?: Partial<Dataset>): Dataset {
   return {
@@ -77,10 +77,7 @@ describe("InMemoryDataSourceRegistry", () => {
 
   it("resolves a dataset with path traversal", async () => {
     registry.registerDataset(makeDataset());
-    const result = await registry.resolveValue(
-      "dataset:sales",
-      "0.product",
-    );
+    const result = await registry.resolveValue("dataset:sales", "0.product");
     expect(result).toBe("Widget");
   });
 
@@ -92,13 +89,9 @@ describe("InMemoryDataSourceRegistry", () => {
   it("subscribes to dataset changes and receives callback", async () => {
     registry.registerDataset(makeDataset());
     let notified = false;
-    const unsub = registry.subscribe(
-      "dataset:sales",
-      undefined,
-      () => {
-        notified = true;
-      },
-    );
+    const unsub = registry.subscribe("dataset:sales", undefined, () => {
+      notified = true;
+    });
     registry.updateDatasetValue("sales", 0, "revenue", 999);
     expect(notified).toBe(true);
     unsub();
@@ -107,13 +100,9 @@ describe("InMemoryDataSourceRegistry", () => {
   it("unsubscribe stops receiving callbacks", async () => {
     registry.registerDataset(makeDataset());
     let count = 0;
-    const unsub = registry.subscribe(
-      "dataset:sales",
-      undefined,
-      () => {
-        count++;
-      },
-    );
+    const unsub = registry.subscribe("dataset:sales", undefined, () => {
+      count++;
+    });
     unsub();
     registry.updateDatasetValue("sales", 0, "revenue", 999);
     expect(count).toBe(0);

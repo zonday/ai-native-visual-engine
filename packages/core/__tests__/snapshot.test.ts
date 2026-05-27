@@ -1,17 +1,16 @@
-import { describe, it, expect } from "vitest";
-import {
-  createSnapshotManager,
-  truncateDocumentEventLog,
-  truncateRuntimeEventLog,
-  DEFAULT_SNAPSHOT_INTERVAL,
-  MAX_DOCUMENT_EVENT_LOG_ACTIONS,
-  MAX_SCENE_EVENT_LOG_ACTIONS,
-} from "../src/snapshot.js";
+import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
 import { createDocumentEventLog } from "../src/document/event-log.js";
 import { createRuntimeEventLog } from "../src/runtime/event-log.js";
-import type { DocumentSnapshot } from "../src/types.js";
-import type { PersistedSceneGraph } from "../src/types.js";
+import {
+  createSnapshotManager,
+  DEFAULT_SNAPSHOT_INTERVAL,
+  MAX_DOCUMENT_EVENT_LOG_ACTIONS,
+  MAX_SCENE_EVENT_LOG_ACTIONS,
+  truncateDocumentEventLog,
+  truncateRuntimeEventLog,
+} from "../src/snapshot.js";
+import type { DocumentSnapshot, PersistedSceneGraph } from "../src/types.js";
 
 const emptySnapshot: DocumentSnapshot = {
   document: createNewDocument(),
@@ -30,9 +29,18 @@ describe("createSnapshotManager", () => {
     const manager = createSnapshotManager(emptySnapshot, docLog, 3);
     expect(manager.shouldCompact()).toBe(false);
 
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "a" }, timestamp: 1 });
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "b" }, timestamp: 2 });
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "c" }, timestamp: 3 });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "a" },
+      timestamp: 1,
+    });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "b" },
+      timestamp: 2,
+    });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "c" },
+      timestamp: 3,
+    });
 
     expect(manager.shouldCompact()).toBe(true);
   });
@@ -41,13 +49,23 @@ describe("createSnapshotManager", () => {
 describe("truncateDocumentEventLog", () => {
   it("removes actions before the checkpoint version", () => {
     const docLog = createDocumentEventLog(emptySnapshot.document);
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "a" }, timestamp: 1 });
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "b" }, timestamp: 2 });
-    docLog.actions.push({ action: { type: "rename-page", pageId: "p1", name: "c" }, timestamp: 3 });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "a" },
+      timestamp: 1,
+    });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "b" },
+      timestamp: 2,
+    });
+    docLog.actions.push({
+      action: { type: "rename-page", pageId: "p1", name: "c" },
+      timestamp: 3,
+    });
 
     const truncated = truncateDocumentEventLog(docLog, 2);
     expect(truncated.actions).toHaveLength(1);
-    expect((truncated.actions[0]!.action as any).name).toBe("c");
+    const last = truncated.actions[0]?.action;
+    if (last?.type === "rename-page") expect(last.name).toBe("c");
   });
 });
 
@@ -60,11 +78,19 @@ describe("truncateRuntimeEventLog", () => {
     };
     const log = createRuntimeEventLog(scene);
     log.actions.push({
-      action: { type: "create-node", node: { id: "a", type: "container" }, parentId: "root" },
+      action: {
+        type: "create-node",
+        node: { id: "a", type: "container" },
+        parentId: "root",
+      },
       timestamp: 1,
     });
     log.actions.push({
-      action: { type: "create-node", node: { id: "b", type: "container" }, parentId: "root" },
+      action: {
+        type: "create-node",
+        node: { id: "b", type: "container" },
+        parentId: "root",
+      },
       timestamp: 2,
     });
 

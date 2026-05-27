@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
-import { removePageHandler } from "../src/document/handlers/remove-page.js";
+import { describe, expect, it } from "vitest";
 import { DocumentHandlerError } from "../src/document/error.js";
+import { removePageHandler } from "../src/document/handlers/remove-page.js";
+import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene } from "./helpers.js";
 
 const doc: VisualDocument = {
@@ -11,7 +11,10 @@ const doc: VisualDocument = {
     { id: "p1", name: "Page 1", sceneId: "s1" },
     { id: "p2", name: "Page 2", sceneId: "s2" },
   ],
-  scenes: { s1: emptyPersistedScene, s2: { ...emptyPersistedScene, version: 1 } },
+  scenes: {
+    s1: emptyPersistedScene,
+    s2: { ...emptyPersistedScene, version: 1 },
+  },
 };
 
 describe("removePageHandler", () => {

@@ -15,11 +15,12 @@ export function createUndoHistoryMiddleware<
   registry: HandlerRegistry<TState, TAction, TContext>,
   getContext: () => TContext,
   shouldExcludeFromUndo?: () => boolean,
+  isInTransaction?: () => boolean,
 ): Middleware<TState, TAction> {
   return (action, stateBefore, next) => {
     const result = next();
 
-    if (result.ok && !shouldExcludeFromUndo?.()) {
+    if (result.ok && !shouldExcludeFromUndo?.() && !isInTransaction?.()) {
       const entry = registry.get(action.type);
       const inverseComputer = entry?.inverse;
       if (inverseComputer) {

@@ -1,41 +1,85 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
-import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
-import { removeNodeHandler, removeNodeInverse } from "../src/runtime/handlers/remove-node.js";
-import { moveNodeHandler, moveNodeInverse } from "../src/runtime/handlers/move-node.js";
-import { updateLayoutHandler, updateLayoutInverse } from "../src/runtime/handlers/update-layout.js";
-import { rotateNodeHandler, rotateNodeInverse } from "../src/runtime/handlers/rotate-node.js";
-import { updatePropsHandler, updatePropsInverse } from "../src/runtime/handlers/update-props.js";
-import { updateStyleHandler, updateStyleInverse } from "../src/runtime/handlers/update-style.js";
-import { updateBindingsHandler, updateBindingsInverse } from "../src/runtime/handlers/update-bindings.js";
-import { updateRuntimeHandler, updateRuntimeInverse } from "../src/runtime/handlers/update-runtime.js";
-import { updateSelectionHandler, updateSelectionInverse } from "../src/runtime/handlers/update-selection.js";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  createNodeHandler,
+  createNodeInverse,
+} from "../src/runtime/handlers/create-node.js";
+import {
+  moveNodeHandler,
+  moveNodeInverse,
+} from "../src/runtime/handlers/move-node.js";
+import {
+  removeNodeHandler,
+  removeNodeInverse,
+} from "../src/runtime/handlers/remove-node.js";
+import {
+  rotateNodeHandler,
+  rotateNodeInverse,
+} from "../src/runtime/handlers/rotate-node.js";
+import {
+  updateBindingsHandler,
+  updateBindingsInverse,
+} from "../src/runtime/handlers/update-bindings.js";
+import {
+  updateLayoutHandler,
+  updateLayoutInverse,
+} from "../src/runtime/handlers/update-layout.js";
+import {
+  updatePropsHandler,
+  updatePropsInverse,
+} from "../src/runtime/handlers/update-props.js";
+import {
+  updateRuntimeHandler,
+  updateRuntimeInverse,
+} from "../src/runtime/handlers/update-runtime.js";
+import {
+  updateSelectionHandler,
+  updateSelectionInverse,
+} from "../src/runtime/handlers/update-selection.js";
+import {
+  updateStyleHandler,
+  updateStyleInverse,
+} from "../src/runtime/handlers/update-style.js";
+import type { AbsoluteLayout, SceneGraph } from "../src/types.js";
 import { baseNode, makeScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
 
-const runtimeHandlers: Record<string, (scene: SceneGraph, action: RuntimeAction, ctx: RuntimeContext) => SceneGraph> = {
-  "create-node": createNodeHandler as any,
-  "remove-node": removeNodeHandler as any,
-  "move-node": moveNodeHandler as any,
-  "update-layout": updateLayoutHandler as any,
-  "rotate-node": rotateNodeHandler as any,
-  "update-props": updatePropsHandler as any,
-  "update-style": updateStyleHandler as any,
-  "update-bindings": updateBindingsHandler as any,
-  "update-runtime": updateRuntimeHandler as any,
-  "update-selection": updateSelectionHandler as any,
+const runtimeHandlers: Record<
+  string,
+  (scene: SceneGraph, action: RuntimeAction, ctx: RuntimeContext) => SceneGraph
+> = {
+  "create-node": createNodeHandler,
+  "remove-node": removeNodeHandler,
+  "move-node": moveNodeHandler,
+  "update-layout": updateLayoutHandler,
+  "rotate-node": rotateNodeHandler,
+  "update-props": updatePropsHandler,
+  "update-style": updateStyleHandler,
+  "update-bindings": updateBindingsHandler,
+  "update-runtime": updateRuntimeHandler,
+  "update-selection": updateSelectionHandler,
 };
 
 function roundTrip<TAction extends RuntimeAction>(
   sceneBefore: SceneGraph,
   action: TAction,
-  handler: (scene: SceneGraph, action: TAction, ctx: RuntimeContext) => SceneGraph,
-  inverseComputer: (sceneBefore: SceneGraph, action: TAction, ctx: RuntimeContext) => RuntimeAction | undefined,
-): { sceneAfter: SceneGraph; inverse: RuntimeAction | undefined; sceneRestored: SceneGraph } {
+  handler: (
+    scene: SceneGraph,
+    action: TAction,
+    ctx: RuntimeContext,
+  ) => SceneGraph,
+  inverseComputer: (
+    sceneBefore: SceneGraph,
+    action: TAction,
+    ctx: RuntimeContext,
+  ) => RuntimeAction | undefined,
+): {
+  sceneAfter: SceneGraph;
+  inverse: RuntimeAction | undefined;
+  sceneRestored: SceneGraph;
+} {
   const sceneAfter = handler(sceneBefore, action, context);
   const inverse = inverseComputer(sceneBefore, action, context);
   if (!inverse) {
@@ -68,7 +112,7 @@ describe("inverse round-trip: create-node -> remove-node", () => {
     expect(sceneAfter.nodes["child-1"]).toBeDefined();
     expect(inverse).toEqual({ type: "remove-node", nodeId: "child-1" });
     expect(sceneRestored.nodes["child-1"]).toBeUndefined();
-    expect(sceneRestored.nodes["root"]?.children).toEqual([]);
+    expect(sceneRestored.nodes.root?.children).toEqual([]);
   });
 });
 
@@ -88,10 +132,10 @@ describe("inverse round-trip: remove-node -> create-node", () => {
       removeNodeHandler,
       removeNodeInverse,
     );
-    expect(sceneAfter.nodes["a"]).toBeUndefined();
+    expect(sceneAfter.nodes.a).toBeUndefined();
     expect(inverse?.type).toBe("create-node");
-    expect(sceneRestored.nodes["a"]).toBeDefined();
-    expect(sceneRestored.nodes["root"]?.children).toEqual(["a"]);
+    expect(sceneRestored.nodes.a).toBeDefined();
+    expect(sceneRestored.nodes.root?.children).toEqual(["a"]);
   });
 });
 
@@ -113,10 +157,10 @@ describe("inverse round-trip: move-node -> move-node", () => {
       moveNodeHandler,
       moveNodeInverse,
     );
-    expect(sceneAfter.nodes["a"]?.parentId).toBe("b");
+    expect(sceneAfter.nodes.a?.parentId).toBe("b");
     expect(inverse?.type).toBe("move-node");
-    expect(sceneRestored.nodes["a"]?.parentId).toBe("root");
-    expect(sceneRestored.nodes["root"]?.children).toEqual(["a", "b"]);
+    expect(sceneRestored.nodes.a?.parentId).toBe("root");
+    expect(sceneRestored.nodes.root?.children).toEqual(["a", "b"]);
   });
 });
 
@@ -124,7 +168,12 @@ describe("inverse round-trip: update-layout -> update-layout", () => {
   it("restores the scene after updating and then reverting layout", () => {
     const sceneBefore: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a"] },
-      a: { id: "a", type: "container", parentId: "root", layout: { x: 0, y: 0 } },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        layout: { x: 0, y: 0 },
+      },
     });
     const action: RuntimeAction = {
       type: "update-layout",
@@ -137,9 +186,9 @@ describe("inverse round-trip: update-layout -> update-layout", () => {
       updateLayoutHandler,
       updateLayoutInverse,
     );
-    expect(sceneAfter.nodes["a"]?.layout).toEqual({ x: 100, y: 0 });
+    expect(sceneAfter.nodes.a?.layout).toEqual({ x: 100, y: 0 });
     expect(inverse?.type).toBe("update-layout");
-    expect(sceneRestored.nodes["a"]?.layout).toEqual({ x: 0, y: 0 });
+    expect(sceneRestored.nodes.a?.layout).toEqual({ x: 0, y: 0 });
   });
 });
 
@@ -165,9 +214,9 @@ describe("inverse round-trip: rotate-node -> rotate-node", () => {
       rotateNodeHandler,
       rotateNodeInverse,
     );
-    expect((sceneAfter.nodes["a"]?.layout as any).rotation).toBe(90);
+    expect((sceneAfter.nodes.a?.layout as AbsoluteLayout).rotation).toBe(90);
     expect(inverse?.type).toBe("rotate-node");
-    expect((sceneRestored.nodes["a"]?.layout as any).rotation).toBe(0);
+    expect((sceneRestored.nodes.a?.layout as AbsoluteLayout).rotation).toBe(0);
   });
 });
 
@@ -175,7 +224,12 @@ describe("inverse round-trip: update-props -> update-props", () => {
   it("restores the scene after updating and then reverting props", () => {
     const sceneBefore: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a"] },
-      a: { id: "a", type: "container", parentId: "root", props: { label: "Hello" } },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        props: { label: "Hello" },
+      },
     });
     const action: RuntimeAction = {
       type: "update-props",
@@ -188,9 +242,9 @@ describe("inverse round-trip: update-props -> update-props", () => {
       updatePropsHandler,
       updatePropsInverse,
     );
-    expect(sceneAfter.nodes["a"]?.props).toEqual({ label: "World" });
+    expect(sceneAfter.nodes.a?.props).toEqual({ label: "World" });
     expect(inverse?.type).toBe("update-props");
-    expect(sceneRestored.nodes["a"]?.props).toEqual({ label: "Hello" });
+    expect(sceneRestored.nodes.a?.props).toEqual({ label: "Hello" });
   });
 });
 
@@ -198,7 +252,12 @@ describe("inverse round-trip: update-style -> update-style", () => {
   it("restores the scene after updating and then reverting style", () => {
     const sceneBefore: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a"] },
-      a: { id: "a", type: "container", parentId: "root", style: { color: "red" } },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        style: { color: "red" },
+      },
     });
     const action: RuntimeAction = {
       type: "update-style",
@@ -211,9 +270,9 @@ describe("inverse round-trip: update-style -> update-style", () => {
       updateStyleHandler,
       updateStyleInverse,
     );
-    expect(sceneAfter.nodes["a"]?.style).toEqual({ color: "blue" });
+    expect(sceneAfter.nodes.a?.style).toEqual({ color: "blue" });
     expect(inverse?.type).toBe("update-style");
-    expect(sceneRestored.nodes["a"]?.style).toEqual({ color: "red" });
+    expect(sceneRestored.nodes.a?.style).toEqual({ color: "red" });
   });
 });
 
@@ -236,9 +295,9 @@ describe("inverse round-trip: update-bindings -> update-bindings", () => {
       updateBindingsHandler,
       updateBindingsInverse,
     );
-    expect(sceneAfter.nodes["a"]?.bindings).toEqual([binding2]);
+    expect(sceneAfter.nodes.a?.bindings).toEqual([binding2]);
     expect(inverse?.type).toBe("update-bindings");
-    expect(sceneRestored.nodes["a"]?.bindings).toEqual([binding1]);
+    expect(sceneRestored.nodes.a?.bindings).toEqual([binding1]);
   });
 });
 
@@ -246,7 +305,12 @@ describe("inverse round-trip: update-runtime -> update-runtime", () => {
   it("restores the scene after updating and then reverting runtime state", () => {
     const sceneBefore: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a"] },
-      a: { id: "a", type: "container", parentId: "root", runtime: { isLoading: true } },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        runtime: { isLoading: true },
+      },
     });
     const action: RuntimeAction = {
       type: "update-runtime",
@@ -259,9 +323,9 @@ describe("inverse round-trip: update-runtime -> update-runtime", () => {
       updateRuntimeHandler,
       updateRuntimeInverse,
     );
-    expect(sceneAfter.nodes["a"]?.runtime).toEqual({ isLoading: false });
+    expect(sceneAfter.nodes.a?.runtime).toEqual({ isLoading: false });
     expect(inverse?.type).toBe("update-runtime");
-    expect(sceneRestored.nodes["a"]?.runtime).toEqual({ isLoading: true });
+    expect(sceneRestored.nodes.a?.runtime).toEqual({ isLoading: true });
   });
 });
 

@@ -1,7 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { ComponentPluginRegistry } from "../src/plugins/registry.js";
-import { buildSchemaIndex, schemaIndexToSnapshot } from "../src/compiler/schema-index.js";
+import { describe, expect, it } from "vitest";
+import {
+  buildSchemaIndex,
+  schemaIndexToSnapshot,
+} from "../src/compiler/schema-index.js";
 import type { ComponentPlugin } from "../src/plugin-types.js";
+import { ComponentPluginRegistry } from "../src/plugins/registry.js";
 
 function makePlugin(
   type: string,
@@ -37,7 +40,12 @@ describe("buildSchemaIndex", () => {
         description: "Renders data as a chart",
         category: "visualization",
         props: [
-          { key: "dataSource", type: "string", required: true, description: "Data source ID" },
+          {
+            key: "dataSource",
+            type: "string",
+            required: true,
+            description: "Data source ID",
+          },
           { key: "chartType", type: "string", default: "bar" },
         ],
         ai: {
@@ -84,21 +92,32 @@ describe("buildSchemaIndex", () => {
     const index = buildSchemaIndex(registry);
 
     expect(index.components.size).toBe(3);
-    expect(index.componentTypes.sort()).toEqual(["chart", "metric-value", "table"]);
+    expect(index.componentTypes.sort()).toEqual([
+      "chart",
+      "metric-value",
+      "table",
+    ]);
   });
 
   it("maps prop meta fields correctly including optional fields", () => {
     const registry = new ComponentPluginRegistry();
-    registry.register(makePlugin("kpi", {
-      meta: {
-        title: "KPI",
-        description: "KPI card",
-        props: [
-          { key: "value", type: "number", required: true, description: "Primary value" },
-          { key: "label", type: "string", required: false, default: "N/A" },
-        ],
-      },
-    }));
+    registry.register(
+      makePlugin("kpi", {
+        meta: {
+          title: "KPI",
+          description: "KPI card",
+          props: [
+            {
+              key: "value",
+              type: "number",
+              required: true,
+              description: "Primary value",
+            },
+            { key: "label", type: "string", required: false, default: "N/A" },
+          ],
+        },
+      }),
+    );
 
     const index = buildSchemaIndex(registry);
     const kpi = index.components.get("kpi");
@@ -138,27 +157,31 @@ describe("buildSchemaIndex", () => {
 
   it("schemaIndexToSnapshot converts Map to Record for serialization", () => {
     const registry = new ComponentPluginRegistry();
-    registry.register(makePlugin("chart", {
-      meta: {
-        title: "Chart",
-        description: "Chart component",
-        props: [],
-      },
-    }));
-    registry.register(makePlugin("table", {
-      meta: {
-        title: "Table",
-        description: "Table component",
-        props: [],
-      },
-    }));
+    registry.register(
+      makePlugin("chart", {
+        meta: {
+          title: "Chart",
+          description: "Chart component",
+          props: [],
+        },
+      }),
+    );
+    registry.register(
+      makePlugin("table", {
+        meta: {
+          title: "Table",
+          description: "Table component",
+          props: [],
+        },
+      }),
+    );
 
     const index = buildSchemaIndex(registry);
     const snapshot = schemaIndexToSnapshot(index);
 
     expect(Object.keys(snapshot.components).sort()).toEqual(["chart", "table"]);
-    expect(snapshot.components["chart"]?.name).toBe("Chart");
-    expect(snapshot.components["table"]?.name).toBe("Table");
+    expect(snapshot.components.chart?.name).toBe("Chart");
+    expect(snapshot.components.table?.name).toBe("Table");
     expect(snapshot.componentTypes.sort()).toEqual(["chart", "table"]);
   });
 });

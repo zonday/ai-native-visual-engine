@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import type { CompileResult } from "@ai-native/core";
+import { describe, expect, it } from "vitest";
 import { ALL_TOOLS } from "../src/tool-registry.js";
 
 async function exec<const T extends keyof typeof ALL_TOOLS>(
@@ -29,7 +29,9 @@ describe("create-dashboard tool", () => {
     expect(result.plan.documentActions.length).toBeGreaterThan(0);
     expect(result.plan.documentActions[0]?.type).toBe("create-page");
     expect(result.plan.runtimeActions.length).toBeGreaterThan(0);
-    const creates = result.plan.runtimeActions.filter((a) => a.type === "create-node");
+    const creates = result.plan.runtimeActions.filter(
+      (a) => a.type === "create-node",
+    );
     expect(creates.length).toBeGreaterThan(0);
   });
 

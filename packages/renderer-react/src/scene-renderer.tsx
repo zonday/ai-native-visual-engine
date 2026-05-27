@@ -90,7 +90,7 @@ function renderNode(
 
   const content = render(resolvedNode, ctx, childNodes);
 
-  if (!wrapperNeeded(resolvedNode, isSelected)) {
+  if (ctx.mode !== "editor" && !wrapperNeeded(resolvedNode, isSelected)) {
     return content;
   }
 

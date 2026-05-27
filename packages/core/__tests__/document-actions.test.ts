@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DocumentActionSchema } from "../src/document/actions.js";
 
 describe("DocumentActionSchema", () => {

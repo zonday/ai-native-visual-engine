@@ -1,3 +1,4 @@
+import "./index.css";
 import type {
   DocumentAction,
   RuntimeAction,
@@ -199,7 +200,7 @@ function App() {
     const id = `n-${Date.now()}`;
     dispatchRuntime({
       type: "create-node",
-      node: { id, type: "text" },
+      node: { id, type: "text", layout: { width: 200 } },
       parentId: scene.rootId,
     });
   }, [dispatchRuntime, scene.rootId]);
@@ -361,6 +362,14 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleUndo, handleRedo]);
 
+  const handleDispatchDocument = useCallback(
+    (action: DocumentAction) => {
+      const result = documentBus.dispatch(action);
+      if (result.ok) setDoc(result.document);
+    },
+    [documentBus],
+  );
+
   const registry = useMemo(() => createRendererRegistry(), []);
 
   const firstPageSceneId =
@@ -370,23 +379,39 @@ function App() {
     : scene;
 
   return (
-    <div>
-      <div
-        style={{ padding: 8, background: "#f0f0f0", display: "flex", gap: 8 }}
-      >
-        <button type="button" onClick={addPage}>
+    <div className="flex flex-col h-screen">
+      <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-100 border-b border-slate-200 text-sm shrink-0">
+        <button
+          type="button"
+          onClick={addPage}
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
+        >
           + Add Page
         </button>
-        <button type="button" onClick={addNode}>
-          + Add Text Node
+        <button
+          type="button"
+          onClick={addNode}
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
+        >
+          + Add Text
         </button>
-        <button type="button" onClick={handleUndo} disabled={!canUndo}>
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={!canUndo}
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        >
           ↩ Undo
         </button>
-        <button type="button" onClick={handleRedo} disabled={!canRedo}>
+        <button
+          type="button"
+          onClick={handleRedo}
+          disabled={!canRedo}
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        >
           ↪ Redo
         </button>
-        <span style={{ marginLeft: "auto" }}>
+        <span className="ml-auto text-xs text-slate-500">
           Pages: {doc.pages.length} | Nodes: {Object.keys(scene.nodes).length}
         </span>
       </div>
@@ -396,6 +421,8 @@ function App() {
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
         onTransform={handleTransform}
         onUpdateProps={handleUpdateProps}
+        onDispatchRuntime={dispatchRuntime}
+        onDispatchDocument={handleDispatchDocument}
       />
     </div>
   );

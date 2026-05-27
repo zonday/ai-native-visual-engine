@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { createNewDocument } from "../src/bootstrap.js";
+import type { DocumentAction } from "../src/document/actions.js";
 import {
+  CURRENT_SERIALIZATION_VERSION,
   serializeDocument,
   serializeEventLog,
-  CURRENT_SERIALIZATION_VERSION,
 } from "../src/serialization.js";
-import { createNewDocument } from "../src/bootstrap.js";
 import type { DocumentSnapshot } from "../src/types.js";
-import type { DocumentAction } from "../src/document/actions.js";
 
 describe("serializeDocument", () => {
   it("wraps a snapshot with version and timestamp", () => {
@@ -23,8 +23,15 @@ describe("serializeDocument", () => {
 
 describe("serializeEventLog", () => {
   it("wraps actions with version and context metadata", () => {
-    const actions = [{ type: "rename-page", pageId: "p1", name: "New" }] as DocumentAction[];
-    const serialized = serializeEventLog("document", "doc-1", "hash-abc", actions);
+    const actions = [
+      { type: "rename-page", pageId: "p1", name: "New" },
+    ] as DocumentAction[];
+    const serialized = serializeEventLog(
+      "document",
+      "doc-1",
+      "hash-abc",
+      actions,
+    );
 
     expect(serialized.version).toBe(CURRENT_SERIALIZATION_VERSION);
     expect(serialized.type).toBe("event-log");

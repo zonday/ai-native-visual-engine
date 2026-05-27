@@ -1,12 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { updateStyleHandler, updateStyleInverse } from "../src/runtime/handlers/update-style.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  updateStyleHandler,
+  updateStyleInverse,
+} from "../src/runtime/handlers/update-style.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithNode: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a"] },
-  a: { id: "a", type: "container", parentId: "root", style: { color: "red", fontSize: 14 } },
+  a: {
+    id: "a",
+    type: "container",
+    parentId: "root",
+    style: { color: "red", fontSize: 14 },
+  },
 });
 
 describe("updateStyleHandler", () => {
@@ -17,7 +25,7 @@ describe("updateStyleHandler", () => {
       style: { color: "blue" },
     };
     const result = updateStyleHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.style).toEqual({ color: "blue" });
+    expect(result.nodes.a?.style).toEqual({ color: "blue" });
     expect(result.version).toBe(1);
   });
 
@@ -32,7 +40,7 @@ describe("updateStyleHandler", () => {
       style: { color: "green" },
     };
     const result = updateStyleHandler(scene, action, { now: Date.now });
-    expect(result.nodes["a"]?.style).toEqual({ color: "green" });
+    expect(result.nodes.a?.style).toEqual({ color: "green" });
   });
 
   it("rejects update-style when node does not exist", () => {
@@ -41,9 +49,9 @@ describe("updateStyleHandler", () => {
       nodeId: "missing",
       style: { color: "blue" },
     };
-    expect(() => updateStyleHandler(sceneWithNode, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      updateStyleHandler(sceneWithNode, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       updateStyleHandler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
@@ -60,7 +68,9 @@ describe("updateStyleInverse", () => {
       nodeId: "a",
       style: { color: "blue" },
     };
-    const inverse = updateStyleInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateStyleInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "update-style",
       nodeId: "a",
@@ -74,7 +84,9 @@ describe("updateStyleInverse", () => {
       nodeId: "missing",
       style: { color: "blue" },
     };
-    const inverse = updateStyleInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateStyleInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toBeUndefined();
   });
 });

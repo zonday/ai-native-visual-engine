@@ -1,22 +1,25 @@
-import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { VisualDocumentSchema, DocumentSnapshotSchema } from "../src/types.js";
-import type { DocumentSnapshot, SceneGraph } from "../src/types.js";
-import { createNewDocument, createEmptyScene } from "../src/bootstrap.js";
-import { openDocumentSession } from "../src/session.js";
-import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { describe, expect, it } from "vitest";
+import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
 import { exportDocument } from "../src/import-export.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
+import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
+import { openDocumentSession } from "../src/session.js";
+import type { DocumentSnapshot } from "../src/types.js";
+import { DocumentSnapshotSchema, VisualDocumentSchema } from "../src/types.js";
 
 function loadFixture(name: string): DocumentSnapshot {
   const path = resolve(__dirname, `../__fixtures__/${name}.json`);
   return JSON.parse(readFileSync(path, "utf-8")) as DocumentSnapshot;
 }
 
-function validateFixture(snapshot: DocumentSnapshot): { ok: boolean; diagnostics: string[] } {
+function validateFixture(snapshot: DocumentSnapshot): {
+  ok: boolean;
+  diagnostics: string[];
+} {
   const diagnostics: string[] = [];
   const parsed = DocumentSnapshotSchema.safeParse(snapshot);
   if (!parsed.success) diagnostics.push(parsed.error.message);
@@ -36,7 +39,9 @@ describe("fixture files validation", () => {
     expect(result.ok).toBe(true);
   });
   it("invalid geometry produces validation diagnostics", () => {
-    const result = validateFixture({ document: { foo: "bar" } } as unknown as DocumentSnapshot);
+    const result = validateFixture({
+      document: { foo: "bar" },
+    } as unknown as DocumentSnapshot);
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
@@ -48,7 +53,7 @@ describe("createNewDocument initialization", () => {
     const parsed = VisualDocumentSchema.safeParse(doc);
     expect(parsed.success).toBe(true);
     expect(doc.pages).toHaveLength(1);
-    expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
+    expect(doc.scenes[doc.pages[0]?.sceneId]).toBeDefined();
   });
 
   it("sets active theme via themeId option", () => {
@@ -66,7 +71,7 @@ describe("openDocumentSession lifecycle", () => {
 
     const session = openDocumentSession(doc);
     expect(session.state.isOpen).toBe(true);
-    expect(session.state.activePageId).toBe(doc.pages[0]!.id);
+    expect(session.state.activePageId).toBe(doc.pages[0]?.id);
 
     session.switchPage("page-2");
     expect(session.state.activePageId).toBe("page-2");
@@ -79,18 +84,40 @@ describe("openDocumentSession lifecycle", () => {
 describe("action replay determinism", () => {
   it("produces same scene from same action sequence", () => {
     const doc = createNewDocument({ title: "Replay" });
-    const scene = doc.scenes[doc.pages[0]!.sceneId]!;
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
 
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: { version: 0, rootId: "root", nodes: {} }, error: { code: "fail", message: "noop" } }),
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: { version: 0, rootId: "root", nodes: {} },
+      error: { code: "fail", message: "noop" },
+    }));
+
+    const bus1 = createRuntimeCommandBus(
+      handlerRegistry,
+      [],
+      { ...scene, version: 0, nodes: { ...scene.nodes } },
+      { now: Date.now },
+    );
+    const bus2 = createRuntimeCommandBus(
+      handlerRegistry,
+      [],
+      { ...scene, version: 0, nodes: { ...scene.nodes } },
+      { now: Date.now },
     );
 
-    const bus1 = createRuntimeCommandBus(handlerRegistry, [], { ...scene, version: 0, nodes: { ...scene.nodes } }, { now: Date.now });
-    const bus2 = createRuntimeCommandBus(handlerRegistry, [], { ...scene, version: 0, nodes: { ...scene.nodes } }, { now: Date.now });
-
     const actions = [
-      { type: "create-node" as const, node: { id: "a", type: "container" }, parentId: scene.rootId },
-      { type: "create-node" as const, node: { id: "b", type: "text" }, parentId: "a" },
+      {
+        type: "create-node" as const,
+        node: { id: "a", type: "container" },
+        parentId: scene.rootId,
+      },
+      {
+        type: "create-node" as const,
+        node: { id: "b", type: "text" },
+        parentId: "a",
+      },
     ];
 
     for (const action of actions) {
@@ -105,38 +132,57 @@ describe("action replay determinism", () => {
 describe("batch actions via command bus", () => {
   it("batch dispatches multiple create-node actions atomically", () => {
     const doc = createNewDocument({ title: "Batch" });
-    const scene = doc.scenes[doc.pages[0]!.sceneId]!;
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
     const initial = { ...scene, version: 0, nodes: { ...scene.nodes } };
 
     let current = initial;
     const dispatch = (action: RuntimeAction): DispatchResult => {
-      const { handlerRegistry: reg } = createDefaultRuntimeRegistries(
-        () => ({ ok: false, scene: current, error: { code: "fail", message: "noop" } }),
-      );
+      const { handlerRegistry: reg } = createDefaultRuntimeRegistries(() => ({
+        ok: false,
+        scene: current,
+        error: { code: "fail", message: "noop" },
+      }));
       const entry = reg.get(action.type);
-      if (!entry) return { ok: false, scene: current, error: { code: "unknown", message: "?" } };
+      if (!entry)
+        return {
+          ok: false,
+          scene: current,
+          error: { code: "unknown", message: "?" },
+        };
       try {
         current = entry.handler(current, action, { now: Date.now });
         return { ok: true, scene: current };
       } catch (e) {
-        return { ok: false, scene: current, error: { code: "error", message: (e as Error).message } };
+        return {
+          ok: false,
+          scene: current,
+          error: { code: "error", message: (e as Error).message },
+        };
       }
     };
 
     const { handlerRegistry } = createDefaultRuntimeRegistries(dispatch);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], initial, { now: Date.now });
+    const bus = createRuntimeCommandBus(handlerRegistry, [], initial, {
+      now: Date.now,
+    });
 
     const result = bus.dispatch({
       type: "batch-actions",
       actions: [
-        { type: "create-node", node: { id: "a", type: "container" }, parentId: scene.rootId },
+        {
+          type: "create-node",
+          node: { id: "a", type: "container" },
+          parentId: scene.rootId,
+        },
         { type: "create-node", node: { id: "b", type: "text" }, parentId: "a" },
       ],
     });
 
     expect(result.ok).toBe(true);
-    expect(result.scene.nodes["a"]).toBeDefined();
-    expect(result.scene.nodes["b"]).toBeDefined();
+    expect(result.scene.nodes.a).toBeDefined();
+    expect(result.scene.nodes.b).toBeDefined();
   });
 });
 
@@ -153,7 +199,7 @@ describe("exportDocument with fixtures", () => {
     doc.pages.push({ id: "page-2", name: "Page 2", sceneId: "scene-2" });
     doc.scenes["scene-2"] = createEmptyScene();
 
-    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
+    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]?.id] });
     expect(exported.document.pages).toHaveLength(1);
   });
 });
@@ -161,12 +207,20 @@ describe("exportDocument with fixtures", () => {
 describe("scene fixture with container and text nodes", () => {
   it("creates a scene with container and text node hierarchy", () => {
     const doc = createNewDocument({ title: "Render" });
-    const scene = doc.scenes[doc.pages[0]!.sceneId]!;
-    scene.nodes["text-1"] = { id: "text-1", type: "text", parentId: scene.rootId, props: { text: "Hello" } };
-    scene.nodes[scene.rootId]!.children = ["text-1"];
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
+    scene.nodes["text-1"] = {
+      id: "text-1",
+      type: "text",
+      parentId: scene.rootId,
+      props: { text: "Hello" },
+    };
+    const root = scene.nodes[scene.rootId];
+    if (root) root.children = ["text-1"];
 
     expect(scene.nodes["text-1"]).toBeDefined();
-    expect(scene.nodes["text-1"]!.type).toBe("text");
-    expect(scene.nodes[scene.rootId]!.children).toContain("text-1");
+    expect(scene.nodes["text-1"]?.type).toBe("text");
+    expect(scene.nodes[scene.rootId]?.children).toContain("text-1");
   });
 });

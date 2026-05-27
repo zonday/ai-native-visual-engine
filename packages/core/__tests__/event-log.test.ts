@@ -1,5 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { createDocumentEventLog, appendDocumentEvent } from "../src/document/event-log.js";
+import { describe, expect, it } from "vitest";
+import {
+  appendDocumentEvent,
+  createDocumentEventLog,
+} from "../src/document/event-log.js";
 import { emptyDoc } from "./helpers.js";
 
 describe("DocumentEventLog", () => {
