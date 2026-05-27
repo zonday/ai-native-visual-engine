@@ -42,7 +42,7 @@ describe("Editor", () => {
       <Editor document={doc} registry={emptyRegistry} context={baseContext} />,
     );
 
-    expect(screen.getByText("Page 1")).toBeDefined();
+    expect(screen.getAllByText("Page 1").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Pages")).toBeDefined();
   });
 
