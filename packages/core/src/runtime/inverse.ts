@@ -148,19 +148,20 @@ export function createDefaultRuntimeRegistries(
   const { handlerRegistry, inverseRegistry } =
     buildRegistriesFromEntries(entries);
 
+  const rtInvRegistry = inverseRegistry as unknown as InverseRegistry;
+  const rtHandlerRegistry =
+    handlerRegistry as unknown as RuntimeHandlerRegistry;
+
   // Replace batch inverse with a proper one that has registry access
-  const batchInv = createBatchInverse(
-    handlerRegistry as RuntimeHandlerRegistry,
-    inverseRegistry as InverseRegistry,
-  );
-  const batchEntry = handlerRegistry.get("batch-actions");
+  const batchInv = createBatchInverse(rtHandlerRegistry, rtInvRegistry);
+  const batchEntry = rtHandlerRegistry.get("batch-actions");
   if (batchEntry) {
-    handlerRegistry.set("batch-actions", {
+    rtHandlerRegistry.set("batch-actions", {
       ...batchEntry,
       inverse: batchInv as InverseComputer,
     });
   }
-  inverseRegistry.set("batch-actions", batchInv as InverseComputer);
+  rtInvRegistry.set("batch-actions", batchInv as InverseComputer);
 
   return {
     handlerRegistry: handlerRegistry as Map<string, RuntimeHandlerEntry>,

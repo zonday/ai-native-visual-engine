@@ -105,7 +105,6 @@ function App() {
         handler: createBatchHandler((action) =>
           bus.dispatch(action),
         ) as typeof batchEntry.handler,
-        inverse: handlerRegistry.get("batch-actions")?.inverse,
       });
     }
 
@@ -147,7 +146,6 @@ function App() {
         handler: createDocumentBatchHandler((action) =>
           bus.dispatch(action),
         ) as typeof batchDocEntry.handler,
-        inverse: handlerRegistry.get("batch-document-actions")?.inverse,
       });
     }
 

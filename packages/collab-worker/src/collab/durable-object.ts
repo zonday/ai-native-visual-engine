@@ -1,5 +1,5 @@
-import * as Y from "yjs";
 import { DurableObject } from "cloudflare:workers";
+import * as Y from "yjs";
 
 export class CollaborationDO extends DurableObject {
   private sessions: Map<string, WebSocket> = new Map();
@@ -87,7 +87,7 @@ export class CollaborationDO extends DurableObject {
       Y.applyUpdate(this.ydoc, buffer);
     }
 
-    for (const [id, peer] of this.sessions) {
+    for (const [_id, peer] of this.sessions) {
       if (peer !== ws && peer.readyState === WebSocket.READY_STATE_OPEN) {
         peer.send(raw);
       }
