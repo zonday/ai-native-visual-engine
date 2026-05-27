@@ -1,16 +1,14 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
+import { DocumentHandlerError } from "../src/document/error.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
-import {
-  createDefaultDocumentRegistries,
-} from "../src/document/inverse.js";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
-import { emptyPersistedScene, emptyDoc } from "./helpers.js";
+import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import type { VisualDocument } from "../src/types.js";
+import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 const docWithTwoPages: VisualDocument = {
   ...emptyDoc,
@@ -20,18 +18,32 @@ const docWithTwoPages: VisualDocument = {
   ],
   scenes: {
     s1: emptyPersistedScene,
-    s2: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+    s2: {
+      ...emptyPersistedScene,
+      rootId: "root-2",
+      nodes: { "root-2": { id: "root-2", type: "container" } },
+    },
   },
 };
 
 const context: DocumentRuntimeContext = { now: Date.now };
 
-function makeStatefulDispatch(handlerRegistry: Map<string, DocumentHandlerEntry>, initialDoc: VisualDocument) {
+function makeStatefulDispatch(
+  handlerRegistry: Map<string, DocumentHandlerEntry>,
+  initialDoc: VisualDocument,
+) {
   let currentDoc = initialDoc;
   return (child: DocumentAction): DocumentDispatchResult => {
     const handler = handlerRegistry.get(child.type);
     if (!handler) {
-      return { ok: false, document: currentDoc, error: { code: "document.unknown-action-type", message: `Unknown: ${child.type}` } };
+      return {
+        ok: false,
+        document: currentDoc,
+        error: {
+          code: "document.unknown-action-type",
+          message: `Unknown: ${child.type}`,
+        },
+      };
     }
     try {
       currentDoc = handler.handler(currentDoc, child, context);
@@ -41,7 +53,10 @@ function makeStatefulDispatch(handlerRegistry: Map<string, DocumentHandlerEntry>
         ok: false,
         document: currentDoc,
         error: {
-          code: e instanceof DocumentHandlerError ? e.code : "document.handler-error",
+          code:
+            e instanceof DocumentHandlerError
+              ? e.code
+              : "document.handler-error",
           message: e instanceof Error ? e.message : "Unknown error",
         },
       };
@@ -51,9 +66,14 @@ function makeStatefulDispatch(handlerRegistry: Map<string, DocumentHandlerEntry>
 
 describe("batch handler via createDefaultDocumentRegistries", () => {
   it("executes multiple actions in sequence and returns updated document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
 
@@ -72,15 +92,29 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
   });
 
   it("rolls back to original document when a child action fails", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     let callCount = 0;
     const failOnSecondCall: typeof dispatch = (child) => {
       callCount++;
       if (callCount === 2) {
-        return { ok: false, document: docWithTwoPages, error: { code: "document.page-not-found", message: "not found", actionType: "rename-page", pageId: "missing" } };
+        return {
+          ok: false,
+          document: docWithTwoPages,
+          error: {
+            code: "document.page-not-found",
+            message: "not found",
+            actionType: "rename-page",
+            pageId: "missing",
+          },
+        };
       }
       return dispatch(child);
     };
@@ -100,25 +134,41 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
   });
 
   it("rejects child action that fails schema validation", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
-    const handler = handlerRegistry.get("batch-document-actions")!.handler;
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
     const action: DocumentAction = {
       type: "batch-document-actions",
       actions: [
-        { type: "reorder-page", pageId: "p1", index: "invalid" } as unknown as DocumentAction,
+        {
+          type: "reorder-page",
+          pageId: "p1",
+          index: "invalid",
+        } as unknown as DocumentAction,
       ],
     };
 
-    expect(() => handler(docWithTwoPages, action, context)).toThrow(DocumentHandlerError);
+    expect(() => handler(docWithTwoPages, action, context)).toThrow(
+      DocumentHandlerError,
+    );
   });
 
   it("flattens nested batch actions", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
 
@@ -128,9 +178,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         { type: "rename-page", pageId: "p1", name: "First" },
         {
           type: "batch-document-actions",
-          actions: [
-            { type: "rename-page", pageId: "p2", name: "Nested" },
-          ],
+          actions: [{ type: "rename-page", pageId: "p2", name: "Nested" }],
         },
       ],
     };
@@ -141,10 +189,15 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
   });
 
   it("handles empty actions list without error", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: false, document: emptyDoc, error: { code: "document.handler-error", message: "should not be called" } }),
-    );
-    const handler = handlerRegistry.get("batch-document-actions")!.handler;
+    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: false,
+      document: emptyDoc,
+      error: {
+        code: "document.handler-error",
+        message: "should not be called",
+      },
+    }));
+    const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
     const action: DocumentAction = {
       type: "batch-document-actions",
@@ -158,18 +211,22 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
 
 describe("batch inverse", () => {
   it("computes batch inverse via registry-level inverse computer", () => {
-    const { inverseRegistry } = createDefaultDocumentRegistries(
-      () => ({ ok: true, document: emptyDoc }),
-    );
+    const { inverseRegistry } = createDefaultDocumentRegistries(() => ({
+      ok: true,
+      document: emptyDoc,
+    }));
 
     const action: DocumentAction = {
       type: "batch-document-actions",
-      actions: [
-        { type: "rename-page", pageId: "p1", name: "New Name" },
-      ],
+      actions: [{ type: "rename-page", pageId: "p1", name: "New Name" }],
     };
 
-    const inverse = computeInverseAction(inverseRegistry, docWithTwoPages, action, context);
+    const inverse = computeInverseAction(
+      inverseRegistry,
+      docWithTwoPages,
+      action,
+      context,
+    );
     expect(inverse).toEqual({
       type: "rename-page",
       pageId: "p1",

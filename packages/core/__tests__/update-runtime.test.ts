@@ -1,12 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { updateRuntimeHandler, updateRuntimeInverse } from "../src/runtime/handlers/update-runtime.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  updateRuntimeHandler,
+  updateRuntimeInverse,
+} from "../src/runtime/handlers/update-runtime.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithNode: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a"] },
-  a: { id: "a", type: "container", parentId: "root", runtime: { isLoading: true, count: 5 } },
+  a: {
+    id: "a",
+    type: "container",
+    parentId: "root",
+    runtime: { isLoading: true, count: 5 },
+  },
 });
 
 describe("updateRuntimeHandler", () => {
@@ -16,15 +24,22 @@ describe("updateRuntimeHandler", () => {
       nodeId: "a",
       runtime: { isLoading: false },
     };
-    const result = updateRuntimeHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: false, count: 5 });
+    const result = updateRuntimeHandler(sceneWithNode, action, {
+      now: Date.now,
+    });
+    expect(result.nodes.a?.runtime).toEqual({ isLoading: false, count: 5 });
     expect(result.version).toBe(1);
   });
 
   it("overwrites specific keys while preserving others", () => {
     const scene: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a"] },
-      a: { id: "a", type: "container", parentId: "root", runtime: { a: 1, b: 2, c: 3 } },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        runtime: { a: 1, b: 2, c: 3 },
+      },
     });
     const action = {
       type: "update-runtime" as const,
@@ -32,7 +47,7 @@ describe("updateRuntimeHandler", () => {
       runtime: { a: 10, c: 30 },
     };
     const result = updateRuntimeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["a"]?.runtime).toEqual({ a: 10, b: 2, c: 30 });
+    expect(result.nodes.a?.runtime).toEqual({ a: 10, b: 2, c: 30 });
   });
 
   it("adds runtime state when node has no existing runtime", () => {
@@ -46,7 +61,7 @@ describe("updateRuntimeHandler", () => {
       runtime: { isLoading: true },
     };
     const result = updateRuntimeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: true });
+    expect(result.nodes.a?.runtime).toEqual({ isLoading: true });
   });
 
   it("rejects update-runtime when node does not exist", () => {
@@ -55,9 +70,9 @@ describe("updateRuntimeHandler", () => {
       nodeId: "missing",
       runtime: { isLoading: true },
     };
-    expect(() => updateRuntimeHandler(sceneWithNode, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      updateRuntimeHandler(sceneWithNode, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       updateRuntimeHandler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
@@ -74,7 +89,9 @@ describe("updateRuntimeInverse", () => {
       nodeId: "a",
       runtime: { isLoading: false },
     };
-    const inverse = updateRuntimeInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateRuntimeInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "update-runtime",
       nodeId: "a",
@@ -88,7 +105,9 @@ describe("updateRuntimeInverse", () => {
       nodeId: "missing",
       runtime: { isLoading: true },
     };
-    const inverse = updateRuntimeInverse(sceneWithNode, action, { now: Date.now });
+    const inverse = updateRuntimeInverse(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(inverse).toBeUndefined();
   });
 });

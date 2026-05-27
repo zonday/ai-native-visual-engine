@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
-  createRuntimeEventLog,
   appendRuntimeEvent,
+  createRuntimeEventLog,
   replayRuntimeEvents,
 } from "../src/runtime/event-log.js";
-import { baseNode, makeScene, emptyPersistedScene } from "./helpers.js";
+import type { SceneGraph } from "../src/types.js";
+import { baseNode, emptyPersistedScene, makeScene } from "./helpers.js";
 
 describe("createRuntimeEventLog", () => {
   it("creates an event log with the initial scene and empty actions", () => {
@@ -59,7 +59,7 @@ describe("replayRuntimeEvents", () => {
           ...scene.nodes,
           root: {
             ...scene.nodes.root!,
-            children: [...(scene.nodes.root!.children ?? []), a.node.id],
+            children: [...(scene.nodes.root?.children ?? []), a.node.id],
           },
           [a.node.id]: { ...a.node, parentId: "root" },
         },
@@ -77,9 +77,9 @@ describe("replayRuntimeEvents", () => {
     });
 
     replayRuntimeEvents(log, dispatch);
-    expect(scene.nodes["a"]).toBeDefined();
-    expect(scene.nodes["b"]).toBeDefined();
-    expect(scene.nodes["root"]?.children).toEqual(["a", "b"]);
+    expect(scene.nodes.a).toBeDefined();
+    expect(scene.nodes.b).toBeDefined();
+    expect(scene.nodes.root?.children).toEqual(["a", "b"]);
   });
 
   it("skips update-selection actions during replay", () => {
@@ -119,4 +119,3 @@ describe("replayRuntimeEvents", () => {
     expect(() => replayRuntimeEvents(log, dispatch)).toThrow("Replay failed");
   });
 });
-

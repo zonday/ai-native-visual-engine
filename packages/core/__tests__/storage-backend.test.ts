@@ -1,11 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import {
-  InMemoryStorageBackend,
-} from "../src/storage-backend.js";
-import type { DocumentSnapshot } from "../src/types.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
+import { InMemoryStorageBackend } from "../src/storage-backend.js";
+import type { DocumentSnapshot } from "../src/types.js";
 
 describe("InMemoryStorageBackend", () => {
   it("saves and loads a document snapshot", async () => {
@@ -17,7 +15,7 @@ describe("InMemoryStorageBackend", () => {
     const loaded = await backend.loadDocument(doc.id);
 
     expect(loaded).not.toBeNull();
-    expect(loaded!.document.id).toBe(doc.id);
+    expect(loaded?.document.id).toBe(doc.id);
   });
 
   it("returns null for unknown document", async () => {
@@ -28,7 +26,9 @@ describe("InMemoryStorageBackend", () => {
 
   it("appends and loads event logs", async () => {
     const backend = new InMemoryStorageBackend();
-    const actions: DocumentAction[] = [{ type: "rename-page", pageId: "p1", name: "New" }];
+    const actions: DocumentAction[] = [
+      { type: "rename-page", pageId: "p1", name: "New" },
+    ];
 
     await backend.appendEventLog("document", "doc-1", actions);
     const loaded = await backend.loadEventLog("document", "doc-1");
@@ -40,10 +40,18 @@ describe("InMemoryStorageBackend", () => {
   it("preserves existing events on append", async () => {
     const backend = new InMemoryStorageBackend();
     await backend.appendEventLog("scene", "scene-1", [
-      { type: "create-node", node: { id: "a", type: "container" }, parentId: "root" },
+      {
+        type: "create-node",
+        node: { id: "a", type: "container" },
+        parentId: "root",
+      },
     ] as RuntimeAction[]);
     await backend.appendEventLog("scene", "scene-1", [
-      { type: "create-node", node: { id: "b", type: "container" }, parentId: "root" },
+      {
+        type: "create-node",
+        node: { id: "b", type: "container" },
+        parentId: "root",
+      },
     ] as RuntimeAction[]);
 
     const loaded = await backend.loadEventLog("scene", "scene-1");

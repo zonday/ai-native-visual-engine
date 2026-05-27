@@ -16,6 +16,7 @@
   "files": {
     "includes": [
       "packages/*/src/**",
+      "packages/*/__tests__/**",
       ".github/**",
       "*.json",
       "*.yaml",

@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { removeNodeHandler, removeNodeInverse } from "../src/runtime/handlers/remove-node.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  removeNodeHandler,
+  removeNodeInverse,
+} from "../src/runtime/handlers/remove-node.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithTree: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a", "b"] },
@@ -15,24 +18,24 @@ describe("removeNodeHandler", () => {
   it("removes a leaf node and removes its id from parent children", () => {
     const action = { type: "remove-node" as const, nodeId: "b" };
     const result = removeNodeHandler(sceneWithTree, action, { now: Date.now });
-    expect(result.nodes["b"]).toBeUndefined();
-    expect(result.nodes["root"]?.children).toEqual(["a"]);
+    expect(result.nodes.b).toBeUndefined();
+    expect(result.nodes.root?.children).toEqual(["a"]);
     expect(result.version).toBe(1);
   });
 
   it("removes a node and all its descendants", () => {
     const action = { type: "remove-node" as const, nodeId: "a" };
     const result = removeNodeHandler(sceneWithTree, action, { now: Date.now });
-    expect(result.nodes["a"]).toBeUndefined();
-    expect(result.nodes["a1"]).toBeUndefined();
-    expect(result.nodes["root"]?.children).toEqual(["b"]);
+    expect(result.nodes.a).toBeUndefined();
+    expect(result.nodes.a1).toBeUndefined();
+    expect(result.nodes.root?.children).toEqual(["b"]);
   });
 
   it("rejects remove-node when target node does not exist", () => {
     const action = { type: "remove-node" as const, nodeId: "missing" };
-    expect(() => removeNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      removeNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
@@ -43,9 +46,9 @@ describe("removeNodeHandler", () => {
 
   it("rejects remove-node when target is the root node", () => {
     const action = { type: "remove-node" as const, nodeId: "root" };
-    expect(() => removeNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      removeNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
@@ -61,7 +64,7 @@ describe("removeNodeInverse", () => {
     const inverse = removeNodeInverse(sceneWithTree, action, { now: Date.now });
     expect(inverse).toEqual({
       type: "create-node",
-      node: sceneWithTree.nodes["b"],
+      node: sceneWithTree.nodes.b,
       parentId: "root",
       index: 1,
     });

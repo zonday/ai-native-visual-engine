@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { markdownToDoc, docToMarkdown } from "../src/markdown-interop.js";
-import { validateRichText } from "../src/rich-text.js";
+import { describe, expect, it } from "vitest";
+import { docToMarkdown, markdownToDoc } from "../src/markdown-interop.js";
 import type { BlockNode } from "../src/rich-text.js";
+import { validateRichText } from "../src/rich-text.js";
 
 function blockAt(content: BlockNode[], index: number): BlockNode {
   const block = content[index];

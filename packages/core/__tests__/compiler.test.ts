@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import type { SemanticAction } from "../src/compiler/types.js";
+import { describe, expect, it } from "vitest";
 import { compileSemanticAction } from "../src/compiler/pipeline.js";
+import type { SemanticAction } from "../src/compiler/types.js";
 
 describe("compileSemanticAction", () => {
   it("rejects unknown action type with invalid-action diagnostic from Zod", () => {
@@ -45,7 +45,9 @@ describe("compileSemanticAction", () => {
       },
       {
         scene: {
-          nodes: { "existing": { id: "existing", type: "container", children: [] } },
+          nodes: {
+            existing: { id: "existing", type: "container", children: [] },
+          },
         },
       },
     );
@@ -77,7 +79,10 @@ describe("compileSemanticAction", () => {
       expect(createNodes.length).toBe(3);
       const gridNode = createNodes.find((n) => n.node.type === "grid");
       expect(gridNode).toBeDefined();
-      expect(gridNode?.node.layout).toMatchObject({ mode: "grid", columns: 12 });
+      expect(gridNode?.node.layout).toMatchObject({
+        mode: "grid",
+        columns: 12,
+      });
       const widgetNodes = createNodes.filter((n) => n.node.type !== "grid");
       for (const wn of widgetNodes) {
         expect(wn.node.layout).toMatchObject({ mode: "grid-item" });
@@ -101,8 +106,11 @@ describe("compileSemanticAction", () => {
       expect(result.plan.runtimeActions).toHaveLength(1);
       expect(result.plan.runtimeActions[0]?.type).toBe("create-node");
       expect(
-        (result.plan.runtimeActions[0] as { node: { layout: Record<string, unknown> } } | undefined)
-          ?.node.layout,
+        (
+          result.plan.runtimeActions[0] as
+            | { node: { layout: Record<string, unknown> } }
+            | undefined
+        )?.node.layout,
       ).toMatchObject({ mode: "grid-item" });
     }
   });
@@ -272,12 +280,18 @@ describe("compileSemanticAction", () => {
 
       expect(compactWidgets.length).toBe(balancedWidgets.length);
 
-      const compactPositions = compactWidgets.map(
-        (w) => `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
-      ).join(";");
-      const balancedPositions = balancedWidgets.map(
-        (w) => `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
-      ).join(";");
+      const compactPositions = compactWidgets
+        .map(
+          (w) =>
+            `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
+        )
+        .join(";");
+      const balancedPositions = balancedWidgets
+        .map(
+          (w) =>
+            `${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.x},${(w as unknown as { node: { layout: { x: number; y: number } } }).node.layout.y}`,
+        )
+        .join(";");
 
       expect(compactPositions).not.toBe(balancedPositions);
     }
@@ -290,7 +304,17 @@ describe("compileSemanticAction", () => {
         containerId: "nonexistent-container",
         chartType: "chart",
       },
-      { scene: { nodes: { "existing-node": { id: "existing-node", type: "container", children: [] } } } },
+      {
+        scene: {
+          nodes: {
+            "existing-node": {
+              id: "existing-node",
+              type: "container",
+              children: [],
+            },
+          },
+        },
+      },
     );
 
     expect(result.ok).toBe(false);
@@ -308,7 +332,11 @@ describe("compileSemanticAction", () => {
         dimensions: ["year"],
         metrics: ["revenue"],
       },
-      { scene: { nodes: { "grid-1": { id: "grid-1", type: "grid", children: [] } } } },
+      {
+        scene: {
+          nodes: { "grid-1": { id: "grid-1", type: "grid", children: [] } },
+        },
+      },
     );
 
     expect(result.ok).toBe(true);
@@ -321,7 +349,17 @@ describe("compileSemanticAction", () => {
         pageId: "nonexistent-page",
         strategy: "balanced",
       },
-      { scene: { nodes: { "existing-node": { id: "existing-node", type: "container", children: [] } } } },
+      {
+        scene: {
+          nodes: {
+            "existing-node": {
+              id: "existing-node",
+              type: "container",
+              children: [],
+            },
+          },
+        },
+      },
     );
 
     expect(result.ok).toBe(false);
@@ -341,7 +379,11 @@ describe("compileSemanticAction", () => {
     if (result.ok) {
       expect(result.plan.documentActions).toHaveLength(1);
       expect(result.plan.documentActions[0]?.type).toBe("set-page-theme");
-      const action = result.plan.documentActions[0] as { type: string; pageId: string; themeId: string };
+      const action = result.plan.documentActions[0] as {
+        type: string;
+        pageId: string;
+        themeId: string;
+      };
       expect(action.pageId).toBe("page-1");
       expect(action.themeId).toBe("dark");
     }
@@ -370,9 +412,21 @@ describe("compileSemanticAction", () => {
       {
         scene: {
           nodes: {
-            "page-1": { id: "page-1", type: "container", children: ["widget-1", "widget-2"] },
-            "widget-1": { id: "widget-1", type: "chart", layout: { mode: "grid-item" } },
-            "widget-2": { id: "widget-2", type: "metric-value", layout: { mode: "grid-item" } },
+            "page-1": {
+              id: "page-1",
+              type: "container",
+              children: ["widget-1", "widget-2"],
+            },
+            "widget-1": {
+              id: "widget-1",
+              type: "chart",
+              layout: { mode: "grid-item" },
+            },
+            "widget-2": {
+              id: "widget-2",
+              type: "metric-value",
+              layout: { mode: "grid-item" },
+            },
           },
         },
       },
@@ -393,9 +447,7 @@ describe("compileSemanticAction", () => {
       type: "create-dashboard",
       title: "Presentation",
       layout: "presentation",
-      widgets: [
-        { type: "chart", w: 8, h: 6 },
-      ],
+      widgets: [{ type: "chart", w: 8, h: 6 }],
     });
 
     expect(result.ok).toBe(true);
@@ -404,7 +456,11 @@ describe("compileSemanticAction", () => {
         (a) => a.type === "create-node" && a.node.type !== "grid",
       );
       expect(widgetNodes).toHaveLength(1);
-      const layout = (widgetNodes[0] as unknown as { node: { layout: { x: number; w: number } } }).node.layout;
+      const layout = (
+        widgetNodes[0] as unknown as {
+          node: { layout: { x: number; w: number } };
+        }
+      ).node.layout;
       expect(layout.x).toBe(2);
       expect(layout.w).toBe(8);
     }
@@ -414,9 +470,7 @@ describe("compileSemanticAction", () => {
     const result = compileSemanticAction({
       type: "create-dashboard",
       title: "Test",
-      widgets: [
-        { type: "metric", title: "Bad", w: 0, h: 0 },
-      ],
+      widgets: [{ type: "metric", title: "Bad", w: 0, h: 0 }],
     });
 
     expect(result.ok).toBe(false);
@@ -442,9 +496,9 @@ describe("compileSemanticAction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.diagnostics.some(
-        (d) => d.code === "compiler.grid-overflow",
-      )).toBe(true);
+      expect(
+        result.diagnostics.some((d) => d.code === "compiler.grid-overflow"),
+      ).toBe(true);
     }
   });
 });

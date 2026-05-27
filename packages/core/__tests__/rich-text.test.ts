@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { DocNode } from "../src/rich-text.js";
 import {
+  EMPTY_DOC,
   extractPlainText,
   plainTextToDoc,
   validateRichText,
-  EMPTY_DOC,
 } from "../src/rich-text.js";
-import type { DocNode } from "../src/rich-text.js";
 
 describe("EMPTY_DOC", () => {
   it("has type doc with a single empty paragraph", () => {
@@ -164,9 +164,21 @@ describe("validateRichText", () => {
     const doc = {
       type: "doc",
       content: [
-        { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "H1" }] },
-        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "H2" }] },
-        { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "H3" }] },
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "H1" }],
+        },
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: "H2" }],
+        },
+        {
+          type: "heading",
+          attrs: { level: 3 },
+          content: [{ type: "text", text: "H3" }],
+        },
       ],
     };
     expect(validateRichText(doc)).toBe(true);
@@ -180,7 +192,11 @@ describe("validateRichText", () => {
           type: "paragraph",
           content: [
             { type: "text", text: "bold", marks: [{ type: "bold" }] },
-            { type: "text", text: "link", marks: [{ type: "link", attrs: { href: "https://x.com" } }] },
+            {
+              type: "text",
+              text: "link",
+              marks: [{ type: "link", attrs: { href: "https://x.com" } }],
+            },
           ],
         },
       ],
@@ -275,9 +291,21 @@ describe("validateRichText", () => {
           {
             type: "paragraph",
             content: [
-              { type: "text", text: "a", marks: [{ type: "link", attrs: { href: "/path" } }] },
-              { type: "text", text: "b", marks: [{ type: "link", attrs: { href: "#anchor" } }] },
-              { type: "text", text: "c", marks: [{ type: "link", attrs: { href: "mailto:x@y.com" } }] },
+              {
+                type: "text",
+                text: "a",
+                marks: [{ type: "link", attrs: { href: "/path" } }],
+              },
+              {
+                type: "text",
+                text: "b",
+                marks: [{ type: "link", attrs: { href: "#anchor" } }],
+              },
+              {
+                type: "text",
+                text: "c",
+                marks: [{ type: "link", attrs: { href: "mailto:x@y.com" } }],
+              },
             ],
           },
         ],

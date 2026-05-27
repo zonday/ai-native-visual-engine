@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   createDataInteractionAPI,
   type DataInteractionAPI,
@@ -27,7 +27,9 @@ describe("DataInteractionAPI", () => {
         label: "Europe",
       });
 
-      expect(received).toEqual([{ key: "region", value: "EMEA", operator: "eq" }]);
+      expect(received).toEqual([
+        { key: "region", value: "EMEA", operator: "eq" },
+      ]);
     });
 
     it("does not notify subscribers on different dimensions", () => {
@@ -97,7 +99,9 @@ describe("DataInteractionAPI", () => {
         label: "Asia",
       });
 
-      expect(received).toEqual([{ key: "region", value: "APAC", operator: "eq" }]);
+      expect(received).toEqual([
+        { key: "region", value: "APAC", operator: "eq" },
+      ]);
     });
 
     it("unsubscribe removes callback", () => {
@@ -184,7 +188,10 @@ describe("DataInteractionAPI", () => {
     it("populates availableDimensions from drill hierarchy", () => {
       const api2 = createDataInteractionAPI({
         drillHierarchies: {
-          year: { name: "year", children: [{ name: "quarter", children: [{ name: "month" }] }] },
+          year: {
+            name: "year",
+            children: [{ name: "quarter", children: [{ name: "month" }] }],
+          },
         },
       });
       api2.drillDown("chart-1", "year", "2026");
@@ -241,7 +248,9 @@ describe("DataInteractionAPI", () => {
 
       api.setFilter("filter-1", "region", "EMEA");
 
-      expect(received).toEqual([{ key: "region", value: "EMEA", operator: "eq" }]);
+      expect(received).toEqual([
+        { key: "region", value: "EMEA", operator: "eq" },
+      ]);
     });
 
     it("clearFilter removes filter", () => {

@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { PrototypeComponent } from "../src/prototype.js";
 import {
-  resolveInstance,
   createNodeFromPrototype,
   createPrototypeFromNode,
   detachInstance,
+  resolveInstance,
 } from "../src/prototype.js";
-import type { PrototypeComponent } from "../src/prototype.js";
 import type { SceneNode } from "../src/types.js";
 
 const proto: PrototypeComponent = {
@@ -49,7 +49,11 @@ describe("resolveInstance", () => {
       props: { label: "Sales" },
     };
     const result = resolveInstance(node, proto);
-    expect(result.props).toEqual({ label: "Sales", value: 100, format: "currency" });
+    expect(result.props).toEqual({
+      label: "Sales",
+      value: 100,
+      format: "currency",
+    });
     expect(result.style).toEqual({ color: "#16a34a" });
   });
 
@@ -61,7 +65,13 @@ describe("resolveInstance", () => {
       layout: { mode: "absolute", x: 10, y: 20, width: 300, height: 100 },
     };
     const result = resolveInstance(node, proto);
-    expect(result.layout).toEqual({ mode: "absolute", x: 10, y: 20, width: 300, height: 100 });
+    expect(result.layout).toEqual({
+      mode: "absolute",
+      x: 10,
+      y: 20,
+      width: 300,
+      height: 100,
+    });
   });
 
   it("falls back to prototype layout when node layout absent", () => {
@@ -71,7 +81,13 @@ describe("resolveInstance", () => {
       prototypeId: "proto-1",
     };
     const result = resolveInstance(node, proto);
-    expect(result.layout).toEqual({ mode: "absolute", x: 0, y: 0, width: 200, height: 100 });
+    expect(result.layout).toEqual({
+      mode: "absolute",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 100,
+    });
   });
 
   it("returns raw node when prototype id does not match", () => {
@@ -132,7 +148,11 @@ describe("detachInstance", () => {
     };
     const result = detachInstance(node, proto);
     expect(result.prototypeId).toBeUndefined();
-    expect(result.props).toEqual({ label: "Sales", value: 100, format: "currency" });
+    expect(result.props).toEqual({
+      label: "Sales",
+      value: 100,
+      format: "currency",
+    });
     expect(result.style).toEqual({ color: "#16a34a" });
     expect(result.layout).toEqual(proto.defaultLayout);
     expect(result.children).toEqual(["child-1"]);

@@ -1,11 +1,9 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import {
-  createDefaultDocumentRegistries,
-} from "../src/document/inverse.js";
+import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
 const context: DocumentRuntimeContext = { now: Date.now };
@@ -15,7 +13,7 @@ function applyAction(
   doc: VisualDocument,
   action: DocumentAction,
 ): VisualDocument {
-  const handler = registries.handlerRegistry.get(action.type)!.handler;
+  const handler = registries.handlerRegistry.get(action.type)?.handler;
   return handler(doc, action, context);
 }
 
@@ -32,11 +30,15 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages).toHaveLength(1);
 
-    const inverse = registries.inverseRegistry.get("create-page")!(makeDoc(), {
-      type: "create-page",
-      page: { id: "p1", name: "Page 1", sceneId: "s1" },
-      scene: emptyPersistedScene,
-    }, context);
+    const inverse = registries.inverseRegistry.get("create-page")?.(
+      makeDoc(),
+      {
+        type: "create-page",
+        page: { id: "p1", name: "Page 1", sceneId: "s1" },
+        scene: emptyPersistedScene,
+      },
+      context,
+    );
     expect(inverse).toBeDefined();
 
     const doc2 = applyAction(registries, doc1, inverse!);
@@ -60,10 +62,14 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages).toHaveLength(0);
 
-    const inverse = registries.inverseRegistry.get("remove-page")!(docWithPage, {
-      type: "remove-page",
-      pageId: "p1",
-    }, context);
+    const inverse = registries.inverseRegistry.get("remove-page")?.(
+      docWithPage,
+      {
+        type: "remove-page",
+        pageId: "p1",
+      },
+      context,
+    );
     expect(inverse).toBeDefined();
 
     const doc2 = applyAction(registries, doc1, inverse!);
@@ -91,12 +97,20 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages[0]?.name).toBe("Renamed");
 
-    const inverse = registries.inverseRegistry.get("rename-page")!(docWithPage, {
+    const inverse = registries.inverseRegistry.get("rename-page")?.(
+      docWithPage,
+      {
+        type: "rename-page",
+        pageId: "p1",
+        name: "Renamed",
+      },
+      context,
+    );
+    expect(inverse).toEqual({
       type: "rename-page",
       pageId: "p1",
-      name: "Renamed",
-    }, context);
-    expect(inverse).toEqual({ type: "rename-page", pageId: "p1", name: "Page 1" });
+      name: "Page 1",
+    });
 
     const doc2 = applyAction(registries, doc1, inverse!);
     expect(doc2.pages[0]?.name).toBe("Page 1");
@@ -114,7 +128,11 @@ describe("inverse round-trip — action → inverse restores state", () => {
       ],
       scenes: {
         s1: emptyPersistedScene,
-        s2: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+        s2: {
+          ...emptyPersistedScene,
+          rootId: "root-2",
+          nodes: { "root-2": { id: "root-2", type: "container" } },
+        },
       },
     });
 
@@ -125,11 +143,15 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages[1]?.id).toBe("p1");
 
-    const inverse = registries.inverseRegistry.get("reorder-page")!(docWithTwoPages, {
-      type: "reorder-page",
-      pageId: "p1",
-      index: 1,
-    }, context);
+    const inverse = registries.inverseRegistry.get("reorder-page")?.(
+      docWithTwoPages,
+      {
+        type: "reorder-page",
+        pageId: "p1",
+        index: 1,
+      },
+      context,
+    );
     expect(inverse).toEqual({ type: "reorder-page", pageId: "p1", index: 0 });
 
     const doc2 = applyAction(registries, doc1, inverse!);
@@ -154,12 +176,20 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages[0]?.route).toBe("/new-route");
 
-    const inverse = registries.inverseRegistry.get("update-page-route")!(docWithPage, {
+    const inverse = registries.inverseRegistry.get("update-page-route")?.(
+      docWithPage,
+      {
+        type: "update-page-route",
+        pageId: "p1",
+        route: "/new-route",
+      },
+      context,
+    );
+    expect(inverse).toEqual({
       type: "update-page-route",
       pageId: "p1",
-      route: "/new-route",
-    }, context);
-    expect(inverse).toEqual({ type: "update-page-route", pageId: "p1", route: "/original" });
+      route: "/original",
+    });
 
     const doc2 = applyAction(registries, doc1, inverse!);
     expect(doc2.pages[0]?.route).toBe("/original");
@@ -186,11 +216,18 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.activeThemeId).toBe("theme-light");
 
-    const inverse = registries.inverseRegistry.get("set-document-theme")!(docWithTheme, {
+    const inverse = registries.inverseRegistry.get("set-document-theme")?.(
+      docWithTheme,
+      {
+        type: "set-document-theme",
+        themeId: "theme-light",
+      },
+      context,
+    );
+    expect(inverse).toEqual({
       type: "set-document-theme",
-      themeId: "theme-light",
-    }, context);
-    expect(inverse).toEqual({ type: "set-document-theme", themeId: "theme-dark" });
+      themeId: "theme-dark",
+    });
 
     const doc2 = applyAction(registries, doc1, inverse!);
     expect(doc2.activeThemeId).toBe("theme-dark");
@@ -206,7 +243,9 @@ describe("inverse round-trip — action → inverse restores state", () => {
         { id: "theme-dark", name: "Dark", tokens: {} },
         { id: "theme-light", name: "Light", tokens: {} },
       ],
-      pages: [{ id: "p1", name: "Page 1", sceneId: "s1", themeId: "theme-dark" }],
+      pages: [
+        { id: "p1", name: "Page 1", sceneId: "s1", themeId: "theme-dark" },
+      ],
       scenes: { s1: emptyPersistedScene },
     });
 
@@ -217,12 +256,20 @@ describe("inverse round-trip — action → inverse restores state", () => {
     });
     expect(doc1.pages[0]?.themeId).toBe("theme-light");
 
-    const inverse = registries.inverseRegistry.get("set-page-theme")!(docWithTheme, {
+    const inverse = registries.inverseRegistry.get("set-page-theme")?.(
+      docWithTheme,
+      {
+        type: "set-page-theme",
+        pageId: "p1",
+        themeId: "theme-light",
+      },
+      context,
+    );
+    expect(inverse).toEqual({
       type: "set-page-theme",
       pageId: "p1",
-      themeId: "theme-light",
-    }, context);
-    expect(inverse).toEqual({ type: "set-page-theme", pageId: "p1", themeId: "theme-dark" });
+      themeId: "theme-dark",
+    });
 
     const doc2 = applyAction(registries, doc1, inverse!);
     expect(doc2.pages[0]?.themeId).toBe("theme-dark");

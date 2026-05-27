@@ -1,18 +1,21 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
+import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
 import type { RuntimeMiddleware } from "../src/runtime/middleware.js";
+import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {
   it("dispatches a valid action and returns ok with updated scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, { now: Date.now });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
+    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+      now: Date.now,
+    });
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -23,16 +26,23 @@ describe("createRuntimeCommandBus", () => {
     const result = bus.dispatch(action);
     expect(result.ok).toBe(true);
     expect(result.scene.nodes["child-1"]).toBeDefined();
-    expect(result.scene.nodes["root"]?.children).toEqual(["child-1"]);
+    expect(result.scene.nodes.root?.children).toEqual(["child-1"]);
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, { now: Date.now });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
+    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+      now: Date.now,
+    });
 
-    const action = { type: "nonexistent", foo: "bar" } as unknown as RuntimeAction;
+    const action = {
+      type: "nonexistent",
+      foo: "bar",
+    } as unknown as RuntimeAction;
     const result = bus.dispatch(action);
 
     expect(result.ok).toBe(false);
@@ -41,10 +51,14 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns handler error code when RuntimeHandlerError is thrown", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, { now: Date.now });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
+    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+      now: Date.now,
+    });
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -62,30 +76,38 @@ describe("createRuntimeCommandBus", () => {
       [
         "test-action",
         {
-          handler: () => { throw new Error("Kaboom!"); },
+          handler: () => {
+            throw new Error("Kaboom!");
+          },
           inverse: () => undefined,
         } as RuntimeHandlerEntry,
       ],
     ]);
 
-    const bus = createRuntimeCommandBus(
-      throwingHandler,
-      [],
-      emptyScene,
-      { now: Date.now },
-    );
+    const bus = createRuntimeCommandBus(throwingHandler, [], emptyScene, {
+      now: Date.now,
+    });
 
-    const result = bus.dispatch({ type: "test-action" } as unknown as RuntimeAction);
+    const result = bus.dispatch({
+      type: "test-action",
+    } as unknown as RuntimeAction);
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("scene.handler-error");
     expect(result.error?.message).toBe("Kaboom!");
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
+    const bus = createRuntimeCommandBus(
+      handlerRegistry,
+      [undefined as unknown as RuntimeMiddleware],
+      emptyScene,
+      { now: Date.now },
     );
-    const bus = createRuntimeCommandBus(handlerRegistry, [undefined as unknown as RuntimeMiddleware], emptyScene, { now: Date.now });
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -99,15 +121,22 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
-    );
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
     let middlewareCalled = false;
     const trackingMiddleware: RuntimeMiddleware = (_action, _scene, next) => {
       middlewareCalled = true;
       return next();
     };
-    const bus = createRuntimeCommandBus(handlerRegistry, [trackingMiddleware], emptyScene, { now: Date.now });
+    const bus = createRuntimeCommandBus(
+      handlerRegistry,
+      [trackingMiddleware],
+      emptyScene,
+      { now: Date.now },
+    );
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -121,10 +150,14 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("getScene returns the current scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(
-      () => ({ ok: false, scene: emptyScene, error: { code: "scene.handler-error", message: "should not be called" } }),
-    );
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, { now: Date.now });
+    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+      ok: false,
+      scene: emptyScene,
+      error: { code: "scene.handler-error", message: "should not be called" },
+    }));
+    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+      now: Date.now,
+    });
 
     const scene = bus.getScene();
     expect(scene).toBe(emptyScene);

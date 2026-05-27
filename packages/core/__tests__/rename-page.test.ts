@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
-import { renamePageHandler } from "../src/document/handlers/rename-page.js";
+import { describe, expect, it } from "vitest";
 import { DocumentHandlerError } from "../src/document/error.js";
+import { renamePageHandler } from "../src/document/handlers/rename-page.js";
+import type { VisualDocument } from "../src/types.js";
 
 const doc: VisualDocument = {
   id: "doc-1",

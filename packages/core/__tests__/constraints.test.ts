@@ -1,20 +1,17 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createConstraintMiddleware } from "../src/constraints/constraint-middleware.js";
 import {
-  createConstraintRegistry,
   type ConstraintRegistry,
+  createConstraintRegistry,
 } from "../src/constraints/constraint-registry.js";
+import { createWidgetSizeConstraint } from "../src/constraints/layout-constraints.js";
 import {
   createChartInContainerConstraint,
   createGridItemParentConstraint,
   createRootCannotBeRemovedConstraint,
   createUniqueNodeIdConstraint,
 } from "../src/constraints/structural-constraints.js";
-import {
-  createWidgetSizeConstraint,
-  createGridColumnConstraint,
-} from "../src/constraints/layout-constraints.js";
-import { createConstraintMiddleware } from "../src/constraints/constraint-middleware.js";
+import type { SceneGraph, SceneNode } from "../src/types.js";
 
 function makeScene(nodes: Record<string, SceneNode>): SceneGraph {
   return { version: 0, rootId: "root", nodes };
@@ -197,7 +194,11 @@ describe("Constraint middleware", () => {
 
     let called = false;
     const result = mw(
-      { type: "create-node", node: { id: "x", type: "text" }, parentId: "root" },
+      {
+        type: "create-node",
+        node: { id: "x", type: "text" },
+        parentId: "root",
+      },
       makeScene({ root: { id: "root", type: "container" } }),
       () => {
         called = true;

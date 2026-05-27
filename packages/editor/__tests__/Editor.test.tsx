@@ -1,13 +1,18 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+
 import type { SceneNode, VisualDocument } from "@ai-native/core";
 import type { ComponentRegistry } from "@ai-native/renderer-react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Editor } from "../src/Editor.js";
 import { useEditorStore } from "../src/store.js";
 
 function createDocument(): VisualDocument {
-  const scene = { version: 0, rootId: "root", nodes: {} as Record<string, SceneNode> };
+  const scene = {
+    version: 0,
+    rootId: "root",
+    nodes: {} as Record<string, SceneNode>,
+  };
   return {
     id: "doc-1",
     title: "Test Document",
@@ -50,7 +55,7 @@ describe("Editor", () => {
     const doc = createDocument();
     const scene = doc.scenes["scene-1"];
     if (!scene) throw new Error("scene-1 fixture not found");
-    scene.nodes["n1"] = {
+    scene.nodes.n1 = {
       id: "n1",
       type: "text",
       parentId: "root",

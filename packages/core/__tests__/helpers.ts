@@ -1,8 +1,8 @@
 import { expect } from "vitest";
 import type {
+  PersistedSceneGraph,
   SceneGraph,
   SceneNode,
-  PersistedSceneGraph,
   VisualDocument,
 } from "../src/types.js";
 
@@ -37,9 +37,7 @@ export const emptyDoc: VisualDocument = {
   scenes: {},
 };
 
-export function makeDoc(
-  overrides?: Partial<VisualDocument>,
-): VisualDocument {
+export function makeDoc(overrides?: Partial<VisualDocument>): VisualDocument {
   return { id: "doc-1", title: "Test", pages: [], scenes: {}, ...overrides };
 }
 

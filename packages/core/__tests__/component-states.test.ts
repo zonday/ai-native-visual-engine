@@ -1,11 +1,15 @@
-import { describe, it, expect } from "vitest";
-import { resolveStateProps } from "../src/component-states.js";
+import { describe, expect, it } from "vitest";
 import type { ComponentStateDef } from "../src/component-states.js";
+import { resolveStateProps } from "../src/component-states.js";
 
 const states: ComponentStateDef[] = [
   { name: "default", props: { color: "gray", weight: "normal" } },
   { name: "hovered", props: { color: "lightblue" } },
-  { name: "selected", props: { color: "blue", weight: "bold" }, persisted: true },
+  {
+    name: "selected",
+    props: { color: "blue", weight: "bold" },
+    persisted: true,
+  },
   { name: "disabled", props: { color: "lightgray", interactive: false } },
 ];
 

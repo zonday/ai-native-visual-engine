@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  createNewDocument,
   createEmptyScene,
+  createNewDocument,
   generateId,
 } from "../src/bootstrap.js";
 
@@ -28,7 +28,7 @@ describe("createNewDocument", () => {
     const doc = createNewDocument();
     expect(doc.pages).toHaveLength(1);
     expect(doc.pages[0]?.name).toBe("Untitled");
-    expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
+    expect(doc.scenes[doc.pages[0]?.sceneId]).toBeDefined();
   });
 
   it("uses the provided title", () => {
@@ -51,8 +51,8 @@ describe("createNewDocument", () => {
     const doc1 = createNewDocument();
     const doc2 = createNewDocument();
     expect(doc1.id).not.toBe(doc2.id);
-    expect(doc1.pages[0]!.id).not.toBe(doc2.pages[0]!.id);
-    expect(doc1.pages[0]!.sceneId).not.toBe(doc2.pages[0]!.sceneId);
+    expect(doc1.pages[0]?.id).not.toBe(doc2.pages[0]?.id);
+    expect(doc1.pages[0]?.sceneId).not.toBe(doc2.pages[0]?.sceneId);
   });
 });
 

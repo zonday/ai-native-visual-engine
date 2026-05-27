@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { VisualDocument } from "../src/types.js";
 import { DocumentHandlerError } from "../src/document/error.js";
 import { setDocumentThemeHandler } from "../src/document/handlers/set-document-theme.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
-import { normalizeRoute, updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
+import {
+  normalizeRoute,
+  updatePageRouteHandler,
+} from "../src/document/handlers/update-page-route.js";
+import type { VisualDocument } from "../src/types.js";
 
 const doc: VisualDocument = {
   id: "doc-1",
@@ -26,7 +29,9 @@ describe("setDocumentThemeHandler", () => {
       type: "set-document-theme" as const,
       themeId: "theme-dark",
     };
-    const result = setDocumentThemeHandler(themedDoc, action, { now: Date.now });
+    const result = setDocumentThemeHandler(themedDoc, action, {
+      now: Date.now,
+    });
     expect(result.activeThemeId).toBe("theme-dark");
   });
 
@@ -53,9 +58,7 @@ describe("setDocumentThemeHandler", () => {
     try {
       setDocumentThemeHandler(themedDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.theme-not-found",
-      );
+      expect((e as DocumentHandlerError).code).toBe("document.theme-not-found");
     }
   });
 
@@ -124,9 +127,7 @@ describe("setPageThemeHandler", () => {
     try {
       setPageThemeHandler(themedDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.theme-not-found",
-      );
+      expect((e as DocumentHandlerError).code).toBe("document.theme-not-found");
     }
   });
 
@@ -211,9 +212,7 @@ describe("updatePageRouteHandler", () => {
     try {
       updatePageRouteHandler(multiDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.duplicate-route",
-      );
+      expect((e as DocumentHandlerError).code).toBe("document.duplicate-route");
     }
   });
 
@@ -229,9 +228,7 @@ describe("updatePageRouteHandler", () => {
     try {
       updatePageRouteHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.invalid-route",
-      );
+      expect((e as DocumentHandlerError).code).toBe("document.invalid-route");
     }
   });
 });

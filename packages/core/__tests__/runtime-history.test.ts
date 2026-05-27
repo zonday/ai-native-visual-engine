@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
   createRuntimeHistoryState,
-  pushRuntimeUndo,
-  undoRuntimeAction,
-  redoRuntimeAction,
   DEFAULT_MAX_RUNTIME_UNDO_STACK,
+  pushRuntimeUndo,
+  redoRuntimeAction,
+  undoRuntimeAction,
 } from "../src/runtime/history.js";
 
 const createAction: RuntimeAction = {
@@ -30,7 +30,11 @@ describe("createRuntimeHistoryState", () => {
 describe("pushRuntimeUndo", () => {
   it("appends an entry to the undo stack and clears the redo stack", () => {
     const state = createRuntimeHistoryState();
-    const entry = { action: createAction, inverseAction: removeAction, timestamp: Date.now() };
+    const entry = {
+      action: createAction,
+      inverseAction: removeAction,
+      timestamp: Date.now(),
+    };
     const newState = pushRuntimeUndo(state, entry);
     expect(newState.undoStack).toHaveLength(1);
     expect(newState.undoStack[0]).toBe(entry);
@@ -40,7 +44,11 @@ describe("pushRuntimeUndo", () => {
   it("trims the undo stack when it exceeds max size", () => {
     let state = createRuntimeHistoryState();
     for (let i = 0; i < DEFAULT_MAX_RUNTIME_UNDO_STACK + 10; i++) {
-      const entry = { action: createAction, inverseAction: removeAction, timestamp: i };
+      const entry = {
+        action: createAction,
+        inverseAction: removeAction,
+        timestamp: i,
+      };
       state = pushRuntimeUndo(state, entry);
     }
     expect(state.undoStack).toHaveLength(DEFAULT_MAX_RUNTIME_UNDO_STACK);
@@ -51,7 +59,11 @@ describe("pushRuntimeUndo", () => {
     let state = createRuntimeHistoryState();
     const max = 3;
     for (let i = 0; i < 5; i++) {
-      const entry = { action: createAction, inverseAction: removeAction, timestamp: i };
+      const entry = {
+        action: createAction,
+        inverseAction: removeAction,
+        timestamp: i,
+      };
       state = pushRuntimeUndo(state, entry, max);
     }
     expect(state.undoStack).toHaveLength(max);
@@ -76,7 +88,11 @@ describe("undoRuntimeAction", () => {
   });
 
   it("pops the top entry from undo stack and pushes it to redo stack", () => {
-    const entry = { action: createAction, inverseAction: removeAction, timestamp: Date.now() };
+    const entry = {
+      action: createAction,
+      inverseAction: removeAction,
+      timestamp: Date.now(),
+    };
     const state = {
       undoStack: [entry],
       redoStack: [],
@@ -97,7 +113,11 @@ describe("redoRuntimeAction", () => {
   });
 
   it("pops the top entry from redo stack and pushes it to undo stack", () => {
-    const entry = { action: createAction, inverseAction: removeAction, timestamp: Date.now() };
+    const entry = {
+      action: createAction,
+      inverseAction: removeAction,
+      timestamp: Date.now(),
+    };
     const state = {
       undoStack: [],
       redoStack: [entry],

@@ -1,13 +1,19 @@
-import { describe, it, expect } from "vitest";
-import { createInverseRegistry, computeInverseAction } from "../src/document/handler-registry.js";
+import { describe, expect, it } from "vitest";
+import {
+  computeInverseAction,
+  createInverseRegistry,
+} from "../src/document/handler-registry.js";
 import type { VisualDocument } from "../src/types.js";
-import type { DocumentAction } from "../src/document/actions.js";
 import { emptyDoc } from "./helpers.js";
 
 describe("createInverseRegistry", () => {
   it("creates a Map from a record of computers", () => {
     const registry = createInverseRegistry({
-      "test-action": (_doc, _act, _ctx) => ({ type: "rename-page", pageId: "p1", name: "Undo" }),
+      "test-action": (_doc, _act, _ctx) => ({
+        type: "rename-page",
+        pageId: "p1",
+        name: "Undo",
+      }),
     });
     expect(registry.get("test-action")).toBeDefined();
     expect(registry.get("nonexistent")).toBeUndefined();

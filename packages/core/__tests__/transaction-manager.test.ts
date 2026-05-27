@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TransactionManager } from "../src/engine/transaction-manager.js";
 import type { DispatchResult } from "../src/engine/command-bus.js";
 import type { RuntimeContext } from "../src/engine/handler.js";
 import type { HandlerRegistry } from "../src/engine/handler-registry.js";
+import { TransactionManager } from "../src/engine/transaction-manager.js";
 
 interface TestAction {
   type: string;
@@ -17,10 +17,27 @@ interface TestState {
 
 function makeHandlerRegistry(
   entries: [string, (state: TestState, action: TestAction) => TestState][],
-  inverses?: [string, (state: TestState, action: TestAction) => TestAction | undefined][],
+  inverses?: [
+    string,
+    (state: TestState, action: TestAction) => TestAction | undefined,
+  ][],
 ): HandlerRegistry<TestState, TestAction, RuntimeContext> {
   const inverseMap = new Map(inverses ?? []);
-  const map = new Map<string, { handler: (state: TestState, action: TestAction, _ctx: RuntimeContext) => TestState; inverse?: (state: TestState, action: TestAction, _ctx: RuntimeContext) => TestAction | undefined }>();
+  const map = new Map<
+    string,
+    {
+      handler: (
+        state: TestState,
+        action: TestAction,
+        _ctx: RuntimeContext,
+      ) => TestState;
+      inverse?: (
+        state: TestState,
+        action: TestAction,
+        _ctx: RuntimeContext,
+      ) => TestAction | undefined;
+    }
+  >();
   for (const [type, handler] of entries) {
     const inv = inverseMap.get(type);
     map.set(type, {
@@ -28,7 +45,11 @@ function makeHandlerRegistry(
       inverse: inv ? (state, action, _ctx) => inv(state, action) : undefined,
     });
   }
-  return map as unknown as HandlerRegistry<TestState, TestAction, RuntimeContext>;
+  return map as unknown as HandlerRegistry<
+    TestState,
+    TestAction,
+    RuntimeContext
+  >;
 }
 
 const testContext: RuntimeContext = { now: () => Date.now() };
@@ -39,52 +60,73 @@ function emptyState(): TestState {
 
 const defaultHandlerRegistry = makeHandlerRegistry(
   [
-    ["set-value", (state, action) => {
-      const nodeId = action.nodeId ?? "unknown";
-      return {
-        ...state,
-        nodes: { ...state.nodes, [nodeId]: { id: nodeId, value: action.value ?? "" } },
-        version: state.version + 1,
-      };
-    }],
-    ["create-node", (state, action) => {
-      const nodeId = action.nodeId ?? "new-node";
-      return {
-        ...state,
-        nodes: { ...state.nodes, [nodeId]: { id: nodeId, value: action.value ?? "new" } },
-        version: state.version + 1,
-      };
-    }],
-    ["remove-node", (state, action) => {
-      const nodeId = action.nodeId ?? "";
-      if (!nodeId || !state.nodes[nodeId]) return state;
-      const next = { ...state.nodes };
-      delete next[nodeId];
-      return { ...state, nodes: next, version: state.version + 1 };
-    }],
+    [
+      "set-value",
+      (state, action) => {
+        const nodeId = action.nodeId ?? "unknown";
+        return {
+          ...state,
+          nodes: {
+            ...state.nodes,
+            [nodeId]: { id: nodeId, value: action.value ?? "" },
+          },
+          version: state.version + 1,
+        };
+      },
+    ],
+    [
+      "create-node",
+      (state, action) => {
+        const nodeId = action.nodeId ?? "new-node";
+        return {
+          ...state,
+          nodes: {
+            ...state.nodes,
+            [nodeId]: { id: nodeId, value: action.value ?? "new" },
+          },
+          version: state.version + 1,
+        };
+      },
+    ],
+    [
+      "remove-node",
+      (state, action) => {
+        const nodeId = action.nodeId ?? "";
+        if (!nodeId || !state.nodes[nodeId]) return state;
+        const next = { ...state.nodes };
+        delete next[nodeId];
+        return { ...state, nodes: next, version: state.version + 1 };
+      },
+    ],
     ["update-selection", (state) => state],
   ],
   [
-    ["set-value", (stateBefore, action) => {
-      const nodeId = action.nodeId ?? "unknown";
-      const prev = stateBefore.nodes[nodeId];
-      return {
-        type: "set-value",
-        nodeId,
-        value: prev?.value ?? "",
-      };
-    }],
+    [
+      "set-value",
+      (stateBefore, action) => {
+        const nodeId = action.nodeId ?? "unknown";
+        const prev = stateBefore.nodes[nodeId];
+        return {
+          type: "set-value",
+          nodeId,
+          value: prev?.value ?? "",
+        };
+      },
+    ],
     ["create-node", (_stateBefore) => undefined],
-    ["remove-node", (stateBefore, action) => {
-      const nodeId = action.nodeId ?? "";
-      const prev = stateBefore.nodes[nodeId];
-      if (!prev) return undefined;
-      return {
-        type: "create-node",
-        nodeId: prev.id,
-        value: prev.value,
-      };
-    }],
+    [
+      "remove-node",
+      (stateBefore, action) => {
+        const nodeId = action.nodeId ?? "";
+        const prev = stateBefore.nodes[nodeId];
+        if (!prev) return undefined;
+        return {
+          type: "create-node",
+          nodeId: prev.id,
+          value: prev.value,
+        };
+      },
+    ],
   ],
 );
 
@@ -119,14 +161,19 @@ describe("TransactionManager", () => {
     });
 
     it("throws when nested depth exceeds limit", () => {
-      const tm = createDefaultTM();
+      const _tm = createDefaultTM();
       const depthLimit = 1;
       const tmWithLimit = new TransactionManager(
-        { handlerRegistry: defaultHandlerRegistry, computeInverseAction: () => undefined },
+        {
+          handlerRegistry: defaultHandlerRegistry,
+          computeInverseAction: () => undefined,
+        },
         depthLimit,
       );
       tmWithLimit.begin("user", emptyState(), testContext);
-      expect(() => tmWithLimit.begin("ai", emptyState(), testContext)).toThrow("Nested transaction depth");
+      expect(() => tmWithLimit.begin("ai", emptyState(), testContext)).toThrow(
+        "Nested transaction depth",
+      );
     });
   });
 
@@ -135,10 +182,14 @@ describe("TransactionManager", () => {
       const tm = createDefaultTM();
       const active = tm.begin("user", emptyState(), testContext);
 
-      const result = tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "hello" });
+      const result = tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "hello",
+      });
 
       expect(result.ok).toBe(true);
-      expect(active.currentState.nodes["n1"]?.value).toBe("hello");
+      expect(active.currentState.nodes.n1?.value).toBe("hello");
       expect(active.tx.actions).toHaveLength(1);
       expect(active.appliedActions).toHaveLength(1);
     });
@@ -157,11 +208,19 @@ describe("TransactionManager", () => {
       const tm = createDefaultTM();
       const active = tm.begin("user", emptyState(), testContext);
 
-      tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "first" });
-      tm.applyAction(active, { type: "set-value", nodeId: "n2", value: "second" });
+      tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "first",
+      });
+      tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n2",
+        value: "second",
+      });
 
-      expect(active.currentState.nodes["n1"]?.value).toBe("first");
-      expect(active.currentState.nodes["n2"]?.value).toBe("second");
+      expect(active.currentState.nodes.n1?.value).toBe("first");
+      expect(active.currentState.nodes.n2?.value).toBe("second");
       expect(active.appliedActions).toHaveLength(2);
     });
 
@@ -171,17 +230,30 @@ describe("TransactionManager", () => {
         computeInverseAction: () => undefined,
         validate: (action) => {
           if (action.type === "set-value" && !action.nodeId) {
-            return { ok: false, error: { code: "validation.missing-node-id", message: "nodeId required" } };
+            return {
+              ok: false,
+              error: {
+                code: "validation.missing-node-id",
+                message: "nodeId required",
+              },
+            };
           }
           return { ok: true };
         },
       });
       const active = tm.begin("user", emptyState(), testContext);
 
-      const passResult = tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "ok" });
+      const passResult = tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "ok",
+      });
       expect(passResult.ok).toBe(true);
 
-      const failResult = tm.applyAction(active, { type: "set-value", value: "bad" });
+      const failResult = tm.applyAction(active, {
+        type: "set-value",
+        value: "bad",
+      });
       expect(failResult.ok).toBe(false);
       expect(failResult.error?.code).toBe("validation.missing-node-id");
     });
@@ -189,10 +261,16 @@ describe("TransactionManager", () => {
 
   describe("applyAction via dispatch function", () => {
     it("dispatches through the provided function and syncs state", () => {
-      let dispatched: TestAction[] = [];
+      const dispatched: TestAction[] = [];
       const dispatchFn = (action: TestAction): DispatchResult<TestState> => {
         dispatched.push(action);
-        return { ok: true, state: { nodes: { n1: { id: "n1", value: "via-dispatch" } }, version: 1 } };
+        return {
+          ok: true,
+          state: {
+            nodes: { n1: { id: "n1", value: "via-dispatch" } },
+            version: 1,
+          },
+        };
       };
 
       const tm = new TransactionManager({
@@ -202,10 +280,14 @@ describe("TransactionManager", () => {
       });
 
       const active = tm.begin("user", emptyState(), testContext);
-      const result = tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "via-dispatch" });
+      const result = tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "via-dispatch",
+      });
 
       expect(result.ok).toBe(true);
-      expect(active.currentState.nodes["n1"]?.value).toBe("via-dispatch");
+      expect(active.currentState.nodes.n1?.value).toBe("via-dispatch");
       expect(active.appliedActions).toHaveLength(1);
       expect(dispatched).toHaveLength(1);
     });
@@ -224,7 +306,10 @@ describe("TransactionManager", () => {
       });
 
       const active = tm.begin("user", emptyState(), testContext);
-      const result = tm.applyAction(active, { type: "remove-node", nodeId: "missing" });
+      const result = tm.applyAction(active, {
+        type: "remove-node",
+        nodeId: "missing",
+      });
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("scene.node-not-found");
@@ -253,7 +338,7 @@ describe("TransactionManager", () => {
     it("rejects commit when active is not top of stack", () => {
       const tm = createDefaultTM();
       const parent = tm.begin("user", emptyState(), testContext);
-      const child = tm.begin("ai", emptyState(), testContext);
+      const _child = tm.begin("ai", emptyState(), testContext);
 
       const result = tm.commit(parent);
 
@@ -295,7 +380,11 @@ describe("TransactionManager", () => {
       const state = emptyState();
       const active = tm.begin("user", state, testContext);
 
-      tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "hello" });
+      tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "hello",
+      });
       const preState = tm.rollback(active);
 
       expect(preState).toEqual(emptyState());
@@ -327,7 +416,11 @@ describe("TransactionManager", () => {
       const tm = createDefaultTM();
       const active = tm.begin("user", emptyState(), testContext);
 
-      tm.applyAction(active, { type: "create-node", nodeId: "new-1", value: "new" });
+      tm.applyAction(active, {
+        type: "create-node",
+        nodeId: "new-1",
+        value: "new",
+      });
 
       expect(active.tx.affectedNodes).toContain("new-1");
     });
@@ -336,7 +429,10 @@ describe("TransactionManager", () => {
       const tm = createDefaultTM();
       const active = tm.begin("user", emptyState(), testContext);
 
-      tm.applyAction(active, { type: "create-node", node: { id: "node-from-object" } });
+      tm.applyAction(active, {
+        type: "create-node",
+        node: { id: "node-from-object" },
+      });
 
       expect(active.tx.affectedNodes).toContain("node-from-object");
     });
@@ -375,10 +471,14 @@ describe("TransactionManager", () => {
       const initialState = emptyState();
       const active = tm.begin("user", initialState, testContext);
 
-      tm.applyAction(active, { type: "set-value", nodeId: "n1", value: "hello" });
+      tm.applyAction(active, {
+        type: "set-value",
+        nodeId: "n1",
+        value: "hello",
+      });
       const commitResult = tm.commit(active);
 
-      expect(commitResult.state.nodes["n1"]?.value).toBe("hello");
+      expect(commitResult.state.nodes.n1?.value).toBe("hello");
 
       const inverses = commitResult.tx.inverseActions;
       expect(inverses).toHaveLength(1);
@@ -390,7 +490,7 @@ describe("TransactionManager", () => {
           replayed = entry.handler(replayed, inv, testContext);
         }
       }
-      expect(replayed.nodes["n1"]?.value).toBe("");
+      expect(replayed.nodes.n1?.value).toBe("");
     });
   });
 });

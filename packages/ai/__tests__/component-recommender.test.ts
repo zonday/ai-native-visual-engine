@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { enrichCreateDashboardDescription } from "../src/component-recommender.js";
 import type { AiSchemaIndexSnapshot } from "@ai-native/core";
+import { describe, expect, it } from "vitest";
+import { enrichCreateDashboardDescription } from "../src/component-recommender.js";
 
 const index: AiSchemaIndexSnapshot = {
   components: {
@@ -31,7 +31,10 @@ const index: AiSchemaIndexSnapshot = {
 
 describe("enrichCreateDashboardDescription", () => {
   it("includes component types in output", () => {
-    const result = enrichCreateDashboardDescription("Create a dashboard", index);
+    const result = enrichCreateDashboardDescription(
+      "Create a dashboard",
+      index,
+    );
     expect(result).toContain("metric-value");
     expect(result).toContain("chart");
   });

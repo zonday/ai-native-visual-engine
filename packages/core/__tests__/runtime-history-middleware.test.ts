@@ -1,18 +1,22 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph } from "../src/types.js";
+import { describe, expect, it } from "vitest";
+import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeContext } from "../src/runtime/handler.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
+import {
+  createNodeHandler,
+  createNodeInverse,
+} from "../src/runtime/handlers/create-node.js";
 import type { RuntimeHistoryState } from "../src/runtime/history.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
-import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
-import type { RuntimeContext } from "../src/runtime/handler.js";
-import { baseNode, makeScene, emptyScene } from "./helpers.js";
+import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes an undo entry after a successful action", () => {
     let history: RuntimeHistoryState = { undoStack: [], redoStack: [] };
-    const setHistory = (state: RuntimeHistoryState) => { history = state; };
+    const setHistory = (state: RuntimeHistoryState) => {
+      history = state;
+    };
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
@@ -27,8 +31,19 @@ describe("createUndoHistoryMiddleware", () => {
     ]);
 
     const context: RuntimeContext = { now: () => 12345 };
-    const middleware = createUndoHistoryMiddleware(getHistory, setHistory, getActorId, handlerRegistry, () => context);
-    const bus = createRuntimeCommandBus(handlerRegistry, [middleware], emptyScene, context);
+    const middleware = createUndoHistoryMiddleware(
+      getHistory,
+      setHistory,
+      getActorId,
+      handlerRegistry,
+      () => context,
+    );
+    const bus = createRuntimeCommandBus(
+      handlerRegistry,
+      [middleware],
+      emptyScene,
+      context,
+    );
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -47,7 +62,9 @@ describe("createUndoHistoryMiddleware", () => {
 
   it("does not push an undo entry when action fails", () => {
     let history: RuntimeHistoryState = { undoStack: [], redoStack: [] };
-    const setHistory = (state: RuntimeHistoryState) => { history = state; };
+    const setHistory = (state: RuntimeHistoryState) => {
+      history = state;
+    };
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
@@ -55,15 +72,28 @@ describe("createUndoHistoryMiddleware", () => {
       [
         "create-node",
         {
-          handler: () => { throw new Error("fail"); },
+          handler: () => {
+            throw new Error("fail");
+          },
           inverse: createNodeInverse as RuntimeHandlerEntry["inverse"],
         } as RuntimeHandlerEntry,
       ],
     ]);
 
     const context: RuntimeContext = { now: () => 12345 };
-    const middleware = createUndoHistoryMiddleware(getHistory, setHistory, getActorId, handlerRegistry, () => context);
-    const bus = createRuntimeCommandBus(handlerRegistry, [middleware], emptyScene, context);
+    const middleware = createUndoHistoryMiddleware(
+      getHistory,
+      setHistory,
+      getActorId,
+      handlerRegistry,
+      () => context,
+    );
+    const bus = createRuntimeCommandBus(
+      handlerRegistry,
+      [middleware],
+      emptyScene,
+      context,
+    );
 
     const action: RuntimeAction = {
       type: "create-node",
@@ -78,7 +108,9 @@ describe("createUndoHistoryMiddleware", () => {
 
   it("does not push an undo entry when inverse computer returns undefined", () => {
     let history: RuntimeHistoryState = { undoStack: [], redoStack: [] };
-    const setHistory = (state: RuntimeHistoryState) => { history = state; };
+    const setHistory = (state: RuntimeHistoryState) => {
+      history = state;
+    };
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
@@ -93,8 +125,19 @@ describe("createUndoHistoryMiddleware", () => {
     ]);
 
     const context: RuntimeContext = { now: () => 12345 };
-    const middleware = createUndoHistoryMiddleware(getHistory, setHistory, getActorId, handlerRegistry, () => context);
-    const bus = createRuntimeCommandBus(handlerRegistry, [middleware], emptyScene, context);
+    const middleware = createUndoHistoryMiddleware(
+      getHistory,
+      setHistory,
+      getActorId,
+      handlerRegistry,
+      () => context,
+    );
+    const bus = createRuntimeCommandBus(
+      handlerRegistry,
+      [middleware],
+      emptyScene,
+      context,
+    );
 
     const action: RuntimeAction = {
       type: "create-node",

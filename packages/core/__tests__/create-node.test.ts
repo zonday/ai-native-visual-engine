@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { createNodeHandler, createNodeInverse } from "../src/runtime/handlers/create-node.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  createNodeHandler,
+  createNodeInverse,
+} from "../src/runtime/handlers/create-node.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode, emptyScene } from "./helpers.js";
+import { baseNode, emptyScene, makeScene } from "./helpers.js";
 
 describe("createNodeHandler", () => {
   it("creates a node and appends it to parent children when index is omitted", () => {
@@ -11,10 +14,13 @@ describe("createNodeHandler", () => {
       node: baseNode("child-1"),
       parentId: "root",
     };
-    const result = createNodeHandler(emptyScene, action, { now: Date.now, actorId: "test" });
+    const result = createNodeHandler(emptyScene, action, {
+      now: Date.now,
+      actorId: "test",
+    });
     expect(result.nodes["child-1"]).toBeDefined();
     expect(result.nodes["child-1"]?.parentId).toBe("root");
-    expect(result.nodes["root"]?.children).toEqual(["child-1"]);
+    expect(result.nodes.root?.children).toEqual(["child-1"]);
     expect(result.version).toBe(1);
   });
 
@@ -31,7 +37,7 @@ describe("createNodeHandler", () => {
       index: 1,
     };
     const result = createNodeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["root"]?.children).toEqual(["a", "c", "b"]);
+    expect(result.nodes.root?.children).toEqual(["a", "c", "b"]);
   });
 
   it("clamps out-of-bounds index to parent children length", () => {
@@ -46,7 +52,7 @@ describe("createNodeHandler", () => {
       index: 99,
     };
     const result = createNodeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["root"]?.children).toEqual(["a", "b"]);
+    expect(result.nodes.root?.children).toEqual(["a", "b"]);
   });
 
   it("rejects create-node when parent does not exist", () => {
@@ -55,9 +61,9 @@ describe("createNodeHandler", () => {
       node: baseNode("orphan"),
       parentId: "missing-parent",
     };
-    expect(() => createNodeHandler(emptyScene, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      createNodeHandler(emptyScene, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
@@ -72,9 +78,9 @@ describe("createNodeHandler", () => {
       node: baseNode("root"),
       parentId: "root",
     };
-    expect(() => createNodeHandler(emptyScene, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      createNodeHandler(emptyScene, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {

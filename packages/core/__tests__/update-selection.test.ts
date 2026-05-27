@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { updateSelectionHandler, updateSelectionInverse } from "../src/runtime/handlers/update-selection.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  updateSelectionHandler,
+  updateSelectionInverse,
+} from "../src/runtime/handlers/update-selection.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithNodes: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a", "b"] },
@@ -16,13 +19,18 @@ describe("updateSelectionHandler", () => {
       type: "update-selection" as const,
       nodeIds: ["a", "b"],
     };
-    const result = updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
+    const result = updateSelectionHandler(sceneWithNodes, action, {
+      now: Date.now,
+    });
     expect(result.selection).toEqual({ nodeIds: ["a", "b"] });
     expect(result.version).toBe(0);
   });
 
   it("clears selection when nodeIds is empty", () => {
-    const scene: SceneGraph = { ...sceneWithNodes, selection: { nodeIds: ["a"] } };
+    const scene: SceneGraph = {
+      ...sceneWithNodes,
+      selection: { nodeIds: ["a"] },
+    };
     const action = {
       type: "update-selection" as const,
       nodeIds: [],
@@ -36,9 +44,9 @@ describe("updateSelectionHandler", () => {
       type: "update-selection" as const,
       nodeIds: ["a", "a"],
     };
-    expect(() => updateSelectionHandler(sceneWithNodes, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
@@ -51,9 +59,9 @@ describe("updateSelectionHandler", () => {
       type: "update-selection" as const,
       nodeIds: ["a", "missing"],
     };
-    expect(() => updateSelectionHandler(sceneWithNodes, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
@@ -64,7 +72,10 @@ describe("updateSelectionHandler", () => {
 
 describe("updateSelectionInverse", () => {
   it("produces an update-selection inverse with the previous selection", () => {
-    const scene: SceneGraph = { ...sceneWithNodes, selection: { nodeIds: ["a"] } };
+    const scene: SceneGraph = {
+      ...sceneWithNodes,
+      selection: { nodeIds: ["a"] },
+    };
     const action = {
       type: "update-selection" as const,
       nodeIds: ["b"],
@@ -81,7 +92,9 @@ describe("updateSelectionInverse", () => {
       type: "update-selection" as const,
       nodeIds: ["a"],
     };
-    const inverse = updateSelectionInverse(sceneWithNodes, action, { now: Date.now });
+    const inverse = updateSelectionInverse(sceneWithNodes, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "update-selection",
       nodeIds: [],

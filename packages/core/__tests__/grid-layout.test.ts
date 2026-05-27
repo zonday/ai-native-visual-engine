@@ -1,17 +1,13 @@
-import { describe, it, expect } from "vitest";
-import type { SceneGraph } from "../src/types.js";
+import { describe, expect, it } from "vitest";
+import type { GridItemPosition } from "../src/grid-layout.js";
 import {
   autoLayoutGrid,
   detectCollisions,
   resolveCollisions,
 } from "../src/grid-layout.js";
-import type { GridItemPosition } from "../src/grid-layout.js";
 import { makeScene } from "./helpers.js";
 
-function getItem(
-  positions: GridItemPosition[],
-  id: string,
-): GridItemPosition {
+function getItem(positions: GridItemPosition[], id: string): GridItemPosition {
   return positions.find((p) => p.id === id) as GridItemPosition;
 }
 
@@ -357,9 +353,7 @@ describe("detectCollisions", () => {
   });
 
   it("returns empty for single item", () => {
-    const items: GridItemPosition[] = [
-      { id: "a", x: 0, y: 0, w: 1, h: 1 },
-    ];
+    const items: GridItemPosition[] = [{ id: "a", x: 0, y: 0, w: 1, h: 1 }];
     expect(detectCollisions(items)).toHaveLength(0);
   });
 

@@ -1,18 +1,18 @@
-import { describe, it, expect } from "vitest";
-import type { VisualDocument } from "../src/types.js";
+import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
 import {
-  openDocumentSession,
   materializeScene,
+  openDocumentSession,
   SessionError,
 } from "../src/session.js";
+import type { VisualDocument } from "../src/types.js";
 
 describe("openDocumentSession", () => {
   it("opens a session and returns the active scene", () => {
     const doc = createNewDocument({ title: "Test" });
     const session = openDocumentSession(doc);
     expect(session.state.isOpen).toBe(true);
-    expect(session.state.activePageId).toBe(doc.pages[0]!.id);
+    expect(session.state.activePageId).toBe(doc.pages[0]?.id);
     const scene = session.getActiveScene();
     expect(scene.rootId).toBeDefined();
     expect(scene.version).toBe(0);
@@ -22,8 +22,8 @@ describe("openDocumentSession", () => {
 
   it("opens a session with a specified active page", () => {
     const doc = createNewDocument({ title: "Test" });
-    const session = openDocumentSession(doc, doc.pages[0]!.id);
-    expect(session.state.activePageId).toBe(doc.pages[0]!.id);
+    const session = openDocumentSession(doc, doc.pages[0]?.id);
+    expect(session.state.activePageId).toBe(doc.pages[0]?.id);
   });
 
   it("throws when the document has no pages", () => {
@@ -68,7 +68,7 @@ describe("session page switching", () => {
     };
 
     const session = openDocumentSession(doc);
-    expect(session.state.activePageId).toBe(doc.pages[0]!.id);
+    expect(session.state.activePageId).toBe(doc.pages[0]?.id);
 
     session.switchPage("page-2");
     expect(session.state.activePageId).toBe("page-2");
@@ -112,13 +112,16 @@ describe("materializeScene", () => {
     const persisted = {
       version: 5,
       rootId: "r",
-      nodes: { r: { id: "r", type: "container", children: ["a"] }, a: { id: "a", type: "text", parentId: "r" } },
+      nodes: {
+        r: { id: "r", type: "container", children: ["a"] },
+        a: { id: "a", type: "text", parentId: "r" },
+      },
     };
     const scene = materializeScene(persisted);
     expect(scene.version).toBe(5);
     expect(scene.rootId).toBe("r");
-    expect(scene.nodes["r"]).toBeDefined();
-    expect(scene.nodes["a"]).toBeDefined();
+    expect(scene.nodes.r).toBeDefined();
+    expect(scene.nodes.a).toBeDefined();
     expect(scene.selection).toBeUndefined();
     expect(scene.viewport).toBeUndefined();
   });

@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi } from "vitest";
+
+import type { SceneGraph } from "@ai-native/core";
 import { renderToString } from "react-dom/server";
-import type { SceneGraph, SceneNode } from "@ai-native/core";
-import { SceneRenderer } from "../src/scene-renderer.jsx";
-import type { RenderContext, ComponentRegistry } from "../src/renderer.js";
+import { describe, expect, it, vi } from "vitest";
 import { ContainerNode } from "../src/components/container.jsx";
-import { TextNode } from "../src/components/text.jsx";
 import { MissingPluginPlaceholder } from "../src/components/missing-plugin.jsx";
+import { TextNode } from "../src/components/text.jsx";
+import type { ComponentRegistry, RenderContext } from "../src/renderer.js";
+import { SceneRenderer } from "../src/scene-renderer.jsx";
 
 const emptyScene: SceneGraph = {
   version: 0,
@@ -19,8 +20,7 @@ const emptyScene: SceneGraph = {
 const registry: ComponentRegistry = new Map();
 registry.set("container", {
   type: "container",
-  render: (node, ctx, children) =>
-    ContainerNode({ node, ctx, children }),
+  render: (node, ctx, children) => ContainerNode({ node, ctx, children }),
 });
 registry.set("text", {
   type: "text",
@@ -66,7 +66,12 @@ describe("SceneRenderer", () => {
           props: {
             content: {
               type: "doc",
-              content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Hello" }],
+                },
+              ],
             },
           },
         },
@@ -446,86 +451,84 @@ describe("MissingPluginPlaceholder", () => {
 // is not suppressed. Requires a DOM environment (happy-dom) to exercise useEffect
 // and synthetic window events.
 describe("SceneRenderer — didDragRef reset (Fix 2)", () => {
-  it(
-    "fires onSelectNode on an unselected sibling after a drag-commit mouseup",
-    { timeout: 5000 },
-    async () => {
-      const { render, fireEvent } = await import("@testing-library/react");
+  it("fires onSelectNode on an unselected sibling after a drag-commit mouseup", {
+    timeout: 5000,
+  }, async () => {
+    const { render, fireEvent } = await import("@testing-library/react");
 
-      const scene: SceneGraph = {
-        version: 0,
-        rootId: "root",
-        nodes: {
-          root: {
-            id: "root",
-            type: "container",
-            children: ["child-1", "child-2"],
-          },
-          "child-1": {
-            id: "child-1",
-            type: "container",
-            parentId: "root",
-            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
-          },
-          "child-2": {
-            id: "child-2",
-            type: "container",
-            parentId: "root",
-            layout: { mode: "absolute", x: 200, y: 0, width: 100, height: 100 },
-          },
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1", "child-2"],
         },
-      };
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+        },
+        "child-2": {
+          id: "child-2",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 200, y: 0, width: 100, height: 100 },
+        },
+      },
+    };
 
-      const onSelectNode = vi.fn();
-      const onTransform = vi.fn();
+    const onSelectNode = vi.fn();
+    const onTransform = vi.fn();
 
-      const { getByTestId } = render(
-        <div data-testid="root-wrapper">
-          <SceneRenderer
-            registry={registry}
-            context={{
-              ...context,
-              scene,
-              selection: { nodeIds: ["child-1"] },
-            }}
-            onSelectNode={onSelectNode}
-            onTransform={onTransform}
-          />
-        </div>,
-      );
+    const { getByTestId } = render(
+      <div data-testid="root-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            ...context,
+            scene,
+            selection: { nodeIds: ["child-1"] },
+          }}
+          onSelectNode={onSelectNode}
+          onTransform={onTransform}
+        />
+      </div>,
+    );
 
-      const nodeEl = getByTestId("root-wrapper").querySelector(
-        '[data-node-id="child-1"]',
-      ) as HTMLElement;
-      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
-      fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
-      fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
+    const nodeEl = getByTestId("root-wrapper").querySelector(
+      '[data-node-id="child-1"]',
+    ) as HTMLElement;
+    fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
+    fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
+    fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
 
-      // Drag must have emitted move + commit events.
-      expect(onTransform).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "move", commit: false }),
-      );
-      expect(onTransform).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "move", commit: true }),
-      );
+    // Drag must have emitted move + commit events.
+    expect(onTransform).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "move", commit: false }),
+    );
+    expect(onTransform).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "move", commit: true }),
+    );
 
-      // Click on an unselected sibling — must NOT be suppressed by stale didDragRef.
-      // fireEvent.click alone does NOT dispatch mousedown; we must fire mousedown
-      // explicitly so sceneMouseDown resets didDragRef before the click handler runs.
-      onSelectNode.mockClear();
-      const child2El = getByTestId("root-wrapper").querySelector(
-        '[data-node-id="child-2"]',
-      ) as HTMLElement;
-      fireEvent.mouseDown(child2El, { button: 0 });
-      fireEvent.mouseUp(child2El, { button: 0 });
-      fireEvent.click(child2El);
+    // Click on an unselected sibling — must NOT be suppressed by stale didDragRef.
+    // fireEvent.click alone does NOT dispatch mousedown; we must fire mousedown
+    // explicitly so sceneMouseDown resets didDragRef before the click handler runs.
+    onSelectNode.mockClear();
+    const child2El = getByTestId("root-wrapper").querySelector(
+      '[data-node-id="child-2"]',
+    ) as HTMLElement;
+    fireEvent.mouseDown(child2El, { button: 0 });
+    fireEvent.mouseUp(child2El, { button: 0 });
+    fireEvent.click(child2El);
 
-      expect(onSelectNode).toHaveBeenCalledWith(
-        "child-2",
-        expect.objectContaining({ additive: false }),
-      );
-    },
-  );
+    expect(onSelectNode).toHaveBeenCalledWith(
+      "child-2",
+      expect.objectContaining({ additive: false }),
+    );
+  });
 });
 
 describe("SceneRenderer — viewport transform", () => {
@@ -606,134 +609,129 @@ describe("SceneRenderer — viewport transform", () => {
 });
 
 describe("SceneRenderer — zoom-adjusted deltas", () => {
-  it(
-    "emits content-space deltas for move drag under viewport zoom=2",
-    { timeout: 5000 },
-    async () => {
-      const { render, fireEvent } = await import("@testing-library/react");
+  it("emits content-space deltas for move drag under viewport zoom=2", {
+    timeout: 5000,
+  }, async () => {
+    const { render, fireEvent } = await import("@testing-library/react");
 
-      const scene: SceneGraph = {
-        version: 0,
-        rootId: "root",
-        nodes: {
-          root: {
-            id: "root",
-            type: "container",
-            children: ["child-1"],
-          },
-          "child-1": {
-            id: "child-1",
-            type: "container",
-            parentId: "root",
-            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
-          },
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1"],
         },
-      };
-
-      const onTransform = vi.fn();
-
-      const { getByTestId } = render(
-        <div data-testid="zoom-root-wrapper">
-          <SceneRenderer
-            registry={registry}
-            context={{
-              mode: "editor",
-              pageId: "page-1",
-              scene,
-              selection: { nodeIds: ["child-1"] },
-              viewport: { zoom: 2, x: 0, y: 0 },
-            }}
-            onTransform={onTransform}
-          />
-        </div>,
-      );
-
-      const nodeEl = getByTestId("zoom-root-wrapper").querySelector(
-        '[data-node-id="child-1"]',
-      ) as HTMLElement;
-      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 100, clientY: 100 });
-      // Move 20 screen pixels → 10 content pixels at zoom=2
-      fireEvent.mouseMove(window, { clientX: 120, clientY: 120 });
-      fireEvent.mouseUp(window, { clientX: 120, clientY: 120 });
-
-      expect(onTransform).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "move",
-          commit: false,
-          deltaX: 10,
-          deltaY: 10,
-        }),
-      );
-      expect(onTransform).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "move",
-          commit: true,
-          deltaX: 10,
-          deltaY: 10,
-        }),
-      );
-    },
-  );
-
-  it(
-    "does not crash for move drag with zoom=0 (guarded to zoom=1)",
-    { timeout: 5000 },
-    async () => {
-      const { render, fireEvent } = await import("@testing-library/react");
-
-      const scene: SceneGraph = {
-        version: 0,
-        rootId: "root",
-        nodes: {
-          root: {
-            id: "root",
-            type: "container",
-            children: ["child-1"],
-          },
-          "child-1": {
-            id: "child-1",
-            type: "container",
-            parentId: "root",
-            layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
-          },
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
         },
-      };
+      },
+    };
 
-      const onTransform = vi.fn();
+    const onTransform = vi.fn();
 
-      const { getByTestId } = render(
-        <div data-testid="zero-zoom-wrapper">
-          <SceneRenderer
-            registry={registry}
-            context={{
-              mode: "editor",
-              pageId: "page-1",
-              scene,
-              selection: { nodeIds: ["child-1"] },
-              viewport: { zoom: 0, x: 0, y: 0 },
-            }}
-            onTransform={onTransform}
-          />
-        </div>,
-      );
+    const { getByTestId } = render(
+      <div data-testid="zoom-root-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            selection: { nodeIds: ["child-1"] },
+            viewport: { zoom: 2, x: 0, y: 0 },
+          }}
+          onTransform={onTransform}
+        />
+      </div>,
+    );
 
-      const nodeEl = getByTestId("zero-zoom-wrapper").querySelector(
-        '[data-node-id="child-1"]',
-      ) as HTMLElement;
-      fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
-      fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
-      fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
+    const nodeEl = getByTestId("zoom-root-wrapper").querySelector(
+      '[data-node-id="child-1"]',
+    ) as HTMLElement;
+    fireEvent.mouseDown(nodeEl, { button: 0, clientX: 100, clientY: 100 });
+    // Move 20 screen pixels → 10 content pixels at zoom=2
+    fireEvent.mouseMove(window, { clientX: 120, clientY: 120 });
+    fireEvent.mouseUp(window, { clientX: 120, clientY: 120 });
 
-      // zoom=0 guarded to 1, so 10 screen pixels → 10 content deltas
-      expect(onTransform).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "move",
-          commit: false,
-          deltaX: 10,
-          deltaY: 10,
-        }),
-      );
-    },
-  );
+    expect(onTransform).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "move",
+        commit: false,
+        deltaX: 10,
+        deltaY: 10,
+      }),
+    );
+    expect(onTransform).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "move",
+        commit: true,
+        deltaX: 10,
+        deltaY: 10,
+      }),
+    );
+  });
+
+  it("does not crash for move drag with zoom=0 (guarded to zoom=1)", {
+    timeout: 5000,
+  }, async () => {
+    const { render, fireEvent } = await import("@testing-library/react");
+
+    const scene: SceneGraph = {
+      version: 0,
+      rootId: "root",
+      nodes: {
+        root: {
+          id: "root",
+          type: "container",
+          children: ["child-1"],
+        },
+        "child-1": {
+          id: "child-1",
+          type: "container",
+          parentId: "root",
+          layout: { mode: "absolute", x: 0, y: 0, width: 100, height: 100 },
+        },
+      },
+    };
+
+    const onTransform = vi.fn();
+
+    const { getByTestId } = render(
+      <div data-testid="zero-zoom-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            selection: { nodeIds: ["child-1"] },
+            viewport: { zoom: 0, x: 0, y: 0 },
+          }}
+          onTransform={onTransform}
+        />
+      </div>,
+    );
+
+    const nodeEl = getByTestId("zero-zoom-wrapper").querySelector(
+      '[data-node-id="child-1"]',
+    ) as HTMLElement;
+    fireEvent.mouseDown(nodeEl, { button: 0, clientX: 50, clientY: 50 });
+    fireEvent.mouseMove(window, { clientX: 60, clientY: 60 });
+    fireEvent.mouseUp(window, { clientX: 60, clientY: 60 });
+
+    // zoom=0 guarded to 1, so 10 screen pixels → 10 content deltas
+    expect(onTransform).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "move",
+        commit: false,
+        deltaX: 10,
+        deltaY: 10,
+      }),
+    );
+  });
 });
-

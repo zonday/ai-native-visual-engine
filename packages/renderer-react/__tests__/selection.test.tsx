@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { renderToString } from "react-dom/server";
-import { SelectionChrome } from "../src/selection-chrome.jsx";
+import { describe, expect, it } from "vitest";
 import { MarqueeOverlay } from "../src/marquee-select.jsx";
+import { SelectionChrome } from "../src/selection-chrome.jsx";
 
 describe("SelectionChrome", () => {
   it("renders data-selection-chrome attribute with node id", () => {
@@ -50,4 +50,3 @@ describe("MarqueeOverlay", () => {
     expect(html).toContain("data-marquee-overlay");
   });
 });
-

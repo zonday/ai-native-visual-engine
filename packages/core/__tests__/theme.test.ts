@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { BASE_THEME, resolveTheme, resolveToken } from "../src/theme.js";
+import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
+import { BASE_THEME, resolveTheme, resolveToken } from "../src/theme.js";
 
 describe("BASE_THEME", () => {
   it("has all required token categories", () => {
@@ -21,7 +21,11 @@ describe("resolveTheme", () => {
 
   it("uses document.activeThemeId when set", () => {
     const doc = createNewDocument({ themeId: "dark-theme" });
-    const dark: typeof BASE_THEME = { ...BASE_THEME, id: "dark-theme", name: "Dark" };
+    const dark: typeof BASE_THEME = {
+      ...BASE_THEME,
+      id: "dark-theme",
+      name: "Dark",
+    };
     const result = resolveTheme(doc.pages[0]!, doc, [BASE_THEME, dark]);
     expect(result.id).toBe("dark-theme");
   });
@@ -54,12 +58,16 @@ describe("resolveToken", () => {
   });
 
   it("inline style overrides theme token", () => {
-    const bg = resolveToken<string>(["colors", "background"], BASE_THEME, { colors: { background: "#000" } });
+    const bg = resolveToken<string>(["colors", "background"], BASE_THEME, {
+      colors: { background: "#000" },
+    });
     expect(bg).toBe("#000");
   });
 
   it("returns theme value when inline doesn't have the token", () => {
-    const bg = resolveToken<string>(["colors", "background"], BASE_THEME, { colors: {} });
+    const bg = resolveToken<string>(["colors", "background"], BASE_THEME, {
+      colors: {},
+    });
     expect(bg).toBe("#ffffff");
   });
 });

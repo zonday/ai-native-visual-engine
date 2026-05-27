@@ -1,15 +1,40 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type {
+  SerializedDocumentAction,
+  SerializedRuntimeAction,
+} from "../src/collaboration/types.js";
 import { createYjsDocProvider } from "../src/collaboration/yjs-provider.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import type { SerializedDocumentAction, SerializedRuntimeAction } from "../src/collaboration/types.js";
 
-function sda(type: string, actorId = "a", timestamp = 1, overrides?: Partial<SerializedDocumentAction>): SerializedDocumentAction {
-  return { actorId, timestamp, action: { type } as unknown as DocumentAction, ...overrides };
+function sda(
+  type: string,
+  actorId = "a",
+  timestamp = 1,
+  overrides?: Partial<SerializedDocumentAction>,
+): SerializedDocumentAction {
+  return {
+    actorId,
+    timestamp,
+    action: { type } as unknown as DocumentAction,
+    ...overrides,
+  };
 }
 
-function sra(type: string, actorId = "a", timestamp = 1, pageId = "page-1", overrides?: Partial<SerializedRuntimeAction>): SerializedRuntimeAction {
-  return { actorId, timestamp, pageId, action: { type } as unknown as RuntimeAction, ...overrides };
+function sra(
+  type: string,
+  actorId = "a",
+  timestamp = 1,
+  pageId = "page-1",
+  overrides?: Partial<SerializedRuntimeAction>,
+): SerializedRuntimeAction {
+  return {
+    actorId,
+    timestamp,
+    pageId,
+    action: { type } as unknown as RuntimeAction,
+    ...overrides,
+  };
 }
 
 describe("YjsDocProvider — §4 shared document structure", () => {
@@ -27,7 +52,15 @@ describe("YjsDocProvider — §4 shared document structure", () => {
     const doc = p.getDoc();
     const map = doc.getMap("sceneActions");
 
-    p.broadcastSceneAction(sra("create-node", "a", 1, "page-1", { action: { type: "create-node", node: { id: "n", type: "text" }, parentId: "root" } as unknown as RuntimeAction }));
+    p.broadcastSceneAction(
+      sra("create-node", "a", 1, "page-1", {
+        action: {
+          type: "create-node",
+          node: { id: "n", type: "text" },
+          parentId: "root",
+        } as unknown as RuntimeAction,
+      }),
+    );
 
     expect(map.get("page-1")).toBeDefined();
     const arr = map.get("page-1") as { length: number } | undefined;
@@ -39,26 +72,30 @@ describe("YjsDocProvider — §5.4 serialization envelope", () => {
   it("document action includes actorId and timestamp", () => {
     const p = createYjsDocProvider("room-3");
     let received: SerializedDocumentAction | null = null;
-    p.onRemoteDocumentAction((entry) => { received = entry; });
+    p.onRemoteDocumentAction((entry) => {
+      received = entry;
+    });
 
     p.broadcastDocumentAction(sda("create-page"));
 
-    expect(received!.actorId).toBe("a");
-    expect(received!.timestamp).toBe(1);
-    expect(received!.action.type).toBe("create-page");
+    expect(received?.actorId).toBe("a");
+    expect(received?.timestamp).toBe(1);
+    expect(received?.action.type).toBe("create-page");
   });
 
   it("scene action includes actorId, timestamp, and pageId", () => {
     const p = createYjsDocProvider("room-4");
     let received: SerializedRuntimeAction | null = null;
-    p.onRemoteSceneAction("page-1", (entry) => { received = entry; });
+    p.onRemoteSceneAction("page-1", (entry) => {
+      received = entry;
+    });
 
     p.broadcastSceneAction(sra("update-layout"));
 
-    expect(received!.actorId).toBe("a");
-    expect(received!.timestamp).toBe(1);
-    expect(received!.pageId).toBe("page-1");
-    expect(received!.action.type).toBe("update-layout");
+    expect(received?.actorId).toBe("a");
+    expect(received?.timestamp).toBe(1);
+    expect(received?.pageId).toBe("page-1");
+    expect(received?.action.type).toBe("update-layout");
   });
 });
 
@@ -69,16 +106,28 @@ describe("YjsDocProvider — §8 replay", () => {
     p.broadcastDocumentAction(sda("rename-page", "b", 2));
 
     const replayed: string[] = [];
-    p.replayDocumentActions((entry) => { replayed.push(entry.action.type); });
+    p.replayDocumentActions((entry) => {
+      replayed.push(entry.action.type);
+    });
     expect(replayed).toEqual(["create-page", "rename-page"]);
   });
 
   it("replays existing scene actions for a page on join", () => {
     const p = createYjsDocProvider("room-6");
-    p.broadcastSceneAction(sra("create-node", "a", 1, "page-x", { action: { type: "create-node", node: { id: "n", type: "text" }, parentId: "root" } as unknown as RuntimeAction }));
+    p.broadcastSceneAction(
+      sra("create-node", "a", 1, "page-x", {
+        action: {
+          type: "create-node",
+          node: { id: "n", type: "text" },
+          parentId: "root",
+        } as unknown as RuntimeAction,
+      }),
+    );
 
     const replayed: string[] = [];
-    p.replaySceneActions("page-x", (entry) => { replayed.push(entry.action.type); });
+    p.replaySceneActions("page-x", (entry) => {
+      replayed.push(entry.action.type);
+    });
     expect(replayed).toEqual(["create-node"]);
   });
 });

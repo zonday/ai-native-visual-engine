@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { moveNodeHandler, moveNodeInverse } from "../src/runtime/handlers/move-node.js";
+import { describe, expect, it } from "vitest";
 import { RuntimeHandlerError } from "../src/runtime/error.js";
+import {
+  moveNodeHandler,
+  moveNodeInverse,
+} from "../src/runtime/handlers/move-node.js";
 import type { SceneGraph } from "../src/types.js";
-import { makeScene, baseNode } from "./helpers.js";
+import { makeScene } from "./helpers.js";
 
 const sceneWithTree: SceneGraph = makeScene({
   root: { id: "root", type: "container", children: ["a", "b"] },
@@ -19,16 +22,21 @@ describe("moveNodeHandler", () => {
       parentId: "b",
     };
     const result = moveNodeHandler(sceneWithTree, action, { now: Date.now });
-    expect(result.nodes["a1"]?.parentId).toBe("b");
-    expect(result.nodes["a"]?.children).toEqual([]);
-    expect(result.nodes["b"]?.children).toEqual(["a1"]);
+    expect(result.nodes.a1?.parentId).toBe("b");
+    expect(result.nodes.a?.children).toEqual([]);
+    expect(result.nodes.b?.children).toEqual(["a1"]);
     expect(result.version).toBe(1);
   });
 
   it("moves a node to a specific index within the new parent", () => {
     const scene: SceneGraph = makeScene({
       root: { id: "root", type: "container", children: ["a", "b"] },
-      a: { id: "a", type: "container", parentId: "root", children: ["a1", "a2"] },
+      a: {
+        id: "a",
+        type: "container",
+        parentId: "root",
+        children: ["a1", "a2"],
+      },
       a1: { id: "a1", type: "text", parentId: "a" },
       a2: { id: "a2", type: "text", parentId: "a" },
       b: { id: "b", type: "container", parentId: "root", children: ["b1"] },
@@ -41,8 +49,8 @@ describe("moveNodeHandler", () => {
       index: 0,
     };
     const result = moveNodeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["b"]?.children).toEqual(["a1", "b1"]);
-    expect(result.nodes["a"]?.children).toEqual(["a2"]);
+    expect(result.nodes.b?.children).toEqual(["a1", "b1"]);
+    expect(result.nodes.a?.children).toEqual(["a2"]);
   });
 
   it("reorders a node within the same parent", () => {
@@ -59,7 +67,7 @@ describe("moveNodeHandler", () => {
       index: 2,
     };
     const result = moveNodeHandler(scene, action, { now: Date.now });
-    expect(result.nodes["root"]?.children).toEqual(["b", "c", "a"]);
+    expect(result.nodes.root?.children).toEqual(["b", "c", "a"]);
   });
 
   it("rejects move-node when target node does not exist", () => {
@@ -68,9 +76,9 @@ describe("moveNodeHandler", () => {
       nodeId: "missing",
       parentId: "root",
     };
-    expect(() => moveNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
@@ -85,9 +93,9 @@ describe("moveNodeHandler", () => {
       nodeId: "a1",
       parentId: "missing-parent",
     };
-    expect(() => moveNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
@@ -102,9 +110,9 @@ describe("moveNodeHandler", () => {
       nodeId: "a",
       parentId: "a",
     };
-    expect(() => moveNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
@@ -118,9 +126,9 @@ describe("moveNodeHandler", () => {
       nodeId: "a",
       parentId: "a1",
     };
-    expect(() => moveNodeHandler(sceneWithTree, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
-    );
+    expect(() =>
+      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+    ).toThrow(RuntimeHandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {

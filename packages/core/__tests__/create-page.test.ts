@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { createPageHandler } from "../src/document/handlers/create-page.js";
+import { describe, expect, it } from "vitest";
 import { DocumentHandlerError } from "../src/document/error.js";
+import { createPageHandler } from "../src/document/handlers/create-page.js";
 import type { VisualDocument } from "../src/types.js";
-import { emptyPersistedScene, emptyDoc } from "./helpers.js";
+import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 describe("createPageHandler", () => {
   it("adds a new page and scene to the document", () => {
@@ -44,13 +44,15 @@ describe("createPageHandler", () => {
       page: { id: "p1", name: "Dup", sceneId: "s2" },
       scene: emptyPersistedScene,
     };
-    expect(() => createPageHandler(docWithPage, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
-    );
+    expect(() =>
+      createPageHandler(docWithPage, action, { now: Date.now }),
+    ).toThrow(DocumentHandlerError);
     try {
       createPageHandler(docWithPage, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.duplicate-page-id");
+      expect((e as DocumentHandlerError).code).toBe(
+        "document.duplicate-page-id",
+      );
     }
   });
 
@@ -71,7 +73,9 @@ describe("createPageHandler", () => {
     try {
       createPageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.duplicate-scene-id");
+      expect((e as DocumentHandlerError).code).toBe(
+        "document.duplicate-scene-id",
+      );
     }
   });
 
@@ -84,11 +88,15 @@ describe("createPageHandler", () => {
     const action = {
       type: "create-page" as const,
       page: { id: "p2", name: "Dup Route", sceneId: "s2", route: "/dashboard" },
-      scene: { ...emptyPersistedScene, rootId: "root-2", nodes: { "root-2": { id: "root-2", type: "container" } } },
+      scene: {
+        ...emptyPersistedScene,
+        rootId: "root-2",
+        nodes: { "root-2": { id: "root-2", type: "container" } },
+      },
     };
-    expect(() => createPageHandler(docWithRoute, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
-    );
+    expect(() =>
+      createPageHandler(docWithRoute, action, { now: Date.now }),
+    ).toThrow(DocumentHandlerError);
     try {
       createPageHandler(docWithRoute, action, { now: Date.now });
     } catch (e) {
