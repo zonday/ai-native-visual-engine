@@ -16,10 +16,21 @@ export interface ComputedBounds {
   height: number;
 }
 
+export interface ViewportRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ComputedStateEngine {
+  getLocalTransform(nodeId: NodeId): { x: number; y: number; rotation: number };
   getWorldTransform(nodeId: NodeId): WorldTransform;
   getComputedBounds(nodeId: NodeId): ComputedBounds;
-  getVisibleBounds(nodeId: NodeId): ComputedBounds | null;
+  getVisibleBounds(
+    nodeId: NodeId,
+    viewport?: ViewportRect,
+  ): ComputedBounds | null;
   getCenter(nodeId: NodeId): { x: number; y: number };
   getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number;
   invalidate(nodeId: NodeId): void;
@@ -141,6 +152,20 @@ export function createComputedStateEngine(
   }
 
   const engine: ComputedStateEngine = {
+    getLocalTransform(nodeId: NodeId): {
+      x: number;
+      y: number;
+      rotation: number;
+    } {
+      const node = selectors.getNode(nodeId);
+      if (!node) return { x: 0, y: 0, rotation: 0 };
+      return {
+        x: getLayoutValue(node, "x"),
+        y: getLayoutValue(node, "y"),
+        rotation: getLayoutValue(node, "rotation"),
+      };
+    },
+
     getWorldTransform(nodeId: NodeId): WorldTransform {
       clearIfStale();
       const existing = worldCache.get(nodeId);
@@ -159,20 +184,50 @@ export function createComputedStateEngine(
       return value;
     },
 
-    getVisibleBounds(nodeId: NodeId): ComputedBounds | null {
+    getVisibleBounds(
+      nodeId: NodeId,
+      viewport?: ViewportRect,
+    ): ComputedBounds | null {
       clearIfStale();
-      const existing = visibleBoundsCache.get(nodeId);
+      const cacheKey = viewport
+        ? `vb:${nodeId}:${viewport.x},${viewport.y},${viewport.width},${viewport.height}`
+        : `vb:${nodeId}`;
+      const existing = visibleBoundsCache.get(cacheKey);
       if (existing !== undefined) return existing.value;
 
       const node = selectors.getNode(nodeId);
       if (!node || node.visible === false) {
-        visibleBoundsCache.set(nodeId, { value: null });
+        visibleBoundsCache.set(cacheKey, {
+          value: null as ComputedBounds | null,
+        });
         return null;
       }
 
       const bounds = computeBounds(nodeId);
-      visibleBoundsCache.set(nodeId, { value: bounds });
-      return bounds;
+
+      if (!viewport) {
+        visibleBoundsCache.set(cacheKey, { value: bounds });
+        return bounds;
+      }
+
+      // Intersect with viewport rect
+      const ix = Math.max(bounds.x, viewport.x);
+      const iy = Math.max(bounds.y, viewport.y);
+      const ir = Math.min(bounds.x + bounds.width, viewport.x + viewport.width);
+      const ib = Math.min(
+        bounds.y + bounds.height,
+        viewport.y + viewport.height,
+      );
+      const iw = Math.max(0, ir - ix);
+      const ih = Math.max(0, ib - iy);
+
+      const result: ComputedBounds =
+        iw > 0 && ih > 0
+          ? { x: ix, y: iy, width: iw, height: ih }
+          : { x: 0, y: 0, width: 0, height: 0 };
+
+      visibleBoundsCache.set(cacheKey, { value: result });
+      return result;
     },
 
     getCenter(nodeId: NodeId): { x: number; y: number } {
@@ -202,11 +257,16 @@ export function createComputedStateEngine(
       }
     },
 
-    invalidate(_nodeId: NodeId): void {
-      worldCache.clear();
-      boundsCache.clear();
-      visibleBoundsCache.clear();
-      centerCache.clear();
+    invalidate(nodeId: NodeId): void {
+      worldCache.delete(nodeId);
+      boundsCache.delete(nodeId);
+      // Clear all visible bounds entries for this node (with or without viewport)
+      for (const key of visibleBoundsCache.keys()) {
+        if (key === `vb:${nodeId}` || key.startsWith(`vb:${nodeId}:`)) {
+          visibleBoundsCache.delete(key);
+        }
+      }
+      centerCache.delete(nodeId);
     },
 
     invalidateAll(): void {

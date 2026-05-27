@@ -16,6 +16,7 @@ export interface SelectorRegistry {
   getVisibleNodes(): SceneNode[];
   invalidate(nodeId: NodeId): void;
   invalidateAll(): void;
+  sync(newScene: SceneGraph): void;
   getVersion(): number;
 }
 
@@ -215,6 +216,13 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
     invalidateAll(): void {
       nodeCache.clear();
       listCache.clear();
+    },
+
+    sync(newScene: SceneGraph): void {
+      scene = newScene;
+      nodeCache.clear();
+      listCache.clear();
+      syncedVersion = newScene.version;
     },
 
     getVersion(): number {

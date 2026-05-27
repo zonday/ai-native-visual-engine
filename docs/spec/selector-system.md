@@ -50,14 +50,14 @@ export interface SelectorRegistry {
 ## 4. Memoization Strategy
 
 ```
-scene.version=5 ──→ getNode('a') ──→ cache[5]['a']
-                    getNode('a') ──→ cache[HIT]  (no recompute)
-scene.version=6 ──→ getNode('a') ──→ cache[6]['a']  (miss, recompute)
+scene.version=5 ──→ getNode('a') ──→ cache[HIT]
+                    getNode('b') ──→ cache[HIT]
+scene.version=6 ──→ getNode('a') ──→ cache[MISS]  (all caches cleared)
 ```
 
-The memo key is `scene.version`. Every mutation through the command bus increments `scene.version`. When `scene.version` differs from the cached version, all selectors recompute on next access.
+The memo key is `scene.version`. Every mutation through the command bus increments `scene.version`. When `scene.version` differs from the cached version, **all** caches are cleared and recomputed lazily on next access.
 
-For `getChildren` / `getDescendants`, the result array is also memoized. Invalidation of one node cascades to all selectors that depend on it.
+Fine-grained per-node invalidation is deferred to the dependency tracking phase (see §6).
 
 ## 5. Factory
 

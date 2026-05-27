@@ -124,6 +124,40 @@ describe("ComputedStateEngine", () => {
       const eng = createComputedStateEngine(sel);
       expect(eng.getVisibleBounds("a")).toBeNull();
     });
+
+    it("clips to viewport when viewport rect is provided", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const eng = createComputedStateEngine(sel);
+      // Node "a" is at (100, 50) with size 200x100
+      // Viewport is at (150, 60) with size 100x80
+      // Intersection should be (150, 60) with size 100x80 (clipped to viewport)
+      const vb = eng.getVisibleBounds("a", {
+        x: 150,
+        y: 60,
+        width: 100,
+        height: 80,
+      });
+      expect(vb).not.toBeNull();
+      expect(vb?.x).toBe(150);
+      expect(vb?.y).toBe(60);
+      expect(vb?.width).toBe(100);
+      expect(vb?.height).toBe(80);
+    });
+
+    it("returns zero bounds when node is outside viewport", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const eng = createComputedStateEngine(sel);
+      // Node "a" is at (100, 50), viewport is far away
+      const vb = eng.getVisibleBounds("a", {
+        x: 500,
+        y: 500,
+        width: 100,
+        height: 100,
+      });
+      expect(vb).not.toBeNull();
+      expect(vb?.width).toBe(0);
+      expect(vb?.height).toBe(0);
+    });
   });
 
   describe("getCenter", () => {
@@ -148,13 +182,19 @@ describe("ComputedStateEngine", () => {
   });
 
   describe("cache invalidation", () => {
-    it("recomputes after invalidate", () => {
+    it("invalidate clears only the targeted node's cache", () => {
       const sel = createSelectorRegistry(makeScene());
       const eng = createComputedStateEngine(sel);
-      const before = eng.getWorldTransform("a");
+      // Warm both caches
+      eng.getWorldTransform("a");
+      eng.getWorldTransform("a1");
+      // Invalidate only "a"
       eng.invalidate("a");
-      const after = eng.getWorldTransform("a");
-      expect(after.x).toBe(before.x);
+      // "a" recomputes, "a1" should still be cached
+      const afterA = eng.getWorldTransform("a");
+      const afterA1 = eng.getWorldTransform("a1");
+      expect(afterA.x).toBe(100);
+      expect(afterA1.x).toBe(110);
     });
 
     it("returns consistent results after mutation", () => {

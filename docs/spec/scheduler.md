@@ -54,27 +54,28 @@ export interface Scheduler {
                        ▼
          ┌─────────────────────────────┐
          │     Schedule Microtask       │
-         │   (Promise.then / rAF)       │
+         │   (sync: Promise.then        │
+         │    async: rAF)               │
          └─────────────┬───────────────┘
                        │
-          ┌────────────┴────────────┐
-          ▼                         ▼
-  ┌──────────────┐       ┌──────────────────┐
-  │  Compute Phase │       │  If sync mode:   │
-  │  invalidate()  │       │  immediate run   │
-  │  recompute()   │       └──────────────────┘
-  └───────┬───────┘
-          │
-          ▼
-  ┌──────────────┐
-  │  Render Phase │
-  │  notify()     │
-  └───────┬───────┘
-          │
-          ▼
-  ┌──────────────┐
-  │    Idle      │
-  └──────────────┘
+                       ▼
+         ┌─────────────────────────────┐
+         │     Compute Phase            │
+         │   onBeforeCompute(dirty)     │
+         │   onAfterCompute(dirty)      │
+         └─────────────┬───────────────┘
+                       │
+                       ▼
+         ┌─────────────────────────────┐
+         │     Render Phase             │
+         │   onBeforeRender()           │
+         │   onAfterRender()            │
+         └─────────────┬───────────────┘
+                       │
+                       ▼
+         ┌─────────────────────────────┐
+         │    Idle                      │
+         └─────────────────────────────┘
 ```
 
 ### 4.1 Compute Phase
@@ -139,7 +140,7 @@ export function createScheduler(options?: {
 ## 8. Rules
 
 1. `markDirty` is idempotent. Calling with the same `nodeId` twice is a no-op.
-2. `markAllDirty` clears the dirty set and replaces it with `allNodeIds`.
+2. `markAllDirty` clears the dirty set. Subscribers should treat an empty-but-scheduled cycle as a full invalidation signal.
 3. During the compute phase, new mutations MUST NOT occur. If they do, the scheduler throws.
 4. The scheduler must not hold a reference to the scene. It operates on `NodeId[]` only.
 5. Listeners are called synchronously during `flush()`.

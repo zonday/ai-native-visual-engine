@@ -24,10 +24,17 @@ export function createScheduler(options?: {
 }): Scheduler {
   let mode: "sync" | "async" = options?.mode ?? "sync";
   let phase: SchedulePhase = "idle";
+  let locked = false;
   const dirtySet = new Set<NodeId>();
   const listeners: ScheduleListener[] = [];
   let scheduled = false;
   let flushResolve: (() => void) | null = null;
+
+  function guardNotLocked(): void {
+    if (locked) {
+      throw new Error("Cannot mutate during scheduler compute or render phase");
+    }
+  }
 
   function notifyBeforeCompute(): NodeId[] {
     const nodes = Array.from(dirtySet);
@@ -63,6 +70,7 @@ export function createScheduler(options?: {
       return;
     }
 
+    locked = true;
     phase = "compute";
     const nodes = notifyBeforeCompute();
     // Compute phase: subscribers invalidate their caches here
@@ -72,6 +80,7 @@ export function createScheduler(options?: {
     notifyBeforeRender();
     // Render phase: subscribers produce output here
     dirtySet.clear();
+    locked = false;
     phase = "idle";
     notifyAfterRender();
   }
@@ -103,6 +112,7 @@ export function createScheduler(options?: {
 
   const scheduler: Scheduler = {
     markDirty(nodeIds: NodeId[]): void {
+      guardNotLocked();
       for (const id of nodeIds) {
         dirtySet.add(id);
       }
@@ -110,9 +120,8 @@ export function createScheduler(options?: {
     },
 
     markAllDirty(): void {
-      // markAllDirty is called when we want a full recompute
-      // but don't have specific node IDs. The actual node population
-      // happens during compute phase.
+      guardNotLocked();
+      dirtySet.clear();
       scheduleMicrotask();
     },
 
