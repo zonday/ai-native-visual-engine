@@ -47,7 +47,7 @@ class CollabRoom extends DurableObject {
       );
     }
 
-    for (const [id, peer] of this.sessions) {
+    for (const peer of this.sessions.values()) {
       if (peer !== ws && peer.readyState === WebSocket.READY_STATE_OPEN) {
         peer.send(raw);
       }

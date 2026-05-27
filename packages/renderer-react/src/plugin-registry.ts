@@ -1,4 +1,5 @@
-import type { ComponentPlugin } from "@ai-native/core";
+import type { ComponentPlugin, SceneNode } from "@ai-native/core";
+import type { ReactNode } from "react";
 import { ChartNode } from "./components/chart.jsx";
 import { ContainerNode } from "./components/container.jsx";
 import { DividerNode } from "./components/divider.jsx";
@@ -10,25 +11,35 @@ import { MetricTrendNode } from "./components/metric-trend.jsx";
 import { MetricValueNode } from "./components/metric-value.jsx";
 import { TableNode } from "./components/table.jsx";
 import { TextNode } from "./components/text.jsx";
+import type {
+  ComponentRegistry,
+  ComponentRenderer,
+  RenderContext,
+} from "./renderer.js";
 
-type NodeRenderFn = (props: { node: unknown; ctx: unknown }) => unknown;
+type NodeRenderFn = (props: {
+  node: SceneNode;
+  ctx: RenderContext;
+  children?: ReactNode;
+}) => ReactNode;
 
 function makeRenderer(Component: NodeRenderFn): ComponentPlugin["renderer"] {
-  return (node: unknown, ctx: unknown) => Component({ node, ctx });
+  return (node, ctx, children) =>
+    Component({
+      node,
+      ctx: ctx as RenderContext,
+      children: children as ReactNode,
+    });
 }
 
 function registerPlugins(
-  registry: Map<string, unknown>,
+  registry: ComponentRegistry,
   plugins: ComponentPlugin[],
 ): void {
   for (const plugin of plugins) {
     registry.set(plugin.type, {
       type: plugin.type,
-      render: plugin.renderer as (
-        node: unknown,
-        ctx: unknown,
-        children?: unknown,
-      ) => unknown,
+      render: plugin.renderer as ComponentRenderer["render"],
     });
   }
 }
@@ -340,10 +351,18 @@ export const allPluginDefinitions: ComponentPlugin[] = [
   filterPlugin,
 ];
 
-export function registerBuiltinPlugins(registry: Map<string, unknown>): void {
+export function registerBuiltinPlugins(registry: ComponentRegistry): void {
   registerPlugins(registry, builtinPluginDefinitions);
 }
 
-export function registerDefaultPlugins(registry: Map<string, unknown>): void {
+export function registerDefaultPlugins(registry: ComponentRegistry): void {
   registerPlugins(registry, allPluginDefinitions);
+}
+
+export function createRendererRegistry(
+  plugins: ComponentPlugin[] = allPluginDefinitions,
+): ComponentRegistry {
+  const registry: ComponentRegistry = new Map();
+  registerPlugins(registry, plugins);
+  return registry;
 }

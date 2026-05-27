@@ -24,7 +24,10 @@ export function HeaderNode({ node }: HeaderProps) {
   const { title, subtitle, level } = useNodeProps(node, headerSchema);
   const safeLevel = Math.min(Math.max(level, 1), 3);
   const Tag = `h${safeLevel}` as keyof HTMLElementTagNameMap;
-  const size = headerSizes[safeLevel] ?? headerSizes[1];
+  const size = headerSizes[safeLevel] ?? {
+    title: "1.5rem",
+    subtitle: "1rem",
+  };
 
   return (
     <div>

@@ -61,7 +61,7 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
 
   const oldParentId = node.parentId;
   const oldParent = oldParentId ? nodes[oldParentId] : undefined;
-  if (oldParent) {
+  if (oldParentId && oldParent) {
     nodes[oldParentId] = {
       ...oldParent,
       children: (oldParent.children ?? []).filter((id) => id !== action.nodeId),
@@ -80,7 +80,10 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
 
   const newParentChildren = [...(updatedNewParent.children ?? [])];
   newParentChildren.splice(index, 0, action.nodeId);
-  nodes[action.parentId] = { ...updatedNewParent, children: newParentChildren };
+  nodes[action.parentId] = {
+    ...updatedNewParent,
+    children: newParentChildren,
+  };
   nodes[action.nodeId] = { ...node, parentId: action.parentId };
 
   return { ...scene, nodes, version: scene.version + 1 };

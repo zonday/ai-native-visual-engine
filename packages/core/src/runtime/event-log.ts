@@ -28,5 +28,9 @@ export function replayRuntimeEvents(
   log: RuntimeEventLog,
   dispatch: (action: RuntimeAction) => DispatchResult,
 ): void {
-  replayEvents(log, dispatch, ["update-selection"]);
+  replayEvents(
+    { initialState: log.initialScene, actions: log.actions },
+    dispatch,
+    ["update-selection"],
+  );
 }

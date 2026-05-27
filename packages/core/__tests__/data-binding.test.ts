@@ -235,7 +235,7 @@ describe("subscribeBinding and cleanupBindings", () => {
       registry,
     );
 
-    let updated: ResolvedBinding | null = null;
+    let updated: ResolvedBinding | undefined;
     subscribeBinding(resolved, registry, (newVal) => {
       updated = newVal;
     });
@@ -243,8 +243,10 @@ describe("subscribeBinding and cleanupBindings", () => {
     registry.updateDatasetValue("sales", 0, "product", "UpdatedWidget");
 
     await new Promise((r) => setTimeout(r, 10));
-    expect(updated).not.toBeNull();
-    expect(updated?.value).toBe("UpdatedWidget");
+    const latest = updated;
+    expect(latest).toBeDefined();
+    if (!latest) throw new Error("Expected binding subscription update");
+    expect(latest.value).toBe("UpdatedWidget");
   });
 
   it("cleanupBindings removes subscriptions", async () => {

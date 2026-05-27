@@ -1,7 +1,5 @@
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
-import type { DocumentAction } from "../document/actions.js";
-import type { RuntimeAction } from "../runtime/actions.js";
 import type { PageId } from "../types.js";
 import type {
   AwarenessState,

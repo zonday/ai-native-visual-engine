@@ -51,6 +51,10 @@ export {
   type ResolvedBinding,
 } from "./data/types.js";
 
+// ── Document ──
+export { createDocumentCommandBus } from "./document/document-command-bus.js";
+export { createDefaultDocumentRegistries } from "./document/inverse.js";
+
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
 export type { ResolvedInstance } from "./prototype.js";
@@ -64,12 +68,8 @@ export type { DocNode } from "./rich-text.js";
 export { extractPlainText } from "./rich-text.js";
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/actions.js";
-export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
-
-// ── Document ──
-export { createDocumentCommandBus } from "./document/document-command-bus.js";
-export { createDefaultDocumentRegistries } from "./document/inverse.js";
+export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,

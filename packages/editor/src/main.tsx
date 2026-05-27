@@ -1,14 +1,19 @@
-import { useCallback, useMemo, useState } from "react";
-import { createRoot } from "react-dom/client";
 import type {
-  ComponentPlugin,
-  DocumentAction,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
 } from "@ai-native/core";
-import { createNewDocument, openDocumentSession, createRuntimeCommandBus, createDocumentCommandBus, createDefaultRuntimeRegistries, createDefaultDocumentRegistries, materializeScene } from "@ai-native/core";
-import { type ComponentRegistry, createRendererRegistry } from "@ai-native/renderer-react";
+import {
+  createDefaultDocumentRegistries,
+  createDefaultRuntimeRegistries,
+  createDocumentCommandBus,
+  createNewDocument,
+  createRuntimeCommandBus,
+  openDocumentSession,
+} from "@ai-native/core";
+import { createRendererRegistry } from "@ai-native/renderer-react";
+import { useCallback, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
 import { Editor } from "./Editor.js";
 
 function createBootstrapDoc(): VisualDocument {
@@ -21,10 +26,8 @@ function App() {
 
   const [scene, setScene] = useState<SceneGraph>(() => {
     const session = openDocumentSession(doc);
-    return materializeScene(session.state.scene);
+    return session.getActiveScene();
   });
-
-  const [nodeCounter, setNodeCounter] = useState(0);
 
   const runtimeBus = useMemo(() => {
     const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
@@ -36,7 +39,7 @@ function App() {
       now: Date.now,
       actorId: "editor",
     });
-  }, []);
+  }, [scene]);
 
   const documentBus = useMemo(() => {
     const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
@@ -48,14 +51,34 @@ function App() {
       now: Date.now,
       actorId: "editor",
     });
-  }, []);
+  }, [doc]);
 
   const dispatchRuntime = useCallback(
     (action: RuntimeAction) => {
       const result = runtimeBus.dispatch(action);
-      if (result.ok) setScene(result.scene);
+      if (result.ok) {
+        setScene(result.scene);
+        setDoc((currentDoc) => {
+          const currentPage = currentDoc.pages.find(
+            (page) => page.id === activePageId,
+          );
+          if (!currentPage) return currentDoc;
+          return {
+            ...currentDoc,
+            scenes: {
+              ...currentDoc.scenes,
+              [currentPage.sceneId]: {
+                version: result.scene.version,
+                rootId: result.scene.rootId,
+                nodes: result.scene.nodes,
+                metadata: result.scene.metadata,
+              },
+            },
+          };
+        });
+      }
     },
-    [runtimeBus],
+    [activePageId, runtimeBus],
   );
 
   const addPage = useCallback(() => {
@@ -63,7 +86,11 @@ function App() {
     const p = {
       type: "create-page" as const,
       page: { id: `p-${Date.now()}`, name: "New Page", sceneId },
-      scene: { version: 0, rootId: "r", nodes: { r: { id: "r", type: "container", children: [] } } },
+      scene: {
+        version: 0,
+        rootId: "r",
+        nodes: { r: { id: "r", type: "container", children: [] } },
+      },
     };
     const result = documentBus.dispatch(p);
     if (result.ok) setDoc(result.document);
@@ -74,29 +101,29 @@ function App() {
     dispatchRuntime({
       type: "create-node",
       node: { id, type: "text" },
-      parentId: "root",
+      parentId: scene.rootId,
     });
-  }, [dispatchRuntime]);
+  }, [dispatchRuntime, scene.rootId]);
 
-  const plugins: ComponentPlugin[] = [
-    { type: "container", name: "Container", description: "Layout container", defaultProps: {}, defaultLayout: { mode: "free" }, render: () => ({ type: "react", element: "div" }) },
-    { type: "text", name: "Text", description: "Text block", defaultProps: {}, defaultLayout: { mode: "free" }, render: () => ({ type: "react", element: "span" }) },
-    { type: "grid", name: "Grid", description: "Grid layout", defaultProps: {}, defaultLayout: { mode: "grid", columns: 12 }, render: () => ({ type: "react", element: "div" }) },
-    { type: "metric-value", name: "Metric Value", description: "KPI", defaultProps: {}, defaultLayout: { mode: "grid-item", w: 4, h: 3 }, render: () => ({ type: "react", element: "div" }) },
-    { type: "chart", name: "Chart", description: "Chart", defaultProps: {}, defaultLayout: { mode: "grid-item", w: 8, h: 4 }, render: () => ({ type: "react", element: "div" }) },
-    { type: "header", name: "Header", description: "Header", defaultProps: {}, defaultLayout: { mode: "grid-item", w: 12, h: 1 }, render: () => ({ type: "react", element: "h2" }) },
-  ];
+  const registry = useMemo(() => createRendererRegistry(), []);
 
-  const registry = createRendererRegistry(plugins);
-
-  const firstPageSceneId = doc.pages.find((p) => p.id === activePageId)?.sceneId ?? "";
-  const firstPageRootId = firstPageSceneId ? doc.scenes[firstPageSceneId]?.rootId ?? "" : "";
+  const firstPageSceneId =
+    doc.pages.find((p) => p.id === activePageId)?.sceneId ?? "";
+  const currentScene = firstPageSceneId
+    ? (doc.scenes[firstPageSceneId] ?? scene)
+    : scene;
 
   return (
     <div>
-      <div style={{ padding: 8, background: "#f0f0f0", display: "flex", gap: 8 }}>
-        <button onClick={addPage}>+ Add Page</button>
-        <button onClick={addNode}>+ Add Text Node</button>
+      <div
+        style={{ padding: 8, background: "#f0f0f0", display: "flex", gap: 8 }}
+      >
+        <button type="button" onClick={addPage}>
+          + Add Page
+        </button>
+        <button type="button" onClick={addNode}>
+          + Add Text Node
+        </button>
         <span style={{ marginLeft: "auto" }}>
           Pages: {doc.pages.length} | Nodes: {Object.keys(scene.nodes).length}
         </span>
@@ -104,11 +131,16 @@ function App() {
       <Editor
         document={doc}
         registry={registry}
-        context={{ pageId: firstPageRootId, mode: "editor" }}
+        context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
       />
     </div>
   );
 }
 
-const root = createRoot(document.getElementById("root")!);
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element not found");
+}
+
+const root = createRoot(rootElement);
 root.render(<App />);

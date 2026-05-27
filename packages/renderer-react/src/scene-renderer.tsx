@@ -320,7 +320,6 @@ export function SceneRenderer({
       string,
       {
         stateProps: Map<string, Record<string, unknown>>;
-        config: ComponentStatesConfig;
       }
     >();
     for (const plugin of context.plugins ?? []) {
@@ -331,7 +330,6 @@ export function SceneRenderer({
         }
         map.set(plugin.type, {
           stateProps,
-          config: { states: plugin.meta.states },
         });
       }
     }

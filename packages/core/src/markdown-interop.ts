@@ -120,7 +120,7 @@ export function markdownToDoc(md: string): DocNode {
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lines[i] ?? "";
 
     if (line.trim() === "") {
       i++;
@@ -129,10 +129,15 @@ export function markdownToDoc(md: string): DocNode {
 
     const h3 = /^### (.+)/.exec(line);
     if (h3) {
+      const text = h3[1];
+      if (text === undefined) {
+        i++;
+        continue;
+      }
       blocks.push({
         type: "heading",
         attrs: { level: 3 },
-        content: parseInline(h3[1]),
+        content: parseInline(text),
       });
       i++;
       continue;
@@ -140,10 +145,15 @@ export function markdownToDoc(md: string): DocNode {
 
     const h2 = /^## (.+)/.exec(line);
     if (h2) {
+      const text = h2[1];
+      if (text === undefined) {
+        i++;
+        continue;
+      }
       blocks.push({
         type: "heading",
         attrs: { level: 2 },
-        content: parseInline(h2[1]),
+        content: parseInline(text),
       });
       i++;
       continue;
@@ -151,10 +161,15 @@ export function markdownToDoc(md: string): DocNode {
 
     const h1 = /^# (.+)/.exec(line);
     if (h1) {
+      const text = h1[1];
+      if (text === undefined) {
+        i++;
+        continue;
+      }
       blocks.push({
         type: "heading",
         attrs: { level: 1 },
-        content: parseInline(h1[1]),
+        content: parseInline(text),
       });
       i++;
       continue;
@@ -164,11 +179,15 @@ export function markdownToDoc(md: string): DocNode {
     if (ul) {
       const items: ListItemNode[] = [];
       while (i < lines.length) {
-        const match = /^- (.+)/.exec(lines[i]);
+        const currentLine = lines[i];
+        if (currentLine === undefined) break;
+        const match = /^- (.+)/.exec(currentLine);
         if (!match) break;
+        const text = match[1];
+        if (text === undefined) break;
         items.push({
           type: "listItem",
-          content: [{ type: "paragraph", content: parseInline(match[1]) }],
+          content: [{ type: "paragraph", content: parseInline(text) }],
         });
         i++;
       }
@@ -180,11 +199,15 @@ export function markdownToDoc(md: string): DocNode {
     if (ol) {
       const items: ListItemNode[] = [];
       while (i < lines.length) {
-        const match = /^\d+\. (.+)/.exec(lines[i]);
+        const currentLine = lines[i];
+        if (currentLine === undefined) break;
+        const match = /^\d+\. (.+)/.exec(currentLine);
         if (!match) break;
+        const text = match[1];
+        if (text === undefined) break;
         items.push({
           type: "listItem",
-          content: [{ type: "paragraph", content: parseInline(match[1]) }],
+          content: [{ type: "paragraph", content: parseInline(text) }],
         });
         i++;
       }
@@ -194,8 +217,10 @@ export function markdownToDoc(md: string): DocNode {
 
     if (line.startsWith("> ")) {
       const quoteLines: string[] = [];
-      while (i < lines.length && lines[i].startsWith("> ")) {
-        quoteLines.push(lines[i].slice(2));
+      while (i < lines.length) {
+        const currentLine = lines[i];
+        if (currentLine === undefined || !currentLine.startsWith("> ")) break;
+        quoteLines.push(currentLine.slice(2));
         i++;
       }
       blocks.push({
@@ -211,11 +236,13 @@ export function markdownToDoc(md: string): DocNode {
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        codeLines.push(lines[i]);
+      while (i < lines.length) {
+        const currentLine = lines[i];
+        if (currentLine === undefined || currentLine.startsWith("```")) break;
+        codeLines.push(currentLine);
         i++;
       }
-      i++;
+      if (i < lines.length) i++;
       blocks.push({
         type: "codeBlock",
         content: codeLines.map((l) => ({ type: "text", text: l })),

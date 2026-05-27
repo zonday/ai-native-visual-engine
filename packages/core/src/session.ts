@@ -102,7 +102,15 @@ export function openDocumentSession(
     );
   }
 
-  const pageId = activePageId ?? document.pages[0]?.id;
+  const firstPage = document.pages[0];
+  if (!firstPage) {
+    throw new SessionError(
+      "session.no-pages",
+      "Cannot open document with no pages",
+    );
+  }
+
+  const pageId = activePageId ?? firstPage.id;
   const page = document.pages.find((p) => p.id === pageId);
   if (!page) {
     throw new SessionError(
@@ -180,6 +188,12 @@ export function openDocumentFromSnapshot(
     );
   }
   const document = result.document;
+  if (!document) {
+    throw new SessionError(
+      "session.load-failed",
+      "Document load failed without a parsed document",
+    );
+  }
   return openDocumentSession(document, activePageId);
 }
 

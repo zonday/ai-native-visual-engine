@@ -15,6 +15,7 @@ export { MarqueeOverlay } from "./marquee-select.jsx";
 export {
   allPluginDefinitions,
   builtinPluginDefinitions,
+  createRendererRegistry,
   registerBuiltinPlugins,
   registerDefaultPlugins,
 } from "./plugin-registry.js";
