@@ -123,19 +123,20 @@ export function createDefaultDocumentRegistries(
   const { handlerRegistry, inverseRegistry } =
     buildRegistriesFromEntries(entries);
 
+  const docInvRegistry = inverseRegistry as unknown as InverseRegistry;
+  const docHandlerRegistry =
+    handlerRegistry as unknown as DocumentHandlerRegistry;
+
   // Replace batch inverse with a proper one that has registry access
-  const batchInv = createBatchInverse(
-    handlerRegistry as DocumentHandlerRegistry,
-    inverseRegistry as InverseRegistry,
-  );
-  const batchEntry = handlerRegistry.get("batch-document-actions");
+  const batchInv = createBatchInverse(docHandlerRegistry, docInvRegistry);
+  const batchEntry = docHandlerRegistry.get("batch-document-actions");
   if (batchEntry) {
-    handlerRegistry.set("batch-document-actions", {
+    docHandlerRegistry.set("batch-document-actions", {
       ...batchEntry,
       inverse: batchInv as InverseComputer,
     });
   }
-  inverseRegistry.set("batch-document-actions", batchInv as InverseComputer);
+  docInvRegistry.set("batch-document-actions", batchInv as InverseComputer);
 
   return {
     handlerRegistry: handlerRegistry as Map<string, DocumentHandlerEntry>,
