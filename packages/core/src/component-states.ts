@@ -1,5 +1,3 @@
-import type { SceneNode } from "./types.js";
-
 export interface ComponentStateDef {
   name: string;
   props: Record<string, unknown>;

@@ -1,5 +1,3 @@
-import type * as Y from "yjs";
-
 export interface PeerInfo {
   id: string;
   name?: string;

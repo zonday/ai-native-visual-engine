@@ -10,7 +10,7 @@ function collectDescendants(
   nodes: Record<string, SceneNode>,
 ): string[] {
   const node = nodes[nodeId];
-  if (!node || !node.children) return [nodeId];
+  if (!node?.children) return [nodeId];
   const descendants = [nodeId];
   for (const childId of node.children) {
     descendants.push(...collectDescendants(childId, nodes));

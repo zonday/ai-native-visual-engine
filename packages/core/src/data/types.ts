@@ -149,8 +149,10 @@ export class InMemoryDataSourceRegistry implements DataSourceRegistry {
     value: unknown,
   ): void {
     const dataset = this.datasets.get(datasetId);
-    if (!dataset || !dataset.rows[rowIndex]) return;
-    dataset.rows[rowIndex]![column] = value;
+    if (!dataset) return;
+    const row = dataset.rows[rowIndex];
+    if (!row) return;
+    row[column] = value;
     this.notify(`dataset:${datasetId}`, dataset.rows);
   }
 

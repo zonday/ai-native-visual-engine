@@ -7,7 +7,6 @@ import type {
   Layout,
   NodeId,
   PageId,
-  RuntimeState,
   SceneGraph,
   SceneNode,
 } from "./types.js";

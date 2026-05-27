@@ -1,7 +1,6 @@
 import type {
   Constraint,
   ConstraintInput,
-  ConstraintResult,
   ConstraintType,
 } from "./constraint-types.js";
 

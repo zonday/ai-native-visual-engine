@@ -6,10 +6,6 @@ import type {
   InverseRegistry,
   RuntimeHandlerEntry,
 } from "./handler-registry.js";
-import {
-  computeInverseAction,
-  createInverseRegistry,
-} from "./handler-registry.js";
 import { batchInverse, createBatchHandler } from "./handlers/batch.js";
 import {
   createNodeHandler,

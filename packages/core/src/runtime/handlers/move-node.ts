@@ -60,16 +60,16 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   const nodes = { ...scene.nodes };
 
   const oldParentId = node.parentId;
-  if (oldParentId && nodes[oldParentId]) {
+  const oldParent = oldParentId ? nodes[oldParentId] : undefined;
+  if (oldParent) {
     nodes[oldParentId] = {
-      ...nodes[oldParentId]!,
-      children: (nodes[oldParentId]!.children ?? []).filter(
-        (id) => id !== action.nodeId,
-      ),
+      ...oldParent,
+      children: (oldParent.children ?? []).filter((id) => id !== action.nodeId),
     };
   }
 
-  const updatedNewParent = nodes[action.parentId]!;
+  const updatedNewParent = nodes[action.parentId];
+  if (!updatedNewParent) return scene;
   const index =
     action.index !== undefined
       ? Math.min(

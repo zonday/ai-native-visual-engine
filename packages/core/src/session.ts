@@ -102,7 +102,7 @@ export function openDocumentSession(
     );
   }
 
-  const pageId = activePageId ?? document.pages[0]!.id;
+  const pageId = activePageId ?? document.pages[0]?.id;
   const page = document.pages.find((p) => p.id === pageId);
   if (!page) {
     throw new SessionError(
@@ -179,7 +179,8 @@ export function openDocumentFromSnapshot(
       `Document load failed: ${result.diagnostics.join("; ")}`,
     );
   }
-  return openDocumentSession(result.document!, activePageId);
+  const document = result.document;
+  return openDocumentSession(document, activePageId);
 }
 
 export function materializeScene(persisted: PersistedSceneGraph): SceneGraph {
