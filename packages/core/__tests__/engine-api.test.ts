@@ -17,7 +17,7 @@ describe("createEngineAPI", () => {
           type: "text",
           parentId: "root",
           props: { text: "hello" },
-          layout: { mode: "absolute", x: 10, y: 20 } as any,
+          layout: { mode: "absolute" as const, x: 10, y: 20 },
           bindings: [{ key: "v", source: "s" }],
           style: { color: "red" },
         },

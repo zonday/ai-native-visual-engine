@@ -4,7 +4,7 @@ import {
   rotateNodeHandler,
   rotateNodeInverse,
 } from "../src/runtime/handlers/rotate-node.js";
-import type { SceneGraph } from "../src/types.js";
+import type { AbsoluteLayout, SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
 const sceneWithAbsoluteNode: SceneGraph = makeScene({
@@ -34,7 +34,7 @@ describe("rotateNodeHandler", () => {
     const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
       now: Date.now,
     });
-    expect((result.nodes.a?.layout as any)?.rotation).toBe(45);
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(45);
     expect(result.version).toBe(1);
   });
 
@@ -47,7 +47,7 @@ describe("rotateNodeHandler", () => {
     const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
       now: Date.now,
     });
-    expect((result.nodes.a?.layout as any)?.rotation).toBe(40);
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(40);
   });
 
   it("normalizes negative rotation into [0, 360) range", () => {
@@ -59,7 +59,7 @@ describe("rotateNodeHandler", () => {
     const result = rotateNodeHandler(sceneWithAbsoluteNode, action, {
       now: Date.now,
     });
-    expect((result.nodes.a?.layout as any)?.rotation).toBe(270);
+    expect((result.nodes.a?.layout as AbsoluteLayout).rotation).toBe(270);
   });
 
   it("rejects rotate-node when node does not exist", () => {

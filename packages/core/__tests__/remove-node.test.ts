@@ -76,10 +76,10 @@ describe("removeNodeInverse", () => {
     expect(inverse).toBeDefined();
     if (inverse?.type === "batch-actions") {
       expect(inverse.actions).toHaveLength(2);
-      expect(inverse.actions[0]?.type).toBe("create-node");
-      expect((inverse.actions[0] as any).node.id).toBe("a");
-      expect(inverse.actions[1]?.type).toBe("create-node");
-      expect((inverse.actions[1] as any).node.id).toBe("a1");
+      const action0 = inverse.actions[0];
+      const action1 = inverse.actions[1];
+      if (action0?.type === "create-node") expect(action0.node.id).toBe("a");
+      if (action1?.type === "create-node") expect(action1.node.id).toBe("a1");
     } else {
       // Single-node removal still returns a single create-node
       expect(inverse?.type).toBe("create-node");

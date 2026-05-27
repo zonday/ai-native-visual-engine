@@ -15,7 +15,8 @@ describe("BASE_THEME", () => {
 describe("resolveTheme", () => {
   it("returns BASE_THEME when no theme is set", () => {
     const doc = createNewDocument();
-    const result = resolveTheme(doc.pages[0]!, doc);
+    const page0 = doc.pages[0] ?? expect.fail("no pages");
+    const result = resolveTheme(page0, doc);
     expect(result.id).toBe("base");
   });
 
@@ -26,13 +27,15 @@ describe("resolveTheme", () => {
       id: "dark-theme",
       name: "Dark",
     };
-    const result = resolveTheme(doc.pages[0]!, doc, [BASE_THEME, dark]);
+    const page0 = doc.pages[0] ?? expect.fail("no pages");
+    const result = resolveTheme(page0, doc, [BASE_THEME, dark]);
     expect(result.id).toBe("dark-theme");
   });
 
   it("page themeId overrides document themeId", () => {
     const doc = createNewDocument({ themeId: "doc-theme" });
-    const page = { ...doc.pages[0]!, themeId: "page-theme" };
+    const firstPage = doc.pages[0] ?? expect.fail("no pages");
+    const page = { ...firstPage, themeId: "page-theme" };
     const docTheme = { ...BASE_THEME, id: "doc-theme" };
     const pageTheme = { ...BASE_THEME, id: "page-theme" };
     const result = resolveTheme(page, doc, [BASE_THEME, docTheme, pageTheme]);
@@ -41,7 +44,8 @@ describe("resolveTheme", () => {
 
   it("falls back to BASE_THEME if referenced theme is missing", () => {
     const doc = createNewDocument({ themeId: "missing" });
-    const result = resolveTheme(doc.pages[0]!, doc);
+    const page0 = doc.pages[0] ?? expect.fail("no pages");
+    const result = resolveTheme(page0, doc);
     expect(result.id).toBe("base");
   });
 });

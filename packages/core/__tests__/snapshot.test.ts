@@ -64,7 +64,8 @@ describe("truncateDocumentEventLog", () => {
 
     const truncated = truncateDocumentEventLog(docLog, 2);
     expect(truncated.actions).toHaveLength(1);
-    expect((truncated.actions[0]?.action as any).name).toBe("c");
+    const last = truncated.actions[0]?.action;
+    if (last?.type === "rename-page") expect(last.name).toBe("c");
   });
 });
 

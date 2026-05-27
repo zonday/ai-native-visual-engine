@@ -84,7 +84,9 @@ describe("openDocumentSession lifecycle", () => {
 describe("action replay determinism", () => {
   it("produces same scene from same action sequence", () => {
     const doc = createNewDocument({ title: "Replay" });
-    const scene = doc.scenes[doc.pages[0]?.sceneId]!;
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
 
     const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
       ok: false,
@@ -130,7 +132,9 @@ describe("action replay determinism", () => {
 describe("batch actions via command bus", () => {
   it("batch dispatches multiple create-node actions atomically", () => {
     const doc = createNewDocument({ title: "Batch" });
-    const scene = doc.scenes[doc.pages[0]?.sceneId]!;
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
     const initial = { ...scene, version: 0, nodes: { ...scene.nodes } };
 
     let current = initial;
@@ -203,14 +207,17 @@ describe("exportDocument with fixtures", () => {
 describe("scene fixture with container and text nodes", () => {
   it("creates a scene with container and text node hierarchy", () => {
     const doc = createNewDocument({ title: "Render" });
-    const scene = doc.scenes[doc.pages[0]?.sceneId]!;
+    const page0 = doc.pages[0];
+    const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
+    if (!scene) throw new Error("Missing scene fixture");
     scene.nodes["text-1"] = {
       id: "text-1",
       type: "text",
       parentId: scene.rootId,
       props: { text: "Hello" },
     };
-    scene.nodes[scene.rootId]!.children = ["text-1"];
+    const root = scene.nodes[scene.rootId];
+    if (root) root.children = ["text-1"];
 
     expect(scene.nodes["text-1"]).toBeDefined();
     expect(scene.nodes["text-1"]?.type).toBe("text");

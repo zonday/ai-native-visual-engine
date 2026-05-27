@@ -41,7 +41,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
     );
     expect(inverse).toBeDefined();
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages).toHaveLength(0);
     expect(doc2.scenes.s1).toBeUndefined();
   });
@@ -72,7 +72,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
     );
     expect(inverse).toBeDefined();
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages).toHaveLength(1);
     expect(doc2.pages[0]?.id).toBe("p1");
     expect(doc2.pages[0]?.name).toBe("Page 1");
@@ -112,7 +112,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
       name: "Page 1",
     });
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages[0]?.name).toBe("Page 1");
   });
 
@@ -154,7 +154,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
     );
     expect(inverse).toEqual({ type: "reorder-page", pageId: "p1", index: 0 });
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages[0]?.id).toBe("p1");
     expect(doc2.pages[1]?.id).toBe("p2");
   });
@@ -191,7 +191,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
       route: "/original",
     });
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages[0]?.route).toBe("/original");
   });
 
@@ -229,7 +229,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
       themeId: "theme-dark",
     });
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.activeThemeId).toBe("theme-dark");
   });
 
@@ -271,7 +271,7 @@ describe("inverse round-trip — action → inverse restores state", () => {
       themeId: "theme-dark",
     });
 
-    const doc2 = applyAction(registries, doc1, inverse!);
+    const doc2 = applyAction(registries, doc1, inverse as DocumentAction);
     expect(doc2.pages[0]?.themeId).toBe("theme-dark");
   });
 });

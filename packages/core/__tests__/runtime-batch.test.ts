@@ -17,14 +17,14 @@ function makeDispatch(initialScene: SceneGraph) {
   return (action: RuntimeAction): DispatchResult => {
     try {
       if (action.type === "create-node") {
-        const newScene = createNodeHandler(currentScene, action as any, {
+        const newScene = createNodeHandler(currentScene, action, {
           now: Date.now,
         });
         currentScene = newScene;
         return { ok: true, scene: newScene };
       }
       if (action.type === "remove-node") {
-        const newScene = removeNodeHandler(currentScene, action as any, {
+        const newScene = removeNodeHandler(currentScene, action, {
           now: Date.now,
         });
         currentScene = newScene;
@@ -79,7 +79,7 @@ describe("createBatchHandler", () => {
       ],
     };
 
-    const result = handler(emptyScene, batchAction as any, { now: Date.now });
+    const result = handler(emptyScene, batchAction, { now: Date.now });
     expect(result.nodes.a).toBeDefined();
     expect(result.nodes.b).toBeDefined();
     expect(result.nodes.root?.children).toEqual(["a", "b"]);
@@ -97,7 +97,7 @@ describe("createBatchHandler", () => {
       ],
     };
 
-    const result = handler(emptyScene, batchAction as any, { now: Date.now });
+    const result = handler(emptyScene, batchAction, { now: Date.now });
     expect(result).toBe(emptyScene);
   });
 
@@ -118,7 +118,7 @@ describe("createBatchHandler", () => {
       ],
     };
 
-    const result = handler(emptyScene, nestedBatch as any, { now: Date.now });
+    const result = handler(emptyScene, nestedBatch, { now: Date.now });
     expect(result.nodes.a).toBeDefined();
     expect(result.nodes.b).toBeDefined();
   });
@@ -133,7 +133,7 @@ describe("computeBatchInverse", () => {
     };
     const inverse = computeBatchInverse(
       emptyScene,
-      batchAction as any,
+      batchAction,
       dispatch,
       { now: Date.now },
       () => undefined,
@@ -148,7 +148,7 @@ describe("batchInverse", () => {
       type: "batch-actions",
       actions: [{ type: "create-node", node: baseNode("a"), parentId: "root" }],
     };
-    const inverse = batchInverse(emptyScene, batchAction as any, {
+    const inverse = batchInverse(emptyScene, batchAction, {
       now: Date.now,
     });
     expect(inverse).toBeUndefined();

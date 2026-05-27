@@ -41,7 +41,7 @@ import {
   updateStyleHandler,
   updateStyleInverse,
 } from "../src/runtime/handlers/update-style.js";
-import type { SceneGraph } from "../src/types.js";
+import type { AbsoluteLayout, SceneGraph } from "../src/types.js";
 import { baseNode, makeScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
@@ -50,16 +50,16 @@ const runtimeHandlers: Record<
   string,
   (scene: SceneGraph, action: RuntimeAction, ctx: RuntimeContext) => SceneGraph
 > = {
-  "create-node": createNodeHandler as any,
-  "remove-node": removeNodeHandler as any,
-  "move-node": moveNodeHandler as any,
-  "update-layout": updateLayoutHandler as any,
-  "rotate-node": rotateNodeHandler as any,
-  "update-props": updatePropsHandler as any,
-  "update-style": updateStyleHandler as any,
-  "update-bindings": updateBindingsHandler as any,
-  "update-runtime": updateRuntimeHandler as any,
-  "update-selection": updateSelectionHandler as any,
+  "create-node": createNodeHandler,
+  "remove-node": removeNodeHandler,
+  "move-node": moveNodeHandler,
+  "update-layout": updateLayoutHandler,
+  "rotate-node": rotateNodeHandler,
+  "update-props": updatePropsHandler,
+  "update-style": updateStyleHandler,
+  "update-bindings": updateBindingsHandler,
+  "update-runtime": updateRuntimeHandler,
+  "update-selection": updateSelectionHandler,
 };
 
 function roundTrip<TAction extends RuntimeAction>(
@@ -214,9 +214,9 @@ describe("inverse round-trip: rotate-node -> rotate-node", () => {
       rotateNodeHandler,
       rotateNodeInverse,
     );
-    expect((sceneAfter.nodes.a?.layout as any).rotation).toBe(90);
+    expect((sceneAfter.nodes.a?.layout as AbsoluteLayout).rotation).toBe(90);
     expect(inverse?.type).toBe("rotate-node");
-    expect((sceneRestored.nodes.a?.layout as any).rotation).toBe(0);
+    expect((sceneRestored.nodes.a?.layout as AbsoluteLayout).rotation).toBe(0);
   });
 });
 
