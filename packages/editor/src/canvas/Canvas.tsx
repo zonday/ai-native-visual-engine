@@ -10,9 +10,16 @@ import { useEditorStore } from "../store.js";
 export interface CanvasProps {
   registry: ComponentRegistry;
   context: RenderContext;
+  onTransform?: (event: TransformEvent) => void;
+  onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
 }
 
-export function Canvas({ registry, context }: CanvasProps) {
+export function Canvas({
+  registry,
+  context,
+  onTransform,
+  onUpdateProps,
+}: CanvasProps) {
   const handleSelectNode: SceneRendererProps["onSelectNode"] = (
     id,
     options,
@@ -29,29 +36,13 @@ export function Canvas({ registry, context }: CanvasProps) {
     }
   };
 
-  const handleTransform = (event: TransformEvent) => {
-    void event;
-    // TODO: dispatch runtime action via command bus based on event.type:
-    //   "move" | "resize" → update-layout
-    //   "rotate"          → rotate-node
-  };
-
-  const handleUpdateProps: SceneRendererProps["onUpdateProps"] = (
-    nodeId,
-    props,
-  ) => {
-    void nodeId;
-    void props;
-    // TODO: dispatch update-props runtime action via command bus
-  };
-
   return (
     <SceneRenderer
       registry={registry}
       context={context}
       onSelectNode={handleSelectNode}
-      onTransform={handleTransform}
-      onUpdateProps={handleUpdateProps}
+      onTransform={onTransform}
+      onUpdateProps={onUpdateProps}
     />
   );
 }

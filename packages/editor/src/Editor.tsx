@@ -2,6 +2,7 @@ import type { VisualDocument } from "@ai-native/core";
 import type {
   ComponentRegistry,
   RenderContext,
+  TransformEvent,
 } from "@ai-native/renderer-react";
 import { useEffect, useMemo } from "react";
 import { Canvas } from "./canvas/Canvas.js";
@@ -14,9 +15,17 @@ export interface EditorProps {
   document: VisualDocument;
   registry: ComponentRegistry;
   context: RenderContext;
+  onTransform?: (event: TransformEvent) => void;
+  onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
 }
 
-export function Editor({ document, registry, context }: EditorProps) {
+export function Editor({
+  document,
+  registry,
+  context,
+  onTransform,
+  onUpdateProps,
+}: EditorProps) {
   const activePageId = useEditorStore((s) => s.activePageId);
   const setActivePage = useEditorStore((s) => s.setActivePage);
   const nodeIds = useEditorStore((s) => s.nodeIds);
@@ -59,7 +68,12 @@ export function Editor({ document, registry, context }: EditorProps) {
         <Layers document={document} />
       </aside>
       <main style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-        <Canvas registry={registry} context={editorContext} />
+        <Canvas
+          registry={registry}
+          context={editorContext}
+          onTransform={onTransform}
+          onUpdateProps={onUpdateProps}
+        />
       </main>
       <aside
         style={{
