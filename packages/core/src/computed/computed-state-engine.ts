@@ -21,10 +21,7 @@ export interface ComputedStateEngine {
   getComputedBounds(nodeId: NodeId): ComputedBounds;
   getVisibleBounds(nodeId: NodeId): ComputedBounds | null;
   getCenter(nodeId: NodeId): { x: number; y: number };
-  getEdge(
-    nodeId: NodeId,
-    edge: "top" | "bottom" | "left" | "right",
-  ): number;
+  getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number;
   invalidate(nodeId: NodeId): void;
   invalidateAll(): void;
 }
@@ -63,7 +60,10 @@ export function createComputedStateEngine(
 ): ComputedStateEngine {
   const worldCache = new Map<string, CacheEntry<WorldTransform>>();
   const boundsCache = new Map<string, CacheEntry<ComputedBounds>>();
-  const visibleBoundsCache = new Map<string, CacheEntry<ComputedBounds | null>>();
+  const visibleBoundsCache = new Map<
+    string,
+    CacheEntry<ComputedBounds | null>
+  >();
   const centerCache = new Map<string, CacheEntry<{ x: number; y: number }>>();
 
   let lastVersion = selectors.getVersion();
@@ -188,10 +188,7 @@ export function createComputedStateEngine(
       return value;
     },
 
-    getEdge(
-      nodeId: NodeId,
-      edge: "top" | "bottom" | "left" | "right",
-    ): number {
+    getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number {
       const bounds = engine.getComputedBounds(nodeId);
       switch (edge) {
         case "top":

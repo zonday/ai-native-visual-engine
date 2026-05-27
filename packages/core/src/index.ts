@@ -27,6 +27,13 @@ export {
 } from "./compiler/types.js";
 // ── Component states ──
 export { resolveStateProps } from "./component-states.js";
+// ── Computed State ──
+export {
+  type ComputedBounds,
+  type ComputedStateEngine,
+  createComputedStateEngine,
+  type WorldTransform,
+} from "./computed/computed-state-engine.js";
 export { createConstraintMiddleware } from "./constraints/constraint-middleware.js";
 export { createConstraintRegistry } from "./constraints/constraint-registry.js";
 export { DEFAULT_LAYOUT_CONSTRAINTS } from "./constraints/layout-constraints.js";
@@ -120,18 +127,18 @@ export {
   createRuntimeTransactionManager,
   type RuntimeTransactionManager,
 } from "./runtime/transaction.js";
+// ── Scheduler ──
+export {
+  createScheduler,
+  type ScheduleListener,
+  type SchedulePhase,
+  type Scheduler,
+} from "./scheduler/scheduler.js";
 // ── Selector ──
 export {
   createSelectorRegistry,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
-// ── Computed State ──
-export {
-  createComputedStateEngine,
-  type ComputedStateEngine,
-  type ComputedBounds,
-  type WorldTransform,
-} from "./computed/computed-state-engine.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,

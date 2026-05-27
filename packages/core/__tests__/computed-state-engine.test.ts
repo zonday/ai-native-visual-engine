@@ -14,13 +14,25 @@ function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
         type: "container",
         parentId: "root",
         children: ["a1"],
-        layout: { mode: "absolute" as const, x: 100, y: 50, width: 200, height: 100 },
+        layout: {
+          mode: "absolute" as const,
+          x: 100,
+          y: 50,
+          width: 200,
+          height: 100,
+        },
       },
       a1: {
         id: "a1",
         type: "text",
         parentId: "a",
-        layout: { mode: "absolute" as const, x: 10, y: 20, width: 100, height: 30 },
+        layout: {
+          mode: "absolute" as const,
+          x: 10,
+          y: 20,
+          width: 100,
+          height: 30,
+        },
       },
     },
     ...custom,
@@ -102,7 +114,7 @@ describe("ComputedStateEngine", () => {
       const eng = createComputedStateEngine(sel);
       const vb = eng.getVisibleBounds("a");
       expect(vb).not.toBeNull();
-      expect(vb!.width).toBe(200);
+      expect(vb?.width).toBe(200);
     });
 
     it("returns null for invisible node", () => {
