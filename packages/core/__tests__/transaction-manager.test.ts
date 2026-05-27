@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { TransactionManager } from "../src/engine/transaction-manager.js";
-import type { RuntimeTransaction } from "../src/engine/transaction-types.js";
 import type { DispatchResult } from "../src/engine/command-bus.js";
 import type { RuntimeContext } from "../src/engine/handler.js";
 import type { HandlerRegistry } from "../src/engine/handler-registry.js";
@@ -331,6 +330,15 @@ describe("TransactionManager", () => {
       tm.applyAction(active, { type: "create-node", nodeId: "new-1", value: "new" });
 
       expect(active.tx.affectedNodes).toContain("new-1");
+    });
+
+    it("tracks nodeId from create-node with node.id shape", () => {
+      const tm = createDefaultTM();
+      const active = tm.begin("user", emptyState(), testContext);
+
+      tm.applyAction(active, { type: "create-node", node: { id: "node-from-object" } });
+
+      expect(active.tx.affectedNodes).toContain("node-from-object");
     });
   });
 
