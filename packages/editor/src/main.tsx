@@ -4,13 +4,16 @@ import type {
   VisualDocument,
 } from "@ai-native/core";
 import {
+  createBatchHandler,
   createDefaultDocumentRegistries,
   createDefaultRuntimeRegistries,
+  createDocumentBatchHandler,
   createDocumentCommandBus,
   createNewDocument,
   createRuntimeCommandBus,
   openDocumentSession,
 } from "@ai-native/core";
+import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
 import { useCallback, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -35,10 +38,17 @@ function App() {
       scene,
       error: { code: "nested", message: "nested" },
     }));
-    return createRuntimeCommandBus(handlerRegistry, [], scene, {
+    const bus = createRuntimeCommandBus(handlerRegistry, [], scene, {
       now: Date.now,
       actorId: "editor",
     });
+
+    handlerRegistry.set("batch-actions", {
+      handler: createBatchHandler((action) => bus.dispatch(action)),
+      inverse: handlerRegistry.get("batch-actions")?.inverse,
+    });
+
+    return bus;
   }, [scene]);
 
   const documentBus = useMemo(() => {
@@ -47,10 +57,17 @@ function App() {
       document: doc,
       error: { code: "nested", message: "nested" },
     }));
-    return createDocumentCommandBus(handlerRegistry, [], doc, {
+    const bus = createDocumentCommandBus(handlerRegistry, [], doc, {
       now: Date.now,
       actorId: "editor",
     });
+
+    handlerRegistry.set("batch-document-actions", {
+      handler: createDocumentBatchHandler((action) => bus.dispatch(action)),
+      inverse: handlerRegistry.get("batch-document-actions")?.inverse,
+    });
+
+    return bus;
   }, [doc]);
 
   const dispatchRuntime = useCallback(
@@ -105,6 +122,51 @@ function App() {
     });
   }, [dispatchRuntime, scene.rootId]);
 
+  const handleTransform = useCallback(
+    (event: TransformEvent) => {
+      if (!event.commit) return;
+
+      const node = scene.nodes[event.nodeId];
+      if (!node) return;
+      const layout = (node.layout ?? {}) as Record<string, unknown>;
+
+      if (event.type === "move") {
+        dispatchRuntime({
+          type: "update-layout",
+          nodeId: event.nodeId,
+          layout: {
+            x: (Number(layout.x) || 0) + event.deltaX,
+            y: (Number(layout.y) || 0) + event.deltaY,
+          },
+        });
+      } else if (event.type === "resize") {
+        dispatchRuntime({
+          type: "update-layout",
+          nodeId: event.nodeId,
+          layout: {
+            width: (Number(layout.width) || 100) + event.deltaX,
+            height: (Number(layout.height) || 100) + event.deltaY,
+          },
+        });
+      } else if (event.type === "rotate") {
+        const rotation = (Number(layout.rotation) || 0) + event.deltaX;
+        dispatchRuntime({
+          type: "rotate-node",
+          nodeId: event.nodeId,
+          rotation,
+        });
+      }
+    },
+    [dispatchRuntime, scene.nodes],
+  );
+
+  const handleUpdateProps = useCallback(
+    (nodeId: string, props: Record<string, unknown>) => {
+      dispatchRuntime({ type: "update-props", nodeId, props });
+    },
+    [dispatchRuntime],
+  );
+
   const registry = useMemo(() => createRendererRegistry(), []);
 
   const firstPageSceneId =
@@ -132,6 +194,8 @@ function App() {
         document={doc}
         registry={registry}
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
+        onTransform={handleTransform}
+        onUpdateProps={handleUpdateProps}
       />
     </div>
   );

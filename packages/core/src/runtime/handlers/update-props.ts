@@ -12,7 +12,7 @@ export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
 
   const updatedNode = {
     ...node,
-    props: { ...action.props },
+    props: { ...node.props, ...action.props },
   };
 
   return {

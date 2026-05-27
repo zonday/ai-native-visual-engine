@@ -53,6 +53,7 @@ export {
 
 // ── Document ──
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
+export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export { createDefaultDocumentRegistries } from "./document/inverse.js";
 
 // ── Plugin system ──
@@ -68,6 +69,7 @@ export type { DocNode } from "./rich-text.js";
 export { extractPlainText } from "./rich-text.js";
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/actions.js";
+export { createBatchHandler } from "./runtime/handlers/batch.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 // ── Serialization ──
