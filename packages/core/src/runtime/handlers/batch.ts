@@ -4,7 +4,12 @@ import type { BatchActions, RuntimeAction } from "../actions.js";
 import { RuntimeActionSchema } from "../actions.js";
 import type { DispatchResult } from "../command-bus.js";
 import type { RuntimeContext, RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  InverseRegistry,
+  RuntimeHandlerRegistry,
+} from "../handler-registry.js";
+import { computeInverseAction } from "../handler-registry.js";
 
 function flattenBatchActions(actions: RuntimeAction[]): RuntimeAction[] {
   const flat: RuntimeAction[] = [];
@@ -83,3 +88,51 @@ export const batchInverse: InverseComputer<BatchActions> = (
 ) => {
   return undefined;
 };
+
+export function createBatchInverse(
+  handlerRegistry: RuntimeHandlerRegistry,
+  inverseRegistry: InverseRegistry,
+): InverseComputer<BatchActions> {
+  return (sceneBefore, action, context) => {
+    let currentScene = sceneBefore;
+    const dispatch = (childAction: RuntimeAction): DispatchResult => {
+      const entry = handlerRegistry.get(childAction.type);
+      if (!entry) {
+        return {
+          ok: false,
+          scene: currentScene,
+          error: {
+            code: "scene.unknown-action-type",
+            message: `Unknown action type: ${childAction.type}`,
+            actionType: childAction.type,
+          },
+        };
+      }
+      try {
+        currentScene = entry.handler(currentScene, childAction, context);
+        return { ok: true, scene: currentScene };
+      } catch (err) {
+        return {
+          ok: false,
+          scene: currentScene,
+          error: {
+            code: "scene.handler-error",
+            message: err instanceof Error ? err.message : String(err),
+            actionType: childAction.type,
+          },
+        };
+      }
+    };
+
+    const inverseOf = (s: SceneGraph, a: RuntimeAction, ctx: RuntimeContext) =>
+      computeInverseAction(inverseRegistry, s, a, ctx);
+
+    return computeBatchInverse(
+      sceneBefore,
+      action,
+      dispatch,
+      context,
+      inverseOf,
+    );
+  };
+}

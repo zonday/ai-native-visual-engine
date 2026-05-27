@@ -3,10 +3,15 @@ import type { DocumentAction } from "./actions.js";
 import type { DocumentDispatchResult } from "./command-bus.js";
 import type {
   DocumentHandlerEntry,
+  DocumentHandlerRegistry,
   InverseComputer,
   InverseRegistry,
 } from "./handler-registry.js";
-import { batchInverse, createBatchHandler } from "./handlers/batch.js";
+import {
+  batchInverse,
+  createBatchHandler,
+  createBatchInverse,
+} from "./handlers/batch.js";
 import {
   createPageHandler,
   createPageInverse,
@@ -114,8 +119,24 @@ export function createDefaultDocumentRegistries(
     ],
   ];
 
+  // Build registries with batch inverse stub
   const { handlerRegistry, inverseRegistry } =
     buildRegistriesFromEntries(entries);
+
+  // Replace batch inverse with a proper one that has registry access
+  const batchInv = createBatchInverse(
+    handlerRegistry as DocumentHandlerRegistry,
+    inverseRegistry as InverseRegistry,
+  );
+  const batchEntry = handlerRegistry.get("batch-document-actions");
+  if (batchEntry) {
+    handlerRegistry.set("batch-document-actions", {
+      ...batchEntry,
+      inverse: batchInv as InverseComputer,
+    });
+  }
+  inverseRegistry.set("batch-document-actions", batchInv as InverseComputer);
+
   return {
     handlerRegistry: handlerRegistry as Map<string, DocumentHandlerEntry>,
     inverseRegistry: inverseRegistry as InverseRegistry,

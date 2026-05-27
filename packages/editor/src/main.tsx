@@ -22,10 +22,14 @@ import {
   DocumentActionSchema,
   openDocumentSession,
   RuntimeActionSchema,
+  redoDocumentAction,
+  redoRuntimeAction,
+  undoDocumentAction,
+  undoRuntimeAction,
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "./Editor.js";
 
@@ -44,6 +48,20 @@ function App() {
 
   const runtimeHistoryRef = useRef(createRuntimeHistoryState());
   const documentHistoryRef = useRef(createDocumentHistoryState());
+  const isUndoingRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const syncHistoryState = useCallback(() => {
+    setCanUndo(
+      runtimeHistoryRef.current.undoStack.length > 0 ||
+        documentHistoryRef.current.undoStack.length > 0,
+    );
+    setCanRedo(
+      runtimeHistoryRef.current.redoStack.length > 0 ||
+        documentHistoryRef.current.redoStack.length > 0,
+    );
+  }, []);
 
   const constraintRegistry = useMemo(() => {
     const reg = createConstraintRegistry();
@@ -67,10 +85,12 @@ function App() {
         () => runtimeHistoryRef.current,
         (s) => {
           runtimeHistoryRef.current = s;
+          syncHistoryState();
         },
         () => "editor",
         handlerRegistry,
         () => ({ now: Date.now, actorId: "editor" }),
+        () => isUndoingRef.current,
       ),
     ];
 
@@ -90,7 +110,7 @@ function App() {
     }
 
     return bus;
-  }, [scene, constraintRegistry]);
+  }, [scene, constraintRegistry, syncHistoryState]);
 
   const documentBus = useMemo(() => {
     const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
@@ -107,10 +127,12 @@ function App() {
         () => documentHistoryRef.current,
         (s) => {
           documentHistoryRef.current = s;
+          syncHistoryState();
         },
         () => "editor",
         handlerRegistry,
         () => ({ now: Date.now, actorId: "editor" }),
+        () => isUndoingRef.current,
       ),
     ];
 
@@ -130,7 +152,7 @@ function App() {
     }
 
     return bus;
-  }, [doc]);
+  }, [doc, syncHistoryState]);
 
   const dispatchRuntime = useCallback(
     (action: RuntimeAction) => {
@@ -229,6 +251,118 @@ function App() {
     [dispatchRuntime],
   );
 
+  const handleUndo = useCallback(() => {
+    const rtHS = runtimeHistoryRef.current;
+    const docHS = documentHistoryRef.current;
+    const rtEntry = rtHS.undoStack.at(-1);
+    const docEntry = docHS.undoStack.at(-1);
+    if (!rtEntry && !docEntry) return;
+
+    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
+      const result = undoRuntimeAction(rtHS);
+      if (!result) return;
+      isUndoingRef.current = true;
+      const dispatchResult = runtimeBus.dispatch(result.inverseAction);
+      isUndoingRef.current = false;
+      if (dispatchResult.ok) {
+        runtimeHistoryRef.current = result.state;
+        syncHistoryState();
+        setScene(dispatchResult.scene);
+        setDoc((d) => {
+          const page = d.pages.find((p) => p.id === activePageId);
+          if (!page) return d;
+          return {
+            ...d,
+            scenes: {
+              ...d.scenes,
+              [page.sceneId]: {
+                version: dispatchResult.scene.version,
+                rootId: dispatchResult.scene.rootId,
+                nodes: dispatchResult.scene.nodes,
+                metadata: dispatchResult.scene.metadata,
+              },
+            },
+          };
+        });
+      }
+    } else if (docEntry) {
+      const result = undoDocumentAction(docHS);
+      if (!result) return;
+      isUndoingRef.current = true;
+      const dispatchResult = documentBus.dispatch(result.inverseAction);
+      isUndoingRef.current = false;
+      if (dispatchResult.ok) {
+        documentHistoryRef.current = result.state;
+        syncHistoryState();
+        setDoc(dispatchResult.document);
+      }
+    }
+  }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
+
+  const handleRedo = useCallback(() => {
+    const rtHS = runtimeHistoryRef.current;
+    const docHS = documentHistoryRef.current;
+    const rtEntry = rtHS.redoStack.at(-1);
+    const docEntry = docHS.redoStack.at(-1);
+    if (!rtEntry && !docEntry) return;
+
+    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
+      const result = redoRuntimeAction(rtHS);
+      if (!result) return;
+      isUndoingRef.current = true;
+      const dispatchResult = runtimeBus.dispatch(result.action);
+      isUndoingRef.current = false;
+      if (dispatchResult.ok) {
+        runtimeHistoryRef.current = result.state;
+        syncHistoryState();
+        setScene(dispatchResult.scene);
+        setDoc((d) => {
+          const page = d.pages.find((p) => p.id === activePageId);
+          if (!page) return d;
+          return {
+            ...d,
+            scenes: {
+              ...d.scenes,
+              [page.sceneId]: {
+                version: dispatchResult.scene.version,
+                rootId: dispatchResult.scene.rootId,
+                nodes: dispatchResult.scene.nodes,
+                metadata: dispatchResult.scene.metadata,
+              },
+            },
+          };
+        });
+      }
+    } else if (docEntry) {
+      const result = redoDocumentAction(docHS);
+      if (!result) return;
+      isUndoingRef.current = true;
+      const dispatchResult = documentBus.dispatch(result.action);
+      isUndoingRef.current = false;
+      if (dispatchResult.ok) {
+        documentHistoryRef.current = result.state;
+        syncHistoryState();
+        setDoc(dispatchResult.document);
+      }
+    }
+  }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (!ctrl) return;
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleUndo, handleRedo]);
+
   const registry = useMemo(() => createRendererRegistry(), []);
 
   const firstPageSceneId =
@@ -247,6 +381,12 @@ function App() {
         </button>
         <button type="button" onClick={addNode}>
           + Add Text Node
+        </button>
+        <button type="button" onClick={handleUndo} disabled={!canUndo}>
+          ↩ Undo
+        </button>
+        <button type="button" onClick={handleRedo} disabled={!canRedo}>
+          ↪ Redo
         </button>
         <span style={{ marginLeft: "auto" }}>
           Pages: {doc.pages.length} | Nodes: {Object.keys(scene.nodes).length}

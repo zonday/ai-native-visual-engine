@@ -157,7 +157,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
 });
 
 describe("batch inverse", () => {
-  it("batch inverse returns undefined at registry level (stub)", () => {
+  it("computes batch inverse via registry-level inverse computer", () => {
     const { inverseRegistry } = createDefaultDocumentRegistries(
       () => ({ ok: true, document: emptyDoc }),
     );
@@ -170,6 +170,10 @@ describe("batch inverse", () => {
     };
 
     const inverse = computeInverseAction(inverseRegistry, docWithTwoPages, action, context);
-    expect(inverse).toBeUndefined();
+    expect(inverse).toEqual({
+      type: "rename-page",
+      pageId: "p1",
+      name: "Page 1",
+    });
   });
 });

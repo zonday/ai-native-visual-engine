@@ -55,7 +55,11 @@ export type { DocumentAction } from "./document/actions.js";
 export { DocumentActionSchema } from "./document/actions.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
-export { createDocumentHistoryState } from "./document/history.js";
+export {
+  createDocumentHistoryState,
+  redoDocumentAction,
+  undoDocumentAction,
+} from "./document/history.js";
 export { createDefaultDocumentRegistries } from "./document/inverse.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
@@ -76,7 +80,11 @@ export { extractPlainText } from "./rich-text.js";
 export type { RuntimeAction } from "./runtime/actions.js";
 export { RuntimeActionSchema } from "./runtime/actions.js";
 export { createBatchHandler } from "./runtime/handlers/batch.js";
-export { createRuntimeHistoryState } from "./runtime/history.js";
+export {
+  createRuntimeHistoryState,
+  redoRuntimeAction,
+  undoRuntimeAction,
+} from "./runtime/history.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 // ── Serialization ──
