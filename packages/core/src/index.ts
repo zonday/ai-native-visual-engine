@@ -125,6 +125,13 @@ export {
   createSelectorRegistry,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
+// ── Computed State ──
+export {
+  createComputedStateEngine,
+  type ComputedStateEngine,
+  type ComputedBounds,
+  type WorldTransform,
+} from "./computed/computed-state-engine.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,
