@@ -19,8 +19,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm exec biome check
-      - name: Typecheck
-        run: pnpm --filter '!collab-worker' -r exec tsc --noEmit
+      - name: Build + Typecheck
+        run: pnpm build && pnpm exec turbo run typecheck
       - name: Test
         run: pnpm -r test
 

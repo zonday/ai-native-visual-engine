@@ -14,6 +14,6 @@
     }
   },
   "files": {
-    "includes": ["packages/*/src/**", "*.json", "*.yaml", "*.md"]
+    "includes": ["packages/*/src/**", ".github/**", "*.json", "*.yaml", "*.yml", "*.md"]
   }
 }
