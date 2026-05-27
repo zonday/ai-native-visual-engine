@@ -1,15 +1,24 @@
 import type { YjsDocProvider } from "./yjs-provider.js";
 import type { RuntimeAction } from "../runtime/actions.js";
 
+export interface CollaborationOptions {
+  readonly?: boolean;
+  onRemoteAction?: () => void;
+  clearRedoStack?: () => void;
+  getActorId?: () => string;
+}
+
 export function createCollaborationMiddleware(
   provider: YjsDocProvider,
+  options: CollaborationOptions = {},
 ) {
   let remoteAction = false;
 
   const unsub = provider.onRemoteAction(() => {
     remoteAction = true;
     try {
-      // Remote actions applied — prevent re-broadcast
+      options.clearRedoStack?.();
+      options.onRemoteAction?.();
     } finally {
       remoteAction = false;
     }
@@ -21,6 +30,14 @@ export function createCollaborationMiddleware(
       _state: TState,
       next: () => { ok: boolean; state: TState; error?: { code: string; message: string; actionType?: string } },
     ) => {
+      if (options.readonly) {
+        return remoteAction ? next() : {
+          ok: false,
+          state: _state,
+          error: { code: "collaboration.readonly", message: "Read-only observer" },
+        };
+      }
+
       if (remoteAction) {
         return next();
       }

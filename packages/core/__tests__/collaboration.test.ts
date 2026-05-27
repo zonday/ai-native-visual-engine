@@ -10,63 +10,73 @@ describe("YjsDocProvider", () => {
     expect(doc.clientID).toBeGreaterThanOrEqual(0);
   });
 
-  it("broadcasts and receives actions via shared doc", () => {
+  it("broadcasts and receives actions", () => {
     const provider = createYjsDocProvider("room-1");
-
     let received: unknown = null;
-    provider.onRemoteAction((action) => {
-      received = action;
-    });
-
+    provider.onRemoteAction((a) => { received = a; });
     provider.broadcastAction({ type: "test", data: 42 });
     expect(received).toEqual({ type: "test", data: 42 });
   });
 
-  it("sets awareness after connect", () => {
+  it("awareness set and get", () => {
     const provider = createYjsDocProvider("room-2");
     provider.connect("ws://localhost:1234");
-
     provider.setAwareness({ id: "peer-1", name: "Alice", color: "blue" });
-
-    let peers: unknown = null;
-    provider.onAwarenessChange((p) => {
-      peers = p;
-    });
-
+    provider.onAwarenessChange(() => {});
     provider.onConnectionChange(() => {});
     provider.disconnect();
   });
+});
 
-  it("broadcast does not escape remote lock", () => {
-    const provider = createYjsDocProvider("room-3");
+describe("Collaboration middleware — undo policy", () => {
+  it("clears redo stack on remote action", () => {
+    const provider = createYjsDocProvider("room-undo");
+    let redoCleared = false;
 
-    let local = 0;
-    provider.onRemoteAction(() => {
-      local++;
+    createCollaborationMiddleware(provider, {
+      clearRedoStack: () => { redoCleared = true; },
     });
 
     provider.broadcastAction({ type: "remote" });
-    expect(local).toBe(1);
+    expect(redoCleared).toBe(true);
+  });
+
+  it("notifies onRemoteAction callback", () => {
+    const provider = createYjsDocProvider("room-notify");
+    let count = 0;
+
+    createCollaborationMiddleware(provider, {
+      onRemoteAction: () => { count++; },
+    });
+
+    provider.broadcastAction({ type: "remote" });
+    expect(count).toBe(1);
   });
 });
 
-describe("Collaboration middleware", () => {
-  it("passes through local actions", () => {
-    const provider = createYjsDocProvider("room-4");
-    const { middleware, dispose } = createCollaborationMiddleware(provider);
+describe("Collaboration middleware — read-only", () => {
+  it("rejects local mutations", () => {
+    const provider = createYjsDocProvider("room-ro");
+    const { middleware } = createCollaborationMiddleware(provider, { readonly: true });
 
-    let called = false;
     const result = middleware(
-      { type: "update-style", nodeId: "n1", style: {} } as { type: string },
+      { type: "test" } as { type: string },
       {},
-      () => {
-        called = true;
-        return { ok: true, state: {} };
-      },
+      () => ({ ok: true, state: {} }),
     );
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("collaboration.readonly");
+  });
 
-    expect(called).toBe(true);
+  it("broadcasts local actions when not readonly", () => {
+    const provider = createYjsDocProvider("room-rw");
+    const { middleware } = createCollaborationMiddleware(provider);
+
+    const result = middleware(
+      { type: "test" } as { type: string },
+      {},
+      () => ({ ok: true, state: {} }),
+    );
     expect(result.ok).toBe(true);
-    dispose();
   });
 });

@@ -32,6 +32,7 @@ export function createYjsDocProvider(
     },
 
     disconnect() {
+      provider?.awareness?.setLocalState(null);
       provider?.disconnect();
       provider = null;
     },
