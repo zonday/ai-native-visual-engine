@@ -1,5 +1,5 @@
-import type { RenamePageAction } from "../actions.js";
 import { HandlerError } from "../../engine/error.js";
+import type { RenamePageAction } from "../actions.js";
 import type { DocumentHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
 

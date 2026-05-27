@@ -8,13 +8,6 @@ import type {
 
 const diag = createDiagnosticFactory("constraint-precheck");
 
-type SceneNode = {
-  id: string;
-  type: string;
-  parentId?: string;
-  children?: string[];
-};
-
 function collectAllNodeIds(context: CompilerContext): Set<string> {
   const ids = new Set<string>();
   const scene = context.scene;

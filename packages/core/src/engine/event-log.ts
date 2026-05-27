@@ -22,10 +22,7 @@ export function appendEvent<TInitialState, TAction>(
   return { ...log, actions: [...log.actions, entry] };
 }
 
-export function replayEvents<
-  TState,
-  TAction extends { type: string },
->(
+export function replayEvents<TState, TAction extends { type: string }>(
   log: EventLog<TState, TAction>,
   dispatch: (action: TAction) => {
     ok: boolean;

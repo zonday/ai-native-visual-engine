@@ -21,9 +21,7 @@ export type RuntimeHandlerRegistry = HandlerRegistry<
 // Return type is the wider RuntimeAction (not TAction) because inverse
 // computers often produce a different action type than they consume
 // (e.g., create-node inverse returns remove-node).
-export type InverseComputer<
-  TAction extends RuntimeAction = RuntimeAction,
-> = (
+export type InverseComputer<TAction extends RuntimeAction = RuntimeAction> = (
   sceneBefore: SceneGraph,
   action: TAction,
   context: RuntimeContext,

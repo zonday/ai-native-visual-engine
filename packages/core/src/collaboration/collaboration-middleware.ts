@@ -1,5 +1,5 @@
-import type { YjsDocProvider } from "./yjs-provider.js";
 import type { RuntimeAction } from "../runtime/actions.js";
+import type { YjsDocProvider } from "./yjs-provider.js";
 
 export interface CollaborationOptions {
   readonly?: boolean;
@@ -29,14 +29,23 @@ export function createCollaborationMiddleware(
     middleware: <TState>(
       action: RuntimeAction,
       _state: TState,
-      next: () => { ok: boolean; state: TState; error?: { code: string; message: string } },
+      next: () => {
+        ok: boolean;
+        state: TState;
+        error?: { code: string; message: string };
+      },
     ) => {
       if (options.readonly) {
-        return remoteAction ? next() : {
-          ok: false,
-          state: _state,
-          error: { code: "collaboration.readonly", message: "Read-only observer" },
-        };
+        return remoteAction
+          ? next()
+          : {
+              ok: false,
+              state: _state,
+              error: {
+                code: "collaboration.readonly",
+                message: "Read-only observer",
+              },
+            };
       }
 
       if (remoteAction) {

@@ -1,13 +1,13 @@
-import { tool } from "ai";
-import { compileSemanticAction } from "@ai-native/core";
 import type { CompileResult, SemanticAction } from "@ai-native/core";
 import {
   AutoLayoutActionSchema,
   CreateDashboardActionSchema,
+  compileSemanticAction,
   InsertChartActionSchema,
   UpdateThemeIntentActionSchema,
 } from "@ai-native/core";
-import { z } from "zod/v4";
+import { tool } from "ai";
+import type { z } from "zod/v4";
 
 function createTool(
   name: string,

@@ -1,6 +1,6 @@
+import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
-import { HandlerError } from "../../engine/error.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
 

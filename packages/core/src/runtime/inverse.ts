@@ -1,6 +1,15 @@
+import { buildRegistriesFromEntries } from "../engine/handler-registry.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
-import type { RuntimeHandlerEntry } from "./handler-registry.js";
+import type {
+  InverseComputer,
+  InverseRegistry,
+  RuntimeHandlerEntry,
+} from "./handler-registry.js";
+import {
+  computeInverseAction,
+  createInverseRegistry,
+} from "./handler-registry.js";
 import { batchInverse, createBatchHandler } from "./handlers/batch.js";
 import {
   createNodeHandler,
@@ -39,12 +48,6 @@ import {
   updateStyleHandler,
   updateStyleInverse,
 } from "./handlers/update-style.js";
-import type { InverseComputer, InverseRegistry } from "./handler-registry.js";
-import { buildRegistriesFromEntries } from "../engine/handler-registry.js";
-import {
-  computeInverseAction,
-  createInverseRegistry,
-} from "./handler-registry.js";
 
 export type { InverseComputer, InverseRegistry } from "./handler-registry.js";
 export {

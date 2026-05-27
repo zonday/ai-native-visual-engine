@@ -1,5 +1,5 @@
-import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 
 export interface PeerInfo {
   id: string;
@@ -13,14 +13,16 @@ export interface YjsDocProvider {
   getDoc(): Y.Doc;
   onRemoteAction(handler: (action: unknown) => void): () => void;
   broadcastAction(action: unknown): void;
-  setAwareness(info: PeerInfo & { cursor?: { nodeId?: string; x: number; y: number } }): void;
+  setAwareness(
+    info: PeerInfo & { cursor?: { nodeId?: string; x: number; y: number } },
+  ): void;
   onAwarenessChange(handler: (peers: PeerInfo[]) => void): () => void;
-  onConnectionChange(handler: (status: "connected" | "disconnected" | "connecting") => void): () => void;
+  onConnectionChange(
+    handler: (status: "connected" | "disconnected" | "connecting") => void,
+  ): () => void;
 }
 
-export function createYjsDocProvider(
-  roomId: string,
-): YjsDocProvider {
+export function createYjsDocProvider(roomId: string): YjsDocProvider {
   const doc = new Y.Doc();
   const actions = doc.getArray<unknown>("actions");
   let provider: WebsocketProvider | null = null;
@@ -64,7 +66,9 @@ export function createYjsDocProvider(
       });
     },
 
-    setAwareness(info: PeerInfo & { cursor?: { nodeId?: string; x: number; y: number } }) {
+    setAwareness(
+      info: PeerInfo & { cursor?: { nodeId?: string; x: number; y: number } },
+    ) {
       provider?.awareness?.setLocalState(info);
     },
 
@@ -90,7 +94,9 @@ export function createYjsDocProvider(
     ): () => void {
       const p = provider;
       if (!p) return () => {};
-      const cb = (event: { status: "connected" | "disconnected" | "connecting" }) => {
+      const cb = (event: {
+        status: "connected" | "disconnected" | "connecting";
+      }) => {
         handler(event.status);
       };
       p.on("status", cb);

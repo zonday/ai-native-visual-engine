@@ -26,10 +26,7 @@ export function createWidgetSizeConstraint(): Constraint {
 
       const w = layout.w as number | undefined;
       const h = layout.h as number | undefined;
-      if (
-        (w !== undefined && w <= 0) ||
-        (h !== undefined && h <= 0)
-      ) {
+      if ((w !== undefined && w <= 0) || (h !== undefined && h <= 0)) {
         const nodeId =
           "nodeId" in input.action ? input.action.nodeId : undefined;
         return {
@@ -57,9 +54,7 @@ export function createGridColumnConstraint(): Constraint {
       const parent = input.scene.nodes[input.node.parentId ?? ""];
       if (!parent || parent.type !== "grid") return { pass: true };
 
-      const parentLayout = parent.layout as
-        | { columns?: number }
-        | undefined;
+      const parentLayout = parent.layout as { columns?: number } | undefined;
       const columns = parentLayout?.columns ?? 12;
       const layout = input.action.layout;
       if (!layout) return { pass: true };

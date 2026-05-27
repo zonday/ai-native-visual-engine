@@ -1,8 +1,8 @@
+import type { EventLogEntry } from "../engine/event-log.js";
+import { replayEvents } from "../engine/event-log.js";
 import type { PersistedSceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
-import type { EventLogEntry } from "../engine/event-log.js";
-import { replayEvents } from "../engine/event-log.js";
 
 export type RuntimeEventLogEntry = EventLogEntry<RuntimeAction>;
 

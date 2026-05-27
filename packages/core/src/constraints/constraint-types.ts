@@ -1,9 +1,5 @@
-import type {
-  SceneGraph,
-  SceneNode,
-  VisualDocument,
-} from "../types.js";
 import type { RuntimeAction } from "../runtime/actions.js";
+import type { SceneGraph, SceneNode, VisualDocument } from "../types.js";
 
 export type ConstraintType = "structural" | "layout" | "semantic" | "theme";
 

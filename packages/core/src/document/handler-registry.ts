@@ -21,9 +21,7 @@ export type DocumentHandlerRegistry = HandlerRegistry<
 // Return type is the wider DocumentAction (not TAction) because inverse
 // computers often produce a different action type than they consume
 // (e.g., create-page inverse returns remove-page).
-export type InverseComputer<
-  TAction extends DocumentAction = DocumentAction,
-> = (
+export type InverseComputer<TAction extends DocumentAction = DocumentAction> = (
   documentBefore: VisualDocument,
   action: TAction,
   context: DocumentRuntimeContext,

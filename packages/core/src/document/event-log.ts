@@ -1,6 +1,6 @@
+import type { EventLogEntry } from "../engine/event-log.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
-import type { EventLogEntry } from "../engine/event-log.js";
 
 export type DocumentEventLogEntry = EventLogEntry<DocumentAction>;
 

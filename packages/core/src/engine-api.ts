@@ -7,14 +7,12 @@ import type {
   Layout,
   NodeId,
   PageId,
+  RuntimeState,
   SceneGraph,
   SceneNode,
-  RuntimeState,
 } from "./types.js";
 
-function getNodeId(
-  action: RuntimeAction,
-): string {
+function getNodeId(action: RuntimeAction): string {
   if ("nodeId" in action && typeof action.nodeId === "string") {
     return action.nodeId;
   }
@@ -29,12 +27,10 @@ function getNodeRuntime(node: SceneNode): Record<string, unknown> {
   return {};
 }
 
-function getRuntimeActiveStates(
-  node: SceneNode,
-): string[] {
+function getRuntimeActiveStates(node: SceneNode): string[] {
   const rt = getNodeRuntime(node);
   const states = rt.activeStates;
-  return Array.isArray(states) ? states as string[] : [];
+  return Array.isArray(states) ? (states as string[]) : [];
 }
 
 export interface NodeAPI {
