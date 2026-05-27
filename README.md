@@ -49,4 +49,37 @@ Define the architecture and delivery plan for an engine that supports:
 
 ## Status
 
-Current repository state focuses on architecture specification before core implementation.
+Phases 1-6 complete. Core engine, editor interactions, semantic compiler, AI integration, collaboration, and deployment infrastructure all implemented.
+
+## Local Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test
+
+# Lint and format
+pnpm exec biome check --write
+
+# Start editor dev server (requires packages/editor setup)
+cd packages/editor && pnpm dev
+```
+
+### Collaboration (local)
+
+```bash
+# Start collab relay worker locally
+cd packages/collab-worker && pnpm dev
+```
+
+### CI/CD
+
+- `pnpm exec biome check` — lint + format, enforced in CI
+- `pnpm -r exec tsc --noEmit` — typecheck all packages
+- `pnpm -r test` — run all tests
+- PR previews deployed to Cloudflare Pages automatically
