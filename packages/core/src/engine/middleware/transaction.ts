@@ -21,6 +21,7 @@ export interface TransactionMiddlewareConfig<
   setHistory: (state: HistoryState<TAction>) => void;
   markDirty?: (nodeIds: string[]) => void;
   source?: TransactionSource;
+  shouldExcludeFromHistory?: () => boolean;
 }
 
 export function createTransactionMiddleware<
@@ -37,9 +38,8 @@ export function createTransactionMiddleware<
 
     if (activeTx) {
       // Inside explicit multi-action transaction — route through TM
-      config.transactionFlag.setActive(true);
+      // Flag is managed by the caller (not toggled here)
       const result = config.transactionManager.applyAction(activeTx, action);
-      config.transactionFlag.setActive(false);
       if (result.ok) {
         return { ok: true, state: activeTx.currentState };
       }
@@ -66,19 +66,21 @@ export function createTransactionMiddleware<
       return { ok: false, state, error: commitResult.error };
     }
 
-    // Push transaction-level history entry
-    const inverses = [...tx.appliedInverses].reverse();
-    if (inverses.length > 0) {
-      const currentHistory = config.getHistory();
-      const actorId = config.getActorId?.() ?? context.actorId;
-      const newHistory = pushUndoTransaction(
-        currentHistory,
-        [action],
-        inverses,
-        context.now(),
-        actorId,
-      );
-      config.setHistory(newHistory);
+    // Push transaction-level history entry (skip for undo/redo)
+    if (!config.shouldExcludeFromHistory?.()) {
+      const inverses = [...tx.appliedInverses].reverse();
+      if (inverses.length > 0) {
+        const currentHistory = config.getHistory();
+        const actorId = config.getActorId?.() ?? context.actorId;
+        const newHistory = pushUndoTransaction(
+          currentHistory,
+          [action],
+          inverses,
+          context.now(),
+          actorId,
+        );
+        config.setHistory(newHistory);
+      }
     }
 
     // Mark dirty on scheduler

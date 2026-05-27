@@ -226,7 +226,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
     },
 
     getVersion(): number {
-      return syncedVersion;
+      return scene.version;
     },
   };
 

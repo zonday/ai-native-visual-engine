@@ -122,6 +122,7 @@ function App() {
           syncHistoryState();
         },
         markDirty: (nodeIds) => schedulerRef.current.markDirty(nodeIds),
+        shouldExcludeFromHistory: () => isUndoingRef.current,
       }),
     ];
 
