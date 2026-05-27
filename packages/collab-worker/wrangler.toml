@@ -1,0 +1,18 @@
+name = "ai-native-collab"
+main = "src/collab/worker.ts"
+compatibility_date = "2026-05-27"
+
+[[durable_objects.bindings]]
+  name = "COLLAB_DO"
+  class_name = "CollaborationDO"
+
+[[r2_buckets]]
+  binding = "COLLAB_STATE"
+  bucket_name = "collab-state"
+
+[[env]]
+  JWT_SECRET = "${JWT_SECRET}"
+
+[[migrations]]
+  tag = "v1"
+  new_classes = ["CollaborationDO"]
