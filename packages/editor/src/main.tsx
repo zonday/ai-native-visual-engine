@@ -197,8 +197,8 @@ function App() {
           type: "update-layout",
           nodeId: event.nodeId,
           layout: {
-            x: (Number(layout.x) || 0) + event.deltaX,
-            y: (Number(layout.y) || 0) + event.deltaY,
+            x: ((layout.x as number) ?? 0) + event.deltaX,
+            y: ((layout.y as number) ?? 0) + event.deltaY,
           },
         });
       } else if (event.type === "resize") {
@@ -206,12 +206,12 @@ function App() {
           type: "update-layout",
           nodeId: event.nodeId,
           layout: {
-            width: (Number(layout.width) || 100) + event.deltaX,
-            height: (Number(layout.height) || 100) + event.deltaY,
+            width: ((layout.width as number) ?? 100) + event.deltaX,
+            height: ((layout.height as number) ?? 100) + event.deltaY,
           },
         });
       } else if (event.type === "rotate") {
-        const rotation = (Number(layout.rotation) || 0) + event.deltaX;
+        const rotation = ((layout.rotation as number) ?? 0) + event.deltaX;
         dispatchRuntime({
           type: "rotate-node",
           nodeId: event.nodeId,

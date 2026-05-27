@@ -57,7 +57,6 @@ export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export { createDocumentHistoryState } from "./document/history.js";
 export { createDefaultDocumentRegistries } from "./document/inverse.js";
-export type { Middleware } from "./engine/command-bus.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
@@ -76,15 +75,7 @@ export { extractPlainText } from "./rich-text.js";
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/actions.js";
 export { RuntimeActionSchema } from "./runtime/actions.js";
-export type {
-  InverseComputer,
-  InverseRegistry,
-} from "./runtime/handler-registry.js";
-export { computeInverseAction } from "./runtime/handler-registry.js";
-export {
-  computeBatchInverse,
-  createBatchHandler,
-} from "./runtime/handlers/batch.js";
+export { createBatchHandler } from "./runtime/handlers/batch.js";
 export { createRuntimeHistoryState } from "./runtime/history.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
