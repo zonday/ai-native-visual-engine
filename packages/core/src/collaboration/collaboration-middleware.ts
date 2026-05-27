@@ -3,9 +3,9 @@ import type { RuntimeAction } from "../runtime/actions.js";
 
 export interface CollaborationOptions {
   readonly?: boolean;
-  onRemoteAction?: () => void;
   clearRedoStack?: () => void;
-  getActorId?: () => string;
+  /** Called before a remote action is applied. Return false to skip undo push. */
+  beforeRemoteAction?: () => void;
 }
 
 export function createCollaborationMiddleware(
@@ -17,18 +17,19 @@ export function createCollaborationMiddleware(
   const unsub = provider.onRemoteAction(() => {
     remoteAction = true;
     try {
+      options.beforeRemoteAction?.();
       options.clearRedoStack?.();
-      options.onRemoteAction?.();
     } finally {
       remoteAction = false;
     }
   });
 
   return {
+    isRemoteAction: () => remoteAction,
     middleware: <TState>(
       action: RuntimeAction,
       _state: TState,
-      next: () => { ok: boolean; state: TState; error?: { code: string; message: string; actionType?: string } },
+      next: () => { ok: boolean; state: TState; error?: { code: string; message: string } },
     ) => {
       if (options.readonly) {
         return remoteAction ? next() : {
