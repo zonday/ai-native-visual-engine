@@ -42,7 +42,7 @@ function getNodeRuntime(node: SceneNode): Record<string, unknown> {
 function getRuntimeActiveStates(node: SceneNode): string[] {
   const rt = getNodeRuntime(node);
   const states = rt.activeStates;
-  return Array.isArray(states) ? (states as string[]) : [];
+  return Array.isArray(states) ? [...(states as string[])] : [];
 }
 
 export interface NodeAPI {
@@ -116,6 +116,10 @@ export interface TransactionAPI {
     source: TransactionSource,
     metadata?: Record<string, unknown>,
   ): RuntimeActiveTransaction;
+  applyAction(
+    active: RuntimeActiveTransaction,
+    action: RuntimeAction,
+  ): DispatchResult;
   commit(active: RuntimeActiveTransaction): TransactionResult<SceneGraph>;
   rollback(active: RuntimeActiveTransaction): SceneGraph;
   getActive(): RuntimeActiveTransaction | undefined;
@@ -490,6 +494,35 @@ export function createEngineAPI(
       const scene = getScene();
       const context = { now: Date.now };
       return transactionManager.begin(source, scene, context, metadata);
+    },
+    applyAction(active, action) {
+      if (!transactionManager) {
+        return {
+          ok: false,
+          scene: getScene(),
+          error: {
+            code: "transaction.not-configured",
+            message: "TransactionManager not configured",
+            actionType: action.type,
+          },
+        };
+      }
+      const result = transactionManager.applyAction(active, action);
+      if (result.ok) {
+        notify("scene", getScene());
+        notify("selection", getScene().selection?.nodeIds ?? []);
+      }
+      return {
+        ok: result.ok,
+        scene: active.currentState,
+        error: result.error
+          ? {
+              code: result.error.code,
+              message: result.error.message,
+              actionType: result.error.actionType,
+            }
+          : undefined,
+      };
     },
     commit(active) {
       if (!transactionManager) {

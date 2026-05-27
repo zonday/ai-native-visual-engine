@@ -42,8 +42,9 @@ export function pushUndoTransaction<TAction>(
   actorId?: string,
   maxStackSize = DEFAULT_MAX_UNDO_STACK,
 ): HistoryState<TAction> {
+  if (actions.length === 0) return state;
   const entry: HistoryEntry<TAction> = {
-    action: actions[0] ?? ({} as TAction),
+    action: actions[0],
     actions,
     inverseActions,
     timestamp,

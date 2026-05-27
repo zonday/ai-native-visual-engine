@@ -2,6 +2,7 @@ import type { DispatchResult } from "../engine/transaction-manager.js";
 import { TransactionManager } from "../engine/transaction-manager.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
+import type { DispatchResult as RuntimeDispatchResult } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
 import type {
   InverseRegistry,
@@ -33,6 +34,15 @@ export function createRuntimeTransactionManager(
       context: RuntimeContext,
     ) => computeInverseAction(inverseRegistry, stateBefore, action, context),
   });
+}
+
+export function adaptRuntimeDispatch(
+  dispatch: (action: RuntimeAction) => RuntimeDispatchResult,
+): RuntimeDispatchFn {
+  return (action) => {
+    const result = dispatch(action);
+    return { ok: result.ok, state: result.scene, error: result.error };
+  };
 }
 
 export type { ActiveTransaction } from "../engine/transaction-manager.js";

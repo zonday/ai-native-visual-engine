@@ -1,3 +1,4 @@
+import type { DispatchResult } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
 import type { HandlerRegistry } from "./handler-registry.js";
 import {
@@ -9,17 +10,12 @@ import {
 } from "./transaction-types.js";
 
 export type {
+  DispatchResult,
   RuntimeTransaction,
   TransactionContext,
   TransactionResult,
   TransactionSource,
 };
-
-export interface DispatchResult<TState> {
-  ok: boolean;
-  state: TState;
-  error?: { code: string; message: string; actionType?: string };
-}
 
 let transactionCounter = 0;
 
@@ -40,6 +36,10 @@ export interface TransactionManagerConfig<
     context: TContext,
   ) => TAction | undefined;
   dispatch?: (action: TAction) => DispatchResult<TState>;
+  validate?: (action: TAction) => {
+    ok: boolean;
+    error?: { code: string; message: string };
+  };
 }
 
 export interface ActiveTransaction<TState, TAction, TContext> {
@@ -47,6 +47,7 @@ export interface ActiveTransaction<TState, TAction, TContext> {
   preState: TState;
   currentState: TState;
   appliedActions: TAction[];
+  preActionStates: TState[];
   appliedInverses: TAction[];
   context: TContext;
 }
@@ -116,6 +117,7 @@ export class TransactionManager<
       preState: state,
       currentState: state,
       appliedActions: [],
+      preActionStates: [],
       appliedInverses: [],
       context,
     };
@@ -132,14 +134,33 @@ export class TransactionManager<
     error?: { code: string; message: string; actionType?: string };
   } {
     if (this.config.dispatch) {
+      active.preActionStates.push(active.currentState);
       const result = this.config.dispatch(action);
       if (result.ok) {
         active.currentState = result.state;
         active.appliedActions.push(action);
         (active.tx.actions as TAction[]).push(action);
         this.collectAffectedNodes(active.tx, action);
+      } else {
+        active.preActionStates.pop();
       }
       return { ok: result.ok, error: result.error };
+    }
+
+    if (this.config.validate) {
+      const validationResult = this.config.validate(action);
+      if (!validationResult.ok) {
+        return {
+          ok: false,
+          error: {
+            code:
+              validationResult.error?.code ?? "transaction.validation-failed",
+            message:
+              validationResult.error?.message ?? "Action validation failed",
+            actionType: action.type,
+          },
+        };
+      }
     }
 
     const entry = this.config.handlerRegistry.get(action.type);
@@ -154,6 +175,7 @@ export class TransactionManager<
       };
     }
 
+    active.preActionStates.push(active.currentState);
     try {
       const newState = entry.handler(
         active.currentState,
@@ -167,6 +189,7 @@ export class TransactionManager<
       this.collectAffectedNodes(active.tx, action);
       return { ok: true };
     } catch (err) {
+      active.preActionStates.pop();
       return {
         ok: false,
         error: {
@@ -183,7 +206,11 @@ export class TransactionManager<
 
   private collectAffectedNodes(tx: RuntimeTransaction, action: TAction): void {
     const actionRecord = action as Record<string, unknown>;
-    const nodeId = actionRecord.nodeId as string | undefined;
+    let nodeId = actionRecord.nodeId as string | undefined;
+    if (!nodeId && action.type === "create-node") {
+      const node = actionRecord.node as { id: string } | undefined;
+      nodeId = node?.id;
+    }
     if (nodeId && !tx.affectedNodes.includes(nodeId)) {
       tx.affectedNodes.push(nodeId);
     }
@@ -218,7 +245,7 @@ export class TransactionManager<
     for (let i = active.appliedActions.length - 1; i >= 0; i--) {
       const action = active.appliedActions[i];
       if (action && action.type !== "update-selection") {
-        const inv = this.computeInverse(active, action);
+        const inv = this.computeInverse(active, action, i);
         if (inv) {
           inverses.push(inv);
         }
@@ -247,10 +274,13 @@ export class TransactionManager<
   private computeInverse(
     active: ActiveTransaction<TState, TAction, TContext>,
     action: TAction,
+    actionIndex: number,
   ): TAction | undefined {
     try {
+      const stateBefore =
+        active.preActionStates[actionIndex] ?? active.preState;
       return this.config.computeInverseAction(
-        active.preState,
+        stateBefore,
         action,
         active.context,
       );
