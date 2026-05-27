@@ -120,6 +120,11 @@ export {
   createRuntimeTransactionManager,
   type RuntimeTransactionManager,
 } from "./runtime/transaction.js";
+// ── Selector ──
+export {
+  createSelectorRegistry,
+  type SelectorRegistry,
+} from "./selector/selector-registry.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,
