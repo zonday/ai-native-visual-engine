@@ -65,17 +65,14 @@ export function createYjsDocProvider(
     },
 
     setAwareness(info: PeerInfo & { cursor?: { nodeId?: string; x: number; y: number } }) {
-      const p = provider;
-      if (p?.awareness) {
-        p.awareness.setLocalState(info);
-      }
+      provider?.awareness?.setLocalState(info);
     },
 
     onAwarenessChange(handler: (peers: PeerInfo[]) => void): () => void {
       const p = provider;
       if (!p?.awareness) return () => {};
       const update = () => {
-        const states = p.awareness.getStates() as Map<number, unknown>;
+        const states = p.awareness.getStates();
         const peers: PeerInfo[] = [];
         states.forEach((state) => {
           if (state && typeof state === "object" && "id" in state) {
