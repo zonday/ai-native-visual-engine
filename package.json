@@ -18,7 +18,8 @@
     "vitest": "^4.1.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm exec biome check --staged --write && pnpm test"
+    "pre-commit": "pnpm exec biome check --staged --write && pnpm test",
+    "pre-push": "pnpm exec biome check ."
   },
   "engines": {
     "node": ">=22.13"
