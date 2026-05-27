@@ -1,11 +1,13 @@
+import type { DocumentAction } from "../document/actions.js";
 import type { RuntimeAction } from "../runtime/actions.js";
+import type { PageId } from "../types.js";
 import type { YjsDocProvider } from "./yjs-provider.js";
 
 export interface CollaborationOptions {
   readonly?: boolean;
   clearRedoStack?: () => void;
-  /** Called before a remote action is applied. Return false to skip undo push. */
-  beforeRemoteAction?: () => void;
+  getActorId?: () => string;
+  getActivePageId?: () => PageId | undefined;
 }
 
 export function createCollaborationMiddleware(
@@ -14,21 +16,34 @@ export function createCollaborationMiddleware(
 ) {
   let remoteAction = false;
 
-  const unsub = provider.onRemoteAction(() => {
+  const onRemoteDoc = () => {
     remoteAction = true;
     try {
-      options.beforeRemoteAction?.();
       options.clearRedoStack?.();
     } finally {
       remoteAction = false;
     }
-  });
+  };
+
+  const onRemoteScene = () => {
+    remoteAction = true;
+    try {
+      options.clearRedoStack?.();
+    } finally {
+      remoteAction = false;
+    }
+  };
+
+  const unsubDoc = provider.onRemoteDocumentAction(onRemoteDoc);
+  const unsubScene = provider.onRemoteSceneAction(
+    options.getActivePageId?.() ?? "default",
+    onRemoteScene,
+  );
 
   return {
-    isRemoteAction: () => remoteAction,
-    middleware: <TState>(
-      action: RuntimeAction,
-      _state: TState,
+    documentMiddleware: <TState>(
+      action: DocumentAction,
+      state: TState,
       next: () => {
         ok: boolean;
         state: TState;
@@ -38,28 +53,52 @@ export function createCollaborationMiddleware(
       if (options.readonly) {
         return remoteAction
           ? next()
-          : {
-              ok: false,
-              state: _state,
-              error: {
-                code: "collaboration.readonly",
-                message: "Read-only observer",
-              },
-            };
+          : { ok: false, state, error: { code: "collaboration.readonly" } };
       }
-
-      if (remoteAction) {
-        return next();
-      }
+      if (remoteAction) return next();
 
       const result = next();
       if (result.ok) {
-        provider.broadcastAction(action);
+        provider.broadcastDocumentAction({
+          actorId: options.getActorId?.() ?? "unknown",
+          timestamp: Date.now(),
+          action,
+        });
       }
       return result;
     },
+
+    sceneMiddleware: <TState>(
+      action: RuntimeAction,
+      state: TState,
+      next: () => {
+        ok: boolean;
+        state: TState;
+        error?: { code: string; message: string };
+      },
+    ) => {
+      if (options.readonly) {
+        return remoteAction
+          ? next()
+          : { ok: false, state, error: { code: "collaboration.readonly" } };
+      }
+      if (remoteAction) return next();
+
+      const result = next();
+      if (result.ok) {
+        provider.broadcastSceneAction({
+          actorId: options.getActorId?.() ?? "unknown",
+          timestamp: Date.now(),
+          pageId: options.getActivePageId?.() ?? "default",
+          action,
+        });
+      }
+      return result;
+    },
+
     dispose() {
-      unsub();
+      unsubDoc();
+      unsubScene();
     },
   };
 }
