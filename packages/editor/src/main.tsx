@@ -17,6 +17,7 @@ import {
   createNewDocument,
   createRuntimeCommandBus,
   createRuntimeHistoryState,
+  createTransactionFlag,
   createUndoHistoryMiddleware,
   createValidatorMiddleware,
   DEFAULT_LAYOUT_CONSTRAINTS,
@@ -72,6 +73,8 @@ function App() {
     return reg;
   }, []);
 
+  const transactionFlagRef = useRef(createTransactionFlag());
+
   const runtimeBus = useMemo(() => {
     const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
       ok: false,
@@ -91,6 +94,7 @@ function App() {
         handlerRegistry,
         () => ({ now: Date.now, actorId: "editor" }),
         () => isUndoingRef.current,
+        () => transactionFlagRef.current.isActive(),
       ),
     ];
 

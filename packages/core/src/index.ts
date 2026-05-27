@@ -4,11 +4,17 @@ export {
   createNewDocument,
   generateId,
 } from "./bootstrap.js";
+export {
+  type ExecutePlanDeps,
+  type ExecutePlanResult,
+  executePlan,
+} from "./compiler/executor.js";
 // ── Compiler ──
 export { compileSemanticAction } from "./compiler/pipeline.js";
 export type { AiSchemaIndexSnapshot } from "./compiler/schema-index.js";
 export type {
   CompileResult,
+  ExecutionPlan,
   SemanticAction,
   SemanticDiagnostic,
 } from "./compiler/types.js";
@@ -110,6 +116,7 @@ export {
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export {
+  adaptRuntimeDispatch,
   createRuntimeTransactionManager,
   type RuntimeTransactionManager,
 } from "./runtime/transaction.js";
