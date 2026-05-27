@@ -1,4 +1,4 @@
-import { CollaborationDO } from "./durable-object.js";
+import type { CollaborationDO } from "./durable-object.js";
 
 export interface Env {
   COLLAB_DO: DurableObjectNamespace<CollaborationDO>;
