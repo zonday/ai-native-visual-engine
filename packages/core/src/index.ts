@@ -65,6 +65,11 @@ export { extractPlainText } from "./rich-text.js";
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/actions.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
+export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
+
+// ── Document ──
+export { createDocumentCommandBus } from "./document/document-command-bus.js";
+export { createDefaultDocumentRegistries } from "./document/inverse.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,
@@ -77,6 +82,7 @@ export type {
 } from "./session.js";
 export {
   loadDocument,
+  materializeScene,
   openDocumentFromSnapshot,
   openDocumentSession,
 } from "./session.js";

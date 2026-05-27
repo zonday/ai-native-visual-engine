@@ -1,4 +1,7 @@
 packages:
   - 'packages/*'
 allowBuilds:
+  esbuild: set this to true or false
+  sharp: set this to true or false
   simple-git-hooks: true
+  workerd: set this to true or false
