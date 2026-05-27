@@ -5,8 +5,13 @@ import type {
   InverseComputer,
   InverseRegistry,
   RuntimeHandlerEntry,
+  RuntimeHandlerRegistry,
 } from "./handler-registry.js";
-import { batchInverse, createBatchHandler } from "./handlers/batch.js";
+import {
+  batchInverse,
+  createBatchHandler,
+  createBatchInverse,
+} from "./handlers/batch.js";
 import {
   createNodeHandler,
   createNodeInverse,
@@ -52,7 +57,7 @@ export {
 } from "./handler-registry.js";
 
 export function createDefaultRuntimeRegistries(
-  batchDispatch: (action: RuntimeAction) => DispatchResult,
+  _batchDispatch: (action: RuntimeAction) => DispatchResult,
 ): {
   handlerRegistry: Map<string, RuntimeHandlerEntry>;
   inverseRegistry: InverseRegistry;
@@ -132,15 +137,31 @@ export function createDefaultRuntimeRegistries(
       "batch-actions",
       {
         handler: createBatchHandler(
-          batchDispatch,
+          _batchDispatch,
         ) as RuntimeHandlerEntry["handler"],
         inverse: batchInverse as InverseComputer,
       },
     ],
   ];
 
+  // Build registries with batch inverse stub
   const { handlerRegistry, inverseRegistry } =
     buildRegistriesFromEntries(entries);
+
+  // Replace batch inverse with a proper one that has registry access
+  const batchInv = createBatchInverse(
+    handlerRegistry as RuntimeHandlerRegistry,
+    inverseRegistry as InverseRegistry,
+  );
+  const batchEntry = handlerRegistry.get("batch-actions");
+  if (batchEntry) {
+    handlerRegistry.set("batch-actions", {
+      ...batchEntry,
+      inverse: batchInv as InverseComputer,
+    });
+  }
+  inverseRegistry.set("batch-actions", batchInv as InverseComputer);
+
   return {
     handlerRegistry: handlerRegistry as Map<string, RuntimeHandlerEntry>,
     inverseRegistry: inverseRegistry as InverseRegistry,

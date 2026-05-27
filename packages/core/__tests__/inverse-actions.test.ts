@@ -249,7 +249,7 @@ describe("computeInverseAction with registry", () => {
   });
 
   describe("batch-document-actions", () => {
-    it("batch inverse returns undefined (not yet supported at registry level)", () => {
+    it("computes batch inverse via registry-level inverse computer", () => {
       const action: DocumentAction = {
         type: "batch-document-actions",
         actions: [
@@ -262,7 +262,11 @@ describe("computeInverseAction with registry", () => {
         action,
         defaultContext,
       );
-      expect(inverse).toBeUndefined();
+      expect(inverse).toEqual({
+        type: "rename-page",
+        pageId: "p1",
+        name: "Page 1",
+      });
     });
   });
 

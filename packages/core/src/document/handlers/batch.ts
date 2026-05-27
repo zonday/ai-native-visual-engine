@@ -4,7 +4,12 @@ import type { BatchDocumentActions, DocumentAction } from "../actions.js";
 import { DocumentActionSchema } from "../actions.js";
 import type { DocumentDispatchResult } from "../command-bus.js";
 import type { DocumentHandler, DocumentRuntimeContext } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandlerRegistry,
+  InverseComputer,
+  InverseRegistry,
+} from "../handler-registry.js";
+import { computeInverseAction } from "../handler-registry.js";
 
 function flattenBatchActions(actions: DocumentAction[]): DocumentAction[] {
   const flat: DocumentAction[] = [];
@@ -79,8 +84,8 @@ export function computeBatchInverse(
 }
 
 // Spec §3.2: batch inverse should compose inverse actions in reverse order.
-// This simple stub returns undefined. Batch undo via history middleware should
-// use `computeBatchInverse` which has access to dispatch and the inverse registry.
+// This simple stub returns undefined. Use createBatchInverse for a working
+// implementation that has access to the handler and inverse registries.
 export const batchInverse: InverseComputer<BatchDocumentActions> = (
   _documentBefore,
   _action,
@@ -88,3 +93,54 @@ export const batchInverse: InverseComputer<BatchDocumentActions> = (
 ) => {
   return undefined;
 };
+
+export function createBatchInverse(
+  handlerRegistry: DocumentHandlerRegistry,
+  inverseRegistry: InverseRegistry,
+): InverseComputer<BatchDocumentActions> {
+  return (documentBefore, action, context) => {
+    let currentDoc = documentBefore;
+    const dispatch = (childAction: DocumentAction): DocumentDispatchResult => {
+      const entry = handlerRegistry.get(childAction.type);
+      if (!entry) {
+        return {
+          ok: false,
+          document: currentDoc,
+          error: {
+            code: "document.unknown-action-type",
+            message: `Unknown action type: ${childAction.type}`,
+            actionType: childAction.type,
+          },
+        };
+      }
+      try {
+        currentDoc = entry.handler(currentDoc, childAction, context);
+        return { ok: true, document: currentDoc };
+      } catch (err) {
+        return {
+          ok: false,
+          document: currentDoc,
+          error: {
+            code: "document.handler-error",
+            message: err instanceof Error ? err.message : String(err),
+            actionType: childAction.type,
+          },
+        };
+      }
+    };
+
+    const inverseOf = (
+      d: VisualDocument,
+      a: DocumentAction,
+      ctx: DocumentRuntimeContext,
+    ) => computeInverseAction(inverseRegistry, d, a, ctx);
+
+    return computeBatchInverse(
+      documentBefore,
+      action,
+      dispatch,
+      context,
+      inverseOf,
+    );
+  };
+}

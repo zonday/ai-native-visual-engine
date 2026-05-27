@@ -12,7 +12,7 @@ export const updateRuntimeHandler: RuntimeHandler<UpdateRuntimeAction> = (
 
   const updatedNode = {
     ...node,
-    runtime: { ...action.runtime },
+    runtime: { ...node.runtime, ...action.runtime },
   };
 
   return {

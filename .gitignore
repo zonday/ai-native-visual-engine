@@ -16,8 +16,8 @@ coverage/
 .vscode/
 .turbo/
 
-# Lockfile (pnpm)
-pnpm-lock.yaml
+# Lockfile (pnpm) — committed for CI reproducibility
+# pnpm-lock.yaml
 
 # Logs
 *.log
