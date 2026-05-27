@@ -1,0 +1,20 @@
+# Cloudflare Pages — Editor SPA
+name = "ai-native-visual"
+compatibility_date = "2026-05-27"
+pages_build_output_dir = "packages/editor/dist"
+
+[env.production]
+  [[env.production.migrations]]
+    tag = "prod"
+
+# Cloudflare Workers — Collaboration Relay
+# Uncomment after Worker setup:
+# [[workers]]
+#   name = "collab-relay"
+#   main = "packages/collab-worker/src/index.ts"
+#   compatibility_date = "2026-05-27"
+
+# [durable_objects]
+#   bindings = [
+#     { name = "COLLAB_ROOM", class_name = "CollabRoom" },
+#   ]
