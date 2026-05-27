@@ -14,6 +14,13 @@
     }
   },
   "files": {
-    "includes": ["packages/*/src/**", ".github/**", "*.json", "*.yaml", "*.yml", "*.md"]
+    "includes": [
+      "packages/*/src/**",
+      ".github/**",
+      "*.json",
+      "*.yaml",
+      "*.yml",
+      "*.md"
+    ]
   }
 }
