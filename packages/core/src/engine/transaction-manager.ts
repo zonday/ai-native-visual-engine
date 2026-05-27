@@ -15,6 +15,12 @@ export type {
   TransactionSource,
 };
 
+export interface DispatchResult<TState> {
+  ok: boolean;
+  state: TState;
+  error?: { code: string; message: string; actionType?: string };
+}
+
 let transactionCounter = 0;
 
 function generateTxId(source: TransactionSource): string {
@@ -33,6 +39,7 @@ export interface TransactionManagerConfig<
     action: TAction,
     context: TContext,
   ) => TAction | undefined;
+  dispatch?: (action: TAction) => DispatchResult<TState>;
 }
 
 export interface ActiveTransaction<TState, TAction, TContext> {
@@ -124,6 +131,17 @@ export class TransactionManager<
     ok: boolean;
     error?: { code: string; message: string; actionType?: string };
   } {
+    if (this.config.dispatch) {
+      const result = this.config.dispatch(action);
+      if (result.ok) {
+        active.currentState = result.state;
+        active.appliedActions.push(action);
+        (active.tx.actions as TAction[]).push(action);
+        this.collectAffectedNodes(active.tx, action);
+      }
+      return { ok: result.ok, error: result.error };
+    }
+
     const entry = this.config.handlerRegistry.get(action.type);
     if (!entry) {
       return {

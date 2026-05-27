@@ -1,3 +1,4 @@
+import type { DispatchResult } from "../engine/transaction-manager.js";
 import { TransactionManager } from "../engine/transaction-manager.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
@@ -14,12 +15,18 @@ export type RuntimeTransactionManager = TransactionManager<
   RuntimeContext
 >;
 
+export type RuntimeDispatchFn = (
+  action: RuntimeAction,
+) => DispatchResult<SceneGraph>;
+
 export function createRuntimeTransactionManager(
   handlerRegistry: RuntimeHandlerRegistry,
   inverseRegistry: InverseRegistry,
+  dispatchFn?: RuntimeDispatchFn,
 ): RuntimeTransactionManager {
   return new TransactionManager({
     handlerRegistry,
+    dispatch: dispatchFn,
     computeInverseAction: (
       stateBefore: SceneGraph,
       action: RuntimeAction,

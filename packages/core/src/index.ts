@@ -57,6 +57,7 @@ export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export {
   createDocumentHistoryState,
+  pushDocumentUndoTransaction,
   redoDocumentAction,
   undoDocumentAction,
 } from "./document/history.js";
@@ -65,12 +66,18 @@ export {
   createDocumentTransactionManager,
   type DocumentTransactionManager,
 } from "./document/transaction.js";
+export { pushUndoTransaction } from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
+export {
+  createTransactionFlag,
+  type TransactionFlag,
+} from "./engine/transaction-flag.js";
 // ── Transaction ──
 export {
   type ActiveTransaction,
+  type DispatchResult,
   TransactionManager,
 } from "./engine/transaction-manager.js";
 export type {
@@ -96,6 +103,7 @@ export { RuntimeActionSchema } from "./runtime/actions.js";
 export { createBatchHandler } from "./runtime/handlers/batch.js";
 export {
   createRuntimeHistoryState,
+  pushRuntimeUndoTransaction,
   redoRuntimeAction,
   undoRuntimeAction,
 } from "./runtime/history.js";
