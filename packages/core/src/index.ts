@@ -61,10 +61,24 @@ export {
   undoDocumentAction,
 } from "./document/history.js";
 export { createDefaultDocumentRegistries } from "./document/inverse.js";
+export {
+  createDocumentTransactionManager,
+  type DocumentTransactionManager,
+} from "./document/transaction.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
-
+// ── Transaction ──
+export {
+  type ActiveTransaction,
+  TransactionManager,
+} from "./engine/transaction-manager.js";
+export type {
+  RuntimeTransaction,
+  TransactionContext,
+  TransactionResult,
+  TransactionSource,
+} from "./engine/transaction-types.js";
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
 export type { ResolvedInstance } from "./prototype.js";
@@ -87,6 +101,10 @@ export {
 } from "./runtime/history.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
+export {
+  createRuntimeTransactionManager,
+  type RuntimeTransactionManager,
+} from "./runtime/transaction.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,

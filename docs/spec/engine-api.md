@@ -30,6 +30,7 @@ export interface EngineAPI {
   selection: SelectionAPI
   history: HistoryAPI
   dispatch: DispatchAPI
+  transaction: TransactionAPI
   states: StateAPI
 }
 ```
@@ -129,7 +130,7 @@ Rules:
 
 ### 3.5 DispatchAPI
 
-Dispatch runtime actions through the command bus.
+Dispatch runtime actions through the command bus. Every dispatch internally creates a single-action transaction.
 
 ```ts
 export interface DispatchAPI {
@@ -151,10 +152,48 @@ Rules:
 1. Every method dispatches the corresponding `RuntimeAction` through the command bus.
 2. The returned `DispatchResult` indicates success or failure.
 3. On failure, the scene is unchanged; no partial mutation occurs.
-4. `batch` commits all child actions atomically.
+4. `batch` commits all child actions atomically within a single transaction.
 5. These methods accept raw values, not action types — the engine wraps them into the correct action type internally.
+6. Every dispatch is internally wrapped in a `RuntimeTransaction` with `source: 'user'` by default.
 
-### 3.6 StateAPI
+### 3.6 TransactionAPI
+
+Access the transaction manager and create custom transactions.
+
+```ts
+export interface TransactionAPI {
+  begin(source?: TransactionSource, metadata?: Record<string, unknown>): TransactionContext
+  commit(context: TransactionContext): DispatchResult
+  rollback(context: TransactionContext): SceneGraph
+  getActiveTransaction(): TransactionContext | undefined
+}
+
+export type TransactionSource = 'user' | 'ai' | 'system'
+```
+
+Rules:
+
+1. `begin` creates a new transaction context and captures the current pre-state.
+2. `commit` runs the full transaction lifecycle (validate, compute, emit, create inverses, push history).
+3. `rollback` restores the pre-transaction state and discards the transaction.
+4. `getActiveTransaction` returns the currently open transaction if inside a transaction boundary.
+5. When no explicit transaction is open, single-action dispatches create an implicit transaction.
+
+Usage by the AI compiler:
+
+```ts
+const tx = engine.transaction.begin('ai', { prompt, confidence: 0.95 })
+engine.dispatch.createNode(header, root)
+engine.dispatch.createNode(image, root)
+engine.dispatch.createNode(title, root)
+engine.dispatch.createNode(description, root)
+const result = engine.transaction.commit(tx)
+if (!result.ok) {
+  engine.transaction.rollback(tx)
+}
+```
+
+### 3.7 StateAPI
 
 Activate and deactivate named component states.
 
@@ -176,7 +215,7 @@ Rules:
 3. `setExclusive` activates a state and deactivates it on all other nodes in the same group.
 4. `getActiveStates` returns states in activation order.
 
-### 3.7 Subscribing To Scene Changes
+### 3.8 Subscribing To Scene Changes
 
 Components that need to re-render when scene data changes can subscribe.
 

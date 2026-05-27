@@ -2,11 +2,11 @@
 
 ## 1. Scope
 
-This document defines the unified undo/redo model, history recording, inverse-action contracts, and the interaction between history and collaboration across both document and scene runtime domains.
+This document defines the unified undo/redo model, transaction-based history recording, inverse-action contracts, and the interaction between history and collaboration across both document and scene runtime domains.
 
 ## 2. History Architecture
 
-The engine maintains two independent history domains of the same shape.
+The engine maintains two independent history domains of the same shape. Each stores **committed transactions**, not individual actions.
 
 ```text
 Document history:
@@ -19,23 +19,25 @@ Scene history (per page):
 Both use the same entry structure:
 
 ```ts
-export interface HistoryEntry<TAction> {
-  action: TAction
-  inverseAction?: TAction
+export interface TransactionEntry<TAction> {
+  transaction: RuntimeTransaction | DocumentTransaction
   timestamp: number
   actorId?: string
 }
 
 export interface HistoryState<TAction> {
-  undoStack: HistoryEntry<TAction>[]
-  redoStack: HistoryEntry<TAction>[]
+  undoStack: TransactionEntry<TAction>[]
+  redoStack: TransactionEntry<TAction>[]
+  maxStackSize: number
 }
 ```
 
+A transaction is the smallest undoable unit. One user gesture (drag, click, AI generation, paste) produces exactly one transaction, regardless of how many individual actions it contains.
+
 Rules:
 
-1. Document history contains only `DocumentAction` entries.
-2. Scene history contains only `RuntimeAction` entries.
+1. Document history contains only `DocumentTransaction` entries.
+2. Scene history contains only `RuntimeTransaction` entries.
 3. The two histories do not merge; they remain separate execution domains.
 4. History state is in-memory during an editing session and is rebuilt from event logs on document load.
 
@@ -93,22 +95,25 @@ For actions whose inverse cannot be computed compactly:
 
 ### 4.1 Standard Undo Redo Cycle
 
+History operates on **transactions** as the atomic undo/redo unit. A transaction may contain one or more actions.
+
 ```text
 State S0
-  -> commit action A1 -> S1 + push {A1, inv_A1} onto undoStack
-  -> commit action A2 -> S2 + push {A2, inv_A2} onto undoStack, clear redoStack
-  -> undo                -> inv_A2 applied to S2 -> S1' + pop undoStack, push onto redoStack
-  -> redo                -> A2 applied to S1'   -> S2' + pop redoStack, push onto undoStack
+  -> commit transaction T1 (actions [A1, A2]) -> S1 + push T1 onto undoStack
+  -> commit transaction T2 (actions [A3])     -> S2 + push T2 onto undoStack, clear redoStack
+  -> undo                -> T2.inverseActions [inv_A3] applied to S2 -> S1' + pop undoStack, push onto redoStack
+  -> redo                -> T2.actions [A3] applied to S1'          -> S2' + pop redoStack, push onto undoStack
 ```
 
 Rules:
 
-1. Each committed durable action produces exactly one history entry.
-2. The `undoStack` is a LIFO queue of committed actions.
-3. When a new forward action is committed, the `redoStack` is cleared.
-4. Undo pops the top entry from `undoStack`, applies `inverseAction`, and pushes onto `redoStack`.
-5. Redo pops the top entry from `redoStack`, applies `action`, and pushes onto `undoStack`.
-6. Batch actions produce a single history entry; undo/redo treats them atomically.
+1. Each committed transaction produces exactly one history entry.
+2. The `undoStack` is a LIFO queue of committed transactions.
+3. When a new forward transaction is committed, the `redoStack` is cleared.
+4. Undo pops the top entry from `undoStack`, replays the transaction's `inverseActions` in order, and pushes onto `redoStack`.
+5. Redo pops the top entry from `redoStack`, replays the transaction's `actions` in order, and pushes onto `undoStack`.
+6. A transaction is the smallest undoable unit. A single user gesture produces exactly one transaction.
+7. `source` field enables filtered history (e.g., undo only AI-generated transactions).
 
 ### 4.2 Focus Scoped Undo Redo
 
@@ -167,8 +172,8 @@ Action dispatch
 
 Undo/History middleware responsibilities:
 
-1. Compute `inverseAction` or snapshot diff on successful commit.
-2. Push a `HistoryEntry` onto the `undoStack`.
+1. After a successful transaction commit, collect the transaction ID and its inverse actions.
+2. Push a `TransactionEntry` onto the `undoStack`.
 3. Clear the `redoStack`.
 4. Evict oldest entries if stack size exceeds `DEFAULT_MAX_UNDO_STACK`.
 5. Emit a history-changed event for the editor to update UI state.
@@ -176,9 +181,10 @@ Undo/History middleware responsibilities:
 ```ts
 export interface HistoryMiddlewareConfig {
   maxStackSize: number
-  computeInverse: typeof computeInverseAction
 }
 ```
+
+The history middleware does not compute inverses itself — inverses are computed during the transaction's `createInverseActions` phase (§3.12.2 in runtime-engine.md).
 
 ## 7. History And Collaboration Interaction
 

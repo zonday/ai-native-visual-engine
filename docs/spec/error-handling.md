@@ -52,6 +52,10 @@ Error codes follow the pattern `<domain>.<category>`.
 | `scene.invalid-geometry` | scene | error | Layout values are out of allowed bounds |
 | `scene.rotate-not-allowed` | scene | error | Node layout mode or plugin does not support rotation |
 | `scene.batch-item-failed` | scene | error | A child action inside batch-actions failed |
+| `scene.transaction-failed` | scene | error | A transaction's applyActions phase failed; the transaction is rolled back |
+| `scene.transaction-validation-failed` | scene | error | Post-transaction validation failed; the transaction is rolled back |
+| `scene.transaction-nested-depth-exceeded` | scene | error | Nested transaction depth exceeds the maximum allowed (default 8) |
+| `scene.transaction-rollback-failed` | scene | fatal | A transaction rollback itself failed; state may be inconsistent |
 | `document.page-not-found` | document | error | Referenced page does not exist |
 | `document.duplicate-page-id` | document | error | Page ID already exists in the document |
 | `document.duplicate-route` | document | error | Route already assigned to another page |
@@ -157,14 +161,16 @@ For `error`-severity failures on individual actions:
 3. The editor UI displays the error and allows the user to correct and retry.
 4. The undo stack is not modified.
 
-### 4.2 Batch Recovery
+### 4.2 Batch And Transaction Recovery
 
-For `batch-actions` failures:
+For `batch-actions` or transaction failures:
 
-1. If any child action fails, the entire batch is rolled back.
-2. The document and scene are restored to pre-batch state.
+1. If any child action fails during `applyActions`, the entire batch/transaction is rolled back.
+2. The document and scene are restored to pre-batch/pre-transaction state.
 3. The failed child action's error is surfaced.
 4. The remaining valid child actions do not take effect.
+5. For transactions, rollback restores the pre-state snapshot captured at `beginTransaction`.
+6. If rollback itself fails (`scene.transaction-rollback-failed`), the state may be inconsistent and the editor should surface a fatal error.
 
 ### 4.3 Load Recovery
 

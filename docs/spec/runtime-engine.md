@@ -234,6 +234,141 @@ Behavior:
 3. Must rollback entirely if any child action fails.
 4. Nested batch actions are flattened before execution; the self-referencing type exists for composability, not for unbounded nesting.
 
+### 3.12 Transaction Lifecycle
+
+`batch-actions` (§3.11) is a building block. The **Transaction** system is the full lifecycle wrapper around one or more actions.
+
+A Transaction is not an action type — it is an execution context that wraps a group of actions with a begin/commit/rollback lifecycle.
+
+#### 3.12.1 RuntimeTransaction
+
+```ts
+export interface RuntimeTransaction {
+  id: string
+  timestamp: number
+  source: 'user' | 'ai' | 'system'
+  actions: RuntimeAction[]
+  inverseActions?: RuntimeAction[]
+  affectedNodes: NodeId[]
+  metadata?: Record<string, unknown>
+}
+```
+
+Fields:
+
+| Field | Description |
+|------|------|
+| `id` | Unique transaction ID (UUID) |
+| `timestamp` | Epoch ms when the transaction began |
+| `source` | Origin of the transaction — `'user'` for direct UI interaction, `'ai'` for compiler output, `'system'` for internal/collaboration |
+| `actions` | Ordered list of child actions |
+| `inverseActions` | Computed inverse actions for undo (populated on commit) |
+| `affectedNodes` | Set of node IDs touched by any child action |
+| `metadata` | Optional extensible metadata (e.g., `{ aiPrompt, confidence }`) |
+
+#### 3.12.2 Transaction Lifecycle
+
+Every transaction follows this lifecycle:
+
+```text
+beginTransaction()
+  └── applyActions()       — execute each child action in order
+  └── validate()           — validate post-condition state
+  └── collectAffectedNodes()  — gather all touched node IDs
+  └── computeDerivedState()   — recompute derived/inferred state
+  └── emitEvents()            — fire scene-changed events
+  └── createInverseActions()  — compute inverse for each action (reversed)
+  └── pushHistory()           — append to transaction log
+commitTransaction()
+
+On failure at any step:
+rollbackTransaction()  — restore pre-transaction state
+```
+
+Steps:
+
+1. **beginTransaction**: Allocate transaction ID, capture pre-state snapshot.
+2. **applyActions**: Execute each `RuntimeAction` via the handler registry in order. Each action validates its own preconditions.
+3. **validate**: Post-state validation (constraint checks, referential integrity). If any constraint fails, rollback.
+4. **collectAffectedNodes**: Walk all child actions and build a deduplicated set of every `nodeId` referenced by any action. This set feeds into scheduler, computed properties, and render invalidation.
+5. **computeDerivedState**: Recompute any derived scene state (auto-layout, constraint-satisfied positions, binding-resolved values). This step is optional for simple transactions.
+6. **emitEvents**: Notify subscribers (renderer, devtools, collaboration) with the affected node set and new scene snapshot.
+7. **createInverseActions**: For each child action, compute the inverse action and collect them in reverse order. Store as `inverseActions` on the transaction.
+8. **pushHistory**: Append the transaction to the undo stack. The undo stack stores transactions, not individual actions.
+9. **commitTransaction**: Freeze the transaction, mark it committed. The scene version is bumped once per transaction.
+
+#### 3.12.3 TransactionManager
+
+```ts
+export interface TransactionManager<TState, TAction> {
+  begin(source: TransactionSource, metadata?: Record<string, unknown>): TransactionContext<TAction>
+  commit(context: TransactionContext<TAction>): TransactionResult<TState>
+  rollback(context: TransactionContext<TAction>): TState
+}
+
+export interface TransactionContext<TAction> {
+  tx: RuntimeTransaction  // or DocumentTransaction
+  preState: TState
+  postState?: TState
+  rollbackState?: TState
+}
+
+export interface TransactionResult<TState> {
+  ok: boolean
+  state: TState
+  tx: RuntimeTransaction  // committed or failed
+  error?: RuntimeError
+}
+```
+
+#### 3.12.4 Source Tracking
+
+Every transaction carries a `source` field:
+
+- `'user'`: Created by direct editor interaction (drag, click, keyboard shortcut)
+- `'ai'`: Created by the AI compiler pipeline
+- `'system'`: Created by collaboration sync, internal scheduler, or recovery
+
+The source field is used by history filters (e.g., "undo only AI actions") and collaboration conflict resolution.
+
+#### 3.12.5 Nested Transactions
+
+Transactions can be nested. A nested transaction shares its parent's `id` prefix.
+
+```text
+Transaction A (source: 'ai')
+  ├── Sub-transaction A.1 (source: 'ai', layout phase)
+  └── Sub-transaction A.2 (source: 'ai', style phase)
+```
+
+Nested transaction rules:
+
+1. A nested transaction's `id` is `${parentId}.${increment}`.
+2. Rolling back a parent transaction cascades to all children.
+3. Committing a nested transaction does not push to history or bump version — only the root transaction does.
+4. If a nested transaction fails, the parent must either retry or rollback.
+5. Middleware sees the root transaction; nested transaction boundaries are transparent to middleware.
+
+#### 3.12.6 Transaction vs Batch
+
+| | `batch-actions` | Transaction |
+|--|------|------|
+| Scope | One action type | Full lifecycle wrapper |
+| Lifecycle | Apply + inverse only | begin/validate/commit/rollback |
+| Source tracking | None | `'user' \| 'ai' \| 'system'` |
+| affectedNodes | Not collected | Collected and exposed |
+| Derived state | Not computed | Optional computeDerivedState step |
+| History unit | Single history entry | Transaction log entry |
+| Nesting | Flattened (no nesting) | Supported via sub-transaction |
+
+#### 3.12.7 Migration Path
+
+Existing `batch-actions` handling is preserved. New code should use `TransactionManager`:
+
+1. `batch-actions` handler is internally backed by `TransactionManager.begin()` + `.commit()`.
+2. Editor integrations that call `batch()` via `DispatchAPI` automatically get the full transaction lifecycle.
+3. AI compiler uses `TransactionManager` directly to set `source: 'ai'` and attach metadata.
+
 ## 4. Command Bus
 
 ```ts
@@ -360,28 +495,34 @@ Responsibilities:
 
 ## 8. History Model
 
+History stores committed **transactions**, not individual actions.
+
 ```ts
-export interface HistoryState {
-  undoStack: HistoryEntry[]
-  redoStack: HistoryEntry[]
+export interface HistoryState<TAction> {
+  undoStack: TransactionEntry<TAction>[]
+  redoStack: TransactionEntry<TAction>[]
+  maxStackSize: number
 }
 
-export interface HistoryEntry {
-  action: RuntimeAction
-  inverseAction?: RuntimeAction
+export interface TransactionEntry<TAction> {
+  tx: RuntimeTransaction  | DocumentTransaction  // generic transaction
   timestamp: number
   actorId?: string
 }
 ```
 
+Each `TransactionEntry` wraps a fully committed transaction with its pre-computed `inverseActions`. Undo/redo operates at transaction granularity.
+
 Rules:
 
-1. `undo` applies `inverseAction` if available.
-2. Complex actions should prefer explicit inverse actions over full snapshots when feasible.
-3. For actions whose inverse cannot be represented compactly, history may store structural patch metadata.
-4. Selection-only actions use a separate transient history policy and are excluded from durable content history by default.
-5. Collaborative undo and redo operate on each actor's own durable actions only.
-6. Remote durable actions do not enter the local actor's undo stack.
+1. `undo` applies all `inverseActions` in the transaction in order.
+2. `redo` reapplies all `actions` in the transaction in order.
+3. A transaction is the smallest undoable unit. A single user gesture (drag, AI generate, paste) produces exactly one transaction.
+4. Selection-only actions are excluded from transactions and use a separate transient history policy.
+5. Collaborative undo and redo operate on each actor's own committed transactions only.
+6. Remote committed transactions do not enter the local actor's undo stack.
+7. The `source` field on the transaction enables filtered history views (e.g., "undo only AI transactions").
+8. The maximum undo stack is bounded at 200 entries. When exceeded, the oldest entries are evicted.
 
 ## 9. Event Sourcing
 
