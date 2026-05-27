@@ -1,0 +1,1 @@
+{"id":"doc-1","title":"Unknown Plugin Node","pages":[{"id":"page-1","name":"Unknown","sceneId":"scene-1"}],"scenes":{"scene-1":{"version":0,"rootId":"root","nodes":{"root":{"id":"root","type":"container","children":["unknown-1"]},"unknown-1":{"id":"unknown-1","type":"nonexistent-plugin","props":{}}}}}}
