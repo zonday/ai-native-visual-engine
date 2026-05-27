@@ -19,6 +19,7 @@ import {
   createRuntimeHistoryState,
   createRuntimeTransactionManager,
   createScheduler,
+  createSelectorRegistry,
   createTransactionFlag,
   createTransactionMiddleware,
   createUndoHistoryMiddleware,
@@ -67,6 +68,11 @@ function App() {
         documentHistoryRef.current.redoStack.length > 0,
     );
   }, []);
+
+  const selectorRegistry = useMemo(
+    () => createSelectorRegistry(scene),
+    [scene],
+  );
 
   const constraintRegistry = useMemo(() => {
     const reg = createConstraintRegistry();
@@ -240,7 +246,7 @@ function App() {
     (event: TransformEvent) => {
       if (!event.commit) return;
 
-      const node = scene.nodes[event.nodeId];
+      const node = selectorRegistry.getNode(event.nodeId);
       if (!node) return;
       const layout = (node.layout ?? {}) as Record<string, unknown>;
 
@@ -271,7 +277,7 @@ function App() {
         });
       }
     },
-    [dispatchRuntime, scene.nodes],
+    [dispatchRuntime, selectorRegistry],
   );
 
   const handleUpdateProps = useCallback(
@@ -443,13 +449,15 @@ function App() {
           ↪ Redo
         </button>
         <span className="ml-auto text-xs text-slate-500">
-          Pages: {doc.pages.length} | Nodes: {Object.keys(scene.nodes).length}
+          Pages: {doc.pages.length} | Nodes:{" "}
+          {selectorRegistry.getAllNodes().length}
         </span>
       </div>
       <Editor
         document={doc}
         registry={registry}
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
+        selectorRegistry={selectorRegistry}
         onTransform={handleTransform}
         onUpdateProps={handleUpdateProps}
         onDispatchRuntime={dispatchRuntime}

@@ -1,13 +1,13 @@
-import type { VisualDocument } from "@ai-native/core";
+import type { SelectorRegistry } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditorStore } from "../store.js";
 
 export interface LayersProps {
-  document: VisualDocument;
+  selectorRegistry?: SelectorRegistry;
   onRenameNode?: (nodeId: string, name: string) => void;
 }
 
-export function Layers({ document, onRenameNode }: LayersProps) {
+export function Layers({ selectorRegistry, onRenameNode }: LayersProps) {
   const activePageId = useEditorStore((s) => s.activePageId);
   const selectedIds = useEditorStore((s) => s.nodeIds);
   const setSelection = useEditorStore((s) => s.setSelection);
@@ -33,8 +33,7 @@ export function Layers({ document, onRenameNode }: LayersProps) {
   const page = document.pages.find((p) => p.id === activePageId);
   if (!page) return null;
 
-  const scene = document.scenes[page.sceneId];
-  const nodes = scene ? Object.values(scene.nodes) : [];
+  const nodes = selectorRegistry ? selectorRegistry.getAllNodes() : [];
 
   return (
     <div className="p-3 border-t border-slate-200">

@@ -1,6 +1,7 @@
 import type {
   DocumentAction,
   RuntimeAction,
+  SelectorRegistry,
   VisualDocument,
 } from "@ai-native/core";
 import type {
@@ -19,6 +20,7 @@ export interface EditorProps {
   document: VisualDocument;
   registry: ComponentRegistry;
   context: RenderContext;
+  selectorRegistry?: SelectorRegistry;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
   onDispatchRuntime?: (action: RuntimeAction) => void;
@@ -29,6 +31,7 @@ export function Editor({
   document,
   registry,
   context,
+  selectorRegistry,
   onTransform,
   onUpdateProps,
   onDispatchRuntime,
@@ -81,7 +84,10 @@ export function Editor({
     <div className="flex flex-1 min-h-0">
       <aside className="w-60 border-r border-slate-200 overflow-auto shrink-0">
         <PageList document={document} onRenamePage={handleRenamePage} />
-        <Layers document={document} onRenameNode={handleRenameNode} />
+        <Layers
+          selectorRegistry={selectorRegistry}
+          onRenameNode={handleRenameNode}
+        />
       </aside>
       <main className="flex-1 relative overflow-hidden">
         <Canvas
