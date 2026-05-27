@@ -1,15 +1,13 @@
+import type { Middleware } from "../engine/command-bus.js";
 import type { RuntimeAction } from "../runtime/actions.js";
-import type { DispatchResult } from "../runtime/command-bus.js";
 import type { SceneGraph } from "../types.js";
 import type { ConstraintRegistry } from "./constraint-registry.js";
 import type { ConstraintInput } from "./constraint-types.js";
 
-export function createConstraintMiddleware(registry: ConstraintRegistry) {
-  return (
-    action: RuntimeAction,
-    state: SceneGraph,
-    next: () => DispatchResult,
-  ): DispatchResult => {
+export function createConstraintMiddleware(
+  registry: ConstraintRegistry,
+): Middleware<SceneGraph, RuntimeAction> {
+  return (action, state, next) => {
     const input: ConstraintInput = {
       scene: state,
       action,
@@ -19,7 +17,7 @@ export function createConstraintMiddleware(registry: ConstraintRegistry) {
     if (!report.pass) {
       return {
         ok: false,
-        scene: state,
+        state,
         error: {
           code: "constraint.violation",
           message: report.violations

@@ -203,7 +203,7 @@ describe("Constraint middleware", () => {
         called = true;
         return {
           ok: true,
-          scene: makeScene({
+          state: makeScene({
             root: { id: "root", type: "container" },
             x: { id: "x", type: "text" },
           }),
@@ -222,7 +222,7 @@ describe("Constraint middleware", () => {
     const result = mw(
       { type: "remove-node", nodeId: "root" },
       makeScene({ root: { id: "root", type: "container" } }),
-      () => ({ ok: true, scene: makeScene({}) }),
+      () => ({ ok: true, state: makeScene({}) }),
     );
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("constraint.violation");

@@ -1,18 +1,31 @@
 import type {
+  DocumentAction,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
 } from "@ai-native/core";
 import {
+  createBatchHandler,
+  createConstraintMiddleware,
+  createConstraintRegistry,
   createDefaultDocumentRegistries,
   createDefaultRuntimeRegistries,
+  createDocumentBatchHandler,
   createDocumentCommandBus,
+  createDocumentHistoryState,
   createNewDocument,
   createRuntimeCommandBus,
+  createRuntimeHistoryState,
+  createUndoHistoryMiddleware,
+  createValidatorMiddleware,
+  DEFAULT_LAYOUT_CONSTRAINTS,
+  DocumentActionSchema,
   openDocumentSession,
+  RuntimeActionSchema,
 } from "@ai-native/core";
+import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "./Editor.js";
 
@@ -29,17 +42,55 @@ function App() {
     return session.getActiveScene();
   });
 
+  const runtimeHistoryRef = useRef(createRuntimeHistoryState());
+  const documentHistoryRef = useRef(createDocumentHistoryState());
+
+  const constraintRegistry = useMemo(() => {
+    const reg = createConstraintRegistry();
+    for (const c of DEFAULT_LAYOUT_CONSTRAINTS) {
+      reg.register(c);
+    }
+    return reg;
+  }, []);
+
   const runtimeBus = useMemo(() => {
     const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
       ok: false,
       scene,
       error: { code: "nested", message: "nested" },
     }));
-    return createRuntimeCommandBus(handlerRegistry, [], scene, {
+
+    const middlewares = [
+      createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
+      createConstraintMiddleware(constraintRegistry),
+      createUndoHistoryMiddleware(
+        () => runtimeHistoryRef.current,
+        (s) => {
+          runtimeHistoryRef.current = s;
+        },
+        () => "editor",
+        handlerRegistry,
+        () => ({ now: Date.now, actorId: "editor" }),
+      ),
+    ];
+
+    const bus = createRuntimeCommandBus(handlerRegistry, middlewares, scene, {
       now: Date.now,
       actorId: "editor",
     });
-  }, [scene]);
+
+    const batchEntry = handlerRegistry.get("batch-actions");
+    if (batchEntry) {
+      handlerRegistry.set("batch-actions", {
+        ...batchEntry,
+        handler: createBatchHandler((action) =>
+          bus.dispatch(action),
+        ) as typeof batchEntry.handler,
+      });
+    }
+
+    return bus;
+  }, [scene, constraintRegistry]);
 
   const documentBus = useMemo(() => {
     const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
@@ -47,10 +98,38 @@ function App() {
       document: doc,
       error: { code: "nested", message: "nested" },
     }));
-    return createDocumentCommandBus(handlerRegistry, [], doc, {
+
+    const middlewares = [
+      createValidatorMiddleware<VisualDocument, DocumentAction>(
+        DocumentActionSchema,
+      ),
+      createUndoHistoryMiddleware(
+        () => documentHistoryRef.current,
+        (s) => {
+          documentHistoryRef.current = s;
+        },
+        () => "editor",
+        handlerRegistry,
+        () => ({ now: Date.now, actorId: "editor" }),
+      ),
+    ];
+
+    const bus = createDocumentCommandBus(handlerRegistry, middlewares, doc, {
       now: Date.now,
       actorId: "editor",
     });
+
+    const batchDocEntry = handlerRegistry.get("batch-document-actions");
+    if (batchDocEntry) {
+      handlerRegistry.set("batch-document-actions", {
+        ...batchDocEntry,
+        handler: createDocumentBatchHandler((action) =>
+          bus.dispatch(action),
+        ) as typeof batchDocEntry.handler,
+      });
+    }
+
+    return bus;
   }, [doc]);
 
   const dispatchRuntime = useCallback(
@@ -105,6 +184,51 @@ function App() {
     });
   }, [dispatchRuntime, scene.rootId]);
 
+  const handleTransform = useCallback(
+    (event: TransformEvent) => {
+      if (!event.commit) return;
+
+      const node = scene.nodes[event.nodeId];
+      if (!node) return;
+      const layout = (node.layout ?? {}) as Record<string, unknown>;
+
+      if (event.type === "move") {
+        dispatchRuntime({
+          type: "update-layout",
+          nodeId: event.nodeId,
+          layout: {
+            x: (Number(layout.x) || 0) + event.deltaX,
+            y: (Number(layout.y) || 0) + event.deltaY,
+          },
+        });
+      } else if (event.type === "resize") {
+        dispatchRuntime({
+          type: "update-layout",
+          nodeId: event.nodeId,
+          layout: {
+            width: (Number(layout.width) || 100) + event.deltaX,
+            height: (Number(layout.height) || 100) + event.deltaY,
+          },
+        });
+      } else if (event.type === "rotate") {
+        const rotation = (Number(layout.rotation) || 0) + event.deltaX;
+        dispatchRuntime({
+          type: "rotate-node",
+          nodeId: event.nodeId,
+          rotation,
+        });
+      }
+    },
+    [dispatchRuntime, scene.nodes],
+  );
+
+  const handleUpdateProps = useCallback(
+    (nodeId: string, props: Record<string, unknown>) => {
+      dispatchRuntime({ type: "update-props", nodeId, props });
+    },
+    [dispatchRuntime],
+  );
+
   const registry = useMemo(() => createRendererRegistry(), []);
 
   const firstPageSceneId =
@@ -132,6 +256,8 @@ function App() {
         document={doc}
         registry={registry}
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
+        onTransform={handleTransform}
+        onUpdateProps={handleUpdateProps}
       />
     </div>
   );

@@ -10,15 +10,29 @@ const sceneWithNode: SceneGraph = makeScene({
 });
 
 describe("updateRuntimeHandler", () => {
-  it("replaces runtime state entirely", () => {
+  it("shallow-merges runtime state onto existing node runtime", () => {
     const action = {
       type: "update-runtime" as const,
       nodeId: "a",
       runtime: { isLoading: false },
     };
     const result = updateRuntimeHandler(sceneWithNode, action, { now: Date.now });
-    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: false });
+    expect(result.nodes["a"]?.runtime).toEqual({ isLoading: false, count: 5 });
     expect(result.version).toBe(1);
+  });
+
+  it("overwrites specific keys while preserving others", () => {
+    const scene: SceneGraph = makeScene({
+      root: { id: "root", type: "container", children: ["a"] },
+      a: { id: "a", type: "container", parentId: "root", runtime: { a: 1, b: 2, c: 3 } },
+    });
+    const action = {
+      type: "update-runtime" as const,
+      nodeId: "a",
+      runtime: { a: 10, c: 30 },
+    };
+    const result = updateRuntimeHandler(scene, action, { now: Date.now });
+    expect(result.nodes["a"]?.runtime).toEqual({ a: 10, b: 2, c: 30 });
   });
 
   it("adds runtime state when node has no existing runtime", () => {
