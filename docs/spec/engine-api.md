@@ -32,6 +32,8 @@ export interface EngineAPI {
   dispatch: DispatchAPI
   transaction: TransactionAPI
   states: StateAPI
+  selector: SelectorAPI
+  computed: ComputedStateAPI
 }
 ```
 
@@ -215,7 +217,48 @@ Rules:
 3. `setExclusive` activates a state and deactivates it on all other nodes in the same group.
 4. `getActiveStates` returns states in activation order.
 
-### 3.8 Subscribing To Scene Changes
+### 3.8 SelectorAPI
+
+Unified, memoized read access to `SceneGraph`. See `selector-system.md` for full spec.
+
+```ts
+export interface SelectorAPI {
+  getNode(nodeId: NodeId): SceneNode | undefined
+  getChildren(nodeId: NodeId): SceneNode[]
+  getParent(nodeId: NodeId): SceneNode | undefined
+  getRoot(): SceneNode
+  getAncestors(nodeId: NodeId): SceneNode[]
+  getDescendants(nodeId: NodeId): SceneNode[]
+  getVisibleNodes(): SceneNode[]
+}
+```
+
+Rules:
+
+1. Selectors are memoized by `scene.version`. Repeated calls with the same scene return cached results.
+2. `SelectorAPI` replaces direct `scene.nodes[id]` access. All renderers and plugins must use selectors.
+3. Selectors never mutate state. They return read-only data.
+
+### 3.9 ComputedStateAPI
+
+Derived state computation. See `computed-state-engine.md` for full spec.
+
+```ts
+export interface ComputedStateAPI {
+  getWorldTransform(nodeId: NodeId): WorldTransform
+  getComputedBounds(nodeId: NodeId): ComputedBounds
+  getVisibleBounds(nodeId: NodeId): ComputedBounds | null
+  getCenter(nodeId: NodeId): { x: number; y: number }
+}
+```
+
+Rules:
+
+1. Computed state is invalidated through the scheduler after each transaction commit.
+2. Computed state never writes back to `SceneGraph`.
+3. Repeated reads of the same value with no intermediate scene change return cached results.
+
+### 3.10 Subscribing To Scene Changes
 
 Components that need to re-render when scene data changes can subscribe.
 
