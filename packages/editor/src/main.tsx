@@ -428,9 +428,9 @@ function App() {
 
   const handleMoveSelectedNode = useCallback(
     (direction: "up" | "down") => {
-      const selected = interactionEngine.getSelection();
-      if (selected.length !== 1) return;
-      const nodeId = selected[0];
+      const selection = interactionEngine.getSelection();
+      const nodeId = selection[0];
+      if (selection.length !== 1 || !nodeId) return;
       if (nodeId === scene.rootId) return;
       const parent = selectorRegistry.getParent(nodeId);
       if (!parent) return;
