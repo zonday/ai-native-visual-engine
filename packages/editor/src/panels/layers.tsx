@@ -20,6 +20,7 @@ export interface LayersProps {
   interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
   onMoveNode?: (nodeId: string, parentId: string, index: number) => void;
+  sceneKey?: number;
 }
 
 interface FlatItem {
@@ -167,6 +168,7 @@ export function Layers({
   interactionEngine,
   onRenameNode,
   onMoveNode,
+  sceneKey,
 }: LayersProps) {
   const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -194,7 +196,7 @@ export function Layers({
     const root = selectorRegistry.getRoot();
     if (!root) return [];
     return buildFlattened(selectorRegistry, root.id, collapsedIds);
-  }, [selectorRegistry, collapsedIds]);
+  }, [selectorRegistry, collapsedIds, sceneKey]);
 
   const rootId = useMemo(
     () => selectorRegistry?.getRoot()?.id ?? "",

@@ -123,6 +123,7 @@ export function Editor({
           interactionEngine={interactionEngine}
           onRenameNode={handleRenameNode}
           onMoveNode={handleMoveNode}
+          sceneKey={currentPage?.sceneId ?? currentScene?.version}
         />
       </aside>
       <main
