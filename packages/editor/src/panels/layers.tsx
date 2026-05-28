@@ -191,6 +191,7 @@ export function Layers({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sceneKey triggers recompute when page switches
   const flattened = useMemo(() => {
     if (!selectorRegistry) return [];
     const root = selectorRegistry.getRoot();
