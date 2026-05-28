@@ -56,7 +56,7 @@ export function validateGraphInvariants(
     }
 
     // 5. Reciprocal consistency: if X is child of Y, then Y must list X in children
-    if (node.parentId && node.parentId !== rootId) {
+    if (node.parentId) {
       const parent = nodes[node.parentId];
       if (parent && !parent.children?.includes(id)) {
         violations.push({
