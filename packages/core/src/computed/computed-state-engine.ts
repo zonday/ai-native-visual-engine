@@ -1,6 +1,6 @@
-import { computed, type signal } from "alien-signals";
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
+import { createScope, type Signal } from "../deps/reactive-scope.js";
 
 export interface WorldTransform {
   x: number;
@@ -68,7 +68,8 @@ function getNodeHeight(node: SceneNode): number {
 export function createComputedStateEngine(
   selectors: SelectorRegistry,
 ): ComputedStateEngine {
-  const versionSignals = new Map<NodeId, ReturnType<typeof signal<number>>>();
+  const { signal, computed } = createScope();
+  const versionSignals = new Map<NodeId, Signal<number>>();
   const worldCache = new Map<NodeId, () => WorldTransform>();
   const boundsCache = new Map<NodeId, () => ComputedBounds>();
   const visibleBoundsCache = new Map<string, () => ComputedBounds | null>();

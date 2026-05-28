@@ -1,5 +1,5 @@
-import { computed, signal } from "alien-signals";
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
+import { createScope, type Signal } from "../deps/reactive-scope.js";
 
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
@@ -22,7 +22,8 @@ export interface SelectorRegistry {
 }
 
 export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
-  const versionSignals = new Map<NodeId, ReturnType<typeof signal<number>>>();
+  const { signal, computed } = createScope();
+  const versionSignals = new Map<NodeId, Signal<number>>();
   const computedCache = new Map<string, () => unknown>();
   let syncedVersion = scene.version;
 
