@@ -41,6 +41,7 @@ import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
 import { useEditorStore } from "./store.js";
 
@@ -464,22 +465,12 @@ function App() {
         >
           + Add Text
         </button>
-        <button
-          type="button"
-          onClick={handleUndo}
-          disabled={!canUndo}
-          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-        >
+        <Button onClick={handleUndo} disabled={!canUndo}>
           ↩ Undo
-        </button>
-        <button
-          type="button"
-          onClick={handleRedo}
-          disabled={!canRedo}
-          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-        >
+        </Button>
+        <Button onClick={handleRedo} disabled={!canRedo}>
           ↪ Redo
-        </button>
+        </Button>
         <button
           type="button"
           onClick={() => {
