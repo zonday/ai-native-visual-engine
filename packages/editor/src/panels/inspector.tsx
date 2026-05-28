@@ -268,20 +268,6 @@ export function Inspector({
       {/* Style Section */}
       <SectionHeader title="Style" />
       <div className="text-xs space-y-1.5">
-        <FieldRow label="Width">
-          <DebouncedField
-            type="number"
-            value={(nodeStyle.width as number) ?? 0}
-            onChange={(v) => patchStyle("width", v)}
-          />
-        </FieldRow>
-        <FieldRow label="Height">
-          <DebouncedField
-            type="number"
-            value={(nodeStyle.height as number) ?? 0}
-            onChange={(v) => patchStyle("height", v)}
-          />
-        </FieldRow>
         <FieldRow label="Opacity">
           <DebouncedField
             type="number"
