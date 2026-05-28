@@ -473,10 +473,11 @@ function App() {
     };
   }, [interactionEngine]);
 
+  const commands = useCommands();
+
   const hotkeyBindings = useMemo(
     () =>
-      commandRegistry
-        .getAll()
+      commands
         .filter(
           (
             cmd,
@@ -487,12 +488,10 @@ function App() {
           ...cmd.shortcut,
           handler: () => commandRegistry.execute(cmd.id),
         })),
-    [],
+    [commands],
   );
 
   useHotkey(hotkeyBindings);
-
-  const commands = useCommands();
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
