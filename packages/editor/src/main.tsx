@@ -578,7 +578,7 @@ function App() {
         </button>
         <button
           type="button"
-          onClick={() => addNode("text", { width: 200 })}
+          onClick={() => addNode("text")}
           className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
         >
           + Add Text
@@ -586,7 +586,11 @@ function App() {
         <button
           type="button"
           onClick={() =>
-            addNode("container", { mode: "flex", width: 400, height: 300 })
+            addNode("container", {
+              mode: "flex",
+              width: 400,
+              height: 300,
+            })
           }
           className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
         >
