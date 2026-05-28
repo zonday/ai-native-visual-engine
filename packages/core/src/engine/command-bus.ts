@@ -38,8 +38,7 @@ function detectSameRef<T>(before: T, after: T, action: { type: string }): void {
   }
 }
 
-const isDev =
-  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+const isDev = process.env.NODE_ENV !== "production";
 
 export function createCommandBus<
   TState,
@@ -78,6 +77,7 @@ export function createCommandBus<
             deepFreeze(runningState);
             runningState = handler(runningState, action, context);
             detectSameRef(stateBefore, runningState, action);
+            deepFreeze(runningState);
           } else {
             runningState = handler(runningState, action, context);
           }

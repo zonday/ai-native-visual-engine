@@ -20,6 +20,7 @@ export interface LayersProps {
   interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
   onMoveNode?: (nodeId: string, parentId: string, index: number) => void;
+  sceneKey?: number;
 }
 
 interface FlatItem {
@@ -130,23 +131,32 @@ function SortableLayerItem({
           isSelected ? "bg-sky-100 text-sky-900" : "bg-transparent text-inherit"
         }`}
       >
-        {flatItem.hasChildren && (
-          <button
-            type="button"
+        {flatItem.hasChildren ? (
+          // biome-ignore lint/a11y/useSemanticElements: cannot nest <button> inside <button>
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               onToggle();
             }}
-            className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-none"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.stopPropagation();
+                onToggle();
+              }
+            }}
+            className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
           >
             {isCollapsed ? (
               <ChevronRight size={14} />
             ) : (
               <ChevronDown size={14} />
             )}
-          </button>
+          </span>
+        ) : (
+          <span className="w-4" />
         )}
-        {!flatItem.hasChildren && <span className="w-4" />}
         {flatItem.label}
       </button>
     </div>
@@ -158,6 +168,7 @@ export function Layers({
   interactionEngine,
   onRenameNode,
   onMoveNode,
+  sceneKey,
 }: LayersProps) {
   const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -180,12 +191,13 @@ export function Layers({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sceneKey triggers recompute when page switches
   const flattened = useMemo(() => {
     if (!selectorRegistry) return [];
     const root = selectorRegistry.getRoot();
     if (!root) return [];
     return buildFlattened(selectorRegistry, root.id, collapsedIds);
-  }, [selectorRegistry, collapsedIds]);
+  }, [selectorRegistry, collapsedIds, sceneKey]);
 
   const rootId = useMemo(
     () => selectorRegistry?.getRoot()?.id ?? "",

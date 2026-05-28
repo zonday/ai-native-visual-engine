@@ -123,6 +123,7 @@ export function Editor({
           interactionEngine={interactionEngine}
           onRenameNode={handleRenameNode}
           onMoveNode={handleMoveNode}
+          sceneKey={currentPage?.sceneId ?? currentScene?.version}
         />
       </aside>
       <main
@@ -133,6 +134,7 @@ export function Editor({
           registry={registry}
           context={editorContext}
           interactionEngine={interactionEngine}
+          selectedIds={nodeIds}
           onTransform={onTransform}
           onUpdateProps={onUpdateProps}
           onViewportChange={onViewportChange}

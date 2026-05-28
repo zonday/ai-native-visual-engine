@@ -15,6 +15,7 @@ export interface CanvasProps {
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
   onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
+  selectedIds?: string[];
 }
 
 export function Canvas({
@@ -24,6 +25,7 @@ export function Canvas({
   onTransform,
   onUpdateProps,
   onViewportChange,
+  selectedIds,
 }: CanvasProps) {
   const handleSelectNode = useCallback(
     (id: string, options?: SelectNodeOptions) => {
@@ -41,6 +43,7 @@ export function Canvas({
     <SceneRenderer
       registry={registry}
       context={context}
+      selectedIds={selectedIds}
       onSelectNode={handleSelectNode}
       onTransform={onTransform}
       onUpdateProps={onUpdateProps}

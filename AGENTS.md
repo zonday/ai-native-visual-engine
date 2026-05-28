@@ -171,7 +171,8 @@ These are actions that agents MUST NOT perform:
 6. MUST NOT deviate from the spec without updating the spec first.
 7. MUST NOT bypass the action model for any state mutation.
 8. MUST NOT circumvent the pre-commit hook or commit code that fails biome or tests.
-9. MUST NOT invent new spec documents without explicit approval.
+9. MUST NOT use `git push --no-verify`, `git commit --no-verify`, `git push --force`, or any other mechanism that bypasses quality gates — unless explicitly approved by the user.
+10. MUST NOT invent new spec documents without explicit approval.
 
 ## Key Spec References
 
