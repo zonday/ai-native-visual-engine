@@ -42,6 +42,7 @@ import { createRendererRegistry } from "@ai-native/renderer-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "./Editor.js";
+import { useEditorStore } from "./store.js";
 
 function createBootstrapDoc(): VisualDocument {
   return createNewDocument({ title: "My Dashboard" });
@@ -427,6 +428,8 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleUndo, handleRedo]);
 
+  const setViewport = useEditorStore((s) => s.setViewport);
+
   const handleDispatchDocument = useCallback(
     (action: DocumentAction) => {
       const result = documentBus.dispatch(action);
@@ -476,6 +479,38 @@ function App() {
         >
           ↪ Redo
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const nodes = selectorRegistry.getAllNodes();
+            if (nodes.length === 0) return;
+            let minX = Infinity,
+              minY = Infinity,
+              maxX = -Infinity,
+              maxY = -Infinity;
+            for (const n of nodes) {
+              if (n.id === currentScene.rootId) continue;
+              const b = computedEngineRef.current.getComputedBounds(n.id);
+              minX = Math.min(minX, b.x);
+              minY = Math.min(minY, b.y);
+              maxX = Math.max(maxX, b.x + b.width);
+              maxY = Math.max(maxY, b.y + b.height);
+            }
+            const w = maxX - minX || 1;
+            const h = maxY - minY || 1;
+            const containerW = window.innerWidth * 0.7;
+            const containerH = window.innerHeight * 0.8;
+            const zoom = Math.min(containerW / w, containerH / h, 1.5);
+            setViewport({
+              x: minX - (containerW / zoom - w) / 2,
+              y: minY - (containerH / zoom - h) / 2,
+              zoom,
+            });
+          }}
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
+        >
+          ⊞ Fit
+        </button>
         <span className="ml-auto text-xs text-slate-500">
           Pages: {doc.pages.length} | Nodes:{" "}
           {selectorRegistry.getAllNodes().length}
@@ -495,6 +530,7 @@ function App() {
         interactionEngine={interactionEngine}
         onTransform={handleTransform}
         onUpdateProps={handleUpdateProps}
+        onViewportChange={setViewport}
         onDispatchRuntime={dispatchRuntime}
         onDispatchDocument={handleDispatchDocument}
       />

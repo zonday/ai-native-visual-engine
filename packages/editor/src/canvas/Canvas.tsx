@@ -14,6 +14,7 @@ export interface CanvasProps {
   interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
+  onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
 }
 
 export function Canvas({
@@ -22,6 +23,7 @@ export function Canvas({
   interactionEngine,
   onTransform,
   onUpdateProps,
+  onViewportChange,
 }: CanvasProps) {
   const handleSelectNode = useCallback(
     (id: string, options?: SelectNodeOptions) => {
@@ -42,6 +44,7 @@ export function Canvas({
       onSelectNode={handleSelectNode}
       onTransform={onTransform}
       onUpdateProps={onUpdateProps}
+      onViewportChange={onViewportChange}
     />
   );
 }
