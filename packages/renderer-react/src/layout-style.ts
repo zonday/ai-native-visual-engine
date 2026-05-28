@@ -95,10 +95,9 @@ export function resolveGridStyle(node: SceneNode): React.CSSProperties {
   return style;
 }
 
-export function wrapperNeeded(node: SceneNode, isSelected: boolean): boolean {
+export function wrapperNeeded(node: SceneNode): boolean {
   const layout = node.layout;
   return (
-    isSelected ||
     layout?.mode === "absolute" ||
     layout?.mode === "grid-item" ||
     node.locked === true

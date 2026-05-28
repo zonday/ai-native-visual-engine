@@ -133,6 +133,7 @@ export function Editor({
           registry={registry}
           context={editorContext}
           interactionEngine={interactionEngine}
+          selectedIds={nodeIds}
           onTransform={onTransform}
           onUpdateProps={onUpdateProps}
           onViewportChange={onViewportChange}

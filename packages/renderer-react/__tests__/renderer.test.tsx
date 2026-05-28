@@ -162,7 +162,8 @@ describe("SceneRenderer", () => {
     expect(html).not.toContain('data-node-id="child-1"');
   });
 
-  it("shows selection chrome for a selected absolute-layout node in editor mode", () => {
+  it("shows selection chrome for a selected absolute-layout node in editor mode", async () => {
+    const { render } = await import("@testing-library/react");
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -185,10 +186,10 @@ describe("SceneRenderer", () => {
       scene,
       selection: { nodeIds: ["child-1"] },
     };
-    const html = renderToString(
-      <SceneRenderer registry={registry} context={ctx} />,
+    const { container } = render(
+      <SceneRenderer registry={registry} context={ctx} selectedIds={["child-1"]} />,
     );
-    expect(html).toContain('data-selection-chrome="child-1"');
+    expect(container.querySelector('[data-selection-chrome="child-1"]')).toBeTruthy();
   });
 
   it("does not show selection chrome in runtime mode even with selection", () => {
@@ -262,7 +263,8 @@ describe("SceneRenderer", () => {
     expect(html).not.toContain("data-marquee-overlay");
   });
 
-  it("forwards onTransform and renders selected node with resize handles", () => {
+  it("forwards onTransform and renders selected node with resize handles", async () => {
+    const { render } = await import("@testing-library/react");
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -285,15 +287,16 @@ describe("SceneRenderer", () => {
       scene,
       selection: { nodeIds: ["child-1"] },
     };
-    const html = renderToString(
+    const { container } = render(
       <SceneRenderer
         registry={registry}
         context={ctx}
         onTransform={() => {}}
+        selectedIds={["child-1"]}
       />,
     );
-    expect(html).toContain('data-node-id="child-1"');
-    expect(html).toContain('data-handle="se"');
+    expect(container.querySelector('[data-node-id="child-1"]')).toBeTruthy();
+    expect(container.querySelector('[data-handle="se"]')).toBeTruthy();
   });
 
   it("does not render transform handles for a selected locked node", () => {
@@ -366,7 +369,8 @@ describe("SceneRenderer", () => {
     expect(html).not.toContain("data-handle");
   });
 
-  it("renders transform handles for a selected node with grid-item layout mode", () => {
+  it("renders transform handles for a selected node with grid-item layout mode", async () => {
+    const { render } = await import("@testing-library/react");
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -389,18 +393,20 @@ describe("SceneRenderer", () => {
       scene,
       selection: { nodeIds: ["child-1"] },
     };
-    const html = renderToString(
+    const { container } = render(
       <SceneRenderer
         registry={registry}
         context={ctx}
         onTransform={() => {}}
+        selectedIds={["child-1"]}
       />,
     );
-    expect(html).toContain('data-node-id="child-1"');
-    expect(html).toContain("data-handle");
+    expect(container.querySelector('[data-node-id="child-1"]')).toBeTruthy();
+    expect(container.querySelector("[data-handle]")).toBeTruthy();
   });
 
-  it("shows move cursor on wrapper when a selected absolute node is transformable", () => {
+  it("does not show move cursor on wrapper since selection chrome is in overlay", async () => {
+    const { render } = await import("@testing-library/react");
     const scene: SceneGraph = {
       version: 0,
       rootId: "root",
@@ -423,14 +429,17 @@ describe("SceneRenderer", () => {
       scene,
       selection: { nodeIds: ["child-1"] },
     };
-    const html = renderToString(
+    const { container } = render(
       <SceneRenderer
         registry={registry}
         context={ctx}
         onTransform={() => {}}
+        selectedIds={["child-1"]}
       />,
     );
-    expect(html).toContain("cursor:move");
+    const nodeEl = container.querySelector('[data-node-id="child-1"]');
+    expect(nodeEl).toBeTruthy();
+    expect(nodeEl?.getAttribute("style")).not.toContain("cursor");
   });
 
   it("does not show move cursor on locked selected node", () => {

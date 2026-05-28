@@ -4,7 +4,7 @@ import type {
   SceneNode,
 } from "@ai-native/core";
 import { resolveInstance, resolveStateProps } from "@ai-native/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
 import { resolveComputedLayoutStyle, wrapperNeeded } from "./layout-style.js";
@@ -15,7 +15,7 @@ import type {
   RenderContext,
   TransformEvent,
 } from "./renderer.js";
-import { SelectionChrome } from "./selection-chrome.jsx";
+import { SelectionOverlay } from "./selection-overlay.js";
 
 function missingPluginFallback(n: SceneNode, ctx: RenderContext) {
   return MissingPluginPlaceholder({ nodeType: n.type, mode: ctx.mode });
@@ -41,6 +41,7 @@ export interface SceneRendererProps {
   onViewportChange?: (
     viewport: import("@ai-native/core").ViewportState,
   ) => void;
+  selectedIds?: string[];
 }
 
 function renderNode(
@@ -80,9 +81,6 @@ function renderNode(
 
   const render = resolveRenderer(resolvedNode, registry);
   const layoutStyle = resolveComputedLayoutStyle(resolvedNode, engine);
-  const isSelected = !!(
-    ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
-  );
 
   const childNodes: React.ReactNode[] = [];
   if (node.children) {
@@ -106,7 +104,7 @@ function renderNode(
 
   const content = render(resolvedNode, ctx, childNodes);
 
-  if (ctx.mode !== "editor" && !wrapperNeeded(resolvedNode, isSelected)) {
+  if (ctx.mode !== "editor" && !wrapperNeeded(resolvedNode)) {
     return content;
   }
 
@@ -115,24 +113,14 @@ function renderNode(
     ...(resolvedNode.style as React.CSSProperties | undefined),
   };
 
+  const _layoutMode =
+    resolvedNode.layout && typeof resolvedNode.layout.mode === "string"
+      ? resolvedNode.layout.mode
+      : undefined;
   const isLocked = node.locked === true;
   if (isLocked && ctx.mode === "editor") {
     style.opacity = 0.7;
     style.pointerEvents = "none";
-  }
-
-  // Only expose interactive transform chrome for non-locked nodes whose layout
-  // mode supports transform actions (absolute or grid-item).
-  const layoutMode =
-    resolvedNode.layout && typeof resolvedNode.layout.mode === "string"
-      ? resolvedNode.layout.mode
-      : undefined;
-  const isTransformable =
-    !isLocked && (layoutMode === "absolute" || layoutMode === "grid-item");
-
-  // Show move cursor on the wrapper so the user knows it can be dragged.
-  if (isSelected && isTransformable) {
-    style.cursor = "move";
   }
 
   const wrapperStyle: React.CSSProperties = {
@@ -148,13 +136,6 @@ function renderNode(
       style={wrapperStyle}
     >
       {content}
-      {isSelected && (
-        <SelectionChrome
-          nodeId={node.id}
-          layout={layoutMode ? { mode: layoutMode } : undefined}
-          onTransform={isTransformable ? onTransform : undefined}
-        />
-      )}
     </div>
   );
 }
@@ -204,7 +185,9 @@ export function SceneRenderer({
   onTransform,
   onUpdateProps,
   onViewportChange,
+  selectedIds,
 }: SceneRendererProps) {
+  const sceneContainerRef = useRef<HTMLDivElement | null>(null);
   const moveDragRef = useRef<{
     nodeId: string;
     startX: number;
@@ -234,6 +217,11 @@ export function SceneRenderer({
     origVpX: number;
     origVpY: number;
   } | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -462,16 +450,37 @@ export function SceneRenderer({
             height: 0;
           }`}
         </style>
-        <div
-          role="none"
-          data-scene-root
-          onClick={sceneClickHandler}
-          onMouseDown={sceneMouseDown}
-          onWheel={handleWheel}
-          style={viewportStyle}
-        >
-          {rootContent}
-          {context.marqueeRect && <MarqueeOverlay rect={context.marqueeRect} />}
+        <div style={{ position: "relative", ...viewportStyle }}>
+          <div
+            ref={sceneContainerRef}
+            role="none"
+            data-scene-root
+            onClick={sceneClickHandler}
+            onMouseDown={sceneMouseDown}
+            onWheel={handleWheel}
+          >
+            {rootContent}
+            {context.marqueeRect && (
+              <MarqueeOverlay rect={context.marqueeRect} />
+            )}
+          </div>
+          {mounted && (
+            <SelectionOverlay
+              selectedIds={selectedIds ?? []}
+              sceneContainerRef={sceneContainerRef}
+              onTransform={onTransform}
+              layoutByNode={selectedIds?.reduce(
+                (acc, id) => {
+                  const node = context.scene.nodes[id];
+                  if (node?.layout?.mode) {
+                    acc[id] = { mode: node.layout.mode as string };
+                  }
+                  return acc;
+                },
+                {} as Record<string, { mode: string }>,
+              )}
+            />
+          )}
         </div>
       </EditorCallbacksContext.Provider>
     );
