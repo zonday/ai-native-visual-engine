@@ -84,7 +84,7 @@ export {
   createDocumentTransactionManager,
   type DocumentTransactionManager,
 } from "./document/transaction.js";
-export { pushUndoTransaction } from "./engine/history.js";
+export { pushUndoTransaction, setCheckpoint, clearCheckpoint } from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createTransactionMiddleware } from "./engine/middleware/transaction.js";

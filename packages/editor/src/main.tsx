@@ -30,9 +30,9 @@ import {
   DEFAULT_LAYOUT_CONSTRAINTS,
   DocumentActionSchema,
   openDocumentSession,
-  RuntimeActionSchema,
   redoDocumentAction,
   redoRuntimeAction,
+  setCheckpoint,
   undoDocumentAction,
   undoRuntimeAction,
   validateGraphInvariants,
@@ -79,6 +79,12 @@ function App() {
       runtimeHistoryRef.current.redoStack.length > 0 ||
         documentHistoryRef.current.redoStack.length > 0,
     );
+  }, []);
+
+  // Set checkpoint after initial mount to prevent undoing past initial state
+  useEffect(() => {
+    runtimeHistoryRef.current = setCheckpoint(runtimeHistoryRef.current);
+    documentHistoryRef.current = setCheckpoint(documentHistoryRef.current);
   }, []);
 
   const selectorRegistry = useMemo(
