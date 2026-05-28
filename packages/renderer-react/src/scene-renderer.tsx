@@ -4,7 +4,7 @@ import type {
   SceneNode,
 } from "@ai-native/core";
 import { resolveInstance, resolveStateProps } from "@ai-native/core";
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
 import { resolveComputedLayoutStyle, wrapperNeeded } from "./layout-style.js";
@@ -235,8 +235,6 @@ export function SceneRenderer({
     origVpY: number;
   } | null>(null);
 
-  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
-
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const pan = panRef.current;
@@ -295,12 +293,6 @@ export function SceneRenderer({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
-
-  useEffect(() => {
-    return context.scheduler.subscribe({
-      onAfterCompute: () => forceUpdate(),
-    });
-  }, [context.scheduler]);
 
   const editorCallbacks = useMemo(
     () => ({

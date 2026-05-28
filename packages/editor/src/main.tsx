@@ -149,7 +149,12 @@ function App() {
           runtimeHistoryRef.current = s;
           syncHistoryState();
         },
-        markDirty: (nodeIds) => schedulerRef.current.markDirty(nodeIds),
+        markDirty: (nodeIds) => {
+          schedulerRef.current.markDirty(nodeIds);
+          for (const id of nodeIds) {
+            computedEngineRef.current.invalidate(id);
+          }
+        },
         shouldExcludeFromHistory: () => isUndoingRef.current,
         onAfterCommit: (sceneState) => {
           const violations = validateGraphInvariants(sceneState as SceneGraph);
