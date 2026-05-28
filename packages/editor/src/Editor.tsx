@@ -66,8 +66,9 @@ export function Editor({
       scene: currentScene ?? context.scene,
       selection: { nodeIds },
       viewport,
+      interactionEngine,
     }),
-    [context, currentPage, currentScene, nodeIds, viewport],
+    [context, currentPage, currentScene, nodeIds, viewport, interactionEngine],
   );
 
   const handleRenamePage = useCallback(

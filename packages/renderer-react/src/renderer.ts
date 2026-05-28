@@ -1,6 +1,7 @@
 import type {
   ComponentPlugin,
   ComputedStateEngine,
+  InteractionEngine,
   PageId,
   PrototypeComponent,
   SceneGraph,
@@ -28,6 +29,7 @@ export interface RenderContext {
   plugins?: ComponentPlugin[];
   computedEngine: ComputedStateEngine;
   scheduler: Scheduler;
+  interactionEngine?: InteractionEngine;
 }
 
 export interface ComponentRenderer {

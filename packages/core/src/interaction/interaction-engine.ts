@@ -1,4 +1,5 @@
-import type { NodeId } from "../types.js";
+import type { ComputedStateEngine } from "../computed/computed-state-engine.js";
+import type { NodeId, SceneGraph } from "../types.js";
 
 export type InteractionEvent =
   | { type: "selection-changed"; nodeIds: NodeId[] }
@@ -15,6 +16,14 @@ export interface InteractionEngine {
   removeFromSelection(nodeIds: NodeId[]): void;
   clearSelection(): void;
   toggleSelection(nodeId: NodeId): void;
+
+  // Hit-testing
+  hitTest(
+    x: number,
+    y: number,
+    scene: SceneGraph,
+    engine: ComputedStateEngine,
+  ): NodeId | undefined;
 
   // Hover
   getHoveredNode(): NodeId | undefined;
@@ -90,6 +99,37 @@ export function createInteractionEngine(): InteractionEngine {
         selectedSet.add(nodeId);
       }
       notify({ type: "selection-changed", nodeIds: getSelectedArray() });
+    },
+
+    hitTest(
+      x: number,
+      y: number,
+      scene: SceneGraph,
+      engine: ComputedStateEngine,
+    ): NodeId | undefined {
+      let best: NodeId | undefined;
+      let bestArea = Infinity;
+
+      for (const [id, node] of Object.entries(scene.nodes)) {
+        if (id === scene.rootId) continue; // skip root
+        if (node.visible === false) continue;
+
+        const bounds = engine.getComputedBounds(id);
+        if (
+          x >= bounds.x &&
+          x <= bounds.x + bounds.width &&
+          y >= bounds.y &&
+          y <= bounds.y + bounds.height
+        ) {
+          const area = bounds.width * bounds.height;
+          if (area < bestArea) {
+            bestArea = area;
+            best = id;
+          }
+        }
+      }
+
+      return best;
     },
 
     getHoveredNode(): NodeId | undefined {
