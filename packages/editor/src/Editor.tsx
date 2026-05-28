@@ -62,6 +62,13 @@ export function Editor({
     ? document.scenes[currentPage.sceneId]
     : context.scene;
 
+  // Sync selector registry when page switches
+  useEffect(() => {
+    if (currentScene && selectorRegistry) {
+      selectorRegistry.sync(currentScene);
+    }
+  }, [currentScene, selectorRegistry]);
+
   const editorContext: RenderContext = useMemo(
     () => ({
       ...context,
