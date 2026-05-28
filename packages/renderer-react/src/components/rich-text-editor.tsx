@@ -14,14 +14,30 @@ export interface RichTextEditorProps {
   ctx: RenderContext;
 }
 
-export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
+function isSelected(nodeId: string, ctx: RenderContext): boolean {
+  return ctx.mode === "editor" && !!ctx.selection?.nodeIds.includes(nodeId);
+}
+
+function StaticText({ node }: { node: SceneNode }) {
+  const content = (node.props?.content ?? {
+    type: "doc",
+    content: [{ type: "paragraph" }],
+  }) as DocNode;
+  const html = extractPlainText(content);
+  return (
+    <div data-component="text" data-richtext="static" className="min-h-[1.5em]">
+      {html || <br />}
+    </div>
+  );
+}
+
+function RichEditor({ node, ctx }: RichTextEditorProps) {
   const { onContentChange } = useEditorCallbacks();
 
   const content = (node.props?.content ?? {
     type: "doc",
     content: [{ type: "paragraph" }],
   }) as DocNode;
-
   const isEditable = ctx.mode === "editor" && node.props?.editable !== false;
   const placeholder =
     (node.props?.placeholder as string | undefined) ?? undefined;
@@ -81,5 +97,13 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
       <EditorContent editor={editor} />
       {!editor && <span>{extractPlainText(content)}</span>}
     </div>
+  );
+}
+
+export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
+  return isSelected(node.id, ctx) ? (
+    <RichEditor node={node} ctx={ctx} />
+  ) : (
+    <StaticText node={node} />
   );
 }
