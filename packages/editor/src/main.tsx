@@ -267,14 +267,17 @@ function App() {
     if (result.ok) setDoc(result.document);
   }, [documentBus]);
 
-  const addNode = useCallback(() => {
-    const id = `n-${Date.now()}`;
-    dispatchRuntime({
-      type: "create-node",
-      node: { id, type: "text", layout: { width: 200 } },
-      parentId: scene.rootId,
-    });
-  }, [dispatchRuntime, scene.rootId]);
+  const addNode = useCallback(
+    (type: string, layout?: Record<string, unknown>) => {
+      const id = `n-${Date.now()}`;
+      dispatchRuntime({
+        type: "create-node",
+        node: { id, type, layout },
+        parentId: scene.rootId,
+      });
+    },
+    [dispatchRuntime, scene.rootId],
+  );
 
   const handleTransform = useCallback(
     (event: TransformEvent) => {
@@ -574,10 +577,34 @@ function App() {
         </button>
         <button
           type="button"
-          onClick={addNode}
+          onClick={() => addNode("text", { width: 200 })}
           className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
         >
           + Add Text
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            addNode("container", { mode: "flex", width: 400, height: 300 })
+          }
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
+        >
+          + Container
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            addNode("grid", {
+              mode: "grid",
+              gridColumns: 3,
+              gap: 8,
+              width: 600,
+              height: 300,
+            })
+          }
+          className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
+        >
+          + Grid
         </button>
         {commands
           .filter((cmd) => cmd.group === "edit")
