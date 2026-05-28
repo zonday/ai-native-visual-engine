@@ -1,4 +1,5 @@
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
+import { DependencyGraph } from "../deps/dependency-graph.js";
 
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
@@ -50,20 +51,32 @@ function createNodeCache() {
 export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
   const nodeCache = createNodeCache();
   const listCache = createNodeCache();
+  const graph = new DependencyGraph();
   let syncedVersion = scene.version;
+  let currentDependent: string | null = null;
 
   function checkVersion(): void {
     if (scene.version !== syncedVersion) {
       nodeCache.clear();
       listCache.clear();
+      graph.clear();
       syncedVersion = scene.version;
+    }
+  }
+
+  function trackRead(source: string): void {
+    if (currentDependent) {
+      graph.addDependency(source, currentDependent);
     }
   }
 
   function cacheNode<T>(key: string, fn: () => T): T {
     const cached = nodeCache.get<T>(key, syncedVersion);
     if (cached !== undefined) return cached;
+    const prevDependent = currentDependent;
+    currentDependent = key;
     const value = fn();
+    currentDependent = prevDependent;
     nodeCache.set(key, syncedVersion, value);
     return value;
   }
@@ -71,14 +84,24 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
   function cacheList<T>(key: string, fn: () => T): T {
     const cached = listCache.get<T>(key, syncedVersion);
     if (cached !== undefined) return cached;
+    const prevDependent = currentDependent;
+    currentDependent = key;
     const value = fn();
+    currentDependent = prevDependent;
     listCache.set(key, syncedVersion, value);
     return value;
+  }
+
+  function clearCacheKey(key: string): void {
+    nodeCache.delete(key);
+    listCache.delete(key);
+    graph.removeDependent(key);
   }
 
   const registry: SelectorRegistry = {
     getNode(nodeId: NodeId): SceneNode | undefined {
       checkVersion();
+      trackRead(`node:${nodeId}`);
       return cacheNode(`node:${nodeId}`, () => scene.nodes[nodeId]);
     },
 
@@ -92,6 +115,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getChildren(nodeId: NodeId): SceneNode[] {
       checkVersion();
+      trackRead(`node:${nodeId}:children`);
       return cacheList(`children:${nodeId}`, () => {
         const node = registry.getNode(nodeId);
         if (!node?.children) return [];
@@ -106,6 +130,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getParent(nodeId: NodeId): SceneNode | undefined {
       checkVersion();
+      trackRead(`node:${nodeId}:parentId`);
       return cacheNode(`parent:${nodeId}`, () => {
         const node = registry.getNode(nodeId);
         return node?.parentId ? registry.getNode(node.parentId) : undefined;
@@ -114,6 +139,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getRoot(): SceneNode {
       checkVersion();
+      trackRead("root");
       return cacheNode("root", () => {
         const root = scene.nodes[scene.rootId];
         if (!root) {
@@ -125,6 +151,9 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
       checkVersion();
+      for (const id of nodeIds) {
+        trackRead(`node:${id}`);
+      }
       return cacheList(`nodes:${nodeIds.join(",")}`, () => {
         const result: SceneNode[] = [];
         for (const id of nodeIds) {
@@ -146,6 +175,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
         const ancestors: SceneNode[] = [];
         let current = registry.getNode(nodeId)?.parentId;
         while (current) {
+          trackRead(`node:${current}`);
           const parent = registry.getNode(current);
           if (!parent) break;
           ancestors.push(parent);
@@ -163,6 +193,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
           const node = registry.getNode(id);
           if (!node?.children) return;
           for (const childId of node.children) {
+            trackRead(`node:${childId}`);
             const child = registry.getNode(childId);
             if (child) {
               descendants.push(child);
@@ -177,6 +208,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getSiblings(nodeId: NodeId): SceneNode[] {
       checkVersion();
+      trackRead(`node:${nodeId}:parentId`);
       return cacheList(`siblings:${nodeId}`, () => {
         const parent = registry.getParent(nodeId);
         if (!parent) return [];
@@ -189,11 +221,13 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getDepth(nodeId: NodeId): number {
       checkVersion();
+      trackRead(`node:${nodeId}:parentId`);
       return cacheNode(`depth:${nodeId}`, () => {
         let depth = 0;
         let current = registry.getNode(nodeId)?.parentId;
         while (current) {
           depth++;
+          trackRead(`node:${current}`);
           const parent = registry.getNode(current);
           current = parent?.parentId;
         }
@@ -225,21 +259,32 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
       listCache.delete(`descendants:${nodeId}`);
       listCache.delete(`siblings:${nodeId}`);
       listCache.forEach((key) => {
-        if (key.startsWith(`nodes:`) && key.includes(nodeId)) {
-          listCache.delete(key);
+        if (key.startsWith(`nodes:`)) {
+          const ids = key.slice(6).split(",");
+          if (ids.includes(nodeId)) {
+            listCache.delete(key);
+          }
         }
       });
+
+      const sourceKeys = [`node:${nodeId}`];
+      const affected = graph.getTransitiveAffected(sourceKeys);
+      for (const key of affected) {
+        clearCacheKey(key);
+      }
     },
 
     invalidateAll(): void {
       nodeCache.clear();
       listCache.clear();
+      graph.clear();
     },
 
     sync(newScene: SceneGraph): void {
       scene = newScene;
       nodeCache.clear();
       listCache.clear();
+      graph.clear();
       syncedVersion = newScene.version;
     },
 
