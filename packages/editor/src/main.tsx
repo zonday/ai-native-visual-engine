@@ -42,6 +42,7 @@ import { createRendererRegistry } from "@ai-native/renderer-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { commandRegistry } from "./commands/command-registry.js";
+import type { Command } from "./commands/types.js";
 import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
 import { useCommands } from "./hooks/use-commands.js";
@@ -476,9 +477,14 @@ function App() {
     () =>
       commandRegistry
         .getAll()
-        .filter((cmd) => cmd.shortcut)
+        .filter(
+          (
+            cmd,
+          ): cmd is Command & { shortcut: NonNullable<Command["shortcut"]> } =>
+            !!cmd.shortcut,
+        )
         .map((cmd) => ({
-          ...cmd.shortcut!,
+          ...cmd.shortcut,
           handler: () => commandRegistry.execute(cmd.id),
         })),
     [],
