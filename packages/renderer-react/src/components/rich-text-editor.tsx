@@ -77,7 +77,7 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
   }
 
   return (
-    <div data-component="text" data-richtext="editor">
+    <div data-component="text" data-richtext="editor" className="min-h-[1.5em]">
       <EditorContent editor={editor} />
       {!editor && <span>{extractPlainText(content)}</span>}
     </div>
