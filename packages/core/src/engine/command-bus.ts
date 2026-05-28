@@ -78,6 +78,7 @@ export function createCommandBus<
             deepFreeze(runningState);
             runningState = handler(runningState, action, context);
             detectSameRef(stateBefore, runningState, action);
+            deepFreeze(runningState);
           } else {
             runningState = handler(runningState, action, context);
           }
