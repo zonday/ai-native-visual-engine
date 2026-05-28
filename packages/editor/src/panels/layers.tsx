@@ -31,17 +31,21 @@ interface FlatItem {
 function buildFlattened(
   registry: SelectorRegistry,
   nodeId: string,
+  collapsed: Set<string>,
   depth = 0,
 ): FlatItem[] {
   const node = registry.getNode(nodeId);
   if (!node) return [];
   const label = node.name || `${node.type}:${nodeId.slice(0, 8)}`;
   const children = registry.getChildren(nodeId);
+  const isCollapsed = collapsed.has(nodeId);
   const items: FlatItem[] = [
     { id: nodeId, depth, hasChildren: children.length > 0, label },
   ];
-  for (const child of children) {
-    items.push(...buildFlattened(registry, child.id, depth + 1));
+  if (!isCollapsed) {
+    for (const child of children) {
+      items.push(...buildFlattened(registry, child.id, collapsed, depth + 1));
+    }
   }
   return items;
 }
@@ -49,9 +53,11 @@ function buildFlattened(
 function SortableLayerItem({
   flatItem,
   isSelected,
+  isCollapsed,
   editing,
   draft,
   onSelect,
+  onToggle,
   onStartEdit,
   onDraftChange,
   onCommit,
@@ -59,9 +65,11 @@ function SortableLayerItem({
 }: {
   flatItem: FlatItem;
   isSelected: boolean;
+  isCollapsed: boolean;
   editing: boolean;
   draft: string;
   onSelect: (e: React.MouseEvent) => void;
+  onToggle: () => void;
   onStartEdit: () => void;
   onDraftChange: (v: string) => void;
   onCommit: () => void;
@@ -122,8 +130,15 @@ function SortableLayerItem({
         }`}
       >
         {flatItem.hasChildren && (
-          <span className="text-slate-400 mr-1 select-none">▾</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            className="px-0.5 text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-none text-xs"
+          >
+            {isCollapsed ? "▶" : "▾"}
+          </button>
         )}
+        {!flatItem.hasChildren && <span className="w-4" />}
         {flatItem.label}
       </button>
     </div>
@@ -139,6 +154,19 @@ export function Layers({
   const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -148,8 +176,8 @@ export function Layers({
     if (!selectorRegistry) return [];
     const root = selectorRegistry.getRoot();
     if (!root) return [];
-    return buildFlattened(selectorRegistry, root.id);
-  }, [selectorRegistry]);
+    return buildFlattened(selectorRegistry, root.id, collapsedIds);
+  }, [selectorRegistry, collapsedIds]);
 
   const rootId = useMemo(
     () => selectorRegistry?.getRoot()?.id ?? "",
@@ -234,6 +262,7 @@ export function Layers({
                 key={flatItem.id}
                 flatItem={flatItem}
                 isSelected={selectedIds.includes(flatItem.id)}
+                isCollapsed={collapsedIds.has(flatItem.id)}
                 editing={editingId === flatItem.id}
                 draft={draft}
                 onSelect={(e) => {
@@ -244,6 +273,7 @@ export function Layers({
                     interactionEngine.select([flatItem.id]);
                   }
                 }}
+                onToggle={() => toggleCollapse(flatItem.id)}
                 onStartEdit={() => {
                   setEditingId(flatItem.id);
                   const node = selectorRegistry?.getNode(flatItem.id);
