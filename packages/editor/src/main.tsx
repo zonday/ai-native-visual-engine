@@ -39,6 +39,7 @@ import {
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
+import { Redo2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { commandRegistry } from "./commands/command-registry.js";
@@ -614,7 +615,8 @@ function App() {
               onClick={() => commandRegistry.execute(cmd.id)}
               disabled={cmd.when ? !cmd.when() : false}
             >
-              {cmd.label === "Undo" ? "↩ " : cmd.label === "Redo" ? "↪ " : ""}
+              {cmd.id === "undo" && <Undo2 size={14} className="mr-1" />}
+              {cmd.id === "redo" && <Redo2 size={14} className="mr-1" />}
               {cmd.label}
             </Button>
           ))}

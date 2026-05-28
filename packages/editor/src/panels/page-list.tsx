@@ -12,6 +12,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { GripVertical } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useEditorStore } from "../store.js";
 
@@ -81,11 +82,11 @@ function SortablePage({
     <li ref={setNodeRef} style={style} className="mb-1 flex items-center gap-1">
       <button
         type="button"
-        className="cursor-grab touch-none px-1 text-slate-400 hover:text-slate-600 text-xs"
+        className="cursor-grab touch-none px-1 text-slate-400 hover:text-slate-600"
         {...attributes}
         {...listeners}
       >
-        ⋮⋮
+        <GripVertical size={14} />
       </button>
       <button
         type="button"

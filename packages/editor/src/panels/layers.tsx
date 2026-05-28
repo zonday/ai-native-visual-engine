@@ -11,6 +11,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useInteraction } from "../hooks/use-interaction.js";
 
@@ -115,11 +116,11 @@ function SortableLayerItem({
     <div ref={setNodeRef} style={style} className="flex items-center gap-0.5">
       <button
         type="button"
-        className="cursor-grab touch-none px-1 text-slate-400 hover:text-slate-600 text-xs"
+        className="cursor-grab touch-none px-1 text-slate-400 hover:text-slate-600"
         {...attributes}
         {...listeners}
       >
-        ⋮⋮
+        <GripVertical size={14} />
       </button>
       <button
         type="button"
@@ -132,10 +133,17 @@ function SortableLayerItem({
         {flatItem.hasChildren && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            className="px-0.5 text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-none text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-none"
           >
-            {isCollapsed ? "▶" : "▾"}
+            {isCollapsed ? (
+              <ChevronRight size={14} />
+            ) : (
+              <ChevronDown size={14} />
+            )}
           </button>
         )}
         {!flatItem.hasChildren && <span className="w-4" />}
