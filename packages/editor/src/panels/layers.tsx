@@ -1,7 +1,6 @@
 import type { InteractionEngine, SelectorRegistry } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useInteraction } from "../hooks/use-interaction.js";
-import { useEditorStore } from "../store.js";
 
 export interface LayersProps {
   selectorRegistry?: SelectorRegistry;
@@ -15,7 +14,6 @@ export function Layers({
   onRenameNode,
 }: LayersProps) {
   const { nodeIds: selectedIds } = useInteraction(interactionEngine);
-  const activePageId = useEditorStore((s) => s.activePageId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,9 +32,6 @@ export function Layers({
     },
     [draft, onRenameNode],
   );
-
-  const page = document.pages.find((p) => p.id === activePageId);
-  if (!page) return null;
 
   const nodes = selectorRegistry ? selectorRegistry.getAllNodes() : [];
 
