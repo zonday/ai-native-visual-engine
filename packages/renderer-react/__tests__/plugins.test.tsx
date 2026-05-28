@@ -1,4 +1,8 @@
-import type { ComputedStateEngine, SceneNode, Scheduler } from "@ai-native/core";
+import type {
+  ComputedStateEngine,
+  SceneNode,
+  Scheduler,
+} from "@ai-native/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ChartNode } from "../src/components/chart.jsx";
