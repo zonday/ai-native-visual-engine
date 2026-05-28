@@ -41,8 +41,12 @@ import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { commandRegistry } from "./commands/command-registry.js";
+import type { Command } from "./commands/types.js";
 import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
+import { useCommands } from "./hooks/use-commands.js";
+import { useHotkey } from "./hooks/use-hotkey.js";
 import { useEditorStore } from "./store.js";
 
 function createBootstrapDoc(): VisualDocument {
@@ -413,21 +417,81 @@ function App() {
     }
   }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
 
+  const handleDelete = useCallback(() => {
+    const selected = interactionEngine.getSelection();
+    const rootId = scene.rootId;
+    for (const nodeId of selected) {
+      if (nodeId === rootId) continue;
+      dispatchRuntime({ type: "remove-node", nodeId });
+    }
+  }, [interactionEngine, scene.rootId, dispatchRuntime]);
+
+  const handleUndoRef = useRef(handleUndo);
+  handleUndoRef.current = handleUndo;
+  const handleRedoRef = useRef(handleRedo);
+  handleRedoRef.current = handleRedo;
+  const handleDeleteRef = useRef(handleDelete);
+  handleDeleteRef.current = handleDelete;
+  const canUndoRef = useRef(canUndo);
+  canUndoRef.current = canUndo;
+  const canRedoRef = useRef(canRedo);
+  canRedoRef.current = canRedo;
+
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (!ctrl) return;
-      if (e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
-        e.preventDefault();
-        handleRedo();
-      }
+    commandRegistry.register({
+      id: "undo",
+      label: "Undo",
+      shortcut: { key: "z", ctrl: true },
+      group: "edit",
+      order: 1,
+      when: () => canUndoRef.current,
+      handler: () => handleUndoRef.current(),
+    });
+    commandRegistry.register({
+      id: "redo",
+      label: "Redo",
+      shortcut: { key: "y", ctrl: true },
+      group: "edit",
+      order: 2,
+      when: () => canRedoRef.current,
+      handler: () => handleRedoRef.current(),
+    });
+    commandRegistry.register({
+      id: "delete",
+      label: "Delete",
+      shortcut: { key: "delete" },
+      group: "edit",
+      order: 3,
+      when: () => interactionEngine.getSelection().length > 0,
+      handler: () => handleDeleteRef.current(),
+    });
+
+    return () => {
+      commandRegistry.unregister("undo");
+      commandRegistry.unregister("redo");
+      commandRegistry.unregister("delete");
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [interactionEngine]);
+
+  const commands = useCommands();
+
+  const hotkeyBindings = useMemo(
+    () =>
+      commands
+        .filter(
+          (
+            cmd,
+          ): cmd is Command & { shortcut: NonNullable<Command["shortcut"]> } =>
+            !!cmd.shortcut,
+        )
+        .map((cmd) => ({
+          ...cmd.shortcut,
+          handler: () => commandRegistry.execute(cmd.id),
+        })),
+    [commands],
+  );
+
+  useHotkey(hotkeyBindings);
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -465,12 +529,18 @@ function App() {
         >
           + Add Text
         </button>
-        <Button onClick={handleUndo} disabled={!canUndo}>
-          ↩ Undo
-        </Button>
-        <Button onClick={handleRedo} disabled={!canRedo}>
-          ↪ Redo
-        </Button>
+        {commands
+          .filter((cmd) => cmd.group === "edit")
+          .map((cmd) => (
+            <Button
+              key={cmd.id}
+              onClick={() => commandRegistry.execute(cmd.id)}
+              disabled={cmd.when ? !cmd.when() : false}
+            >
+              {cmd.label === "Undo" ? "↩ " : cmd.label === "Redo" ? "↪ " : ""}
+              {cmd.label}
+            </Button>
+          ))}
         <button
           type="button"
           onClick={() => {
