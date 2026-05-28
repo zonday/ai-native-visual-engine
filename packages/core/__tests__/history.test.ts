@@ -7,6 +7,7 @@ import {
   redoDocumentAction,
   undoDocumentAction,
 } from "../src/document/history.js";
+import { replayActions } from "../src/engine/history.js";
 
 function makeEntry(
   action: DocumentAction,
@@ -208,6 +209,65 @@ describe("DocumentHistoryState", () => {
       expect(state.undoStack).toHaveLength(1);
       expect(state.redoStack).toHaveLength(0);
       expect(redoResult?.action).toEqual(action);
+    });
+  });
+
+  describe("setCheckpoint", () => {
+    it("blocks undo at the checkpoint boundary", () => {
+      const entry1 = makeEntry(
+        { type: "rename-page", pageId: "p1", name: "Second" },
+        { type: "rename-page", pageId: "p1", name: "First" },
+      );
+      const entry2 = makeEntry(
+        { type: "rename-page", pageId: "p1", name: "Third" },
+        { type: "rename-page", pageId: "p1", name: "Second" },
+      );
+      const state: DocumentHistoryState = {
+        undoStack: [entry1, entry2],
+        redoStack: [],
+        checkpointIndex: 1, // checkpoint after entry1
+      };
+      const result = undoDocumentAction(state);
+      expect(result).not.toBeNull();
+      expect(result?.state.undoStack).toHaveLength(1);
+
+      const result2 = undoDocumentAction(result?.state as DocumentHistoryState);
+      expect(result2).toBeNull();
+    });
+  });
+
+  describe("replayActions", () => {
+    it("applies all entries in order and returns ok", () => {
+      const actions: DocumentAction[] = [
+        { type: "rename-page", pageId: "p1", name: "A" },
+        { type: "rename-page", pageId: "p1", name: "B" },
+      ];
+      const applied: DocumentAction[] = [];
+      const dispatch = (a: DocumentAction) => {
+        applied.push(a);
+        return { ok: true };
+      };
+      const entries = actions.map((a) => makeEntry(a));
+      const result = replayActions(entries, dispatch); // using document version
+      expect(result.ok).toBe(true);
+      expect(applied).toHaveLength(2);
+    });
+
+    it("stops and returns failedAt on first error", () => {
+      const actions: DocumentAction[] = [
+        { type: "rename-page", pageId: "p1", name: "A" },
+        { type: "rename-page", pageId: "p2", name: "B" },
+      ];
+      let callCount = 0;
+      const dispatch = (_a: DocumentAction) => {
+        callCount++;
+        if (callCount === 2) return { ok: false };
+        return { ok: true };
+      };
+      const entries = actions.map((a) => makeEntry(a));
+      const result = replayActions(entries, dispatch);
+      expect(result.ok).toBe(false);
+      expect(result.failedAt).toBe(1);
     });
   });
 });

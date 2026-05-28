@@ -598,3 +598,68 @@ Use document actions for:
 - page route updates
 
 The semantic compiler may emit both action kinds in one execution plan, but they must remain distinct runtime domains.
+
+## 12. Selector System
+
+Defined in `selector-system.md`. The selector system provides unified, memoized read access to `SceneGraph`:
+
+- `getNode`, `getChildren`, `getParent`, `getRoot` — basic node accessors
+- `getAncestors`, `getDescendants`, `isDescendantOf` — hierarchy queries
+- `getVisibleNodes` — visibility filtering
+
+**All business logic must read scene data through selectors.** Direct `scene.nodes[id]` is permitted only inside selector implementations.
+
+## 13. Computed State Engine
+
+Defined in `computed-state-engine.md`. Computes derived state without writing back to `SceneGraph`:
+
+- `getWorldTransform` — accumulated position/rotation from root
+- `getComputedBounds` — absolute bounding box
+- `getVisibleBounds` — visible bounding box (clipped)
+
+The computed engine reads exclusively through `SelectorRegistry` and is invalidated through the scheduler.
+
+## 14. Scheduler
+
+Defined in `scheduler.md`. Orchestrates the mutation → compute → render pipeline:
+
+- `markDirty(nodeIds)` after transaction commit
+- Batched compute phase (lazy recomputation)
+- Renderer-agnostic event emission
+- `sync` mode for testing, `async` mode (rAF) for production
+
+## 15. Runtime Architecture Diagram
+
+```
+Semantic Intent
+  │
+  ▼
+compileSemanticAction()
+  │
+  ▼
+ExecutionPlan { documentActions, runtimeActions }
+  │
+  ├─ documentActions ──► documentBus ──► DocumentMutation
+  │
+  └─ runtimeActions ──► TransactionManager.begin('ai')
+                          │
+                          ▼
+                      applyAction(tx, action)
+                          │ (per action)
+                          ▼
+                      commandBus.dispatch(action)
+                          │
+                          ├─ validator middleware
+                          ├─ constraint middleware
+                          ├─ handler ──► scene mutation
+                          └─ history middleware (skipped in tx)
+                          │
+                          ▼
+                      commit(tx) ──► compute inverses
+                          │
+                          ├─ scheduler.markDirty(affectedNodes)
+                          ├─ scheduler.flush()
+                          │    ├─ compute phase (invalidate computed state)
+                          │    └─ render phase (notify subscribers)
+                          └─ pushUndoTransaction(actions, inverses)
+```

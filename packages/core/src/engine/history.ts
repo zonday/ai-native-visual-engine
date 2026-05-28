@@ -12,6 +12,7 @@ export interface HistoryEntry<TAction> {
 export interface HistoryState<TAction> {
   undoStack: HistoryEntry<TAction>[];
   redoStack: HistoryEntry<TAction>[];
+  checkpointIndex?: number;
 }
 
 export function createHistoryState<TAction>(): HistoryState<TAction> {
@@ -31,6 +32,7 @@ export function pushUndo<TAction>(
   return {
     undoStack: trimmed,
     redoStack: [],
+    checkpointIndex: state.checkpointIndex,
   };
 }
 
@@ -53,12 +55,32 @@ export function pushUndoTransaction<TAction>(
   return pushUndo(state, entry, maxStackSize);
 }
 
+export function setCheckpoint<TAction>(
+  state: HistoryState<TAction>,
+): HistoryState<TAction> {
+  return { ...state, checkpointIndex: state.undoStack.length };
+}
+
+export function clearCheckpoint<TAction>(
+  state: HistoryState<TAction>,
+): HistoryState<TAction> {
+  return { ...state, checkpointIndex: undefined };
+}
+
 export function undoAction<TAction>(state: HistoryState<TAction>): {
   state: HistoryState<TAction>;
   inverseAction: TAction;
   inverseActions: TAction[];
 } | null {
   if (state.undoStack.length === 0) return null;
+
+  // Stop at checkpoint
+  if (
+    state.checkpointIndex !== undefined &&
+    state.undoStack.length <= state.checkpointIndex
+  ) {
+    return null;
+  }
 
   const entry = state.undoStack[state.undoStack.length - 1];
   if (!entry) return null;
@@ -71,6 +93,7 @@ export function undoAction<TAction>(state: HistoryState<TAction>): {
     state: {
       undoStack: state.undoStack.slice(0, -1),
       redoStack: [...state.redoStack, entry],
+      checkpointIndex: state.checkpointIndex,
     },
     inverseAction: inverses[0] as TAction,
     inverseActions: inverses,
@@ -94,8 +117,32 @@ export function redoAction<TAction>(state: HistoryState<TAction>): {
     state: {
       undoStack: [...state.undoStack, entry],
       redoStack: state.redoStack.slice(0, -1),
+      checkpointIndex: state.checkpointIndex,
     },
     action: actions[0] as TAction,
     actions,
   };
+}
+
+export function replayActions<TAction>(
+  entries: HistoryEntry<TAction>[],
+  dispatch: (action: TAction) => { ok: boolean },
+): { ok: boolean; failedAt?: number } {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    const actions = entry.actions ?? (entry.action ? [entry.action] : []);
+    for (const action of actions) {
+      const result = dispatch(action);
+      if (!result.ok) {
+        return { ok: false, failedAt: i };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+export interface HistorySnapshot<TAction> {
+  undoStack: HistoryEntry<TAction>[];
+  redoStack: HistoryEntry<TAction>[];
+  checkpointIndex?: number;
 }

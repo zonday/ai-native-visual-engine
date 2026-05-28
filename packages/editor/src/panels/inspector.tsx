@@ -1,17 +1,30 @@
-import type { RuntimeAction, SceneNode, VisualDocument } from "@ai-native/core";
+import type {
+  InteractionEngine,
+  RuntimeAction,
+  SceneNode,
+  SelectorRegistry,
+  VisualDocument,
+} from "@ai-native/core";
 import { useCallback } from "react";
 import { DestructiveButton } from "../components/ui/button.js";
+import { useInteraction } from "../hooks/use-interaction.js";
 import { useEditorStore } from "../store.js";
 
 export interface InspectorProps {
   document: VisualDocument;
+  selectorRegistry?: SelectorRegistry;
+  interactionEngine?: InteractionEngine;
   onDispatchRuntime?: (action: RuntimeAction) => void;
 }
 
-export function Inspector({ document, onDispatchRuntime }: InspectorProps) {
-  const nodeIds = useEditorStore((s) => s.nodeIds);
+export function Inspector({
+  document,
+  selectorRegistry,
+  interactionEngine,
+  onDispatchRuntime,
+}: InspectorProps) {
+  const { nodeIds } = useInteraction(interactionEngine);
   const activePageId = useEditorStore((s) => s.activePageId);
-  const setSelection = useEditorStore((s) => s.setSelection);
 
   const activePage = activePageId
     ? document.pages.find((p) => p.id === activePageId)
@@ -21,8 +34,7 @@ export function Inspector({ document, onDispatchRuntime }: InspectorProps) {
 
   let selectedNode: SceneNode | undefined;
   if (selectedId && activePage) {
-    const scene = document.scenes[activePage.sceneId];
-    selectedNode = scene?.nodes[selectedId];
+    selectedNode = selectorRegistry?.getNode(selectedId);
   }
 
   const handleDelete = useCallback(() => {
@@ -31,8 +43,8 @@ export function Inspector({ document, onDispatchRuntime }: InspectorProps) {
       type: "remove-node",
       nodeId: selectedId,
     });
-    setSelection([]);
-  }, [selectedId, onDispatchRuntime, setSelection]);
+    interactionEngine?.clearSelection();
+  }, [selectedId, onDispatchRuntime, interactionEngine]);
 
   // Show page info when no node is selected
   if (!selectedId) {

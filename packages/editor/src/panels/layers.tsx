@@ -1,16 +1,19 @@
-import type { VisualDocument } from "@ai-native/core";
+import type { InteractionEngine, SelectorRegistry } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEditorStore } from "../store.js";
+import { useInteraction } from "../hooks/use-interaction.js";
 
 export interface LayersProps {
-  document: VisualDocument;
+  selectorRegistry?: SelectorRegistry;
+  interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
 }
 
-export function Layers({ document, onRenameNode }: LayersProps) {
-  const activePageId = useEditorStore((s) => s.activePageId);
-  const selectedIds = useEditorStore((s) => s.nodeIds);
-  const setSelection = useEditorStore((s) => s.setSelection);
+export function Layers({
+  selectorRegistry,
+  interactionEngine,
+  onRenameNode,
+}: LayersProps) {
+  const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,11 +33,7 @@ export function Layers({ document, onRenameNode }: LayersProps) {
     [draft, onRenameNode],
   );
 
-  const page = document.pages.find((p) => p.id === activePageId);
-  if (!page) return null;
-
-  const scene = document.scenes[page.sceneId];
-  const nodes = scene ? Object.values(scene.nodes) : [];
+  const nodes = selectorRegistry ? selectorRegistry.getAllNodes() : [];
 
   return (
     <div className="p-3 border-t border-slate-200">
@@ -69,15 +68,11 @@ export function Layers({ document, onRenameNode }: LayersProps) {
               <button
                 type="button"
                 onClick={(e) => {
+                  if (!interactionEngine) return;
                   if (e.ctrlKey || e.metaKey || e.shiftKey) {
-                    const s = useEditorStore.getState();
-                    if (s.nodeIds.includes(node.id)) {
-                      s.removeFromSelection(node.id);
-                    } else {
-                      s.addToSelection(node.id);
-                    }
+                    interactionEngine.toggleSelection(node.id);
                   } else {
-                    setSelection([node.id]);
+                    interactionEngine.select([node.id]);
                   }
                 }}
                 onDoubleClick={() => {

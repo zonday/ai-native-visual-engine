@@ -154,3 +154,30 @@ Minimum performance expectations for the renderer:
 - `plugin-system.md`: `ComponentPlugin`, `Renderer`, `PluginRegistry`, `MissingPluginPlaceholder`
 - `data-interaction.md`: drill affordances and re-render triggers
 - `editor-interaction.md`: editor mode overlays and transform handles
+
+## 10. Integration With Scheduler
+
+The renderer connects to the runtime through the scheduler:
+
+```
+Transaction Commit
+  ▼
+Scheduler.markDirty(affectedNodes)
+  ▼
+Scheduler.flush()
+  ▼
+Compute Phase (invalidate computed state)
+  ▼
+Render Phase (notify subscribers)
+  ▼
+Renderer reads scene via SelectorAPI + ComputedStateAPI
+  ▼
+Renderer produces output (React/Canvas/DOM)
+```
+
+Rules:
+
+1. The renderer must not read scene data outside the render phase.
+2. The renderer receives scene data through `RenderContext.scene` but must access node data through `EngineAPI.selector` and `EngineAPI.computed`.
+3. The renderer subscribes to the scheduler for re-render triggers. Between triggers, it caches the last rendered output.
+4. The scheduler does not know React from Canvas — it emits generic events that the renderer adapter translates into framework-specific updates.

@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
 
 import type { SceneNode, VisualDocument } from "@ai-native/core";
+import {
+  createInteractionEngine,
+  createSelectorRegistry,
+} from "@ai-native/core";
 import type { ComponentRegistry } from "@ai-native/renderer-react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -34,7 +38,6 @@ describe("Editor", () => {
   beforeEach(() => {
     cleanup();
     useEditorStore.setState({
-      nodeIds: [],
       viewport: { x: 0, y: 0, zoom: 1 },
       activePageId: "page-1",
     });
@@ -60,10 +63,18 @@ describe("Editor", () => {
       type: "text",
       parentId: "root",
     };
-    useEditorStore.setState({ nodeIds: ["n1"] });
+    const interactionEngine = createInteractionEngine();
+    interactionEngine.select(["n1"]);
+    const selectorRegistry = createSelectorRegistry(scene);
 
     render(
-      <Editor document={doc} registry={emptyRegistry} context={baseContext} />,
+      <Editor
+        document={doc}
+        registry={emptyRegistry}
+        context={baseContext}
+        interactionEngine={interactionEngine}
+        selectorRegistry={selectorRegistry}
+      />,
     );
 
     expect(screen.getByText("Inspector")).toBeDefined();

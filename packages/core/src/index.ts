@@ -27,8 +27,19 @@ export {
 } from "./compiler/types.js";
 // ── Component states ──
 export { resolveStateProps } from "./component-states.js";
+// ── Computed State ──
+export {
+  type ComputedBounds,
+  type ComputedStateEngine,
+  createComputedStateEngine,
+  type WorldTransform,
+} from "./computed/computed-state-engine.js";
 export { createConstraintMiddleware } from "./constraints/constraint-middleware.js";
 export { createConstraintRegistry } from "./constraints/constraint-registry.js";
+export {
+  type GraphInvariantViolation,
+  validateGraphInvariants,
+} from "./constraints/graph-invariants.js";
 export { DEFAULT_LAYOUT_CONSTRAINTS } from "./constraints/layout-constraints.js";
 // ── Data binding ──
 export {
@@ -63,6 +74,7 @@ export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export {
   createDocumentHistoryState,
+  type DocumentHistoryState,
   pushDocumentUndoTransaction,
   redoDocumentAction,
   undoDocumentAction,
@@ -75,6 +87,7 @@ export {
 export { pushUndoTransaction } from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
+export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export {
   createTransactionFlag,
@@ -92,6 +105,13 @@ export type {
   TransactionResult,
   TransactionSource,
 } from "./engine/transaction-types.js";
+// ── Interaction ──
+export {
+  createInteractionEngine,
+  type InteractionEngine,
+  type InteractionEvent,
+  type InteractionListener,
+} from "./interaction/interaction-engine.js";
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
 export type { ResolvedInstance } from "./prototype.js";
@@ -120,6 +140,18 @@ export {
   createRuntimeTransactionManager,
   type RuntimeTransactionManager,
 } from "./runtime/transaction.js";
+// ── Scheduler ──
+export {
+  createScheduler,
+  type ScheduleListener,
+  type SchedulePhase,
+  type Scheduler,
+} from "./scheduler/scheduler.js";
+// ── Selector ──
+export {
+  createSelectorRegistry,
+  type SelectorRegistry,
+} from "./selector/selector-registry.js";
 // ── Serialization ──
 export {
   CURRENT_SERIALIZATION_VERSION,

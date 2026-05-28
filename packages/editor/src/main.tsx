@@ -1,6 +1,7 @@
 import "./index.css";
 import type {
   DocumentAction,
+  DocumentHistoryState,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
@@ -14,10 +15,15 @@ import {
   createDocumentBatchHandler,
   createDocumentCommandBus,
   createDocumentHistoryState,
+  createInteractionEngine,
   createNewDocument,
   createRuntimeCommandBus,
   createRuntimeHistoryState,
+  createRuntimeTransactionManager,
+  createScheduler,
+  createSelectorRegistry,
   createTransactionFlag,
+  createTransactionMiddleware,
   createUndoHistoryMiddleware,
   createValidatorMiddleware,
   DEFAULT_LAYOUT_CONSTRAINTS,
@@ -28,6 +34,7 @@ import {
   redoRuntimeAction,
   undoDocumentAction,
   undoRuntimeAction,
+  validateGraphInvariants,
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
@@ -65,6 +72,13 @@ function App() {
     );
   }, []);
 
+  const selectorRegistry = useMemo(
+    () => createSelectorRegistry(scene),
+    [scene],
+  );
+
+  const interactionEngine = useMemo(() => createInteractionEngine(), []);
+
   const constraintRegistry = useMemo(() => {
     const reg = createConstraintRegistry();
     for (const c of DEFAULT_LAYOUT_CONSTRAINTS) {
@@ -73,29 +87,68 @@ function App() {
     return reg;
   }, []);
 
+  const runtimeRegistries = useMemo(
+    () =>
+      createDefaultRuntimeRegistries(() => ({
+        ok: false,
+        scene: { version: 0, rootId: "", nodes: {} },
+        error: { code: "nested", message: "nested" },
+      })),
+    [],
+  );
+
   const transactionFlagRef = useRef(createTransactionFlag());
 
+  const runtimeTm = useMemo(
+    () =>
+      createRuntimeTransactionManager(
+        runtimeRegistries.handlerRegistry,
+        runtimeRegistries.inverseRegistry,
+      ),
+    [runtimeRegistries],
+  );
+
+  const schedulerRef = useRef(createScheduler({ mode: "sync" }));
+
+  // Wire interaction engine into scheduler — clear stale selections after compute
+  useEffect(() => {
+    const s = schedulerRef.current;
+    return s.subscribe({
+      onAfterCompute: () => {
+        const selected = interactionEngine.getSelection();
+        const valid = selected.filter((id) => selectorRegistry.getNode(id));
+        if (valid.length !== selected.length) {
+          interactionEngine.select(valid);
+        }
+      },
+    });
+  }, [interactionEngine, selectorRegistry]);
+
   const runtimeBus = useMemo(() => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
-      ok: false,
-      scene,
-      error: { code: "nested", message: "nested" },
-    }));
+    const { handlerRegistry } = runtimeRegistries;
     const middlewares = [
       createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
       createConstraintMiddleware(constraintRegistry),
-      createUndoHistoryMiddleware(
-        () => runtimeHistoryRef.current,
-        (s) => {
+      createTransactionMiddleware({
+        transactionManager: runtimeTm,
+        transactionFlag: transactionFlagRef.current,
+        handlerRegistry,
+        getContext: () => ({ now: Date.now, actorId: "editor" }),
+        getActorId: () => "editor",
+        getHistory: () => runtimeHistoryRef.current,
+        setHistory: (s) => {
           runtimeHistoryRef.current = s;
           syncHistoryState();
         },
-        () => "editor",
-        handlerRegistry,
-        () => ({ now: Date.now, actorId: "editor" }),
-        () => isUndoingRef.current,
-        () => transactionFlagRef.current.isActive(),
-      ),
+        markDirty: (nodeIds) => schedulerRef.current.markDirty(nodeIds),
+        shouldExcludeFromHistory: () => isUndoingRef.current,
+        onAfterCommit: (sceneState) => {
+          const violations = validateGraphInvariants(sceneState as SceneGraph);
+          for (const v of violations) {
+            console.error(`[graph-invariant] ${v.code}: ${v.message}`);
+          }
+        },
+      }),
     ];
 
     const bus = createRuntimeCommandBus(handlerRegistry, middlewares, scene, {
@@ -114,7 +167,13 @@ function App() {
     }
 
     return bus;
-  }, [scene, constraintRegistry, syncHistoryState]);
+  }, [
+    scene,
+    constraintRegistry,
+    syncHistoryState,
+    runtimeTm,
+    runtimeRegistries,
+  ]);
 
   const documentBus = useMemo(() => {
     const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
@@ -128,7 +187,7 @@ function App() {
       ),
       createUndoHistoryMiddleware(
         () => documentHistoryRef.current,
-        (s) => {
+        (s: DocumentHistoryState) => {
           documentHistoryRef.current = s;
           syncHistoryState();
         },
@@ -213,7 +272,7 @@ function App() {
     (event: TransformEvent) => {
       if (!event.commit) return;
 
-      const node = scene.nodes[event.nodeId];
+      const node = selectorRegistry.getNode(event.nodeId);
       if (!node) return;
       const layout = (node.layout ?? {}) as Record<string, unknown>;
 
@@ -244,7 +303,7 @@ function App() {
         });
       }
     },
-    [dispatchRuntime, scene.nodes],
+    [dispatchRuntime, selectorRegistry],
   );
 
   const handleUpdateProps = useCallback(
@@ -416,13 +475,16 @@ function App() {
           ↪ Redo
         </button>
         <span className="ml-auto text-xs text-slate-500">
-          Pages: {doc.pages.length} | Nodes: {Object.keys(scene.nodes).length}
+          Pages: {doc.pages.length} | Nodes:{" "}
+          {selectorRegistry.getAllNodes().length}
         </span>
       </div>
       <Editor
         document={doc}
         registry={registry}
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
+        selectorRegistry={selectorRegistry}
+        interactionEngine={interactionEngine}
         onTransform={handleTransform}
         onUpdateProps={handleUpdateProps}
         onDispatchRuntime={dispatchRuntime}
