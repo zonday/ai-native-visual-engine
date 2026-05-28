@@ -585,13 +585,7 @@ function App() {
         </button>
         <button
           type="button"
-          onClick={() =>
-            addNode("container", {
-              mode: "flex",
-              width: 400,
-              height: 300,
-            })
-          }
+          onClick={() => addNode("container", { mode: "flex" })}
           className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
         >
           + Container
@@ -599,13 +593,7 @@ function App() {
         <button
           type="button"
           onClick={() =>
-            addNode("grid", {
-              mode: "grid",
-              gridColumns: 3,
-              gap: 8,
-              width: 600,
-              height: 300,
-            })
+            addNode("grid", { mode: "grid", gridColumns: 3, gap: 8 })
           }
           className="px-2 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 cursor-pointer"
         >
