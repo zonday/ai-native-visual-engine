@@ -34,7 +34,11 @@ export function createInteractionEngine(): InteractionEngine {
 
   function notify(event: InteractionEvent): void {
     for (const listener of listeners) {
-      listener(event);
+      try {
+        listener(event);
+      } catch {
+        // Isolate listener errors — one bad listener must not break others
+      }
     }
   }
 
