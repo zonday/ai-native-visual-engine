@@ -6,7 +6,7 @@ import type {
   SelectorRegistry,
   VisualDocument,
 } from "@ai-native/core";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DestructiveButton } from "../components/ui/button.js";
 import { useInteraction } from "../hooks/use-interaction.js";
 import { useEditorStore } from "../store.js";
@@ -19,82 +19,57 @@ export interface InspectorProps {
   plugins?: ComponentPlugin[];
 }
 
-function useDebounce(ms = 300) {
-  const ref = useRef<ReturnType<typeof setTimeout> | null>(null);
-  return useCallback(
-    (fn: () => void) => {
-      if (ref.current) clearTimeout(ref.current);
-      ref.current = setTimeout(fn, ms);
-    },
-    [ms],
+function DebouncedField({
+  value,
+  onChange,
+  type = "text",
+}: {
+  value: string | number;
+  onChange: (v: string | number) => void;
+  type?: "text" | "number";
+}) {
+  const [local, setLocal] = useState(value);
+  const valueRef = useRef(value);
+
+  // Sync external changes (undo, redo, etc.)
+  useEffect(() => {
+    if (value !== valueRef.current) {
+      valueRef.current = value;
+      setLocal(value);
+    }
+  }, [value]);
+
+  // Debounce dispatch
+  useEffect(() => {
+    if (local === value) return;
+    const t = setTimeout(() => onChange(local), 300);
+    return () => clearTimeout(t);
+  }, [local, onChange, value]);
+
+  return (
+    <input
+      type={type}
+      value={local}
+      onChange={(e) =>
+        setLocal(type === "number" ? Number(e.target.value) : e.target.value)
+      }
+      className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
+    />
   );
 }
 
 function FieldRow({
   label,
-  htmlFor,
   children,
 }: {
   label: string;
-  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2">
-      {htmlFor ? (
-        <label
-          htmlFor={htmlFor}
-          className="w-20 shrink-0 text-slate-500 text-xs"
-        >
-          {label}
-        </label>
-      ) : (
-        <span className="w-20 shrink-0 text-slate-500 text-xs">{label}</span>
-      )}
+      <span className="w-20 shrink-0 text-slate-500 text-xs">{label}</span>
       <div className="flex-1">{children}</div>
     </div>
-  );
-}
-
-function TextField({
-  value,
-  onChange,
-  id,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  id?: string;
-}) {
-  const debounce = useDebounce();
-  return (
-    <input
-      id={id}
-      type="text"
-      defaultValue={value}
-      onChange={(e) => debounce(() => onChange(e.target.value))}
-      className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
-    />
-  );
-}
-
-function NumberField({
-  value,
-  onChange,
-  id,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  id?: string;
-}) {
-  const debounce = useDebounce();
-  return (
-    <input
-      id={id}
-      type="number"
-      defaultValue={value}
-      onChange={(e) => debounce(() => onChange(Number(e.target.value)))}
-      className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
-    />
   );
 }
 
@@ -237,7 +212,7 @@ export function Inspector({
           <span className="text-slate-500">{selectedNode.type}</span>
         </FieldRow>
         <FieldRow label="Name">
-          <TextField
+          <DebouncedField
             value={(nodeProps.name as string) ?? ""}
             onChange={(v) => patchProp("name", v)}
           />
@@ -254,7 +229,7 @@ export function Inspector({
               if (prop.type === "string") {
                 return (
                   <FieldRow key={prop.key} label={prop.key}>
-                    <TextField
+                    <DebouncedField
                       value={String(val)}
                       onChange={(v) => patchProp(prop.key, v)}
                     />
@@ -264,7 +239,8 @@ export function Inspector({
               if (prop.type === "number") {
                 return (
                   <FieldRow key={prop.key} label={prop.key}>
-                    <NumberField
+                    <DebouncedField
+                      type="number"
                       value={Number(val)}
                       onChange={(v) => patchProp(prop.key, v)}
                     />
@@ -293,43 +269,48 @@ export function Inspector({
       <SectionHeader title="Style" />
       <div className="text-xs space-y-1.5">
         <FieldRow label="Width">
-          <NumberField
+          <DebouncedField
+            type="number"
             value={(nodeStyle.width as number) ?? 0}
             onChange={(v) => patchStyle("width", v)}
           />
         </FieldRow>
         <FieldRow label="Height">
-          <NumberField
+          <DebouncedField
+            type="number"
             value={(nodeStyle.height as number) ?? 0}
             onChange={(v) => patchStyle("height", v)}
           />
         </FieldRow>
         <FieldRow label="Opacity">
-          <NumberField
+          <DebouncedField
+            type="number"
             value={(nodeStyle.opacity as number) ?? 1}
             onChange={(v) => patchStyle("opacity", v)}
           />
         </FieldRow>
         <FieldRow label="Border radius">
-          <NumberField
+          <DebouncedField
+            type="number"
             value={(nodeStyle.borderRadius as number) ?? 0}
             onChange={(v) => patchStyle("borderRadius", v)}
           />
         </FieldRow>
         <FieldRow label="Font size">
-          <NumberField
+          <DebouncedField
+            type="number"
             value={(nodeStyle.fontSize as number) ?? 14}
             onChange={(v) => patchStyle("fontSize", v)}
           />
         </FieldRow>
         <FieldRow label="Background">
-          <TextField
+          <DebouncedField
             value={(nodeStyle.backgroundColor as string) ?? ""}
             onChange={(v) => patchStyle("backgroundColor", v)}
           />
         </FieldRow>
         <FieldRow label="Color">
-          <TextField
+          <DebouncedField
             value={(nodeStyle.color as string) ?? ""}
             onChange={(v) => patchStyle("color", v)}
           />
@@ -354,7 +335,8 @@ export function Inspector({
               </select>
             </FieldRow>
             <FieldRow label="Gap">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.gap as number) ?? 0}
                 onChange={(v) => patchLayout("gap", v)}
               />
@@ -387,13 +369,15 @@ export function Inspector({
         ) : layoutMode === "grid" ? (
           <>
             <FieldRow label="Columns">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.columns as number) ?? 3}
                 onChange={(v) => patchLayout("columns", v)}
               />
             </FieldRow>
             <FieldRow label="Gap">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.gap as number) ?? 8}
                 onChange={(v) => patchLayout("gap", v)}
               />
@@ -402,25 +386,29 @@ export function Inspector({
         ) : (
           <>
             <FieldRow label="X">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.x as number) ?? 0}
                 onChange={(v) => patchLayout("x", v)}
               />
             </FieldRow>
             <FieldRow label="Y">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.y as number) ?? 0}
                 onChange={(v) => patchLayout("y", v)}
               />
             </FieldRow>
             <FieldRow label="Width">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.width as number) ?? 0}
                 onChange={(v) => patchLayout("width", v)}
               />
             </FieldRow>
             <FieldRow label="Height">
-              <NumberField
+              <DebouncedField
+                type="number"
                 value={(nodeLayout.height as number) ?? 0}
                 onChange={(v) => patchLayout("height", v)}
               />
