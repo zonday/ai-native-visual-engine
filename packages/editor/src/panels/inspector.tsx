@@ -308,16 +308,48 @@ export function Inspector({
       <div className="text-xs space-y-1.5">
         <FieldRow label="Mode">
           <select
-            value={layoutMode ?? "absolute"}
-            onChange={(e) => patchLayout("mode", e.target.value)}
+            value={layoutMode ?? ""}
+            onChange={(e) => patchLayout("mode", e.target.value || undefined)}
             className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
           >
+            <option value="">none (relative)</option>
             <option value="absolute">absolute</option>
             <option value="flex">flex</option>
             <option value="grid">grid</option>
           </select>
         </FieldRow>
-        {layoutMode === "flex" ? (
+        {layoutMode === "absolute" ? (
+          <>
+            <FieldRow label="X">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.x as number) ?? 0}
+                onChange={(v) => patchLayout("x", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Y">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.y as number) ?? 0}
+                onChange={(v) => patchLayout("y", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
+          </>
+        ) : layoutMode === "flex" ? (
           <>
             <FieldRow label="Direction">
               <select
@@ -362,6 +394,20 @@ export function Inspector({
                 <option value="space-between">space-between</option>
               </select>
             </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
           </>
         ) : layoutMode === "grid" ? (
           <>
@@ -379,23 +425,23 @@ export function Inspector({
                 onChange={(v) => patchLayout("gap", v)}
               />
             </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
           </>
         ) : (
           <>
-            <FieldRow label="X">
-              <DebouncedField
-                type="number"
-                value={(nodeLayout.x as number) ?? 0}
-                onChange={(v) => patchLayout("x", v)}
-              />
-            </FieldRow>
-            <FieldRow label="Y">
-              <DebouncedField
-                type="number"
-                value={(nodeLayout.y as number) ?? 0}
-                onChange={(v) => patchLayout("y", v)}
-              />
-            </FieldRow>
             <FieldRow label="Width">
               <DebouncedField
                 type="number"
