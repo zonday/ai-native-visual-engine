@@ -192,6 +192,9 @@ export function Inspector({
   const nodeLayout = (selectedNode.layout ?? {}) as Record<string, unknown>;
   const layoutMode =
     typeof nodeLayout.mode === "string" ? nodeLayout.mode : undefined;
+  const parentIsGrid =
+    selectedId &&
+    selectorRegistry?.getParent(selectedId)?.layout?.mode === "grid";
 
   return (
     <div className="p-3">
@@ -316,7 +319,9 @@ export function Inspector({
             <option value="absolute">absolute</option>
             <option value="flex">flex</option>
             <option value="grid">grid</option>
-            <option value="grid-item">grid-item</option>
+            {parentIsGrid || layoutMode === "grid-item" ? (
+              <option value="grid-item">grid-item</option>
+            ) : null}
           </select>
         </FieldRow>
         {layoutMode === "absolute" ? (
