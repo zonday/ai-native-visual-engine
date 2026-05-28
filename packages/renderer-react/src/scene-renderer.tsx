@@ -160,8 +160,29 @@ function handleSceneClick(
   e: React.MouseEvent,
   scene: RenderContext["scene"],
   onSelectNode: SceneRendererProps["onSelectNode"],
+  interactionEngine?: import("@ai-native/core").InteractionEngine,
+  computedEngine?: import("@ai-native/core").ComputedStateEngine,
 ): void {
   if (!onSelectNode) return;
+
+  // Try hitTest first when interaction engine + computed engine are available
+  if (interactionEngine && computedEngine) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sceneX = e.clientX - rect.left;
+    const sceneY = e.clientY - rect.top;
+    const nodeId = interactionEngine.hitTest(
+      sceneX,
+      sceneY,
+      scene,
+      computedEngine,
+    );
+    if (nodeId) {
+      onSelectNode(nodeId, { additive: e.ctrlKey || e.metaKey || e.shiftKey });
+      return;
+    }
+  }
+
+  // Fallback: DOM-based approach
   const target = e.target as HTMLElement;
   const wrapper = target.closest("[data-node-id]");
   if (!wrapper) return;
@@ -332,9 +353,15 @@ export function SceneRenderer({
         didDragRef.current = false;
         return;
       }
-      handleSceneClick(e, sceneRef.current, onSelectNode);
+      handleSceneClick(
+        e,
+        sceneRef.current,
+        onSelectNode,
+        context.interactionEngine,
+        context.computedEngine,
+      );
     },
-    [onSelectNode],
+    [onSelectNode, context.interactionEngine, context.computedEngine],
   );
 
   const statesByType = useMemo(() => {
