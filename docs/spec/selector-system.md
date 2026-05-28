@@ -67,16 +67,18 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry
 
 The factory captures the scene reference. When the scene is replaced (post-mutation), call `registry.sync(newScene)` or create a new registry.
 
-## 6. Dependency Tracking (Future)
+## 6. Dependency Tracking
 
-Extended selectors may track fine-grained dependencies:
+Extended selectors track fine-grained dependencies via the Reactive Dependency Graph (RDG).
 
 ```ts
 selector.getNode('a')  // internally records: depends on nodes.a
 // If only nodes.b changes, nodes.a selectors remain cached
 ```
 
-This enables per-node invalidation without clearing the entire cache. Implemented as Phase 2 once the basic selector system is stable.
+This enables per-node invalidation without clearing the entire cache.
+
+Implementation details are defined in the [Reactive Dependency Graph specification](reactive-dependency-graph.md).
 
 ## 7. Usage Rules
 

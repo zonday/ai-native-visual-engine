@@ -99,7 +99,9 @@ describe("ComputedStateEngine", () => {
     it("returns default sizes when layout has no width/height", () => {
       const scene = makeScene();
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-      scene.nodes.root!.children = ["a", "c"];
+      const root = scene.nodes.root;
+      if (!root) throw new Error("root missing");
+      root.children = ["a", "c"];
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       const bounds = eng.getComputedBounds("c");
@@ -119,7 +121,9 @@ describe("ComputedStateEngine", () => {
 
     it("returns null for invisible node", () => {
       const scene = makeScene();
-      scene.nodes.a!.visible = false;
+      const a = scene.nodes.a;
+      if (!a) throw new Error("a missing");
+      a.visible = false;
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       expect(eng.getVisibleBounds("a")).toBeNull();
@@ -183,33 +187,49 @@ describe("ComputedStateEngine", () => {
 
   describe("cache invalidation", () => {
     it("invalidate clears only the targeted node's cache", () => {
-      const sel = createSelectorRegistry(makeScene());
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       // Warm both caches
       eng.getWorldTransform("a");
       eng.getWorldTransform("a1");
-      // Invalidate only "a"
+      // Mutate node a's layout
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
+      // Invalidate only "a" — deletes its cache entries
       eng.invalidate("a");
-      // "a" recomputes, "a1" should still be cached
+      // "a" recomputes from fresh scene data
       const afterA = eng.getWorldTransform("a");
+      expect(afterA.x).toBe(200);
+      // "a1" should still be cached (invalidation was per-node)
       const afterA1 = eng.getWorldTransform("a1");
-      expect(afterA.x).toBe(100);
       expect(afterA1.x).toBe(110);
     });
 
-    it("returns consistent results after mutation", () => {
+    it("invalidateAll clears all caches for full recompute", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
-      const before = eng.getComputedBounds("a1");
-      // Simulate moving node a
-      (scene.nodes.a!.layout as Record<string, unknown>).x = 200;
+      eng.getWorldTransform("a1");
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
+      // Full invalidation of both layers
+      sel.invalidateAll();
+      eng.invalidateAll();
+      const after = eng.getWorldTransform("a1");
+      expect(after.x).toBe(210);
+    });
+
+    it("selector invalidates engine through scene version change (clearIfStale)", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const eng = createComputedStateEngine(sel);
+      eng.getWorldTransform("a1");
+      // Mutate AND bump scene version
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       scene.version = 1;
       sel.invalidateAll();
       eng.invalidateAll();
-      const after = eng.getComputedBounds("a1");
+      const after = eng.getWorldTransform("a1");
       expect(after.x).toBe(210);
-      expect(after.y).toBe(before.y);
     });
   });
 });

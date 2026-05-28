@@ -191,7 +191,9 @@ describe("SelectorRegistry", () => {
   describe("getVisibleNodes", () => {
     it("includes nodes without visible=false", () => {
       const scene = makeScene();
-      scene.nodes.b!.visible = false;
+      const b = scene.nodes.b;
+      if (!b) throw new Error("b missing");
+      b.visible = false;
       const sel = createSelectorRegistry(scene);
       const visible = sel.getVisibleNodes();
       expect(visible.every((n) => n.visible !== false)).toBe(true);
@@ -215,6 +217,53 @@ describe("SelectorRegistry", () => {
       sel.getChildren("root");
       sel.invalidateAll();
       expect(sel.getNode("a")?.id).toBe("a");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("reactive dependency invalidation (alien-signals)", () => {
+    it("invalidate cascades to dependent computed entries via version signal", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // getChildren("root") reads node:a internally, creating dependency on versionSignals["a"]
+      expect(sel.getChildren("root")).toHaveLength(2);
+      // Update scene data THEN invalidate targeted node
+      if (scene.nodes.root) scene.nodes.root.children = ["a"];
+      sel.invalidate("a");
+      // children:root computed is dirty (depends on a's version signal), re-evaluates
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(1);
+    });
+
+    it("invalidate recalculates correctly without data loss", () => {
+      const scene = makeScene();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      const root = scene.nodes.root;
+      if (!root) throw new Error("root missing");
+      root.children = ["a", "b", "c"];
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getNode("a");
+      sel.invalidate("a");
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(3);
+    });
+
+    it("invalidateAll clears all computeds and signals", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.invalidateAll();
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("scene version change clears all signals and computeds", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      scene.version = 1;
+      sel.getNode("root");
+      sel.invalidate("a");
       expect(sel.getChildren("root")).toHaveLength(2);
     });
   });
