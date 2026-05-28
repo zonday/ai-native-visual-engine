@@ -1,7 +1,7 @@
 import "./index.css";
 import type {
   DocumentAction,
-  DocumentHistoryState,
+  HistoryState,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
@@ -15,11 +15,10 @@ import {
   createDefaultRuntimeRegistries,
   createDocumentBatchHandler,
   createDocumentCommandBus,
-  createDocumentHistoryState,
+  createHistoryState,
   createInteractionEngine,
   createNewDocument,
   createRuntimeCommandBus,
-  createRuntimeHistoryState,
   createRuntimeTransactionManager,
   createScheduler,
   createSelectorRegistry,
@@ -30,11 +29,10 @@ import {
   DEFAULT_LAYOUT_CONSTRAINTS,
   DocumentActionSchema,
   openDocumentSession,
-  redoDocumentAction,
-  redoRuntimeAction,
+  RuntimeActionSchema,
+  redoAction,
   setCheckpoint,
-  undoDocumentAction,
-  undoRuntimeAction,
+  undoAction,
   validateGraphInvariants,
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
@@ -64,27 +62,20 @@ function App() {
     return session.getActiveScene();
   });
 
-  const runtimeHistoryRef = useRef(createRuntimeHistoryState());
-  const documentHistoryRef = useRef(createDocumentHistoryState());
+  type EditorAction = RuntimeAction | DocumentAction;
+  const historyRef = useRef<HistoryState<EditorAction>>(createHistoryState());
   const isUndoingRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
   const syncHistoryState = useCallback(() => {
-    setCanUndo(
-      runtimeHistoryRef.current.undoStack.length > 0 ||
-        documentHistoryRef.current.undoStack.length > 0,
-    );
-    setCanRedo(
-      runtimeHistoryRef.current.redoStack.length > 0 ||
-        documentHistoryRef.current.redoStack.length > 0,
-    );
+    setCanUndo(historyRef.current.undoStack.length > 0);
+    setCanRedo(historyRef.current.redoStack.length > 0);
   }, []);
 
   // Set checkpoint after initial mount to prevent undoing past initial state
   useEffect(() => {
-    runtimeHistoryRef.current = setCheckpoint(runtimeHistoryRef.current);
-    documentHistoryRef.current = setCheckpoint(documentHistoryRef.current);
+    historyRef.current = setCheckpoint(historyRef.current);
   }, []);
 
   const selectorRegistry = useMemo(
@@ -151,9 +142,9 @@ function App() {
         handlerRegistry,
         getContext: () => ({ now: Date.now, actorId: "editor" }),
         getActorId: () => "editor",
-        getHistory: () => runtimeHistoryRef.current,
+        getHistory: () => historyRef.current as HistoryState<RuntimeAction>,
         setHistory: (s) => {
-          runtimeHistoryRef.current = s;
+          historyRef.current = s as HistoryState<EditorAction>;
           syncHistoryState();
         },
         markDirty: (nodeIds) => {
@@ -207,9 +198,9 @@ function App() {
         DocumentActionSchema,
       ),
       createUndoHistoryMiddleware(
-        () => documentHistoryRef.current,
-        (s: DocumentHistoryState) => {
-          documentHistoryRef.current = s;
+        () => historyRef.current as HistoryState<DocumentAction>,
+        (s: HistoryState<DocumentAction>) => {
+          historyRef.current = s as HistoryState<EditorAction>;
           syncHistoryState();
         },
         () => "editor",
@@ -360,21 +351,21 @@ function App() {
   );
 
   const handleUndo = useCallback(() => {
-    const rtHS = runtimeHistoryRef.current;
-    const docHS = documentHistoryRef.current;
-    const rtEntry = rtHS.undoStack.at(-1);
-    const docEntry = docHS.undoStack.at(-1);
-    if (!rtEntry && !docEntry) return;
-
-    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
-      const result = undoRuntimeAction(rtHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = runtimeBus.dispatch(result.inverseAction);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        runtimeHistoryRef.current = result.state;
-        syncHistoryState();
+    const result = undoAction(historyRef.current);
+    if (!result) return;
+    isUndoingRef.current = true;
+    const entry: RuntimeAction | DocumentAction = result.inverseActions[0] as
+      | RuntimeAction
+      | DocumentAction;
+    const isRuntime = "nodeId" in entry || "activeStates" in entry;
+    const dispatchResult = isRuntime
+      ? runtimeBus.dispatch(entry as RuntimeAction)
+      : documentBus.dispatch(entry as DocumentAction);
+    isUndoingRef.current = false;
+    if (dispatchResult.ok) {
+      historyRef.current = result.state;
+      syncHistoryState();
+      if ("scene" in dispatchResult) {
         setScene(dispatchResult.scene);
         setDoc((d) => {
           const page = d.pages.find((p) => p.id === activePageId);
@@ -384,45 +375,33 @@ function App() {
             scenes: {
               ...d.scenes,
               [page.sceneId]: {
-                version: dispatchResult.scene.version,
-                rootId: dispatchResult.scene.rootId,
-                nodes: dispatchResult.scene.nodes,
-                metadata: dispatchResult.scene.metadata,
+                ...dispatchResult.scene,
               },
             },
           };
         });
-      }
-    } else if (docEntry) {
-      const result = undoDocumentAction(docHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = documentBus.dispatch(result.inverseAction);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        documentHistoryRef.current = result.state;
-        syncHistoryState();
+      } else {
         setDoc(dispatchResult.document);
       }
     }
   }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
 
   const handleRedo = useCallback(() => {
-    const rtHS = runtimeHistoryRef.current;
-    const docHS = documentHistoryRef.current;
-    const rtEntry = rtHS.redoStack.at(-1);
-    const docEntry = docHS.redoStack.at(-1);
-    if (!rtEntry && !docEntry) return;
-
-    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
-      const result = redoRuntimeAction(rtHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = runtimeBus.dispatch(result.action);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        runtimeHistoryRef.current = result.state;
-        syncHistoryState();
+    const result = redoAction(historyRef.current);
+    if (!result) return;
+    isUndoingRef.current = true;
+    const entry: RuntimeAction | DocumentAction = result.actions[0] as
+      | RuntimeAction
+      | DocumentAction;
+    const isRuntime = "nodeId" in entry || "activeStates" in entry;
+    const dispatchResult = isRuntime
+      ? runtimeBus.dispatch(entry as RuntimeAction)
+      : documentBus.dispatch(entry as DocumentAction);
+    isUndoingRef.current = false;
+    if (dispatchResult.ok) {
+      historyRef.current = result.state;
+      syncHistoryState();
+      if ("scene" in dispatchResult) {
         setScene(dispatchResult.scene);
         setDoc((d) => {
           const page = d.pages.find((p) => p.id === activePageId);
@@ -432,24 +411,12 @@ function App() {
             scenes: {
               ...d.scenes,
               [page.sceneId]: {
-                version: dispatchResult.scene.version,
-                rootId: dispatchResult.scene.rootId,
-                nodes: dispatchResult.scene.nodes,
-                metadata: dispatchResult.scene.metadata,
+                ...dispatchResult.scene,
               },
             },
           };
         });
-      }
-    } else if (docEntry) {
-      const result = redoDocumentAction(docHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = documentBus.dispatch(result.action);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        documentHistoryRef.current = result.state;
-        syncHistoryState();
+      } else {
         setDoc(dispatchResult.document);
       }
     }
@@ -721,8 +688,7 @@ function App() {
           <DebugPanel
             doc={doc}
             scene={currentScene}
-            runtimeHistory={runtimeHistoryRef.current}
-            documentHistory={documentHistoryRef.current}
+            history={historyRef.current}
           />
         </aside>
       )}

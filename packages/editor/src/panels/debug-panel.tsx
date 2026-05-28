@@ -1,32 +1,13 @@
-import type { SceneGraph, VisualDocument } from "@ai-native/core";
+import type { HistoryState, SceneGraph, VisualDocument } from "@ai-native/core";
 import { useState } from "react";
-
-interface HistoryEntry {
-  action: { type: string };
-  actions?: { type: string }[];
-  inverseAction?: { type: string };
-  inverseActions?: { type: string }[];
-  timestamp?: number;
-}
-
-interface HistoryState {
-  undoStack: HistoryEntry[];
-  redoStack: HistoryEntry[];
-}
 
 export interface DebugPanelProps {
   doc: VisualDocument;
   scene: SceneGraph;
-  runtimeHistory: HistoryState;
-  documentHistory: HistoryState;
+  history: HistoryState<{ type: string }>;
 }
 
-export function DebugPanel({
-  doc,
-  scene,
-  runtimeHistory,
-  documentHistory,
-}: DebugPanelProps) {
+export function DebugPanel({ doc, scene, history }: DebugPanelProps) {
   const [tab, setTab] = useState<"doc" | "scene" | "history">("history");
 
   return (
@@ -52,12 +33,12 @@ export function DebugPanel({
           <div className="space-y-2">
             <div>
               <div className="font-semibold text-slate-600 mb-1">
-                Runtime Undo Stack ({runtimeHistory.undoStack.length})
+                Undo Stack ({history.undoStack.length})
               </div>
-              {runtimeHistory.undoStack.length === 0 && (
+              {history.undoStack.length === 0 && (
                 <div className="text-slate-400">empty</div>
               )}
-              {[...runtimeHistory.undoStack].reverse().map((entry) => (
+              {[...history.undoStack].reverse().map((entry) => (
                 <div
                   key={entry.timestamp ?? entry.action.type}
                   className="text-[10px] text-slate-700"
@@ -70,50 +51,14 @@ export function DebugPanel({
             </div>
             <div>
               <div className="font-semibold text-slate-600 mb-1">
-                Runtime Redo Stack ({runtimeHistory.redoStack.length})
+                Redo Stack ({history.redoStack.length})
               </div>
-              {runtimeHistory.redoStack.length === 0 && (
+              {history.redoStack.length === 0 && (
                 <div className="text-slate-400">empty</div>
               )}
-              {[...runtimeHistory.redoStack].reverse().map((entry) => (
+              {[...history.redoStack].reverse().map((entry) => (
                 <div
                   key={entry.timestamp ?? entry.action.type}
-                  className="text-[10px] text-slate-700"
-                >
-                  {(entry.actions ?? [entry.action])
-                    .map((a: { type: string }) => a.type)
-                    .join(", ")}
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="font-semibold text-slate-600 mb-1">
-                Document Undo Stack ({documentHistory.undoStack.length})
-              </div>
-              {documentHistory.undoStack.length === 0 && (
-                <div className="text-slate-400">empty</div>
-              )}
-              {[...documentHistory.undoStack].reverse().map((entry) => (
-                <div
-                  key={"du-" + (entry.timestamp ?? entry.action.type)}
-                  className="text-[10px] text-slate-700"
-                >
-                  {(entry.actions ?? [entry.action])
-                    .map((a: { type: string }) => a.type)
-                    .join(", ")}
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="font-semibold text-slate-600 mb-1">
-                Document Redo Stack ({documentHistory.redoStack.length})
-              </div>
-              {documentHistory.redoStack.length === 0 && (
-                <div className="text-slate-400">empty</div>
-              )}
-              {[...documentHistory.redoStack].reverse().map((entry) => (
-                <div
-                  key={"dr-" + (entry.timestamp ?? entry.action.type)}
                   className="text-[10px] text-slate-700"
                 >
                   {(entry.actions ?? [entry.action])
