@@ -306,11 +306,22 @@ export function Inspector({
       {/* Layout Section */}
       <SectionHeader title="Layout" />
       <div className="text-xs space-y-1.5">
+        <FieldRow label="Mode">
+          <select
+            value={layoutMode ?? "absolute"}
+            onChange={(e) => patchLayout("mode", e.target.value)}
+            className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
+          >
+            <option value="absolute">absolute</option>
+            <option value="flex">flex</option>
+            <option value="grid">grid</option>
+          </select>
+        </FieldRow>
         {layoutMode === "flex" ? (
           <>
             <FieldRow label="Direction">
               <select
-                defaultValue={(nodeLayout.direction as string) ?? "row"}
+                value={(nodeLayout.direction as string) ?? "row"}
                 onChange={(e) => patchLayout("direction", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
@@ -329,7 +340,7 @@ export function Inspector({
             </FieldRow>
             <FieldRow label="Align">
               <select
-                defaultValue={(nodeLayout.align as string) ?? "stretch"}
+                value={(nodeLayout.align as string) ?? "stretch"}
                 onChange={(e) => patchLayout("align", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
@@ -341,7 +352,7 @@ export function Inspector({
             </FieldRow>
             <FieldRow label="Justify">
               <select
-                defaultValue={(nodeLayout.justify as string) ?? "flex-start"}
+                value={(nodeLayout.justify as string) ?? "flex-start"}
                 onChange={(e) => patchLayout("justify", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
