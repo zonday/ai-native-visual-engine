@@ -155,7 +155,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
       ],
     };
 
-    expect(() => handler(docWithTwoPages, action, context)).toThrow(
+    expect(() => handler!(docWithTwoPages, action, context)).toThrow(
       DocumentHandlerError,
     );
   });
@@ -204,7 +204,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
       actions: [],
     };
 
-    const result = handler(docWithTwoPages, action, context);
+    const result = handler!(docWithTwoPages, action, context);
     expect(result).toBe(docWithTwoPages);
   });
 });

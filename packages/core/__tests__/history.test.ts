@@ -138,7 +138,9 @@ describe("DocumentHistoryState", () => {
       const result1 = undoDocumentAction(state);
       expect(result1?.inverseAction).toEqual(entry2.inverseAction);
 
-      const result2 = undoDocumentAction(result1?.state);
+      const result2 = undoDocumentAction(
+        result1?.state as DocumentHistoryState,
+      );
       expect(result2?.inverseAction).toEqual(entry1.inverseAction);
       expect(result2?.state.undoStack).toHaveLength(0);
       expect(result2?.state.redoStack).toHaveLength(2);
@@ -194,15 +196,15 @@ describe("DocumentHistoryState", () => {
         redoStack: [],
       };
 
-      const undoResult = undoDocumentAction(state);
+      const undoResult = undoDocumentAction(state as DocumentHistoryState);
       expect(undoResult).not.toBeNull();
-      state = undoResult?.state;
+      state = undoResult?.state as DocumentHistoryState;
       expect(state.undoStack).toHaveLength(0);
       expect(state.redoStack).toHaveLength(1);
 
-      const redoResult = redoDocumentAction(state);
+      const redoResult = redoDocumentAction(state as DocumentHistoryState);
       expect(redoResult).not.toBeNull();
-      state = redoResult?.state;
+      state = redoResult?.state as DocumentHistoryState;
       expect(state.undoStack).toHaveLength(1);
       expect(state.redoStack).toHaveLength(0);
       expect(redoResult?.action).toEqual(action);

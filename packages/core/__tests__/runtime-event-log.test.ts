@@ -59,6 +59,8 @@ describe("replayRuntimeEvents", () => {
           ...scene.nodes,
           root: {
             ...scene.nodes.root,
+            id: "root",
+            type: "container",
             children: [...(scene.nodes.root?.children ?? []), a.node.id],
           },
           [a.node.id]: { ...a.node, parentId: "root" },

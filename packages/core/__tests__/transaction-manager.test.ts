@@ -330,8 +330,8 @@ describe("TransactionManager", () => {
 
       expect(result.ok).toBe(true);
       expect(active.tx.inverseActions).toHaveLength(2);
-      expect(active.tx.inverseActions[0]?.value).toBe("a");
-      expect(active.tx.inverseActions[1]?.value).toBe("");
+      expect((active.tx.inverseActions![0] as TestAction).value).toBe("a");
+      expect((active.tx.inverseActions![1] as TestAction).value).toBe("");
       expect(active.appliedInverses).toEqual(active.tx.inverseActions);
     });
 
@@ -357,7 +357,9 @@ describe("TransactionManager", () => {
       const result = tm.commit(active);
 
       expect(result.ok).toBe(true);
-      const invTypes = active.tx.inverseActions?.map((a) => a.type);
+      const invTypes = (active.tx.inverseActions! as TestAction[]).map(
+        (a) => a.type,
+      );
       expect(invTypes).not.toContain("update-selection");
       expect(active.appliedActions).toHaveLength(2);
     });
@@ -432,7 +434,7 @@ describe("TransactionManager", () => {
       tm.applyAction(active, {
         type: "create-node",
         node: { id: "node-from-object" },
-      });
+      } as TestAction);
 
       expect(active.tx.affectedNodes).toContain("node-from-object");
     });
@@ -480,14 +482,14 @@ describe("TransactionManager", () => {
 
       expect(commitResult.state.nodes.n1?.value).toBe("hello");
 
-      const inverses = commitResult.tx.inverseActions;
+      const inverses = commitResult.tx.inverseActions!;
       expect(inverses).toHaveLength(1);
 
       let replayed = commitResult.state;
       for (const inv of inverses) {
-        const entry = defaultHandlerRegistry.get(inv.type);
+        const entry = defaultHandlerRegistry.get((inv as TestAction).type);
         if (entry) {
-          replayed = entry.handler(replayed, inv, testContext);
+          replayed = entry.handler(replayed, inv as TestAction, testContext);
         }
       }
       expect(replayed.nodes.n1?.value).toBe("");

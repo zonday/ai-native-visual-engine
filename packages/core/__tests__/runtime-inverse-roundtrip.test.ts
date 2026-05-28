@@ -46,10 +46,7 @@ import { baseNode, makeScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
 
-const runtimeHandlers: Record<
-  string,
-  (scene: SceneGraph, action: RuntimeAction, ctx: RuntimeContext) => SceneGraph
-> = {
+const runtimeHandlers = {
   "create-node": createNodeHandler,
   "remove-node": removeNodeHandler,
   "move-node": moveNodeHandler,
@@ -60,7 +57,10 @@ const runtimeHandlers: Record<
   "update-bindings": updateBindingsHandler,
   "update-runtime": updateRuntimeHandler,
   "update-selection": updateSelectionHandler,
-};
+} as unknown as Record<
+  string,
+  (scene: SceneGraph, action: RuntimeAction, ctx: RuntimeContext) => SceneGraph
+>;
 
 function roundTrip<TAction extends RuntimeAction>(
   sceneBefore: SceneGraph,
