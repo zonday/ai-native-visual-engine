@@ -1,16 +1,21 @@
-import type { SelectorRegistry } from "@ai-native/core";
+import type { InteractionEngine, SelectorRegistry } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useInteraction } from "../hooks/use-interaction.js";
 import { useEditorStore } from "../store.js";
 
 export interface LayersProps {
   selectorRegistry?: SelectorRegistry;
+  interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
 }
 
-export function Layers({ selectorRegistry, onRenameNode }: LayersProps) {
+export function Layers({
+  selectorRegistry,
+  interactionEngine,
+  onRenameNode,
+}: LayersProps) {
+  const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const activePageId = useEditorStore((s) => s.activePageId);
-  const selectedIds = useEditorStore((s) => s.nodeIds);
-  const setSelection = useEditorStore((s) => s.setSelection);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,15 +73,11 @@ export function Layers({ selectorRegistry, onRenameNode }: LayersProps) {
               <button
                 type="button"
                 onClick={(e) => {
+                  if (!interactionEngine) return;
                   if (e.ctrlKey || e.metaKey || e.shiftKey) {
-                    const s = useEditorStore.getState();
-                    if (s.nodeIds.includes(node.id)) {
-                      s.removeFromSelection(node.id);
-                    } else {
-                      s.addToSelection(node.id);
-                    }
+                    interactionEngine.toggleSelection(node.id);
                   } else {
-                    setSelection([node.id]);
+                    interactionEngine.select([node.id]);
                   }
                 }}
                 onDoubleClick={() => {

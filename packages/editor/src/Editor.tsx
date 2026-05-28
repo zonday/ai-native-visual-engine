@@ -1,5 +1,6 @@
 import type {
   DocumentAction,
+  InteractionEngine,
   RuntimeAction,
   SelectorRegistry,
   VisualDocument,
@@ -11,6 +12,7 @@ import type {
 } from "@ai-native/renderer-react";
 import { useCallback, useEffect, useMemo } from "react";
 import { Canvas } from "./canvas/Canvas.js";
+import { useInteraction } from "./hooks/use-interaction.js";
 import { Inspector } from "./panels/inspector.js";
 import { Layers } from "./panels/layers.js";
 import { PageList } from "./panels/page-list.js";
@@ -21,6 +23,7 @@ export interface EditorProps {
   registry: ComponentRegistry;
   context: RenderContext;
   selectorRegistry?: SelectorRegistry;
+  interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
   onDispatchRuntime?: (action: RuntimeAction) => void;
@@ -32,6 +35,7 @@ export function Editor({
   registry,
   context,
   selectorRegistry,
+  interactionEngine,
   onTransform,
   onUpdateProps,
   onDispatchRuntime,
@@ -39,7 +43,7 @@ export function Editor({
 }: EditorProps) {
   const activePageId = useEditorStore((s) => s.activePageId);
   const setActivePage = useEditorStore((s) => s.setActivePage);
-  const nodeIds = useEditorStore((s) => s.nodeIds);
+  const { nodeIds } = useInteraction(interactionEngine);
   const viewport = useEditorStore((s) => s.viewport);
 
   useEffect(() => {
@@ -86,6 +90,7 @@ export function Editor({
         <PageList document={document} onRenamePage={handleRenamePage} />
         <Layers
           selectorRegistry={selectorRegistry}
+          interactionEngine={interactionEngine}
           onRenameNode={handleRenameNode}
         />
       </aside>
@@ -93,12 +98,18 @@ export function Editor({
         <Canvas
           registry={registry}
           context={editorContext}
+          interactionEngine={interactionEngine}
           onTransform={onTransform}
           onUpdateProps={onUpdateProps}
         />
       </main>
       <aside className="w-72 border-l border-slate-200 overflow-auto shrink-0">
-        <Inspector document={document} onDispatchRuntime={onDispatchRuntime} />
+        <Inspector
+          document={document}
+          selectorRegistry={selectorRegistry}
+          interactionEngine={interactionEngine}
+          onDispatchRuntime={onDispatchRuntime}
+        />
       </aside>
     </div>
   );

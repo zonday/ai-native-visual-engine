@@ -1,3 +1,4 @@
+import type { InteractionEngine } from "@ai-native/core";
 import type {
   ComponentRegistry,
   RenderContext,
@@ -5,11 +6,11 @@ import type {
   TransformEvent,
 } from "@ai-native/renderer-react";
 import { SceneRenderer } from "@ai-native/renderer-react";
-import { useEditorStore } from "../store.js";
 
 export interface CanvasProps {
   registry: ComponentRegistry;
   context: RenderContext;
+  interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
 }
@@ -17,6 +18,7 @@ export interface CanvasProps {
 export function Canvas({
   registry,
   context,
+  interactionEngine,
   onTransform,
   onUpdateProps,
 }: CanvasProps) {
@@ -24,15 +26,11 @@ export function Canvas({
     id,
     options,
   ) => {
+    if (!interactionEngine) return;
     if (options?.additive) {
-      const s = useEditorStore.getState();
-      if (s.nodeIds.includes(id)) {
-        s.removeFromSelection(id);
-      } else {
-        s.addToSelection(id);
-      }
+      interactionEngine.toggleSelection(id);
     } else {
-      useEditorStore.getState().setSelection([id]);
+      interactionEngine.select([id]);
     }
   };
 

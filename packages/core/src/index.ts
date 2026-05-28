@@ -100,6 +100,13 @@ export type {
   TransactionResult,
   TransactionSource,
 } from "./engine/transaction-types.js";
+// ── Interaction ──
+export {
+  createInteractionEngine,
+  type InteractionEngine,
+  type InteractionEvent,
+  type InteractionListener,
+} from "./interaction/interaction-engine.js";
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
 export type { ResolvedInstance } from "./prototype.js";

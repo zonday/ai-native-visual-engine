@@ -14,6 +14,7 @@ import {
   createDocumentBatchHandler,
   createDocumentCommandBus,
   createDocumentHistoryState,
+  createInteractionEngine,
   createNewDocument,
   createRuntimeCommandBus,
   createRuntimeHistoryState,
@@ -74,6 +75,8 @@ function App() {
     [scene],
   );
 
+  const interactionEngine = useMemo(() => createInteractionEngine(), []);
+
   const constraintRegistry = useMemo(() => {
     const reg = createConstraintRegistry();
     for (const c of DEFAULT_LAYOUT_CONSTRAINTS) {
@@ -104,6 +107,20 @@ function App() {
   );
 
   const schedulerRef = useRef(createScheduler({ mode: "sync" }));
+
+  // Wire interaction engine into scheduler — clear stale selections after compute
+  useEffect(() => {
+    const s = schedulerRef.current;
+    return s.subscribe({
+      onAfterCompute: () => {
+        const selected = interactionEngine.getSelection();
+        const valid = selected.filter((id) => selectorRegistry.getNode(id));
+        if (valid.length !== selected.length) {
+          interactionEngine.select(valid);
+        }
+      },
+    });
+  }, [interactionEngine, selectorRegistry]);
 
   const runtimeBus = useMemo(() => {
     const { handlerRegistry } = runtimeRegistries;
@@ -459,6 +476,7 @@ function App() {
         registry={registry}
         context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
         selectorRegistry={selectorRegistry}
+        interactionEngine={interactionEngine}
         onTransform={handleTransform}
         onUpdateProps={handleUpdateProps}
         onDispatchRuntime={dispatchRuntime}
