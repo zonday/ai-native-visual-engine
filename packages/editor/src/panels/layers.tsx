@@ -236,7 +236,6 @@ export function Layers({
                 isSelected={selectedIds.includes(flatItem.id)}
                 editing={editingId === flatItem.id}
                 draft={draft}
-                handleRef={inputRef}
                 onSelect={(e) => {
                   if (!interactionEngine) return;
                   if (e.ctrlKey || e.metaKey || e.shiftKey) {
