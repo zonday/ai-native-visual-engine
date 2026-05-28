@@ -187,9 +187,15 @@ describe("SceneRenderer", () => {
       selection: { nodeIds: ["child-1"] },
     };
     const { container } = render(
-      <SceneRenderer registry={registry} context={ctx} selectedIds={["child-1"]} />,
+      <SceneRenderer
+        registry={registry}
+        context={ctx}
+        selectedIds={["child-1"]}
+      />,
     );
-    expect(container.querySelector('[data-selection-chrome="child-1"]')).toBeTruthy();
+    expect(
+      container.querySelector('[data-selection-chrome="child-1"]'),
+    ).toBeTruthy();
   });
 
   it("does not show selection chrome in runtime mode even with selection", () => {
