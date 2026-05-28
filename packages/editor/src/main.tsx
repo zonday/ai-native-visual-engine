@@ -48,6 +48,7 @@ import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
 import { useCommands } from "./hooks/use-commands.js";
 import { useHotkey } from "./hooks/use-hotkey.js";
+import { DebugPanel } from "./panels/debug-panel.js";
 import { useEditorStore } from "./store.js";
 
 function createBootstrapDoc(): VisualDocument {
@@ -576,6 +577,7 @@ function App() {
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleDispatchDocument = useCallback(
     (action: DocumentAction) => {
@@ -673,6 +675,17 @@ function App() {
         >
           ⊞ Fit
         </button>
+        <button
+          type="button"
+          onClick={() => setShowDebug((v) => !v)}
+          className={`px-2 py-1 border rounded text-xs cursor-pointer ${
+            showDebug
+              ? "bg-blue-100 border-blue-400 text-blue-700"
+              : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          🐞 Debug
+        </button>
         <span className="ml-auto text-xs text-slate-500">
           Pages: {doc.pages.length} | Nodes:{" "}
           {selectorRegistry.getAllNodes().length}
@@ -697,6 +710,16 @@ function App() {
         onDispatchDocument={handleDispatchDocument}
         canvasContainerRef={canvasContainerRef}
       />
+      {showDebug && (
+        <aside className="w-80 border-l border-slate-200 overflow-auto shrink-0">
+          <DebugPanel
+            doc={doc}
+            scene={currentScene}
+            runtimeHistory={runtimeHistoryRef.current}
+            documentHistory={documentHistoryRef.current}
+          />
+        </aside>
+      )}
     </div>
   );
 }
