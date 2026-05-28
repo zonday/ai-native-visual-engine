@@ -78,9 +78,9 @@ describe("YjsDocProvider — §5.4 serialization envelope", () => {
 
     p.broadcastDocumentAction(sda("create-page"));
 
-    expect(received?.actorId).toBe("a");
-    expect(received?.timestamp).toBe(1);
-    expect(received?.action.type).toBe("create-page");
+    expect(received!.actorId).toBe("a");
+    expect(received!.timestamp).toBe(1);
+    expect(received!.action.type).toBe("create-page");
   });
 
   it("scene action includes actorId, timestamp, and pageId", () => {
@@ -92,10 +92,10 @@ describe("YjsDocProvider — §5.4 serialization envelope", () => {
 
     p.broadcastSceneAction(sra("update-layout"));
 
-    expect(received?.actorId).toBe("a");
-    expect(received?.timestamp).toBe(1);
-    expect(received?.pageId).toBe("page-1");
-    expect(received?.action.type).toBe("update-layout");
+    expect(received!.actorId).toBe("a");
+    expect(received!.timestamp).toBe(1);
+    expect(received!.pageId).toBe("page-1");
+    expect(received!.action.type).toBe("update-layout");
   });
 });
 

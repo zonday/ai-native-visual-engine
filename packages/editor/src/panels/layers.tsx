@@ -30,9 +30,10 @@ export function Layers({ document, onRenameNode }: LayersProps) {
     [draft, onRenameNode],
   );
 
-  if (!activePageId) return null;
+  const page = document.pages.find((p) => p.id === activePageId);
+  if (!page) return null;
 
-  const scene = document.scenes[activePageId.sceneId];
+  const scene = document.scenes[page.sceneId];
   const nodes = scene ? Object.values(scene.nodes) : [];
 
   return (

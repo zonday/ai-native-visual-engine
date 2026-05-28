@@ -53,7 +53,7 @@ describe("createNewDocument initialization", () => {
     const parsed = VisualDocumentSchema.safeParse(doc);
     expect(parsed.success).toBe(true);
     expect(doc.pages).toHaveLength(1);
-    expect(doc.scenes[doc.pages[0]?.sceneId]).toBeDefined();
+    expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
   });
 
   it("sets active theme via themeId option", () => {
@@ -199,7 +199,7 @@ describe("exportDocument with fixtures", () => {
     doc.pages.push({ id: "page-2", name: "Page 2", sceneId: "scene-2" });
     doc.scenes["scene-2"] = createEmptyScene();
 
-    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]?.id] });
+    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
     expect(exported.document.pages).toHaveLength(1);
   });
 });

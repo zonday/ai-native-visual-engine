@@ -44,7 +44,7 @@ export function pushUndoTransaction<TAction>(
 ): HistoryState<TAction> {
   if (actions.length === 0) return state;
   const entry: HistoryEntry<TAction> = {
-    action: actions[0],
+    action: actions[0] as TAction,
     actions,
     inverseActions,
     timestamp,

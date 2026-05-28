@@ -43,9 +43,9 @@ describe("exportDocument", () => {
       nodes: { "root-2": { id: "root-2", type: "container", children: [] } },
     };
 
-    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]?.id] });
+    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
     expect(exported.document.pages).toHaveLength(1);
-    expect(exported.document.pages[0]?.id).toBe(doc.pages[0]?.id);
+    expect(exported.document.pages[0]?.id).toBe(doc.pages[0]!.id);
   });
 
   it("strips activeThemeId when includeThemes is false", () => {
