@@ -312,10 +312,11 @@ export function Inspector({
             onChange={(e) => patchLayout("mode", e.target.value || undefined)}
             className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
           >
-            <option value="">none (relative)</option>
+            <option value="">relative</option>
             <option value="absolute">absolute</option>
             <option value="flex">flex</option>
             <option value="grid">grid</option>
+            <option value="grid-item">grid-item</option>
           </select>
         </FieldRow>
         {layoutMode === "absolute" ? (
@@ -437,6 +438,37 @@ export function Inspector({
                 type="number"
                 value={(nodeLayout.height as number) ?? 0}
                 onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
+          </>
+        ) : layoutMode === "grid-item" ? (
+          <>
+            <FieldRow label="Column">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.x as number) ?? 0}
+                onChange={(v) => patchLayout("x", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Row">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.y as number) ?? 0}
+                onChange={(v) => patchLayout("y", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Span W">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.w as number) ?? 1}
+                onChange={(v) => patchLayout("w", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Span H">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.h as number) ?? 1}
+                onChange={(v) => patchLayout("h", v)}
               />
             </FieldRow>
           </>
