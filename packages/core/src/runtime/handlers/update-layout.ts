@@ -3,6 +3,7 @@ import type { UpdateLayoutAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
+import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
   if ("width" in layout) {
@@ -58,7 +59,10 @@ export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
 ) => {
   const node = expectNode(scene, action.nodeId, "update-layout");
 
-  const merged = { ...(node.layout ?? {}), ...action.layout };
+  const merged = {
+    ...(node.layout ?? {}),
+    ...stripDangerousKeys(action.layout),
+  };
   validateLayout(merged, action.nodeId);
 
   const updatedNode = {

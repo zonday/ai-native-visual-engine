@@ -62,7 +62,7 @@ export function MetricTrendNode({ node }: MetricTrendProps) {
         >
           {(() => {
             const max = Math.max(...trendData, 1);
-            return trendData.map((v) => (
+            return trendData.map((v, index) => (
               <div
                 key={`bar-${v}`}
                 style={{

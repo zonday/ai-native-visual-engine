@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { TransformEvent } from "./renderer.js";
 
 export interface SelectionChromeProps {
@@ -127,11 +127,14 @@ export function SelectionChrome({
     };
   }, [nodeId]);
 
-  const startDrag = (handle: string) => (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    const handle = target.getAttribute("data-handle");
+    if (!handle) return;
     e.stopPropagation();
     e.preventDefault();
     dragRef.current = { handle, startX: e.clientX, startY: e.clientY };
-  };
+  }, []);
 
   const isAbsolute = layout?.mode === "absolute";
   const showHandles = !!onTransform;
@@ -168,7 +171,7 @@ export function SelectionChrome({
               type="button"
               data-handle={c.label}
               aria-label={`resize ${c.label}`}
-              onMouseDown={startDrag(c.label)}
+              onMouseDown={handleMouseDown}
               style={{
                 ...handleStyle,
                 top: c.top,
@@ -183,7 +186,7 @@ export function SelectionChrome({
               type="button"
               data-handle="rotate"
               aria-label="rotate"
-              onMouseDown={startDrag("rotate")}
+              onMouseDown={handleMouseDown}
               style={rotateHandleStyle}
             />
           )}

@@ -2,6 +2,7 @@ import type { UpdatePropsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
+import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   scene,
@@ -12,7 +13,7 @@ export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
 
   const updatedNode = {
     ...node,
-    props: { ...node.props, ...action.props },
+    props: { ...node.props, ...stripDangerousKeys(action.props) },
   };
 
   return {

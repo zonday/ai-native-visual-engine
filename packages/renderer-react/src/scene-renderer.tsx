@@ -175,6 +175,12 @@ export function SceneRenderer({
 
   const didDragRef = useRef(false);
 
+  const sceneRef = useRef(context.scene);
+  sceneRef.current = context.scene;
+
+  const contextRef = useRef(context);
+  contextRef.current = context;
+
   const zoomRef = useRef(context.viewport?.zoom ?? 1);
   zoomRef.current = context.viewport?.zoom ?? 1;
 
@@ -277,11 +283,12 @@ export function SceneRenderer({
       if (!wrapper) return;
       const nodeId = wrapper.getAttribute("data-node-id");
       if (!nodeId) return;
-      const node = context.scene.nodes[nodeId];
+      const scene = sceneRef.current;
+      const node = scene.nodes[nodeId];
       if (!node) return;
+      const ctx = contextRef.current;
       const isSelected =
-        context.mode === "editor" &&
-        !!context.selection?.nodeIds.includes(nodeId);
+        ctx.mode === "editor" && !!ctx.selection?.nodeIds.includes(nodeId);
       if (!isSelected) return;
       if (node.locked === true) return;
       const p = node.prototypeId
@@ -295,13 +302,7 @@ export function SceneRenderer({
       if (layoutMode !== "absolute" && layoutMode !== "grid-item") return;
       moveDragRef.current = { nodeId, startX: e.clientX, startY: e.clientY };
     },
-    [
-      context.mode,
-      context.scene.nodes,
-      context.selection?.nodeIds,
-      onTransform,
-      prototypeMap,
-    ],
+    [onTransform, prototypeMap],
   );
 
   const sceneClickHandler = useCallback(
@@ -310,9 +311,9 @@ export function SceneRenderer({
         didDragRef.current = false;
         return;
       }
-      handleSceneClick(e, context.scene, onSelectNode);
+      handleSceneClick(e, sceneRef.current, onSelectNode);
     },
-    [context.scene, onSelectNode],
+    [onSelectNode],
   );
 
   const statesByType = useMemo(() => {

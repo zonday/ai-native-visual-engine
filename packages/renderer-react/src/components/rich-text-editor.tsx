@@ -2,8 +2,10 @@ import type { DocNode, SceneNode } from "@ai-native/core";
 import { extractPlainText } from "@ai-native/core";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useCallback, useMemo } from "react";
 import { useEditorCallbacks } from "../editor-callbacks.js";
 import type { RenderContext } from "../renderer.js";
 
@@ -24,8 +26,8 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
   const placeholder =
     (node.props?.placeholder as string | undefined) ?? undefined;
 
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit,
       Underline,
       Link.configure({
@@ -33,18 +35,33 @@ export function RichTextEditor({ node, ctx }: RichTextEditorProps) {
         validate: (href) => /^https?:\/\//.test(href),
       }),
     ],
-    content,
-    editable: isEditable,
-    editorProps: {
+    [],
+  );
+
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         placeholder: placeholder ?? "",
       },
-    },
-    onUpdate: ({ editor }) => {
+    }),
+    [placeholder],
+  );
+
+  const onUpdate = useCallback(
+    (props: { editor: Editor }) => {
       if (!onContentChange) return;
-      const json = editor.getJSON() as DocNode;
+      const json = props.editor.getJSON() as DocNode;
       onContentChange(node.id, json);
     },
+    [node.id, onContentChange],
+  );
+
+  const editor = useEditor({
+    extensions,
+    content,
+    editable: isEditable,
+    editorProps,
+    onUpdate,
   });
 
   if (ctx.mode === "runtime") {

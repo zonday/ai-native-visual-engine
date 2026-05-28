@@ -69,7 +69,14 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   }
 
   const updatedNewParent = nodes[action.parentId];
-  if (!updatedNewParent) return scene;
+  if (!updatedNewParent) {
+    throw new HandlerError(
+      "scene.parent-lost",
+      `Parent "${action.parentId}" disappeared during move`,
+      "move-node",
+      { nodeId: action.parentId },
+    );
+  }
   const index =
     action.index !== undefined
       ? Math.min(

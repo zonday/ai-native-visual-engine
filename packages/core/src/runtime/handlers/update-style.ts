@@ -2,6 +2,7 @@ import type { UpdateStyleAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
+import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   scene,
@@ -12,7 +13,7 @@ export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
 
   const updatedNode = {
     ...node,
-    style: { ...action.style },
+    style: { ...stripDangerousKeys(action.style) },
   };
 
   return {

@@ -36,7 +36,7 @@ export function createCollaborationMiddleware(
 
   const unsubDoc = provider.onRemoteDocumentAction(onRemoteDoc);
   const unsubScene = provider.onRemoteSceneAction(
-    options.getActivePageId?.() ?? "default",
+    options.getActivePageId ?? (() => "default" as PageId),
     onRemoteScene,
   );
 

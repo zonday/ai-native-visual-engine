@@ -11,12 +11,20 @@ import type {
 } from "../handler-registry.js";
 import { computeInverseAction } from "../handler-registry.js";
 
-function flattenBatchActions(actions: RuntimeAction[]): RuntimeAction[] {
+const MAX_BATCH_DEPTH = 50;
+
+function flattenBatchActions(
+  actions: RuntimeAction[],
+  depth: number = 0,
+): RuntimeAction[] {
+  if (depth > MAX_BATCH_DEPTH) return [];
   const flat: RuntimeAction[] = [];
   for (const action of actions) {
     if (action.type === "batch-actions") {
       const batch = action as BatchActions;
-      flat.push(...flattenBatchActions(batch.actions as RuntimeAction[]));
+      flat.push(
+        ...flattenBatchActions(batch.actions as RuntimeAction[], depth + 1),
+      );
     } else {
       flat.push(action);
     }

@@ -5,17 +5,26 @@ import { expectNode } from "../expect-node.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
 
+const MAX_DEPTH = 1000;
+
 function collectDescendants(
   nodeId: string,
   nodes: Record<string, SceneNode>,
+  depth: number = 0,
 ): string[] {
+  if (depth > MAX_DEPTH) return [nodeId];
+  const result: string[] = [nodeId];
   const node = nodes[nodeId];
-  if (!node?.children) return [nodeId];
-  const descendants = [nodeId];
-  for (const childId of node.children) {
-    descendants.push(...collectDescendants(childId, nodes));
+  if (node?.children) {
+    for (const childId of node.children) {
+      const childDescendants = collectDescendants(childId, nodes, depth + 1);
+      for (let i = 0; i < childDescendants.length; i++) {
+        const descendant = childDescendants[i];
+        if (descendant !== undefined) result.push(descendant);
+      }
+    }
   }
-  return descendants;
+  return result;
 }
 
 export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (

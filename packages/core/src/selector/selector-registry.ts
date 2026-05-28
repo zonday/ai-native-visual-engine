@@ -154,18 +154,19 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
       return getCached(`descendants:${nodeId}`, () => {
         getVersionSignal(nodeId)();
         const descendants: SceneNode[] = [];
-        function walk(id: string): void {
+        function walk(id: string, depth: number = 0): void {
+          if (depth > 1000) return;
           const node = scene.nodes[id];
           if (!node?.children) return;
           for (const childId of node.children) {
             const child = registry.getNode(childId);
             if (child) {
               descendants.push(child);
-              walk(childId);
+              walk(childId, depth + 1);
             }
           }
         }
-        walk(nodeId);
+        walk(nodeId, 0);
         return descendants;
       })();
     },

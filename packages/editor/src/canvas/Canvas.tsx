@@ -3,9 +3,11 @@ import type {
   ComponentRegistry,
   RenderContext,
   SceneRendererProps,
+  SelectNodeOptions,
   TransformEvent,
 } from "@ai-native/renderer-react";
 import { SceneRenderer } from "@ai-native/renderer-react";
+import { useCallback } from "react";
 
 export interface CanvasProps {
   registry: ComponentRegistry;
@@ -22,17 +24,17 @@ export function Canvas({
   onTransform,
   onUpdateProps,
 }: CanvasProps) {
-  const handleSelectNode: SceneRendererProps["onSelectNode"] = (
-    id,
-    options,
-  ) => {
-    if (!interactionEngine) return;
-    if (options?.additive) {
-      interactionEngine.toggleSelection(id);
-    } else {
-      interactionEngine.select([id]);
-    }
-  };
+  const handleSelectNode = useCallback(
+    (id: string, options?: SelectNodeOptions) => {
+      if (!interactionEngine) return;
+      if (options?.additive) {
+        interactionEngine.toggleSelection(id);
+      } else {
+        interactionEngine.select([id]);
+      }
+    },
+    [interactionEngine],
+  );
 
   return (
     <SceneRenderer

@@ -3,6 +3,7 @@ import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
 import type { RuntimeHandler } from "../handler.js";
 import type { InverseComputer } from "../handler-registry.js";
+import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   scene,
@@ -28,13 +29,17 @@ export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
     );
   }
 
+  const sanitizedNode = stripDangerousKeys(
+    action.node as Record<string, unknown>,
+  ) as typeof action.node;
+
   const index =
     action.index !== undefined
       ? Math.min(Math.max(0, action.index), (parent.children ?? []).length)
       : (parent.children ?? []).length;
 
   const node: SceneNode = {
-    ...action.node,
+    ...sanitizedNode,
     parentId: action.parentId,
   };
 

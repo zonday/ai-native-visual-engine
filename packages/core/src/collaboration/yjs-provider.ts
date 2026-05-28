@@ -21,7 +21,7 @@ export interface YjsDocProvider {
     handler: (entry: SerializedDocumentAction) => void,
   ): () => void;
   onRemoteSceneAction(
-    pageId: PageId,
+    pageId: PageId | (() => PageId | undefined),
     handler: (entry: SerializedRuntimeAction) => void,
   ): () => void;
   broadcastDocumentAction(entry: SerializedDocumentAction): void;
@@ -97,8 +97,57 @@ export function createYjsDocProvider(roomId: string): YjsDocProvider {
       return observeArray(documentActions, handler);
     },
 
-    onRemoteSceneAction(pageId, handler) {
-      return observeArray(getSceneArray(pageId), handler);
+    onRemoteSceneAction(pageIdOrFn, handler) {
+      if (typeof pageIdOrFn !== "function") {
+        return observeArray(getSceneArray(pageIdOrFn), handler);
+      }
+
+      // Lazy resolution: observe arrays of all pages, filter at event time
+      const getActivePageId = pageIdOrFn as () => string | undefined;
+      const cleanups: (() => void)[] = [];
+      const observed = new Set<string>();
+
+      function watchPage(pid: string) {
+        if (observed.has(pid)) return;
+        observed.add(pid);
+        const arr = getSceneArray(pid);
+        let locked = false;
+        const observer = () => {
+          if (locked) return;
+          const item = arr.get(arr.length - 1);
+          if (item !== undefined) {
+            const activeId = getActivePageId() ?? "default";
+            if (item.pageId === activeId) {
+              locked = true;
+              try {
+                handler(item);
+              } finally {
+                locked = false;
+              }
+            }
+          }
+        };
+        arr.observe(observer);
+        cleanups.push(() => arr.unobserve(observer));
+      }
+
+      // Watch all existing pages
+      for (const [pid] of sceneActions) {
+        watchPage(pid);
+      }
+
+      // Watch for new pages being added
+      const onMapChange = () => {
+        for (const [pid] of sceneActions) {
+          watchPage(pid);
+        }
+      };
+      sceneActions.observe(onMapChange);
+      cleanups.push(() => sceneActions.unobserve(onMapChange));
+
+      return () => {
+        for (const fn of cleanups) fn();
+      };
     },
 
     broadcastDocumentAction(entry) {

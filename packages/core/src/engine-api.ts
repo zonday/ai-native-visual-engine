@@ -293,7 +293,8 @@ export function createEngineAPI(
   const sceneAPI: SceneAPI = {
     getRoot() {
       const root = getScene().nodes[getScene().rootId];
-      return root ?? ({} as SceneNode);
+      if (!root) throw new Error(`Root node "${getScene().rootId}" not found`);
+      return root;
     },
     getActivePageId() {
       return pageId;
