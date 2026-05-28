@@ -426,6 +426,32 @@ function App() {
     }
   }, [interactionEngine, scene.rootId, dispatchRuntime]);
 
+  const handleMoveSelectedNode = useCallback(
+    (direction: "up" | "down") => {
+      const selection = interactionEngine.getSelection();
+      const nodeId = selection[0];
+      if (selection.length !== 1 || !nodeId) return;
+      if (nodeId === scene.rootId) return;
+      const parent = selectorRegistry.getParent(nodeId);
+      if (!parent) return;
+      const siblings = selectorRegistry.getChildren(parent.id);
+      const idx = siblings.findIndex((s) => s.id === nodeId);
+      if (idx === -1) return;
+      const newIndex =
+        direction === "up"
+          ? Math.max(0, idx - 1)
+          : Math.min(siblings.length - 1, idx + 1);
+      if (newIndex === idx) return;
+      dispatchRuntime({
+        type: "move-node",
+        nodeId,
+        parentId: parent.id,
+        index: newIndex,
+      });
+    },
+    [interactionEngine, scene.rootId, selectorRegistry, dispatchRuntime],
+  );
+
   const handleUndoRef = useRef(handleUndo);
   handleUndoRef.current = handleUndo;
   const handleRedoRef = useRef(handleRedo);
@@ -436,6 +462,10 @@ function App() {
   canUndoRef.current = canUndo;
   const canRedoRef = useRef(canRedo);
   canRedoRef.current = canRedo;
+  const handleMoveUpRef = useRef(() => handleMoveSelectedNode("up"));
+  handleMoveUpRef.current = () => handleMoveSelectedNode("up");
+  const handleMoveDownRef = useRef(() => handleMoveSelectedNode("down"));
+  handleMoveDownRef.current = () => handleMoveSelectedNode("down");
 
   useEffect(() => {
     commandRegistry.register({
@@ -465,11 +495,31 @@ function App() {
       when: () => interactionEngine.getSelection().length > 0,
       handler: () => handleDeleteRef.current(),
     });
+    commandRegistry.register({
+      id: "layer-move-up",
+      label: "Move Up",
+      shortcut: { key: "ArrowUp", ctrl: true, shift: true },
+      group: "edit",
+      order: 4,
+      when: () => interactionEngine.getSelection().length === 1,
+      handler: () => handleMoveUpRef.current(),
+    });
+    commandRegistry.register({
+      id: "layer-move-down",
+      label: "Move Down",
+      shortcut: { key: "ArrowDown", ctrl: true, shift: true },
+      group: "edit",
+      order: 5,
+      when: () => interactionEngine.getSelection().length === 1,
+      handler: () => handleMoveDownRef.current(),
+    });
 
     return () => {
       commandRegistry.unregister("undo");
       commandRegistry.unregister("redo");
       commandRegistry.unregister("delete");
+      commandRegistry.unregister("layer-move-up");
+      commandRegistry.unregister("layer-move-down");
     };
   }, [interactionEngine]);
 

@@ -89,14 +89,33 @@ export function Editor({
     [onDispatchRuntime],
   );
 
+  const handleReorderPage = useCallback(
+    (pageId: string, index: number) => {
+      onDispatchDocument?.({ type: "reorder-page", pageId, index });
+    },
+    [onDispatchDocument],
+  );
+
+  const handleMoveNode = useCallback(
+    (nodeId: string, parentId: string, index: number) => {
+      onDispatchRuntime?.({ type: "move-node", nodeId, parentId, index });
+    },
+    [onDispatchRuntime],
+  );
+
   return (
     <div className="flex flex-1 min-h-0">
       <aside className="w-60 border-r border-slate-200 overflow-auto shrink-0">
-        <PageList document={document} onRenamePage={handleRenamePage} />
+        <PageList
+          document={document}
+          onRenamePage={handleRenamePage}
+          onReorderPage={handleReorderPage}
+        />
         <Layers
           selectorRegistry={selectorRegistry}
           interactionEngine={interactionEngine}
           onRenameNode={handleRenameNode}
+          onMoveNode={handleMoveNode}
         />
       </aside>
       <main

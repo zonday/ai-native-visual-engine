@@ -1,26 +1,211 @@
 import type { InteractionEngine, SelectorRegistry } from "@ai-native/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useCallback, useMemo, useState } from "react";
 import { useInteraction } from "../hooks/use-interaction.js";
 
 export interface LayersProps {
   selectorRegistry?: SelectorRegistry;
   interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
+  onMoveNode?: (nodeId: string, parentId: string, index: number) => void;
+}
+
+interface FlatItem {
+  id: string;
+  depth: number;
+  hasChildren: boolean;
+  label: string;
+}
+
+function buildFlattened(
+  registry: SelectorRegistry,
+  nodeId: string,
+  depth = 0,
+): FlatItem[] {
+  const node = registry.getNode(nodeId);
+  if (!node) return [];
+  const label = node.name || `${node.type}:${nodeId.slice(0, 8)}`;
+  const children = registry.getChildren(nodeId);
+  const items: FlatItem[] = [
+    { id: nodeId, depth, hasChildren: children.length > 0, label },
+  ];
+  for (const child of children) {
+    items.push(...buildFlattened(registry, child.id, depth + 1));
+  }
+  return items;
+}
+
+function SortableLayerItem({
+  flatItem,
+  isSelected,
+  editing,
+  draft,
+  onSelect,
+  onStartEdit,
+  onDraftChange,
+  onCommit,
+  onCancelEdit,
+}: {
+  flatItem: FlatItem;
+  isSelected: boolean;
+  editing: boolean;
+  draft: string;
+  onSelect: (e: React.MouseEvent) => void;
+  onStartEdit: () => void;
+  onDraftChange: (v: string) => void;
+  onCommit: () => void;
+  onCancelEdit: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: flatItem.id });
+
+  const style: React.CSSProperties = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    paddingLeft: `${flatItem.depth * 16 + 8}px`,
+  };
+
+  if (editing) {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommit();
+            if (e.key === "Escape") onCancelEdit();
+          }}
+          onBlur={onCommit}
+          className="w-full box-border px-1 py-0.5 text-xs border border-blue-500 rounded outline-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-0.5">
+      <button
+        type="button"
+        className="cursor-grab touch-none px-1 text-slate-400 hover:text-slate-600 text-xs"
+        {...attributes}
+        {...listeners}
+      >
+        ⋮⋮
+      </button>
+      <button
+        type="button"
+        onClick={onSelect}
+        onDoubleClick={onStartEdit}
+        className={`flex-1 text-left px-2 py-1 rounded border-none text-xs cursor-pointer ${
+          isSelected ? "bg-sky-100 text-sky-900" : "bg-transparent text-inherit"
+        }`}
+      >
+        {flatItem.hasChildren && (
+          <span className="text-slate-400 mr-1 select-none">▾</span>
+        )}
+        {flatItem.label}
+      </button>
+    </div>
+  );
 }
 
 export function Layers({
   selectorRegistry,
   interactionEngine,
   onRenameNode,
+  onMoveNode,
 }: LayersProps) {
   const { nodeIds: selectedIds } = useInteraction(interactionEngine);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editingId) inputRef.current?.focus();
-  }, [editingId]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const flattened = useMemo(() => {
+    if (!selectorRegistry) return [];
+    const root = selectorRegistry.getRoot();
+    if (!root) return [];
+    return buildFlattened(selectorRegistry, root.id);
+  }, [selectorRegistry]);
+
+  const rootId = useMemo(
+    () => selectorRegistry?.getRoot()?.id ?? "",
+    [selectorRegistry],
+  );
+
+  const sortedIds = useMemo(() => flattened.map((f) => f.id), [flattened]);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      if (!onMoveNode || !selectorRegistry) return;
+
+      const draggedId = active.id as string;
+      const overId = over.id as string;
+
+      const draggedNode = selectorRegistry.getNode(draggedId);
+      const overNode = selectorRegistry.getNode(overId);
+      if (!draggedNode || !overNode) return;
+
+      // Cannot drop on root
+      if (overId === rootId) return;
+
+      // Prevent dropping on own descendants
+      const descendants = selectorRegistry.getDescendants(draggedId);
+      if (descendants.some((d) => d.id === overId)) return;
+
+      // Determine drop target: if over node is a container, drop as its child
+      const overChildren = selectorRegistry.getChildren(overId);
+      if (overChildren.length > 0) {
+        onMoveNode(draggedId, overId, overChildren.length);
+        return;
+      }
+
+      // Otherwise drop after the over node (at the same parent)
+      const overParent = selectorRegistry.getParent(overId);
+      if (!overParent) return;
+      const siblings = selectorRegistry.getChildren(overParent.id);
+      const overIndex = siblings.findIndex((s) => s.id === overId);
+      if (overIndex === -1) return;
+
+      // If the dragged node was from the same parent and before the drop
+      // point, adjust index by 1 since it will be removed first
+      let targetIndex = overIndex + 1;
+      if (
+        draggedNode.parentId === overParent.id &&
+        siblings.findIndex((s) => s.id === draggedId) < overIndex
+      ) {
+        targetIndex = overIndex;
+      }
+
+      onMoveNode(draggedId, overParent.id, targetIndex);
+    },
+    [onMoveNode, selectorRegistry, rootId],
+  );
 
   const commit = useCallback(
     (nodeId: string, originalName: string) => {
@@ -33,64 +218,52 @@ export function Layers({
     [draft, onRenameNode],
   );
 
-  const nodes = selectorRegistry ? selectorRegistry.getAllNodes() : [];
-
   return (
     <div className="p-3 border-t border-slate-200">
       <h3 className="text-xs font-semibold mb-2 uppercase tracking-wider">
         Layers
       </h3>
-      <ul className="list-none p-0 m-0">
-        {nodes.map((node) => {
-          const label = node.name || `${node.type}:${node.id.slice(0, 8)}`;
-
-          if (editingId === node.id) {
-            return (
-              <li key={node.id} className="mb-1">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commit(node.id, label);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  onBlur={() => commit(node.id, label)}
-                  className="w-full box-border px-1 py-0.5 text-xs border border-blue-500 rounded outline-none"
-                />
-              </li>
-            );
-          }
-
-          return (
-            <li key={node.id} className="mb-1">
-              <button
-                type="button"
-                onClick={(e) => {
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <SortableContext
+          items={sortedIds}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="flex flex-col gap-0.5">
+            {flattened.map((flatItem) => (
+              <SortableLayerItem
+                key={flatItem.id}
+                flatItem={flatItem}
+                isSelected={selectedIds.includes(flatItem.id)}
+                editing={editingId === flatItem.id}
+                draft={draft}
+                onSelect={(e) => {
                   if (!interactionEngine) return;
                   if (e.ctrlKey || e.metaKey || e.shiftKey) {
-                    interactionEngine.toggleSelection(node.id);
+                    interactionEngine.toggleSelection(flatItem.id);
                   } else {
-                    interactionEngine.select([node.id]);
+                    interactionEngine.select([flatItem.id]);
                   }
                 }}
-                onDoubleClick={() => {
-                  setEditingId(node.id);
+                onStartEdit={() => {
+                  setEditingId(flatItem.id);
+                  const node = selectorRegistry?.getNode(flatItem.id);
+                  const label =
+                    node?.name || `${node?.type}:${flatItem.id.slice(0, 8)}`;
                   setDraft(label);
                 }}
-                className={`w-full text-left px-2 py-1 rounded border-none text-xs cursor-pointer ${
-                  selectedIds.includes(node.id)
-                    ? "bg-sky-100 text-sky-900"
-                    : "bg-transparent text-inherit"
-                }`}
-              >
-                {label}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                onDraftChange={setDraft}
+                onCommit={() => {
+                  const node = selectorRegistry?.getNode(flatItem.id);
+                  const label =
+                    node?.name || `${node?.type}:${flatItem.id.slice(0, 8)}`;
+                  commit(flatItem.id, label);
+                }}
+                onCancelEdit={() => setEditingId(null)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
