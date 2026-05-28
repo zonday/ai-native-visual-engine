@@ -4,8 +4,10 @@ import { createDocumentCommandBus } from "../src/document/document-command-bus.j
 import type { DocumentRuntimeContext } from "../src/document/handler.js";
 import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
-import type { DocumentMiddleware } from "../src/document/middleware.js";
+import type { Middleware } from "../src/engine/command-bus.js";
 import type { VisualDocument } from "../src/types.js";
+
+type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 const docWithPage: VisualDocument = {

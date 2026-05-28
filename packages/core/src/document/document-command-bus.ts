@@ -8,7 +8,9 @@ import type {
 } from "./command-bus.js";
 import type { DocumentRuntimeContext } from "./handler.js";
 import type { DocumentHandlerRegistry } from "./handler-registry.js";
-import type { DocumentMiddleware } from "./middleware.js";
+import type { Middleware } from "../engine/command-bus.js";
+
+type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 
 function toDocumentError(
   err: unknown,

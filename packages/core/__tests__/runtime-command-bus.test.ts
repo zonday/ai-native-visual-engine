@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
-import type { RuntimeMiddleware } from "../src/runtime/middleware.js";
+import type { Middleware } from "../src/engine/command-bus.js";
+import type { SceneGraph } from "../src/types.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
+
+type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
 import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {

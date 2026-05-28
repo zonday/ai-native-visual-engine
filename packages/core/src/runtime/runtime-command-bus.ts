@@ -5,7 +5,9 @@ import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult, RuntimeError } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
 import type { RuntimeHandlerRegistry } from "./handler-registry.js";
-import type { RuntimeMiddleware } from "./middleware.js";
+import type { Middleware } from "../engine/command-bus.js";
+
+type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
 
 function toRuntimeError(err: unknown, actionType: string): RuntimeError {
   if (err instanceof HandlerError) {
