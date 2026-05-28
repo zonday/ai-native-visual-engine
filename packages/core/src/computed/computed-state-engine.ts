@@ -1,6 +1,6 @@
+import { computed, type signal } from "alien-signals";
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
-import { signal, computed } from "alien-signals";
 
 export interface WorldTransform {
   x: number;

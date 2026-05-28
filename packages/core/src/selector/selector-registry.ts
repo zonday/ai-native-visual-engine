@@ -1,5 +1,5 @@
+import { computed, signal } from "alien-signals";
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
-import { signal, computed } from "alien-signals";
 
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
@@ -197,6 +197,9 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
     getVisibleNodes(): SceneNode[] {
       checkVersion();
       return getCached("visibleNodes", () => {
+        for (const id of Object.keys(scene.nodes)) {
+          getVersionSignal(id)();
+        }
         return Object.values(scene.nodes).filter(
           (node) => node.visible !== false,
         );
