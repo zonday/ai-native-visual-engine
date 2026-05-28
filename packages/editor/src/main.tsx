@@ -429,6 +429,7 @@ function App() {
   }, [handleUndo, handleRedo]);
 
   const setViewport = useEditorStore((s) => s.setViewport);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const handleDispatchDocument = useCallback(
     (action: DocumentAction) => {
@@ -498,8 +499,10 @@ function App() {
             }
             const w = maxX - minX || 1;
             const h = maxY - minY || 1;
-            const containerW = window.innerWidth * 0.7;
-            const containerH = window.innerHeight * 0.8;
+            const rect = canvasContainerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const containerW = rect.width;
+            const containerH = rect.height;
             const zoom = Math.min(containerW / w, containerH / h, 1.5);
             setViewport({
               x: minX - (containerW / zoom - w) / 2,
@@ -533,6 +536,7 @@ function App() {
         onViewportChange={setViewport}
         onDispatchRuntime={dispatchRuntime}
         onDispatchDocument={handleDispatchDocument}
+        canvasContainerRef={canvasContainerRef}
       />
     </div>
   );

@@ -640,6 +640,206 @@ describe("SceneRenderer — viewport transform", () => {
   });
 });
 
+describe("SceneRenderer — viewport event callbacks", () => {
+  const scene: SceneGraph = {
+    version: 0,
+    rootId: "root",
+    nodes: {
+      root: { id: "root", type: "container", children: [] },
+    },
+  };
+
+  it("calls onViewportChange with zoom on ctrl+wheel", {
+    timeout: 5000,
+  }, async () => {
+    const { render, createEvent } = await import("@testing-library/react");
+    const onViewportChange = vi.fn();
+    const { getByTestId } = render(
+      <div data-testid="wheel-zoom-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            viewport: { zoom: 1, x: 0, y: 0 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
+          }}
+          onViewportChange={onViewportChange}
+        />
+      </div>,
+    );
+
+    const sceneRoot = getByTestId("wheel-zoom-wrapper").querySelector(
+      "[data-scene-root]",
+    ) as HTMLElement;
+
+    const event = createEvent.wheel(sceneRoot, { deltaY: 120 });
+    Object.defineProperty(event, "ctrlKey", {
+      value: true,
+      configurable: true,
+    });
+    sceneRoot.dispatchEvent(event);
+
+    // zoom = 1 * (1 + (-120 * 0.001)) = 0.88
+    expect(onViewportChange).toHaveBeenCalledWith(
+      expect.objectContaining({ zoom: 0.88 }),
+    );
+    expect(onViewportChange).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 0, y: 0 }),
+    );
+  });
+
+  it("calls onViewportChange with x/y delta on plain wheel", {
+    timeout: 5000,
+  }, async () => {
+    const { render, fireEvent } = await import("@testing-library/react");
+    const onViewportChange = vi.fn();
+    const { getByTestId } = render(
+      <div data-testid="wheel-pan-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            viewport: { zoom: 1, x: 100, y: 50 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
+          }}
+          onViewportChange={onViewportChange}
+        />
+      </div>,
+    );
+
+    const sceneRoot = getByTestId("wheel-pan-wrapper").querySelector(
+      "[data-scene-root]",
+    ) as HTMLElement;
+
+    fireEvent.wheel(sceneRoot, { deltaX: 50, deltaY: 100 });
+    expect(onViewportChange).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 150, y: 150, zoom: 1 }),
+    );
+  });
+
+  it("does not crash on wheel when onViewportChange is not provided", {
+    timeout: 5000,
+  }, async () => {
+    const { render, createEvent, fireEvent } = await import(
+      "@testing-library/react"
+    );
+    const { getByTestId } = render(
+      <div data-testid="no-cb-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            viewport: { zoom: 1, x: 0, y: 0 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
+          }}
+        />
+      </div>,
+    );
+
+    const sceneRoot = getByTestId("no-cb-wrapper").querySelector(
+      "[data-scene-root]",
+    ) as HTMLElement;
+
+    const event = createEvent.wheel(sceneRoot, { deltaY: 120 });
+    Object.defineProperty(event, "ctrlKey", {
+      value: true,
+      configurable: true,
+    });
+
+    expect(() => {
+      sceneRoot.dispatchEvent(event);
+      fireEvent.wheel(sceneRoot, { deltaY: 120 });
+    }).not.toThrow();
+  });
+
+  it("calls onViewportChange with panned viewport on middle-click drag", {
+    timeout: 5000,
+  }, async () => {
+    const { render, fireEvent } = await import("@testing-library/react");
+    const onViewportChange = vi.fn();
+    const { getByTestId } = render(
+      <div data-testid="middle-click-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            viewport: { zoom: 1, x: 100, y: 50 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
+          }}
+          onViewportChange={onViewportChange}
+        />
+      </div>,
+    );
+
+    const sceneRoot = getByTestId("middle-click-wrapper").querySelector(
+      "[data-scene-root]",
+    ) as HTMLElement;
+
+    // Middle-click down
+    fireEvent.mouseDown(sceneRoot, { button: 1, clientX: 200, clientY: 150 });
+    // Drag
+    fireEvent.mouseMove(window, { clientX: 250, clientY: 180 });
+    // Release
+    fireEvent.mouseUp(window, { clientX: 250, clientY: 180 });
+
+    // pan: (250-200)=50, (180-150)=30 → { x: 150, y: 80, zoom: 1 }
+    expect(onViewportChange).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 150, y: 80, zoom: 1 }),
+    );
+  });
+
+  it("calls onViewportChange under meta+wheel as well as ctrl+wheel", {
+    timeout: 5000,
+  }, async () => {
+    const { render, createEvent } = await import("@testing-library/react");
+    const onViewportChange = vi.fn();
+    const { getByTestId } = render(
+      <div data-testid="meta-zoom-wrapper">
+        <SceneRenderer
+          registry={registry}
+          context={{
+            mode: "editor",
+            pageId: "page-1",
+            scene,
+            viewport: { zoom: 1, x: 0, y: 0 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
+          }}
+          onViewportChange={onViewportChange}
+        />
+      </div>,
+    );
+
+    const sceneRoot = getByTestId("meta-zoom-wrapper").querySelector(
+      "[data-scene-root]",
+    ) as HTMLElement;
+
+    const event = createEvent.wheel(sceneRoot, { deltaY: 60 });
+    Object.defineProperty(event, "metaKey", {
+      value: true,
+      configurable: true,
+    });
+    sceneRoot.dispatchEvent(event);
+
+    // zoom = 1 * (1 + (-60 * 0.001)) = 0.94
+    expect(onViewportChange).toHaveBeenCalledWith(
+      expect.objectContaining({ zoom: 0.94 }),
+    );
+  });
+});
+
 describe("SceneRenderer — zoom-adjusted deltas", () => {
   it("emits content-space deltas for move drag under viewport zoom=2", {
     timeout: 5000,
