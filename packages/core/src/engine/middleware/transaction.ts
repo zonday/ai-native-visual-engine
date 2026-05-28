@@ -22,6 +22,7 @@ export interface TransactionMiddlewareConfig<
   markDirty?: (nodeIds: string[]) => void;
   source?: TransactionSource;
   shouldExcludeFromHistory?: () => boolean;
+  onAfterCommit?: (state: TState) => void;
 }
 
 export function createTransactionMiddleware<
@@ -85,6 +86,9 @@ export function createTransactionMiddleware<
 
     // Mark dirty on scheduler
     config.markDirty?.(tx.tx.affectedNodes);
+
+    // Post-commit validation hook
+    config.onAfterCommit?.(commitResult.state);
 
     config.transactionFlag.setActive(false);
     return { ok: true, state: commitResult.state };

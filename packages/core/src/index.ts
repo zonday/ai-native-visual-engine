@@ -36,6 +36,10 @@ export {
 } from "./computed/computed-state-engine.js";
 export { createConstraintMiddleware } from "./constraints/constraint-middleware.js";
 export { createConstraintRegistry } from "./constraints/constraint-registry.js";
+export {
+  type GraphInvariantViolation,
+  validateGraphInvariants,
+} from "./constraints/graph-invariants.js";
 export { DEFAULT_LAYOUT_CONSTRAINTS } from "./constraints/layout-constraints.js";
 // ── Data binding ──
 export {

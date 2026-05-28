@@ -33,6 +33,7 @@ import {
   redoRuntimeAction,
   undoDocumentAction,
   undoRuntimeAction,
+  validateGraphInvariants,
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
 import { createRendererRegistry } from "@ai-native/renderer-react";
@@ -140,6 +141,12 @@ function App() {
         },
         markDirty: (nodeIds) => schedulerRef.current.markDirty(nodeIds),
         shouldExcludeFromHistory: () => isUndoingRef.current,
+        onAfterCommit: (sceneState) => {
+          const violations = validateGraphInvariants(sceneState as SceneGraph);
+          for (const v of violations) {
+            console.error(`[graph-invariant] ${v.code}: ${v.message}`);
+          }
+        },
       }),
     ];
 
