@@ -2,7 +2,6 @@ import type { InteractionEngine } from "@ai-native/core";
 import type {
   ComponentRegistry,
   RenderContext,
-  SceneRendererProps,
   SelectNodeOptions,
   TransformEvent,
 } from "@ai-native/renderer-react";
