@@ -76,6 +76,10 @@ export function createComputedStateEngine(
     CacheEntry<ComputedBounds | null>
   >();
   const centerCache = new Map<string, CacheEntry<{ x: number; y: number }>>();
+  const localTransformCache = new Map<
+    string,
+    CacheEntry<{ x: number; y: number; rotation: number }>
+  >();
 
   let lastVersion = selectors.getVersion();
 
@@ -87,6 +91,7 @@ export function createComputedStateEngine(
     boundsCache.clear();
     visibleBoundsCache.clear();
     centerCache.clear();
+    localTransformCache.clear();
   }
 
   function getWorldSpaceLayout(node: SceneNode): {
@@ -157,13 +162,18 @@ export function createComputedStateEngine(
       y: number;
       rotation: number;
     } {
+      clearIfStale();
+      const existing = localTransformCache.get(nodeId);
+      if (existing) return existing.value;
       const node = selectors.getNode(nodeId);
       if (!node) return { x: 0, y: 0, rotation: 0 };
-      return {
+      const value = {
         x: getLayoutValue(node, "x"),
         y: getLayoutValue(node, "y"),
         rotation: getLayoutValue(node, "rotation"),
       };
+      localTransformCache.set(nodeId, { value });
+      return value;
     },
 
     getWorldTransform(nodeId: NodeId): WorldTransform {
@@ -267,6 +277,7 @@ export function createComputedStateEngine(
         }
       }
       centerCache.delete(nodeId);
+      localTransformCache.delete(nodeId);
     },
 
     invalidateAll(): void {
@@ -274,6 +285,7 @@ export function createComputedStateEngine(
       boundsCache.clear();
       visibleBoundsCache.clear();
       centerCache.clear();
+      localTransformCache.clear();
     },
   };
 

@@ -33,6 +33,14 @@ function createNodeCache() {
     set<T>(key: string, sceneVersion: number, value: T): void {
       cache.set(key, { sceneVersion, value });
     },
+    delete(key: string): void {
+      cache.delete(key);
+    },
+    forEach(fn: (key: string) => void): void {
+      for (const key of cache.keys()) {
+        fn(key);
+      }
+    },
     clear(): void {
       cache.clear();
     },
@@ -208,9 +216,19 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
       });
     },
 
-    invalidate(_nodeId: NodeId): void {
-      nodeCache.clear();
-      listCache.clear();
+    invalidate(nodeId: NodeId): void {
+      nodeCache.delete(`node:${nodeId}`);
+      nodeCache.delete(`parent:${nodeId}`);
+      nodeCache.delete(`depth:${nodeId}`);
+      listCache.delete(`children:${nodeId}`);
+      listCache.delete(`ancestors:${nodeId}`);
+      listCache.delete(`descendants:${nodeId}`);
+      listCache.delete(`siblings:${nodeId}`);
+      listCache.forEach((key) => {
+        if (key.startsWith(`nodes:`) && key.includes(nodeId)) {
+          listCache.delete(key);
+        }
+      });
     },
 
     invalidateAll(): void {

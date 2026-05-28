@@ -28,7 +28,7 @@ export interface InteractionEngine {
 }
 
 export function createInteractionEngine(): InteractionEngine {
-  let selectedNodeIds: NodeId[] = [];
+  const selectedSet = new Set<NodeId>();
   let hoveredNodeId: NodeId | undefined;
   const listeners = new Set<InteractionListener>();
 
@@ -42,44 +42,54 @@ export function createInteractionEngine(): InteractionEngine {
     }
   }
 
+  function getSelectedArray(): NodeId[] {
+    return Array.from(selectedSet);
+  }
+
   const engine: InteractionEngine = {
     getSelection(): NodeId[] {
-      return selectedNodeIds;
+      return getSelectedArray();
     },
 
     isSelected(nodeId: NodeId): boolean {
-      return selectedNodeIds.includes(nodeId);
+      return selectedSet.has(nodeId);
     },
 
     select(nodeIds: NodeId[]): void {
-      selectedNodeIds = [...nodeIds];
-      notify({ type: "selection-changed", nodeIds: selectedNodeIds });
+      selectedSet.clear();
+      for (const id of nodeIds) {
+        selectedSet.add(id);
+      }
+      notify({ type: "selection-changed", nodeIds: getSelectedArray() });
     },
 
     addToSelection(nodeIds: NodeId[]): void {
-      const set = new Set([...selectedNodeIds, ...nodeIds]);
-      selectedNodeIds = Array.from(set);
-      notify({ type: "selection-changed", nodeIds: selectedNodeIds });
+      for (const id of nodeIds) {
+        selectedSet.add(id);
+      }
+      notify({ type: "selection-changed", nodeIds: getSelectedArray() });
     },
 
     removeFromSelection(nodeIds: NodeId[]): void {
-      const removed = new Set(nodeIds);
-      selectedNodeIds = selectedNodeIds.filter((id) => !removed.has(id));
-      notify({ type: "selection-changed", nodeIds: selectedNodeIds });
+      for (const id of nodeIds) {
+        selectedSet.delete(id);
+      }
+      notify({ type: "selection-changed", nodeIds: getSelectedArray() });
     },
 
     clearSelection(): void {
-      if (selectedNodeIds.length === 0) return;
-      selectedNodeIds = [];
+      if (selectedSet.size === 0) return;
+      selectedSet.clear();
       notify({ type: "selection-changed", nodeIds: [] });
     },
 
     toggleSelection(nodeId: NodeId): void {
-      if (selectedNodeIds.includes(nodeId)) {
-        engine.removeFromSelection([nodeId]);
+      if (selectedSet.has(nodeId)) {
+        selectedSet.delete(nodeId);
       } else {
-        engine.addToSelection([nodeId]);
+        selectedSet.add(nodeId);
       }
+      notify({ type: "selection-changed", nodeIds: getSelectedArray() });
     },
 
     getHoveredNode(): NodeId | undefined {
@@ -99,7 +109,7 @@ export function createInteractionEngine(): InteractionEngine {
     },
 
     reset(): void {
-      selectedNodeIds = [];
+      selectedSet.clear();
       hoveredNodeId = undefined;
     },
   };
