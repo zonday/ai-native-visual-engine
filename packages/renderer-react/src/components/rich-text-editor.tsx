@@ -5,7 +5,7 @@ import Underline from "@tiptap/extension-underline";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useEditorCallbacks } from "../editor-callbacks.js";
 import type { RenderContext } from "../renderer.js";
 
@@ -33,6 +33,7 @@ function StaticText({ node }: { node: SceneNode }) {
 
 function RichEditor({ node, ctx }: RichTextEditorProps) {
   const { onContentChange } = useEditorCallbacks();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const content = (node.props?.content ?? {
     type: "doc",
@@ -66,8 +67,11 @@ function RichEditor({ node, ctx }: RichTextEditorProps) {
   const onUpdate = useCallback(
     (props: { editor: Editor }) => {
       if (!onContentChange) return;
-      const json = props.editor.getJSON() as DocNode;
-      onContentChange(node.id, json);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        const json = props.editor.getJSON() as DocNode;
+        onContentChange(node.id, json);
+      }, 300);
     },
     [node.id, onContentChange],
   );
