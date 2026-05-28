@@ -417,6 +417,7 @@ export function SceneRenderer({
         const newZoom = Math.max(0.1, Math.min(10, vp.zoom * (1 + delta)));
         onViewportChange({ ...vp, zoom: newZoom });
       } else {
+        e.preventDefault();
         onViewportChange({ ...vp, x: vp.x + e.deltaX, y: vp.y + e.deltaY });
       }
     },

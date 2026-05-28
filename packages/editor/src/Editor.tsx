@@ -29,6 +29,7 @@ export interface EditorProps {
   onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
   onDispatchRuntime?: (action: RuntimeAction) => void;
   onDispatchDocument?: (action: DocumentAction) => void;
+  canvasContainerRef?: React.Ref<HTMLDivElement>;
 }
 
 export function Editor({
@@ -42,6 +43,7 @@ export function Editor({
   onViewportChange,
   onDispatchRuntime,
   onDispatchDocument,
+  canvasContainerRef,
 }: EditorProps) {
   const activePageId = useEditorStore((s) => s.activePageId);
   const setActivePage = useEditorStore((s) => s.setActivePage);
@@ -97,7 +99,10 @@ export function Editor({
           onRenameNode={handleRenameNode}
         />
       </aside>
-      <main className="flex-1 relative overflow-hidden">
+      <main
+        ref={canvasContainerRef}
+        className="flex-1 relative overflow-hidden"
+      >
         <Canvas
           registry={registry}
           context={editorContext}
