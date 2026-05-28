@@ -129,7 +129,7 @@ export function replayActions<TAction>(
   dispatch: (action: TAction) => { ok: boolean },
 ): { ok: boolean; failedAt?: number } {
   for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
+    const entry = entries[i]!;
     const actions = entry.actions ?? (entry.action ? [entry.action] : []);
     for (const action of actions) {
       const result = dispatch(action);

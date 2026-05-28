@@ -1,6 +1,7 @@
 import "./index.css";
 import type {
   DocumentAction,
+  DocumentHistoryState,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
@@ -186,7 +187,7 @@ function App() {
       ),
       createUndoHistoryMiddleware(
         () => documentHistoryRef.current,
-        (s) => {
+        (s: DocumentHistoryState) => {
           documentHistoryRef.current = s;
           syncHistoryState();
         },

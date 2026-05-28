@@ -191,7 +191,7 @@ describe("SelectorRegistry", () => {
   describe("getVisibleNodes", () => {
     it("includes nodes without visible=false", () => {
       const scene = makeScene();
-      scene.nodes.b.visible = false;
+      scene.nodes.b!.visible = false;
       const sel = createSelectorRegistry(scene);
       const visible = sel.getVisibleNodes();
       expect(visible.every((n) => n.visible !== false)).toBe(true);

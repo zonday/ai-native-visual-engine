@@ -231,7 +231,7 @@ describe("DocumentHistoryState", () => {
       expect(result).not.toBeNull();
       expect(result?.state.undoStack).toHaveLength(1);
 
-      const result2 = undoDocumentAction(result?.state);
+      const result2 = undoDocumentAction(result?.state as DocumentHistoryState);
       expect(result2).toBeNull();
     });
   });

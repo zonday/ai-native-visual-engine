@@ -99,7 +99,7 @@ describe("ComputedStateEngine", () => {
     it("returns default sizes when layout has no width/height", () => {
       const scene = makeScene();
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-      scene.nodes.root.children = ["a", "c"];
+      scene.nodes.root!.children = ["a", "c"];
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       const bounds = eng.getComputedBounds("c");
@@ -119,7 +119,7 @@ describe("ComputedStateEngine", () => {
 
     it("returns null for invisible node", () => {
       const scene = makeScene();
-      scene.nodes.a.visible = false;
+      scene.nodes.a!.visible = false;
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       expect(eng.getVisibleBounds("a")).toBeNull();
@@ -203,7 +203,7 @@ describe("ComputedStateEngine", () => {
       const eng = createComputedStateEngine(sel);
       const before = eng.getComputedBounds("a1");
       // Simulate moving node a
-      (scene.nodes.a.layout as Record<string, unknown>).x = 200;
+      (scene.nodes.a!.layout as Record<string, unknown>).x = 200;
       scene.version = 1;
       sel.invalidateAll();
       eng.invalidateAll();

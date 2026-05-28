@@ -74,6 +74,7 @@ export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export {
   createDocumentHistoryState,
+  type DocumentHistoryState,
   pushDocumentUndoTransaction,
   redoDocumentAction,
   undoDocumentAction,
