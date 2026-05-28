@@ -442,6 +442,20 @@ export function Inspector({
           </>
         ) : (
           <>
+            <FieldRow label="X">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.x as number) ?? 0}
+                onChange={(v) => patchLayout("x", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Y">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.y as number) ?? 0}
+                onChange={(v) => patchLayout("y", v)}
+              />
+            </FieldRow>
             <FieldRow label="Width">
               <DebouncedField
                 type="number"
