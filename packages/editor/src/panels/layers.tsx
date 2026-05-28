@@ -20,7 +20,7 @@ export interface LayersProps {
   interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
   onMoveNode?: (nodeId: string, parentId: string, index: number) => void;
-  sceneKey?: number;
+  sceneKey?: number | string;
 }
 
 interface FlatItem {
