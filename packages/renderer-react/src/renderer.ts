@@ -1,9 +1,11 @@
 import type {
   ComponentPlugin,
+  ComputedStateEngine,
   PageId,
   PrototypeComponent,
   SceneGraph,
   SceneNode,
+  Scheduler,
   SelectionState,
   ViewportState,
 } from "@ai-native/core";
@@ -24,6 +26,8 @@ export interface RenderContext {
   marqueeRect?: MarqueeRect;
   prototypes?: PrototypeComponent[];
   plugins?: ComponentPlugin[];
+  computedEngine: ComputedStateEngine;
+  scheduler: Scheduler;
 }
 
 export interface ComponentRenderer {

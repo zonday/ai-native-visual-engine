@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
 
-import type { SceneGraph } from "@ai-native/core";
+import type {
+  ComputedStateEngine,
+  SceneGraph,
+  Scheduler,
+} from "@ai-native/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ContainerNode } from "../src/components/container.jsx";
@@ -8,6 +12,38 @@ import { MissingPluginPlaceholder } from "../src/components/missing-plugin.jsx";
 import { TextNode } from "../src/components/text.jsx";
 import type { ComponentRegistry, RenderContext } from "../src/renderer.js";
 import { SceneRenderer } from "../src/scene-renderer.jsx";
+
+const mockEngine = {
+  getWorldTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
+  getComputedBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getVisibleBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getCenter: () => ({ x: 50, y: 50 }),
+  getEdge: () => 0,
+  getLocalTransform: () => ({ x: 0, y: 0, rotation: 0 }),
+  invalidate: () => {},
+  invalidateAll: () => {},
+} as ComputedStateEngine;
+
+const mockScheduler = {
+  markDirty: () => {},
+  markAllDirty: () => {},
+  flush: () => Promise.resolve(),
+  subscribe: () => () => {},
+  getPhase: () => "idle" as const,
+  getDirtyNodes: () => [],
+  setMode: () => {},
+} as Scheduler;
+
+function makeCtx(partial?: Partial<RenderContext>): RenderContext {
+  return {
+    mode: "editor",
+    pageId: "page-1",
+    scene: emptyScene,
+    computedEngine: mockEngine,
+    scheduler: mockScheduler,
+    ...partial,
+  };
+}
 
 const emptyScene: SceneGraph = {
   version: 0,
@@ -27,11 +63,7 @@ registry.set("text", {
   render: (node, ctx) => TextNode({ node, ctx }),
 });
 
-const context: RenderContext = {
-  mode: "editor",
-  pageId: "page-1",
-  scene: emptyScene,
-};
+const context = makeCtx();
 
 describe("SceneRenderer", () => {
   it("renders root node with container component", () => {
@@ -171,12 +203,12 @@ describe("SceneRenderer", () => {
         },
       },
     };
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "runtime",
       pageId: "page-1",
       scene,
       selection: { nodeIds: ["root"] },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -218,12 +250,12 @@ describe("SceneRenderer", () => {
         },
       },
     };
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "runtime",
       pageId: "page-1",
       scene,
       marqueeRect: { x: 10, y: 20, width: 300, height: 150 },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -541,12 +573,12 @@ describe("SceneRenderer — viewport transform", () => {
   };
 
   it("applies scale and translate transform for zoomed viewport in editor mode", () => {
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "editor",
       pageId: "page-1",
       scene,
       viewport: { zoom: 2, x: 100, y: 50 },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -556,12 +588,12 @@ describe("SceneRenderer — viewport transform", () => {
   });
 
   it("does not apply viewport transform for identity viewport (zoom=1, x=0, y=0)", () => {
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "editor",
       pageId: "page-1",
       scene,
       viewport: { zoom: 1, x: 0, y: 0 },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -569,12 +601,12 @@ describe("SceneRenderer — viewport transform", () => {
   });
 
   it("treats zoom=0 as zoom=1 to avoid division by zero", () => {
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "editor",
       pageId: "page-1",
       scene,
       viewport: { zoom: 0, x: 0, y: 0 },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -583,11 +615,11 @@ describe("SceneRenderer — viewport transform", () => {
   });
 
   it("does not apply viewport transform when viewport is absent", () => {
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "editor",
       pageId: "page-1",
       scene,
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -595,12 +627,12 @@ describe("SceneRenderer — viewport transform", () => {
   });
 
   it("does not apply viewport transform in runtime mode", () => {
-    const ctx: RenderContext = {
+    const ctx = makeCtx({
       mode: "runtime",
       pageId: "page-1",
       scene,
       viewport: { zoom: 2, x: 100, y: 50 },
-    };
+    });
     const html = renderToString(
       <SceneRenderer registry={registry} context={ctx} />,
     );
@@ -644,6 +676,8 @@ describe("SceneRenderer — zoom-adjusted deltas", () => {
             scene,
             selection: { nodeIds: ["child-1"] },
             viewport: { zoom: 2, x: 0, y: 0 },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
           }}
           onTransform={onTransform}
         />
@@ -710,6 +744,8 @@ describe("SceneRenderer — zoom-adjusted deltas", () => {
             pageId: "page-1",
             scene,
             selection: { nodeIds: ["child-1"] },
+            computedEngine: mockEngine,
+            scheduler: mockScheduler,
             viewport: { zoom: 0, x: 0, y: 0 },
           }}
           onTransform={onTransform}

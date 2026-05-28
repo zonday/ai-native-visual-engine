@@ -8,6 +8,7 @@ import type {
 } from "@ai-native/core";
 import {
   createBatchHandler,
+  createComputedStateEngine,
   createConstraintMiddleware,
   createConstraintRegistry,
   createDefaultDocumentRegistries,
@@ -109,6 +110,7 @@ function App() {
   );
 
   const schedulerRef = useRef(createScheduler({ mode: "sync" }));
+  const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
 
   // Wire interaction engine into scheduler — clear stale selections after compute
   useEffect(() => {
@@ -482,7 +484,13 @@ function App() {
       <Editor
         document={doc}
         registry={registry}
-        context={{ pageId: activePageId, mode: "editor", scene: currentScene }}
+        context={{
+          pageId: activePageId,
+          mode: "editor",
+          scene: currentScene,
+          computedEngine: computedEngineRef.current,
+          scheduler: schedulerRef.current,
+        }}
         selectorRegistry={selectorRegistry}
         interactionEngine={interactionEngine}
         onTransform={handleTransform}

@@ -1,4 +1,4 @@
-import type { SceneNode } from "@ai-native/core";
+import type { ComputedStateEngine, SceneNode } from "@ai-native/core";
 
 export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
   const layout = node.layout;
@@ -26,6 +26,30 @@ export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
   }
 
   return {};
+}
+
+export function resolveComputedLayoutStyle(
+  node: SceneNode,
+  engine: ComputedStateEngine,
+): React.CSSProperties {
+  const mode =
+    node.layout && typeof node.layout.mode === "string"
+      ? node.layout.mode
+      : undefined;
+
+  // Only apply computed world transforms for absolute-positioned nodes.
+  // Flex, grid, and other layout modes use the browser's native layout.
+  if (mode !== "absolute") return resolveLayoutStyle(node);
+
+  const tx = engine.getWorldTransform(node.id);
+  const bounds = engine.getComputedBounds(node.id);
+  const style: React.CSSProperties = { position: "absolute" };
+  style.left = tx.x;
+  style.top = tx.y;
+  style.width = bounds.width;
+  style.height = bounds.height;
+  if (tx.rotation) style.transform = `rotate(${tx.rotation}deg)`;
+  return style;
 }
 
 export function resolveFlexStyle(node: SceneNode): React.CSSProperties {

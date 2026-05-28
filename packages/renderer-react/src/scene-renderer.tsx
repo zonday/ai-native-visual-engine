@@ -1,9 +1,13 @@
-import type { PrototypeComponent, SceneNode } from "@ai-native/core";
+import type {
+  ComputedStateEngine,
+  PrototypeComponent,
+  SceneNode,
+} from "@ai-native/core";
 import { resolveInstance, resolveStateProps } from "@ai-native/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { MissingPluginPlaceholder } from "./components/missing-plugin.jsx";
 import { EditorCallbacksContext } from "./editor-callbacks.js";
-import { resolveLayoutStyle, wrapperNeeded } from "./layout-style.js";
+import { resolveComputedLayoutStyle, wrapperNeeded } from "./layout-style.js";
 import { MarqueeOverlay } from "./marquee-select.jsx";
 import type {
   ComponentRegistry,
@@ -45,6 +49,7 @@ function renderNode(
     string,
     { stateProps: Map<string, Record<string, unknown>> }
   >,
+  engine: ComputedStateEngine,
   onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
@@ -71,7 +76,7 @@ function renderNode(
   };
 
   const render = resolveRenderer(resolvedNode, registry);
-  const layoutStyle = resolveLayoutStyle(resolvedNode);
+  const layoutStyle = resolveComputedLayoutStyle(resolvedNode, engine);
   const isSelected = !!(
     ctx.mode === "editor" && ctx.selection?.nodeIds.includes(node.id)
   );
@@ -82,7 +87,15 @@ function renderNode(
       const c = ctx.scene.nodes[childId];
       if (c) {
         childNodes.push(
-          renderNode(c, registry, ctx, prototypeMap, statesByType, onTransform),
+          renderNode(
+            c,
+            registry,
+            ctx,
+            prototypeMap,
+            statesByType,
+            engine,
+            onTransform,
+          ),
         );
       }
     }
@@ -187,6 +200,8 @@ export function SceneRenderer({
   const onTransformRef = useRef(onTransform);
   onTransformRef.current = onTransform;
 
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const drag = moveDragRef.current;
@@ -229,6 +244,12 @@ export function SceneRenderer({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
+
+  useEffect(() => {
+    return context.scheduler.subscribe({
+      onAfterCompute: () => forceUpdate(),
+    });
+  }, [context.scheduler]);
 
   const editorCallbacks = useMemo(
     () => ({
@@ -346,6 +367,7 @@ export function SceneRenderer({
     context,
     prototypeMap,
     statesByType,
+    context.computedEngine,
     zoomAdjustedOnTransform,
   );
 
