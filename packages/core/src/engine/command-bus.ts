@@ -38,8 +38,7 @@ function detectSameRef<T>(before: T, after: T, action: { type: string }): void {
   }
 }
 
-const isDev =
-  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+const isDev = process.env.NODE_ENV !== "production";
 
 export function createCommandBus<
   TState,
