@@ -18,10 +18,12 @@ export interface Link {
   nextDep: Link | undefined;
 }
 
-const enum RF {
+enum RF {
   None = 0,
   Mutable = 1,
   Watching = 2,
+  RecursedCheck = 4,
+  Recursed = 8,
   Dirty = 16,
   Pending = 32,
 }
@@ -33,11 +35,21 @@ export type Signal<T> = {
 
 export type Computed<T> = () => T;
 
-export function createScope() {
+export type Effect = () => void;
+
+export interface ReactiveScope {
+  signal<T>(initialValue: T): Signal<T>;
+  computed<T>(getter: () => T): Computed<T>;
+  effect(fn: () => void | (() => void)): () => void;
+  startBatch(): void;
+  endBatch(): void;
+  flush(): void;
+}
+
+export function createScope(): ReactiveScope {
   const HasChildEffect = 64;
   let cycle = 0;
   let runDepth = 0;
-  let batchDepth = 0;
   let notifyIndex = 0;
   let queuedLength = 0;
   let activeSub: ReactiveNode | undefined;
@@ -53,17 +65,22 @@ export function createScope() {
         if ("currentValue" in node) {
           return updateSignal(node as SignalInternal);
         }
+        if ("fn" in node) {
+          node.flags = RF.Mutable | RF.Dirty;
+          return true;
+        }
         node.flags = RF.Mutable;
         return true;
       },
-      notify(effect: ReactiveNode): void {
+      notify(effectTarget: ReactiveNode): void {
         let insertIndex = queuedLength;
         let firstInsertedIndex = insertIndex;
         do {
-          queued[insertIndex++] = effect;
-          effect.flags &= ~RF.Watching;
-          effect = effect.subs?.sub as ReactiveNode | undefined;
-          if (effect === undefined || !(effect.flags & RF.Watching)) break;
+          queued[insertIndex++] = effectTarget;
+          effectTarget.flags &= ~RF.Watching;
+          effectTarget = effectTarget.subs?.sub as ReactiveNode | undefined;
+          if (effectTarget === undefined || !(effectTarget.flags & RF.Watching))
+            break;
         } while (true);
         queuedLength = insertIndex;
         while (firstInsertedIndex < --insertIndex) {
@@ -76,22 +93,27 @@ export function createScope() {
         if ("getter" in node) {
           if (node.depsTail !== undefined) {
             node.flags = RF.Mutable | RF.Dirty;
-            disposeDeps(node);
+            let link = node.depsTail;
+            while (link !== undefined) {
+              const prev = link.prevDep;
+              unlink(link, node);
+              link = prev;
+            }
           }
         } else if ("currentValue" in node) {
           // signal — nothing to clean up
+        } else if ("fn" in node) {
+          const e = node as EffectInternal;
+          if (e.cleanup) {
+            try {
+              e.cleanup();
+            } catch {
+              /* isolate cleanup error */
+            }
+          }
         }
       },
     });
-
-  function disposeDeps(sub: ReactiveNode): void {
-    let link = sub.depsTail;
-    while (link !== undefined) {
-      const prev = link.prevDep;
-      unlink(link, sub);
-      link = prev;
-    }
-  }
 
   function purgeDeps(sub: ReactiveNode): void {
     const depsTail = sub.depsTail;
@@ -120,7 +142,8 @@ export function createScope() {
     try {
       ++cycle;
       const oldValue = c.value;
-      return oldValue !== (c.value = c.getter(oldValue));
+      c.value = c.getter(oldValue);
+      return oldValue !== c.value;
     } finally {
       activeSub = prevSub;
       c.flags &= ~RF.Watching;
@@ -133,36 +156,28 @@ export function createScope() {
     return s.currentValue !== (s.currentValue = s.pendingValue);
   }
 
-  function run(e: ReactiveNode): void {
+  function runEffect(e: EffectInternal): void {
     const flags = e.flags;
-    if (
-      flags & RF.Dirty ||
-      (flags & RF.Pending && checkDirty(e.deps!, e))
-    ) {
-      if (flags & HasChildEffect) {
-        let link = e.depsTail;
-        while (link !== undefined) {
-          const prev = link.prevDep;
-          const dep = link.dep;
-          if (!("getter" in dep) && !("currentValue" in dep)) {
-            unlink(link, e);
-          }
-          link = prev;
+    if (flags & RF.Dirty || (flags & RF.Pending && checkDirty(e.deps!, e))) {
+      if (e.cleanup) {
+        try {
+          e.cleanup();
+        } catch {
+          /* isolate cleanup error */
         }
       }
       e.depsTail = undefined;
-      e.flags = RF.Watching | RF.Watching;
+      e.flags = RF.Watching | RF.RecursedCheck;
       const prevSub = activeSub;
       activeSub = e;
       try {
         ++cycle;
         ++runDepth;
-        const fn = (e as EffectInternal).fn;
-        fn();
+        e.cleanup = e.fn() as (() => void) | undefined;
       } finally {
         --runDepth;
         activeSub = prevSub;
-        e.flags &= ~RF.Watching;
+        e.flags &= ~RF.RecursedCheck;
         purgeDeps(e);
       }
     } else if (e.deps !== undefined) {
@@ -173,15 +188,15 @@ export function createScope() {
   function flush(): void {
     try {
       while (notifyIndex < queuedLength) {
-        const effect = queued[notifyIndex]!;
+        const effectNode = queued[notifyIndex]!;
         queued[notifyIndex++] = undefined;
-        run(effect);
+        runEffect(effectNode as EffectInternal);
       }
     } finally {
       while (notifyIndex < queuedLength) {
-        const effect = queued[notifyIndex]!;
+        const effectNode = queued[notifyIndex]!;
         queued[notifyIndex++] = undefined;
-        effect.flags |= RF.Watching | RF.Watching;
+        effectNode.flags |= RF.Watching | RF.Watching;
       }
       notifyIndex = 0;
       queuedLength = 0;
@@ -199,7 +214,8 @@ export function createScope() {
   }
 
   interface EffectInternal extends ReactiveNode {
-    fn: () => void;
+    fn: () => void | (() => void);
+    cleanup: (() => void) | undefined;
   }
 
   function signal<T>(initialValue: T): Signal<T> {
@@ -279,5 +295,66 @@ export function createScope() {
     return oper;
   }
 
-  return { signal, computed, flush };
+  function effect(fn: () => void | (() => void)): () => void {
+    const e: EffectInternal = {
+      fn,
+      cleanup: undefined,
+      subs: undefined,
+      subsTail: undefined,
+      deps: undefined,
+      depsTail: undefined,
+      flags: RF.Watching | RF.RecursedCheck,
+    };
+
+    const prevSub = activeSub;
+    activeSub = e;
+
+    if (prevSub !== undefined) {
+      link(e, prevSub, 0);
+      prevSub.flags |= HasChildEffect;
+    }
+
+    try {
+      ++runDepth;
+      e.cleanup = e.fn() as (() => void) | undefined;
+    } finally {
+      --runDepth;
+      activeSub = prevSub;
+      e.flags &= ~RF.RecursedCheck;
+    }
+
+    const dispose = (): void => {
+      e.flags = RF.None;
+      if (e.cleanup) {
+        try {
+          e.cleanup();
+        } catch {
+          /* isolate cleanup error */
+        }
+        e.cleanup = undefined;
+      }
+      let link = e.depsTail;
+      while (link !== undefined) {
+        const prev = link.prevDep;
+        unlink(link, e);
+        link = prev;
+      }
+    };
+
+    return dispose;
+  }
+
+  let batchDepth = 0;
+
+  function startBatch(): void {
+    ++batchDepth;
+  }
+
+  function endBatch(): void {
+    if (!--batchDepth) {
+      flush();
+    }
+  }
+
+  return { signal, computed, effect, startBatch, endBatch, flush };
 }

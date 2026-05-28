@@ -1,6 +1,6 @@
+import { createScope, type Signal } from "../deps/reactive-scope.js";
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
-import { createScope, type Signal } from "../deps/reactive-scope.js";
 
 export interface WorldTransform {
   x: number;

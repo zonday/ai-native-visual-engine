@@ -1,206 +1,114 @@
 # Reactive Dependency Graph Specification
 
-Version: Draft
-Status: Proposed
+Version: 1.0
 Target: AI-Native Visual Runtime Engine
 
 ---
 
-## 1. Overview
+## 1. Problem
 
-The Reactive Dependency Graph (RDG) serves as the incremental computation core of the runtime engine.
+The runtime reads `SceneGraph` to compute derived state: world transforms, layout bounds, visibility, selection geometry. Today every mutation either clears all caches (`invalidateAll`) or manually walks known cache keys. This does not scale — a single property change on one node should not invalidate unrelated computed data.
 
-Its primary responsibilities include:
-
-- Track dependencies
-- Propagate invalidation
-- Schedule recomputation
-- Enable incremental rendering
-
-The RDG transforms the runtime from a:
-
-> Mutable JSON Tree
-
-into an:
-
-> Incremental Reactive Runtime
+**Goal**: a dependency graph that tracks which source data feeds which computed values, so that a mutation only dirties the affected subgraph.
 
 ---
 
-## 2. Goals
+## 2. Primitives
 
-The RDG must support:
+The graph is built on three primitives, provided by a scoped `alien-signals` system via `createReactiveSystem`:
 
-- Fine-grained incremental updates
-- Derived and computed state
-- Dirty-state propagation
-- Dependency tracking
-- Incremental rendering
-- Scheduler integration
-- Deterministic recomputation
-- Renderer-independent runtime computation
+### 2.1 Signal (Source Node)
 
----
-
-## 3. Non-Goals
-
-The RDG is not responsible for:
-
-- History management
-- Undo/Redo functionality
-- Collaboration systems
-- CRDT implementation
-- Persistence
-- Semantic planning
-- Renderer implementation
-
-These systems consume RDG outputs but are not considered part of the graph itself.
-
----
-
-## 4. Core Concepts
-
-### 4.1 Runtime Graph
-
-The runtime is not solely a scene tree.
-
-It consists of:
-
-```
-SceneGraph
-  +
-DependencyGraph
-```
-
----
-
-### 4.2 Dependency Edge
-
-A dependency edge indicates that:
-
-> A depends on B
-
-If B changes:
-
-> A becomes dirty
-
----
-
-### 4.3 Dirty State
-
-A dirty node indicates that:
-
-> Computed value is invalid
-
-Dirty nodes must be recomputed prior to consumption.
-
----
-
-### 4.4 Computed State
-
-Computed state represents derived runtime state.
-
-Examples include:
-
-- World transform
-- Layout bounds
-- Visibility
-- Computed style
-- Selection bounds
-- Snap guides
-
-Computed state must not be stored directly within the SceneGraph.
-
----
-
-## 5. Graph Architecture
-
-### 5.1 Graph Layers
-
-```
-SceneGraph
-  ->
-Reactive Dependency Graph
-  ->
-Scheduler
-  ->
-Renderer
-```
-
----
-
-### 5.2 Reactive Node Types
-
-The RDG contains multiple categories of nodes.
-
-#### Source Nodes
-
-Source nodes represent mutable runtime state.
-
-Examples:
-
-- node.props
-- node.transform
-- node.layout
-
-Source nodes originate from transactions.
-
-#### Computed Nodes
-
-Computed nodes represent derived values.
-
-Examples:
-
-- worldTransform
-- computedLayout
-- selectionBounds
-- visibleBounds
-
-Computed nodes are recomputed lazily.
-
-#### Effect Nodes
-
-Effect nodes trigger runtime side effects.
-
-Examples:
-
-- render invalidation
-- overlay updates
-- hit testing refresh
-
----
-
-## 6. Dependency Model
-
-### 6.1 Dependency Registration
-
-Dependencies must be tracked automatically.
-
-Example:
+A callable value holder.
 
 ```ts
-const worldTransform = computed(() => {
-  return multiply(
-    parent.worldTransform(),
-    localTransform(),
-  )
-})
+interface Signal<T> {
+  (): T        // getter — tracks caller as dependent
+  (v: T): void // setter — marks dependents dirty
+}
 ```
 
-This automatically registers:
+- Getter: returns current value; if called inside a `Computed` getter, registers an edge.
+- Setter: stores new value; if value differs, walks subscriber list via `propagate`.
 
+### 2.2 Computed (Derived Node)
+
+A lazily evaluated derived value.
+
+```ts
+type Computed<T> = () => T
 ```
-worldTransform
-  depends on:
-    parent.worldTransform
-    localTransform
+
+- On first access: evaluates getter, caches result, records all `Signal`/`Computed` reads as dependencies.
+- On subsequent access: if no dependency has changed, returns cached value.
+- When a dependency changes: marked dirty, re-evaluates on next access.
+
+### 2.3 Effect (Side-Effect Node)
+
+A callback that runs when its dependencies change.
+
+```ts
+type Effect = () => void
 ```
+
+- Registered during scheduler flush.
+- Runs once per batch, not per dependency change.
 
 ---
 
-### 6.2 Dependency Graph
+## 3. Architecture
 
-Dependencies form a directed graph.
+### 3.1 Scope
+
+Every reactive system is created via `createScope()`, which calls `createReactiveSystem` internally and returns a **triple of the three primitives**:
+
+```ts
+interface ReactiveScope {
+  signal<T>(initial: T): Signal<T>
+  computed<T>(fn: () => T): Computed<T>
+  effect(fn: () => void): Effect
+}
+```
+
+Each scope is fully isolated — signals in scope A never trigger computeds in scope B.
+
+Scope isolation is the key architectural decision: it prevents cross-contamination between different subsystems (selector caching vs computed properties vs render subscriptions).
+
+### 3.2 Node Types
+
+Every node in the graph has a common shape:
+
+```ts
+interface ReactiveNode {
+  flags: number           // Mutable | Dirty | Watching | Pending
+  subs?: Link             // linked list of dependents
+  subsTail?: Link
+  deps?: Link             // linked list of dependencies
+  depsTail?: Link
+}
+```
+
+- **SignalNode** extends ReactiveNode with `currentValue` and `pendingValue`.
+- **ComputedNode** extends ReactiveNode with `value` and `getter`.
+- **EffectNode** extends ReactiveNode with `fn`.
+
+Edges are stored as **intrusive doubly-linked lists** (no allocation per edge traversal):
+
+```ts
+interface Link {
+  version: number
+  dep: ReactiveNode
+  sub: ReactiveNode
+  prevSub: Link | undefined
+  nextSub: Link | undefined
+  prevDep: Link | undefined
+  nextDep: Link | undefined
+}
+```
+
+### 3.3 Edge Direction
+
+Edges point from **source → dependent** (signal → computed, computed → computed, computed → effect).
 
 ```
 localTransform
@@ -209,447 +117,176 @@ worldTransform
     ↓
 layoutBounds
     ↓
-selectionBounds
-    ↓
-overlayRender
+renderEffect
 ```
 
 ---
 
-### 6.3 Cycles
+## 4. Dependency Tracking
 
-Dependency cycles are prohibited.
+Dependencies are tracked **automatically** during computed/effect getter execution.
 
-The runtime must detect cycles during dependency registration.
+### 4.1 Mechanism
 
-Invalid:
+When `Computed` evaluates its getter:
 
-```
-A -> B -> C -> A
-```
+1. It sets a global `activeSub` pointer to itself.
+2. Any `Signal()` or `Computed()` call inside the getter reads `activeSub` and calls `link(dep, sub, cycle)`, which appends an edge to both the dep's subscriber list and the sub's dependency list.
+3. After evaluation, `activeSub` is restored and unused deps are purged.
 
----
-
-## 7. Dirty Propagation
-
-### 7.1 Mutation
-
-A transaction mutates source state.
-
-Example:
-
-```
-set-node-width
-```
-
----
-
-### 7.2 Dirty Marking
-
-The mutation marks dependent nodes as dirty.
-
-Example:
-
-```
-node width changed
-  ->
-layout dirty
-  ->
-selection dirty
-  ->
-render dirty
-```
-
----
-
-### 7.3 Lazy Recompute
-
-Dirty nodes must not be recomputed immediately.
-
-Recomputation occurs:
-
-- on demand
-- or during scheduled flush
-
----
-
-## 8. Scheduler Integration
-
-### 8.1 Scheduler Role
-
-The scheduler coordinates recomputation phases.
-
-### 8.2 Runtime Phases
-
-Recommended phases:
-
-1. transaction phase
-2. dirty propagation phase
-3. computed phase
-4. layout phase
-5. render phase
-6. overlay phase
-
-### 8.3 Batched Updates
-
-Multiple mutations must be batched.
-
-Forbidden:
-
-```
-mutation -> immediate recompute
-```
-
-Required:
-
-```
-multiple mutations -> single recompute pass
-```
-
----
-
-## 9. Selector System
-
-Selectors serve as graph entry points.
-
-Selectors must consume computed nodes.
-
-### 9.1 Selector Examples
-
-- selectNode(id)
-- selectWorldTransform(id)
-- selectComputedLayout(id)
-- selectVisibleNodes()
-
-### 9.2 Selector Requirements
-
-Selectors must support:
-
-- Memoization
-- Dependency tracking
-- Lazy evaluation
-- Incremental recomputation
-
----
-
-## 10. Computed System
-
-### 10.1 Computed Requirements
-
-Computed nodes must:
-
-- Cache values
-- Track dependencies
-- Invalidate correctly
-- Recompute deterministically
-
-### 10.2 Forbidden Patterns
-
-Forbidden: write computed values back into scene
-
-Invalid:
-
-```
-node.worldTransform = ...
-```
-
----
-
-## 11. Renderer Integration
-
-The renderer must not directly traverse mutable scene state.
-
-The renderer consumes:
-
-> computed runtime outputs
-
-### 11.1 Render Dependency
-
-Render invalidation must be incremental.
-
-Invalid:
-
-```
-whole scene rerender
-```
-
-Required:
-
-```
-dirty subtree rerender
-```
-
----
-
-## 12. Interaction Integration
-
-Interaction systems depend on computed runtime state.
-
-Examples include:
-
-- Hit testing
-- Selection
-- Snap lines
-- Hover overlays
-
-These systems must consume selectors and computed nodes.
-
----
-
-## 13. Transaction Integration
-
-Transactions mutate source state.
-
-The RDG reacts to mutations.
-
-Flow:
-
-```
-transaction
-  ->
-source mutation
-  ->
-dirty propagation
-  ->
-scheduler
-  ->
-recompute
-```
-
----
-
-## 14. Runtime Invariants
-
-The RDG must guarantee:
-
-- Deterministic recomputation
-- Acyclic dependencies
-- Stable dependency registration
-- No stale computed cache
-- No hidden mutable derived state
-
----
-
-## 15. Memory Model
-
-### 15.1 Cached Computed Values
-
-Computed values may be cached.
-
-Unused computed nodes may be garbage-collected.
-
-### 15.2 Weak References
-
-Dependency edges should support weak references where possible.
-
----
-
-## 16. Incremental Rendering
-
-The RDG enables:
-
-> partial recomputation + partial rendering
-
-instead of:
-
-> full runtime recomputation
-
----
-
-## 17. Debugging Requirements
-
-The RDG should expose debugging tools.
-
-Recommended:
-
-- dependency graph visualization
-- dirty graph visualization
-- recompute tracing
-- scheduler timeline
-- selector tracing
-
----
-
-## 18. Performance Goals
-
-The RDG should optimize for:
-
-- Minimal recomputation
-- Minimal rerendering
-- Stable cache locality
-- Predictable invalidation cost
-
----
-
-## 19. Recommended Package Structure
-
-```
-packages/
-  runtime/
-    dependency/
-      graph/
-      node/
-      edge/
-      invalidate/
-      scheduler/
-    computed/
-      computed-node/
-      cache/
-      selector/
-    interaction/
-    layout/
-```
-
----
-
-## 20. Suggested Internal Interfaces
-
-### Dependency Node
+### 4.2 Example
 
 ```ts
-interface DependencyNode<T> {
-  id: string
-  version: number
-  dirty: boolean
-  dependencies: Set<DependencyNode>
-  subscribers: Set<DependencyNode>
-  compute?: () => T
-  cachedValue?: T
-}
-```
+const moveX = signal(100)
+const moveY = signal(50)
+const width = signal(200)
+const height = signal(100)
 
-### Computed Node
-
-```ts
-interface ComputedNode<T>
-  extends DependencyNode<T> {
-  evaluate(): T
-  invalidate(): void
-}
-```
-
----
-
-## 21. Recommended Runtime Flow
-
-```
-transaction
-  ->
-source mutation
-  ->
-mark dirty
-  ->
-scheduler flush
-  ->
-recompute computed nodes
-  ->
-emit render invalidation
-  ->
-renderer update
-```
-
----
-
-## 22. Recommended Initial Scope
-
-Phase 1 implementation should support only:
-
-- Source nodes
-- Computed nodes
-- Dirty propagation
-- Scheduler batching
-- Selectors
-
-The following should not be implemented initially:
-
-- Distributed graph
-- CRDT graph synchronization
-- Cross-runtime graph synchronization
-- Asynchronous dependency resolution
-
----
-
-## 23. Implementation — alien-signals Integration
-
-We use the `alien-signals` library (^3.2.1) as the dependency-tracking primitive.
-
-### 23.1 Mapping
-
-| Spec Concept | alien-signals Primitive |
-|---|---|
-| Source node | `signal<T>(initialValue)` wrapping a version counter |
-| Computed node | `computed<T>(getter)` — tracks reads, caches result |
-| Dependency edge | Implicit — tracked during `computed()` getter execution |
-| Dirty propagation | Subscriber notification on source `signal` write |
-| Lazy recompute | `computed()` re-evaluates on next `.get()` when dirty |
-
-### 23.2 Version-Signal Pattern
-
-Rather than wrapping scene data directly in signals (which would require deep cloning on mutation), we use a lightweight version-signal pattern:
-
-```ts
-// Each node gets a version counter signal
-const versionSignals = new Map<NodeId, Signal<number>>()
-
-// Computed reads the version signal AND reads scene data directly
-const children = computed(() => {
-  // Track dependency on this node's version
-  getVersionSignal(nodeId)()
-  // Read scene data directly
-  const node = scene.nodes[nodeId]
-  // ... derive result
-  return result
-})
-
-// On mutation, increment the version signal
-function invalidate(nodeId: NodeId): void {
-  const s = versionSignals.get(nodeId)
-  if (s) s(s() + 1)
-}
-```
-
-This avoids cloning scene data into signals while still providing fine-grained invalidation.
-
-### 23.3 Computed Cascade
-
-Computed nodes that depend on other computeds create a cascade chain:
-
-```ts
-const worldTransform = computed(() => {
-  getVersionSignal(nodeId)()
-  const parent = selectors.getParent(nodeId)
-  if (parent) {
-    const parentTx = engine.getWorldTransform(parent.id)
-    // alien-signals tracks: this computed depends on parent's worldTransform computed
+const worldTransform = scope.computed(() => {
+  return {
+    x: moveX(),
+    y: moveY(),
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
   }
-  // ...
+})
+
+const bounds = scope.computed(() => {
+  const t = worldTransform()
+  return { x: t.x, y: t.y, width: width(), height: height() }
 })
 ```
 
-When a source is invalidated, alien-signals lazily dirties all transitively dependent computeds.
+Edges registered:
 
-### 23.4 Scheduler Integration
+```
+moveX  →  worldTransform
+moveY  →  worldTransform
+width  →  bounds
+worldTransform  →  bounds
+```
 
-The scheduler's compute phase triggers flushing of dirty computeds. alien-signals handles batching internally — multiple source mutations within the same microtask only trigger one recompute pass.
+### 4.3 Cycles
+
+Cycles are prohibited. If a computed reads itself (transitively), alien-signals detects the cycle via recursion depth and produces undefined behavior. Callers must ensure acyclic graphs.
 
 ---
 
-## 24. Long-Term Vision
+## 5. Dirty Propagation
 
-The Reactive Dependency Graph evolves into:
+### 5.1 Signal Set
 
-> The Incremental Runtime Core
+```ts
+moveX(200)
+```
 
-of the entire visual engine.
+1. `moveX` stores `pendingValue = 200`, sets flag `Mutable | Dirty`.
+2. Calls `propagate(moveX.subs, isInnerWrite)`.
+3. `propagate` walks the subscriber list; for each `ComputedNode`, calls `update(computed)`.
+4. `update` calls `updateComputed` → re-evaluates getter, compares old value vs new value.
+5. If value changed, continues propagation to the computed's subscribers (e.g., `bounds`).
+6. If value unchanged, propagation stops (no cascading to `bounds`).
 
-Future systems built on top of the RDG include:
+### 5.2 Lazy
 
-- Layout engine
-- Renderer scheduler
-- Semantic planner
-- Interaction engine
-- Animation system
-- Multiplayer synchronization
-- AI runtime reasoning
+Dirty computeds are **not** re-evaluated immediately during propagate. They are re-evaluated on the next `.get()` call — unless an `effect` is waiting, in which case the effect's `fn` runs during `flush()`.
 
-The RDG serves as the foundational layer for all incremental runtime behavior.
+### 5.3 Batching
+
+Between `startBatch()` / `endBatch()`, writes accumulate without intermediate flushes:
+
+```ts
+startBatch()
+moveX(200)
+moveY(100)
+endBatch()  // single flush pass
+```
+
+This avoids redundant re-evaluations when multiple sources change together.
+
+---
+
+## 6. Integration Points
+
+### 6.1 SelectorRegistry
+
+Each `SelectorRegistry` creates its own scope. Every selector method is a `Computed` that reads version `Signal`s:
+
+```
+node:a:version  →  node:a  (cached node access)
+node:a:version  →  children:root  (cached children list)
+node:a:version  →  parent:a  (cached parent lookup)
+```
+
+When a mutation occurs, the node's version signal is incremented. All selectors that read that signal are marked dirty and re-evaluate on next access.
+
+### 6.2 ComputedStateEngine
+
+Each `ComputedStateEngine` creates its own scope. Every computed property (`getWorldTransform`, `getComputedBounds`, etc.) is a `Computed` that reads selector `Computed`s and its own version `Signal`s:
+
+```
+node:a1:version  →  world:a  (via selector)
+world:a  →  world:a1  (via engine.getWorldTransform recursion)
+world:a1  →  bounds:a1  (via engine.getComputedBounds)
+```
+
+### 6.3 Renderer
+
+The renderer subscribes via `effect()` to re-render only the dirty subtree:
+
+```ts
+scope.effect(() => {
+  const bounds = engine.getComputedBounds(nodeId)
+  // re-render if bounds changed
+})
+```
+
+### 6.4 Scheduler
+
+The scheduler calls `scope.flush()` in its compute phase. This runs all pending effects exactly once, regardless of how many sources changed.
+
+---
+
+## 7. Correctness Guarantees
+
+| Guarantee | Mechanism |
+|-----------|-----------|
+| No stale reads | Dirty computeds re-evaluate before returning |
+| Deterministic order | Topological order via propagate chain |
+| No glitches | Signal writes during getter are queued, not applied |
+| No cycles | Cycle detection via recursion guard |
+| Isolation | Each scope has independent graph |
+
+---
+
+## 8. Non-Goals (Phase 1)
+
+- Distributed / cross-runtime graph sync
+- CRDT-backed dependency resolution
+- Async dependency resolution
+- Persisted dependency graph
+- Automatic `effect` cleanup (caller disposes)
+
+---
+
+## 9. Debugging Interface
+
+The scope may expose:
+
+```ts
+interface DebugScope {
+  getGraph(): { nodes: ReactiveNode[], edges: Link[] }
+  onRecompute(fn: (key: string) => void): () => void
+}
+```
+
+Not yet implemented.
+
+---
+
+## 10. Open Questions
+
+1. Should `effect` cleanup be automatic (scope dispose) or manual?
+2. Should `ComputedStateEngine` share the SelectorRegistry's scope or create its own? (Currently: own scope, to prevent selector cache misses from dirtying computed properties.)
+3. How should viewport-dependent `Computed`s (e.g., `getVisibleBounds` with viewport rect) be invalidated — parameterized cache keys or scope per viewport?

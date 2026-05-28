@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createScope } from "../src/deps/reactive-scope";
 
 describe("createScope", () => {
@@ -14,7 +14,10 @@ describe("createScope", () => {
     const { signal, computed } = createScope();
     const s = signal(0);
     let evalCount = 0;
-    const c = computed(() => { evalCount++; return s() * 2; });
+    const c = computed(() => {
+      evalCount++;
+      return s() * 2;
+    });
     expect(c()).toBe(0);
     expect(evalCount).toBe(1);
     expect(c()).toBe(0);
@@ -25,7 +28,10 @@ describe("createScope", () => {
     const { signal, computed } = createScope();
     const s = signal(0);
     let evalCount = 0;
-    const c = computed(() => { evalCount++; return s() * 2; });
+    const c = computed(() => {
+      evalCount++;
+      return s() * 2;
+    });
     c();
     s(1);
     expect(c()).toBe(2);
@@ -56,5 +62,79 @@ describe("createScope", () => {
     s1(42);
     expect(c1()).toBe(42);
     expect(c2()).toBe(0);
+  });
+
+  describe("effect", () => {
+    it("runs immediately with initial values", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => {
+        s();
+        fn();
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-runs when dependencies change", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => {
+        s();
+        fn();
+      });
+      fn.mockClear();
+      s(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops after dispose", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      const dispose = effect(() => {
+        s();
+        fn();
+      });
+      fn.mockClear();
+      dispose();
+      s(1);
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("supports cleanup function", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const cleanup = vi.fn();
+      effect(() => {
+        s();
+        return cleanup;
+      });
+      s(1);
+      expect(cleanup).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("batching", () => {
+    it("startBatch/endBatch defers recomputation", () => {
+      const { signal, computed, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      let evalCount = 0;
+      const c = computed(() => {
+        evalCount++;
+        return s() * 2;
+      });
+      c();
+      expect(evalCount).toBe(1);
+      startBatch();
+      s(1);
+      s(2);
+      s(3);
+      expect(evalCount).toBe(1); // not re-evaluated yet
+      endBatch();
+      expect(c()).toBe(6);
+      expect(evalCount).toBe(2); // re-evaluated once
+    });
   });
 });

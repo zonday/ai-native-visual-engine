@@ -226,7 +226,7 @@ describe("SelectorRegistry", () => {
       // getChildren("root") reads node:a internally, creating dependency on versionSignals["a"]
       expect(sel.getChildren("root")).toHaveLength(2);
       // Update scene data THEN invalidate targeted node
-      scene.nodes.root!.children = ["a"];
+      if (scene.nodes.root) scene.nodes.root.children = ["a"];
       sel.invalidate("a");
       // children:root computed is dirty (depends on a's version signal), re-evaluates
       const children = sel.getChildren("root");

@@ -1,5 +1,5 @@
-import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 import { createScope, type Signal } from "../deps/reactive-scope.js";
+import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
