@@ -43,6 +43,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
+import type { HotkeyBinding } from "./hooks/use-hotkey.js";
+import { useHotkey } from "./hooks/use-hotkey.js";
 import { useEditorStore } from "./store.js";
 
 function createBootstrapDoc(): VisualDocument {
@@ -413,21 +415,27 @@ function App() {
     }
   }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (!ctrl) return;
-      if (e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleUndo, handleRedo]);
+  const handleDelete = useCallback(() => {
+    const selected = interactionEngine.getSelection();
+    const rootId = scene.rootId;
+    for (const nodeId of selected) {
+      if (nodeId === rootId) continue;
+      dispatchRuntime({ type: "remove-node", nodeId });
+    }
+  }, [interactionEngine, scene.rootId, dispatchRuntime]);
+
+  const hotkeys: HotkeyBinding[] = useMemo(
+    () => [
+      { key: "z", ctrl: true, handler: () => handleUndo() },
+      { key: "y", ctrl: true, handler: () => handleRedo() },
+      { key: "z", ctrl: true, shift: true, handler: () => handleRedo() },
+      { key: "delete", handler: () => handleDelete() },
+      { key: "backspace", handler: () => handleDelete() },
+    ],
+    [handleUndo, handleRedo, handleDelete],
+  );
+
+  useHotkey(hotkeys);
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
