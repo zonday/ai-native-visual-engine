@@ -40,7 +40,7 @@ export type Effect = () => void;
 export interface ReactiveScope {
   signal<T>(initialValue: T): Signal<T>;
   computed<T>(getter: () => T): Computed<T>;
-  effect(fn: () => void | (() => void)): () => void;
+  effect(fn: () => unknown): () => void;
   startBatch(): void;
   endBatch(): void;
   flush(): void;
@@ -78,10 +78,12 @@ export function createScope(): ReactiveScope {
         do {
           queued[insertIndex++] = effectTarget;
           effectTarget.flags &= ~RF.Watching;
-          effectTarget = effectTarget.subs?.sub as ReactiveNode | undefined;
-          if (effectTarget === undefined || !(effectTarget.flags & RF.Watching))
+          const next = effectTarget.subs?.sub;
+          if (next === undefined || !(next.flags & RF.Watching)) {
             break;
-        } while (true);
+          }
+          effectTarget = next;
+        } while (notifyIndex >= 0);
         queuedLength = insertIndex;
         while (firstInsertedIndex < --insertIndex) {
           const left = queued[firstInsertedIndex];
@@ -93,11 +95,11 @@ export function createScope(): ReactiveScope {
         if ("getter" in node) {
           if (node.depsTail !== undefined) {
             node.flags = RF.Mutable | RF.Dirty;
-            let link = node.depsTail;
-            while (link !== undefined) {
-              const prev = link.prevDep;
-              unlink(link, node);
-              link = prev;
+            let cur: Link | undefined = node.depsTail;
+            while (cur !== undefined) {
+              const prev: Link | undefined = cur.prevDep;
+              unlink(cur, node);
+              cur = prev;
             }
           }
         } else if ("currentValue" in node) {
@@ -127,7 +129,7 @@ export function createScope(): ReactiveScope {
     if (c.flags & HasChildEffect) {
       let link = c.depsTail;
       while (link !== undefined) {
-        const prev = link.prevDep;
+        const prev: Link | undefined = link.prevDep;
         const dep = link.dep;
         if (!("getter" in dep) && !("currentValue" in dep)) {
           unlink(link, c);
@@ -153,12 +155,19 @@ export function createScope(): ReactiveScope {
 
   function updateSignal(s: SignalInternal): boolean {
     s.flags = RF.Mutable;
-    return s.currentValue !== (s.currentValue = s.pendingValue);
+    const newCurrent = s.pendingValue;
+    const changed = s.currentValue !== newCurrent;
+    s.currentValue = newCurrent;
+    return changed;
   }
 
   function runEffect(e: EffectInternal): void {
     const flags = e.flags;
-    if (flags & RF.Dirty || (flags & RF.Pending && checkDirty(e.deps!, e))) {
+    const isDirty = flags & RF.Dirty;
+    const isPending = flags & RF.Pending;
+    const hasDirtyDep =
+      isPending && e.deps !== undefined && checkDirty(e.deps, e);
+    if (isDirty || hasDirtyDep) {
       if (e.cleanup) {
         try {
           e.cleanup();
@@ -188,15 +197,15 @@ export function createScope(): ReactiveScope {
   function flush(): void {
     try {
       while (notifyIndex < queuedLength) {
-        const effectNode = queued[notifyIndex]!;
+        const effectNode = queued[notifyIndex] as EffectInternal;
         queued[notifyIndex++] = undefined;
-        runEffect(effectNode as EffectInternal);
+        runEffect(effectNode);
       }
     } finally {
       while (notifyIndex < queuedLength) {
-        const effectNode = queued[notifyIndex]!;
+        const effectNode = queued[notifyIndex] as ReactiveNode;
         queued[notifyIndex++] = undefined;
-        effectNode.flags |= RF.Watching | RF.Watching;
+        effectNode.flags |= RF.Watching;
       }
       notifyIndex = 0;
       queuedLength = 0;
@@ -214,7 +223,7 @@ export function createScope(): ReactiveScope {
   }
 
   interface EffectInternal extends ReactiveNode {
-    fn: () => void | (() => void);
+    fn: () => unknown;
     cleanup: (() => void) | undefined;
   }
 
@@ -229,9 +238,11 @@ export function createScope(): ReactiveScope {
       depsTail: undefined,
     };
 
-    const oper = function (this: void, value?: T): T | void {
-      if (arguments.length) {
-        if (node.pendingValue !== (node.pendingValue = value)) {
+    const oper = function (this: void, ...rest: [T?]): T | undefined {
+      if (rest.length !== 0) {
+        const value = rest[0];
+        if (node.pendingValue !== value) {
+          node.pendingValue = value as unknown;
           node.flags = RF.Mutable | RF.Dirty;
           const subs = node.subs;
           if (subs !== undefined) {
@@ -267,15 +278,20 @@ export function createScope(): ReactiveScope {
 
     const oper = (): T => {
       const flags = node.flags;
-      if (
-        flags & RF.Dirty ||
-        (flags & RF.Pending &&
-          (checkDirty(node.deps!, node) ||
-            ((node.flags = flags & ~RF.Pending), false)))
-      ) {
+      if (flags & RF.Dirty) {
         if (updateComputed(node)) {
           const subs = node.subs;
           if (subs !== undefined) shallowPropagate(subs);
+        }
+      } else if (flags & RF.Pending) {
+        const deps = node.deps;
+        if (deps !== undefined && checkDirty(deps, node)) {
+          if (updateComputed(node)) {
+            const subs = node.subs;
+            if (subs !== undefined) shallowPropagate(subs);
+          }
+        } else {
+          node.flags = flags & ~RF.Pending;
         }
       } else if (!flags) {
         node.flags = RF.Mutable | RF.Watching;
@@ -295,7 +311,7 @@ export function createScope(): ReactiveScope {
     return oper;
   }
 
-  function effect(fn: () => void | (() => void)): () => void {
+  function effect(fn: () => unknown): () => void {
     const e: EffectInternal = {
       fn,
       cleanup: undefined,
@@ -333,11 +349,11 @@ export function createScope(): ReactiveScope {
         }
         e.cleanup = undefined;
       }
-      let link = e.depsTail;
-      while (link !== undefined) {
-        const prev = link.prevDep;
-        unlink(link, e);
-        link = prev;
+      let cur: Link | undefined = e.depsTail;
+      while (cur !== undefined) {
+        const prev = cur.prevDep;
+        unlink(cur, e);
+        cur = prev;
       }
     };
 

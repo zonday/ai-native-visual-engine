@@ -1,4 +1,4 @@
-import { createScope, type Signal } from "../deps/reactive-scope.js";
+import { createScope } from "../deps/reactive-scope.js";
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
 
@@ -68,8 +68,7 @@ function getNodeHeight(node: SceneNode): number {
 export function createComputedStateEngine(
   selectors: SelectorRegistry,
 ): ComputedStateEngine {
-  const { signal, computed } = createScope();
-  const versionSignals = new Map<NodeId, Signal<number>>();
+  const { computed } = createScope();
   const worldCache = new Map<NodeId, () => WorldTransform>();
   const boundsCache = new Map<NodeId, () => ComputedBounds>();
   const visibleBoundsCache = new Map<string, () => ComputedBounds | null>();
@@ -85,19 +84,11 @@ export function createComputedStateEngine(
     const currentVersion = selectors.getVersion();
     if (currentVersion === lastVersion) return;
     lastVersion = currentVersion;
-    versionSignals.clear();
     worldCache.clear();
     boundsCache.clear();
     visibleBoundsCache.clear();
     centerCache.clear();
     localCache.clear();
-  }
-
-  function invalidateNode(nodeId: NodeId): void {
-    const s = versionSignals.get(nodeId);
-    if (s) {
-      s(s() + 1);
-    }
   }
 
   function getWorldSpaceLayout(node: SceneNode): {
@@ -124,7 +115,6 @@ export function createComputedStateEngine(
       let c = localCache.get(nodeId);
       if (!c) {
         c = computed(() => {
-          invalidateNode(nodeId);
           const node = selectors.getNode(nodeId);
           if (!node) return { x: 0, y: 0, rotation: 0 };
           return {
@@ -143,7 +133,6 @@ export function createComputedStateEngine(
       let c = worldCache.get(nodeId);
       if (!c) {
         c = computed(() => {
-          invalidateNode(nodeId);
           const node = selectors.getNode(nodeId);
           if (!node) {
             return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
@@ -182,7 +171,6 @@ export function createComputedStateEngine(
       let c = boundsCache.get(nodeId);
       if (!c) {
         c = computed(() => {
-          invalidateNode(nodeId);
           const node = selectors.getNode(nodeId);
           if (!node) {
             return { x: 0, y: 0, width: 0, height: 0 };
@@ -215,7 +203,6 @@ export function createComputedStateEngine(
       let c = visibleBoundsCache.get(cacheKey);
       if (!c) {
         c = computed(() => {
-          invalidateNode(nodeId);
           const node = selectors.getNode(nodeId);
           if (!node || node.visible === false) {
             return null;
@@ -254,7 +241,6 @@ export function createComputedStateEngine(
       let c = centerCache.get(nodeId);
       if (!c) {
         c = computed(() => {
-          invalidateNode(nodeId);
           const bounds = engine.getComputedBounds(nodeId);
           return {
             x: bounds.x + bounds.width / 2,
@@ -281,11 +267,18 @@ export function createComputedStateEngine(
     },
 
     invalidate(nodeId: NodeId): void {
-      invalidateNode(nodeId);
+      worldCache.delete(nodeId);
+      boundsCache.delete(nodeId);
+      centerCache.delete(nodeId);
+      localCache.delete(nodeId);
+      for (const key of visibleBoundsCache.keys()) {
+        if (key === `vb:${nodeId}` || key.startsWith(`vb:${nodeId}:`)) {
+          visibleBoundsCache.delete(key);
+        }
+      }
     },
 
     invalidateAll(): void {
-      versionSignals.clear();
       worldCache.clear();
       boundsCache.clear();
       visibleBoundsCache.clear();

@@ -45,6 +45,17 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
   }
 
   function getCached<T>(key: string, compute: () => T): () => T {
+    // Selectors may read scene.nodes[id] directly (instead of registry.getNode)
+    // because:
+    //   1. checkVersion() must run BEFORE computed evaluation, not inside it —
+    //      calling getNode() inside a computed could re-enter checkVersion()
+    //      and clear the cache map that holds the currently-evaluating computed.
+    //   2. Dependency tracking is already explicit via getVersionSignal(nodeId)()
+    //      at the top of each computed getter, so there is no tracking gap.
+    //   3. runtime-engine.md §12 permits direct scene.nodes access inside
+    //      selector implementations.
+    // Child iteration does use registry.getNode(childId) to maintain per-child
+    // dependency registration through version signals.
     let c = computedCache.get(key) as (() => T) | undefined;
     if (!c) {
       c = computed(compute) as () => T;

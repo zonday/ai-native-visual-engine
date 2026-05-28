@@ -191,7 +191,9 @@ describe("SelectorRegistry", () => {
   describe("getVisibleNodes", () => {
     it("includes nodes without visible=false", () => {
       const scene = makeScene();
-      scene.nodes.b!.visible = false;
+      const b = scene.nodes.b;
+      if (!b) throw new Error("b missing");
+      b.visible = false;
       const sel = createSelectorRegistry(scene);
       const visible = sel.getVisibleNodes();
       expect(visible.every((n) => n.visible !== false)).toBe(true);
@@ -236,7 +238,9 @@ describe("SelectorRegistry", () => {
     it("invalidate recalculates correctly without data loss", () => {
       const scene = makeScene();
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-      scene.nodes.root!.children = ["a", "b", "c"];
+      const root = scene.nodes.root;
+      if (!root) throw new Error("root missing");
+      root.children = ["a", "b", "c"];
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
       sel.getNode("a");
