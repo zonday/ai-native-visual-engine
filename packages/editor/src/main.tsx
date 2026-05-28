@@ -287,7 +287,29 @@ function App() {
 
   const handleTransform = useCallback(
     (event: TransformEvent) => {
-      if (!event.commit) return;
+      const el = document.querySelector(
+        `[data-node-id="${event.nodeId}"]`,
+      ) as HTMLElement | null;
+
+      if (!event.commit) {
+        if (!el) return;
+        if (event.type === "move") {
+          el.style.transform = `translate(${event.deltaX}px, ${event.deltaY}px)`;
+        } else if (event.type === "resize") {
+          const node = selectorRegistry.getNode(event.nodeId);
+          const layout = (node?.layout ?? {}) as Record<string, unknown>;
+          el.style.width = `${Math.max(10, (Number(layout.width) || 100) + event.deltaX)}px`;
+          el.style.height = `${Math.max(10, (Number(layout.height) || 100) + event.deltaY)}px`;
+        }
+        return;
+      }
+
+      // Reset visual transform
+      if (el) {
+        el.style.transform = "";
+        el.style.width = "";
+        el.style.height = "";
+      }
 
       const node = selectorRegistry.getNode(event.nodeId);
       if (!node) return;
