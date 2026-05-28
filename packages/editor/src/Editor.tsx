@@ -146,6 +146,7 @@ export function Editor({
           selectorRegistry={selectorRegistry}
           interactionEngine={interactionEngine}
           onDispatchRuntime={onDispatchRuntime}
+          plugins={context.plugins}
         />
       </aside>
     </div>
