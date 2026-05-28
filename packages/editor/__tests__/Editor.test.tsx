@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 
-import type { SceneNode, VisualDocument } from "@ai-native/core";
+import type {
+  ComputedStateEngine,
+  SceneNode,
+  Scheduler,
+  VisualDocument,
+} from "@ai-native/core";
 import {
   createInteractionEngine,
   createSelectorRegistry,
@@ -10,6 +15,36 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Editor } from "../src/Editor.js";
 import { useEditorStore } from "../src/store.js";
+
+const mockEngine = {
+  getWorldTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
+  getComputedBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getVisibleBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getCenter: () => ({ x: 50, y: 50 }),
+  getEdge: () => 0,
+  getLocalTransform: () => ({ x: 0, y: 0, rotation: 0 }),
+  invalidate: () => {},
+  invalidateAll: () => {},
+} as ComputedStateEngine;
+
+const mockScheduler = {
+  markDirty: () => {},
+  markAllDirty: () => {},
+  flush: () => Promise.resolve(),
+  subscribe: () => () => {},
+  getPhase: () => "idle" as const,
+  getDirtyNodes: () => [],
+  setMode: () => {},
+} as Scheduler;
+
+const baseContext = {
+  mode: "editor" as const,
+  pageId: "page-1" as const,
+  scene: { version: 0, rootId: "root", nodes: {} },
+  selection: { nodeIds: [] },
+  computedEngine: mockEngine,
+  scheduler: mockScheduler,
+};
 
 function createDocument(): VisualDocument {
   const scene = {
@@ -27,12 +62,6 @@ function createDocument(): VisualDocument {
 }
 
 const emptyRegistry: ComponentRegistry = new Map();
-const baseContext = {
-  mode: "editor" as const,
-  pageId: "page-1" as const,
-  scene: { version: 0, rootId: "root", nodes: {} },
-  selection: { nodeIds: [] },
-};
 
 describe("Editor", () => {
   beforeEach(() => {

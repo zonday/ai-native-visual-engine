@@ -30,10 +30,8 @@ export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
 
 export function resolveComputedLayoutStyle(
   node: SceneNode,
-  engine?: ComputedStateEngine,
+  engine: ComputedStateEngine,
 ): React.CSSProperties {
-  if (!engine) return resolveLayoutStyle(node);
-
   const mode =
     node.layout && typeof node.layout.mode === "string"
       ? node.layout.mode

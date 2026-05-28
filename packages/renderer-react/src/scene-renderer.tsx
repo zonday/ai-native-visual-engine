@@ -49,8 +49,8 @@ function renderNode(
     string,
     { stateProps: Map<string, Record<string, unknown>> }
   >,
+  engine: ComputedStateEngine,
   onTransform?: SceneRendererProps["onTransform"],
-  engine?: ComputedStateEngine,
 ): React.ReactNode {
   if (node.visible === false) return null;
 
@@ -93,8 +93,8 @@ function renderNode(
             ctx,
             prototypeMap,
             statesByType,
-            onTransform,
             engine,
+            onTransform,
           ),
         );
       }
@@ -246,9 +246,7 @@ export function SceneRenderer({
   }, []);
 
   useEffect(() => {
-    const s = context.scheduler;
-    if (!s) return;
-    return s.subscribe({
+    return context.scheduler.subscribe({
       onAfterCompute: () => forceUpdate(),
     });
   }, [context.scheduler]);
@@ -369,8 +367,8 @@ export function SceneRenderer({
     context,
     prototypeMap,
     statesByType,
-    zoomAdjustedOnTransform,
     context.computedEngine,
+    zoomAdjustedOnTransform,
   );
 
   if (context.mode === "editor") {

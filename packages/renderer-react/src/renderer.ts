@@ -26,8 +26,8 @@ export interface RenderContext {
   marqueeRect?: MarqueeRect;
   prototypes?: PrototypeComponent[];
   plugins?: ComponentPlugin[];
-  computedEngine?: ComputedStateEngine;
-  scheduler?: Scheduler;
+  computedEngine: ComputedStateEngine;
+  scheduler: Scheduler;
 }
 
 export interface ComponentRenderer {

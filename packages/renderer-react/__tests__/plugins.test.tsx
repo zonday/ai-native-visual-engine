@@ -1,4 +1,4 @@
-import type { SceneNode } from "@ai-native/core";
+import type { ComputedStateEngine, SceneNode, Scheduler } from "@ai-native/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ChartNode } from "../src/components/chart.jsx";
@@ -11,10 +11,33 @@ import { MetricValueNode } from "../src/components/metric-value.jsx";
 import { TableNode } from "../src/components/table.jsx";
 import type { RenderContext } from "../src/renderer.js";
 
+const mockEngine = {
+  getWorldTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
+  getComputedBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getVisibleBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
+  getCenter: () => ({ x: 50, y: 50 }),
+  getEdge: () => 0,
+  getLocalTransform: () => ({ x: 0, y: 0, rotation: 0 }),
+  invalidate: () => {},
+  invalidateAll: () => {},
+} as ComputedStateEngine;
+
+const mockScheduler = {
+  markDirty: () => {},
+  markAllDirty: () => {},
+  flush: () => Promise.resolve(),
+  subscribe: () => () => {},
+  getPhase: () => "idle" as const,
+  getDirtyNodes: () => [],
+  setMode: () => {},
+} as Scheduler;
+
 const ctx: RenderContext = {
   mode: "editor",
   pageId: "page-1",
   scene: { version: 0, rootId: "root", nodes: {} },
+  computedEngine: mockEngine,
+  scheduler: mockScheduler,
 };
 
 const baseNode: SceneNode = { id: "n1", type: "metric-value" };
