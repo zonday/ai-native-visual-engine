@@ -1,3 +1,4 @@
+import type { Middleware } from "../engine/command-bus.js";
 import { createCommandBus } from "../engine/command-bus.js";
 import { HandlerError } from "../engine/error.js";
 import type { VisualDocument } from "../types.js";
@@ -8,7 +9,6 @@ import type {
 } from "./command-bus.js";
 import type { DocumentRuntimeContext } from "./handler.js";
 import type { DocumentHandlerRegistry } from "./handler-registry.js";
-import type { Middleware } from "../engine/command-bus.js";
 
 type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 

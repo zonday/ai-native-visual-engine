@@ -1,3 +1,4 @@
+import type { Middleware } from "../engine/command-bus.js";
 import { createCommandBus } from "../engine/command-bus.js";
 import { HandlerError } from "../engine/error.js";
 import type { SceneGraph } from "../types.js";
@@ -5,7 +6,6 @@ import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult, RuntimeError } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
 import type { RuntimeHandlerRegistry } from "./handler-registry.js";
-import type { Middleware } from "../engine/command-bus.js";
 
 type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
 

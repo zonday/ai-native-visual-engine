@@ -8,6 +8,7 @@ import type { Middleware } from "../src/engine/command-bus.js";
 import type { VisualDocument } from "../src/types.js";
 
 type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
+
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 const docWithPage: VisualDocument = {

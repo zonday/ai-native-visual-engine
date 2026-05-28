@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
-  createRuntimeHistoryState,
-  DEFAULT_MAX_RUNTIME_UNDO_STACK,
-  pushRuntimeUndo,
-  redoRuntimeAction,
-  undoRuntimeAction,
-} from "../src/runtime/history.js";
+  createHistoryState,
+  pushUndo,
+  redoAction,
+  undoAction,
+} from "../src/engine/history.js";
+
+const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
+const pushRuntimeUndo = pushUndo<RuntimeAction>;
+const undoRuntimeAction = undoAction<RuntimeAction>;
+const redoRuntimeAction = redoAction<RuntimeAction>;
+const DEFAULT_MAX_RUNTIME_UNDO_STACK = 200;
 
 const createAction: RuntimeAction = {
   type: "create-node",

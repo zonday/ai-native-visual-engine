@@ -3,12 +3,12 @@ import type {
   TransactionResult,
   TransactionSource,
 } from "./engine/transaction-types.js";
-import type { RuntimeAction } from "./runtime/actions.js";
 import type { CommandBus, DispatchResult } from "./runtime/command-bus.js";
 import type { RuntimeContext } from "./runtime/handler.js";
-import type { RuntimeHistoryState } from "./runtime/history.js";
-import { redoRuntimeAction, undoRuntimeAction } from "./runtime/history.js";
 import type { RuntimeTransactionManager } from "./runtime/transaction.js";
+import type { HistoryState } from "./engine/history.js";
+import { redoAction, undoAction } from "./engine/history.js";
+import type { RuntimeAction } from "./runtime/actions.js";
 import type {
   Binding,
   Layout,

@@ -5,9 +5,12 @@ import type { TransactionFlag } from "../engine/transaction-flag.js";
 import type { TransactionManager } from "../engine/transaction-manager.js";
 import type { RuntimeAction } from "../runtime/actions.js";
 import type { RuntimeContext } from "../runtime/handler.js";
-import type { RuntimeHistoryState } from "../runtime/history.js";
-import { pushRuntimeUndoTransaction } from "../runtime/history.js";
+import type { HistoryState } from "../engine/history.js";
+import { pushUndoTransaction } from "../engine/history.js";
 import type { SceneGraph } from "../types.js";
+
+type RuntimeHistoryState = HistoryState<RuntimeAction>;
+const pushRuntimeUndoTransaction = pushUndoTransaction<RuntimeAction>;
 import type { ExecutionPlan, SemanticDiagnostic } from "./types.js";
 
 export interface ExecutePlanDeps {

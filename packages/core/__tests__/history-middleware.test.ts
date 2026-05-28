@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
-import type { DocumentHistoryState } from "../src/document/history.js";
+import type { HistoryState } from "../src/engine/history.js";
+
+type DocumentHistoryState = HistoryState<DocumentAction>;
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";

@@ -7,7 +7,9 @@ import {
   createNodeHandler,
   createNodeInverse,
 } from "../src/runtime/handlers/create-node.js";
-import type { RuntimeHistoryState } from "../src/runtime/history.js";
+import type { HistoryState } from "../src/engine/history.js";
+
+type RuntimeHistoryState = HistoryState<RuntimeAction>;
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
