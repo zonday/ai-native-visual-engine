@@ -1,6 +1,6 @@
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
-import { DependencyGraph } from "../deps/dependency-graph.js";
+import { signal, computed } from "alien-signals";
 
 export interface WorldTransform {
   x: number;
@@ -65,23 +65,18 @@ function getNodeHeight(node: SceneNode): number {
   return 100;
 }
 
-type CacheEntry<T> = { value: T } | undefined;
-
 export function createComputedStateEngine(
   selectors: SelectorRegistry,
 ): ComputedStateEngine {
-  const worldCache = new Map<string, CacheEntry<WorldTransform>>();
-  const boundsCache = new Map<string, CacheEntry<ComputedBounds>>();
-  const visibleBoundsCache = new Map<
-    string,
-    CacheEntry<ComputedBounds | null>
+  const versionSignals = new Map<NodeId, ReturnType<typeof signal<number>>>();
+  const worldCache = new Map<NodeId, () => WorldTransform>();
+  const boundsCache = new Map<NodeId, () => ComputedBounds>();
+  const visibleBoundsCache = new Map<string, () => ComputedBounds | null>();
+  const centerCache = new Map<NodeId, () => { x: number; y: number }>();
+  const localCache = new Map<
+    NodeId,
+    () => { x: number; y: number; rotation: number }
   >();
-  const centerCache = new Map<string, CacheEntry<{ x: number; y: number }>>();
-  const localTransformCache = new Map<
-    string,
-    CacheEntry<{ x: number; y: number; rotation: number }>
-  >();
-  const graph = new DependencyGraph();
 
   let lastVersion = selectors.getVersion();
 
@@ -89,12 +84,19 @@ export function createComputedStateEngine(
     const currentVersion = selectors.getVersion();
     if (currentVersion === lastVersion) return;
     lastVersion = currentVersion;
+    versionSignals.clear();
     worldCache.clear();
     boundsCache.clear();
     visibleBoundsCache.clear();
     centerCache.clear();
-    localTransformCache.clear();
-    graph.clear();
+    localCache.clear();
+  }
+
+  function invalidateNode(nodeId: NodeId): void {
+    const s = versionSignals.get(nodeId);
+    if (s) {
+      s(s() + 1);
+    }
   }
 
   function getWorldSpaceLayout(node: SceneNode): {
@@ -111,54 +113,6 @@ export function createComputedStateEngine(
     return { x: 0, y: 0 };
   }
 
-  function computeWorldTransform(nodeId: NodeId): WorldTransform {
-    const node = selectors.getNode(nodeId);
-    if (!node) {
-      return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
-    }
-
-    const local = getWorldSpaceLayout(node);
-    const rotation = getLayoutValue(node, "rotation");
-    const parent = selectors.getParent(nodeId);
-
-    if (!parent) {
-      return {
-        x: local.x,
-        y: local.y,
-        rotation,
-        scaleX: 1,
-        scaleY: 1,
-      };
-    }
-
-    const parentTx = computeWorldTransform(parent.id);
-    return {
-      x: parentTx.x + local.x,
-      y: parentTx.y + local.y,
-      rotation: parentTx.rotation + rotation,
-      scaleX: parentTx.scaleX,
-      scaleY: parentTx.scaleY,
-    };
-  }
-
-  function computeBounds(nodeId: NodeId): ComputedBounds {
-    const node = selectors.getNode(nodeId);
-    if (!node) {
-      return { x: 0, y: 0, width: 0, height: 0 };
-    }
-
-    const tx = computeWorldTransform(nodeId);
-    const w = getNodeWidth(node);
-    const h = getNodeHeight(node);
-
-    return {
-      x: tx.x,
-      y: tx.y,
-      width: w,
-      height: h,
-    };
-  }
-
   const engine: ComputedStateEngine = {
     getLocalTransform(nodeId: NodeId): {
       x: number;
@@ -166,43 +120,87 @@ export function createComputedStateEngine(
       rotation: number;
     } {
       clearIfStale();
-      const existing = localTransformCache.get(nodeId);
-      if (existing) return existing.value;
-      const node = selectors.getNode(nodeId);
-      if (!node) return { x: 0, y: 0, rotation: 0 };
-      const value = {
-        x: getLayoutValue(node, "x"),
-        y: getLayoutValue(node, "y"),
-        rotation: getLayoutValue(node, "rotation"),
-      };
-      localTransformCache.set(nodeId, { value });
-      graph.addDependency(`node:${nodeId}`, `local:${nodeId}`);
-      return value;
+      let c = localCache.get(nodeId);
+      if (!c) {
+        c = computed(() => {
+          invalidateNode(nodeId);
+          const node = selectors.getNode(nodeId);
+          if (!node) return { x: 0, y: 0, rotation: 0 };
+          return {
+            x: getLayoutValue(node, "x"),
+            y: getLayoutValue(node, "y"),
+            rotation: getLayoutValue(node, "rotation"),
+          };
+        });
+        localCache.set(nodeId, c);
+      }
+      return c();
     },
 
     getWorldTransform(nodeId: NodeId): WorldTransform {
       clearIfStale();
-      const existing = worldCache.get(nodeId);
-      if (existing) return existing.value;
-      const value = computeWorldTransform(nodeId);
-      worldCache.set(nodeId, { value });
-      graph.addDependency(`node:${nodeId}`, `world:${nodeId}`);
-      const parent = selectors.getParent(nodeId);
-      if (parent) {
-        graph.addDependency(`world:${parent.id}`, `world:${nodeId}`);
+      let c = worldCache.get(nodeId);
+      if (!c) {
+        c = computed(() => {
+          invalidateNode(nodeId);
+          const node = selectors.getNode(nodeId);
+          if (!node) {
+            return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+          }
+
+          const local = getWorldSpaceLayout(node);
+          const rotation = getLayoutValue(node, "rotation");
+          const parent = selectors.getParent(nodeId);
+
+          if (!parent) {
+            return {
+              x: local.x,
+              y: local.y,
+              rotation,
+              scaleX: 1,
+              scaleY: 1,
+            };
+          }
+
+          const parentTx = engine.getWorldTransform(parent.id);
+          return {
+            x: parentTx.x + local.x,
+            y: parentTx.y + local.y,
+            rotation: parentTx.rotation + rotation,
+            scaleX: parentTx.scaleX,
+            scaleY: parentTx.scaleY,
+          };
+        });
+        worldCache.set(nodeId, c);
       }
-      return value;
+      return c();
     },
 
     getComputedBounds(nodeId: NodeId): ComputedBounds {
       clearIfStale();
-      const existing = boundsCache.get(nodeId);
-      if (existing) return existing.value;
-      const value = computeBounds(nodeId);
-      boundsCache.set(nodeId, { value });
-      graph.addDependency(`world:${nodeId}`, `bounds:${nodeId}`);
-      graph.addDependency(`node:${nodeId}`, `bounds:${nodeId}`);
-      return value;
+      let c = boundsCache.get(nodeId);
+      if (!c) {
+        c = computed(() => {
+          invalidateNode(nodeId);
+          const node = selectors.getNode(nodeId);
+          if (!node) {
+            return { x: 0, y: 0, width: 0, height: 0 };
+          }
+
+          const tx = engine.getWorldTransform(nodeId);
+          const w = getNodeWidth(node);
+          const h = getNodeHeight(node);
+
+          return {
+            x: tx.x,
+            y: tx.y,
+            width: w,
+            height: h,
+          };
+        });
+        boundsCache.set(nodeId, c);
+      }
+      return c();
     },
 
     getVisibleBounds(
@@ -213,61 +211,58 @@ export function createComputedStateEngine(
       const cacheKey = viewport
         ? `vb:${nodeId}:${viewport.x},${viewport.y},${viewport.width},${viewport.height}`
         : `vb:${nodeId}`;
-      const existing = visibleBoundsCache.get(cacheKey);
-      if (existing !== undefined) return existing.value;
+      let c = visibleBoundsCache.get(cacheKey);
+      if (!c) {
+        c = computed(() => {
+          invalidateNode(nodeId);
+          const node = selectors.getNode(nodeId);
+          if (!node || node.visible === false) {
+            return null;
+          }
 
-      const node = selectors.getNode(nodeId);
-      if (!node || node.visible === false) {
-        visibleBoundsCache.set(cacheKey, {
-          value: null as ComputedBounds | null,
+          const bounds = engine.getComputedBounds(nodeId);
+
+          if (!viewport) {
+            return bounds;
+          }
+
+          const ix = Math.max(bounds.x, viewport.x);
+          const iy = Math.max(bounds.y, viewport.y);
+          const ir = Math.min(
+            bounds.x + bounds.width,
+            viewport.x + viewport.width,
+          );
+          const ib = Math.min(
+            bounds.y + bounds.height,
+            viewport.y + viewport.height,
+          );
+          const iw = Math.max(0, ir - ix);
+          const ih = Math.max(0, ib - iy);
+
+          return iw > 0 && ih > 0
+            ? { x: ix, y: iy, width: iw, height: ih }
+            : { x: 0, y: 0, width: 0, height: 0 };
         });
-        graph.addDependency(`node:${nodeId}`, cacheKey);
-        return null;
+        visibleBoundsCache.set(cacheKey, c);
       }
-
-      const bounds = computeBounds(nodeId);
-
-      if (!viewport) {
-        visibleBoundsCache.set(cacheKey, { value: bounds });
-        graph.addDependency(`bounds:${nodeId}`, cacheKey);
-        graph.addDependency(`node:${nodeId}`, cacheKey);
-        return bounds;
-      }
-
-      // Intersect with viewport rect
-      const ix = Math.max(bounds.x, viewport.x);
-      const iy = Math.max(bounds.y, viewport.y);
-      const ir = Math.min(bounds.x + bounds.width, viewport.x + viewport.width);
-      const ib = Math.min(
-        bounds.y + bounds.height,
-        viewport.y + viewport.height,
-      );
-      const iw = Math.max(0, ir - ix);
-      const ih = Math.max(0, ib - iy);
-
-      const result: ComputedBounds =
-        iw > 0 && ih > 0
-          ? { x: ix, y: iy, width: iw, height: ih }
-          : { x: 0, y: 0, width: 0, height: 0 };
-
-      visibleBoundsCache.set(cacheKey, { value: result });
-      graph.addDependency(`bounds:${nodeId}`, cacheKey);
-      graph.addDependency(`node:${nodeId}`, cacheKey);
-      return result;
+      return c();
     },
 
     getCenter(nodeId: NodeId): { x: number; y: number } {
       clearIfStale();
-      const existing = centerCache.get(nodeId);
-      if (existing) return existing.value;
-      const bounds = computeBounds(nodeId);
-      const value = {
-        x: bounds.x + bounds.width / 2,
-        y: bounds.y + bounds.height / 2,
-      };
-      centerCache.set(nodeId, { value });
-      graph.addDependency(`bounds:${nodeId}`, `center:${nodeId}`);
-      return value;
+      let c = centerCache.get(nodeId);
+      if (!c) {
+        c = computed(() => {
+          invalidateNode(nodeId);
+          const bounds = engine.getComputedBounds(nodeId);
+          return {
+            x: bounds.x + bounds.width / 2,
+            y: bounds.y + bounds.height / 2,
+          };
+        });
+        centerCache.set(nodeId, c);
+      }
+      return c();
     },
 
     getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number {
@@ -285,42 +280,16 @@ export function createComputedStateEngine(
     },
 
     invalidate(nodeId: NodeId): void {
-      worldCache.delete(nodeId);
-      boundsCache.delete(nodeId);
-      for (const key of visibleBoundsCache.keys()) {
-        if (key === `vb:${nodeId}` || key.startsWith(`vb:${nodeId}:`)) {
-          visibleBoundsCache.delete(key);
-        }
-      }
-      centerCache.delete(nodeId);
-      localTransformCache.delete(nodeId);
-
-      // Walk the dependency graph to find transitively affected cache entries
-      const sourceKeys = [
-        `node:${nodeId}`,
-        `local:${nodeId}`,
-        `world:${nodeId}`,
-        `bounds:${nodeId}`,
-        `center:${nodeId}`,
-      ];
-      const affected = graph.getTransitiveAffected(sourceKeys);
-      for (const key of affected) {
-        if (key.startsWith("world:")) worldCache.delete(key.slice(6));
-        else if (key.startsWith("bounds:")) boundsCache.delete(key.slice(7));
-        else if (key.startsWith("vb:")) visibleBoundsCache.delete(key);
-        else if (key.startsWith("center:")) centerCache.delete(key.slice(7));
-        else if (key.startsWith("local:")) localTransformCache.delete(key.slice(6));
-        graph.removeDependent(key);
-      }
+      invalidateNode(nodeId);
     },
 
     invalidateAll(): void {
+      versionSignals.clear();
       worldCache.clear();
       boundsCache.clear();
       visibleBoundsCache.clear();
       centerCache.clear();
-      localTransformCache.clear();
-      graph.clear();
+      localCache.clear();
     },
   };
 

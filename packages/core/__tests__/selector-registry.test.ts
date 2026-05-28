@@ -218,4 +218,54 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toHaveLength(2);
     });
   });
+
+  describe("reactive dependency graph", () => {
+    it("invalidate cascades to dependent entries via graph", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // getChildren("root") reads node:a internally, creating edge node:a → children:root
+      expect(sel.getChildren("root")).toHaveLength(2);
+      sel.invalidate("a");
+      // children:root should be invalidated because the graph knows it depends on node:a
+      // Force re-add a child to verify cache was invalidated
+      scene.nodes.root!.children = ["a"];
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(1);
+    });
+
+    it("invalidate does not affect unrelated cache entries", () => {
+      const scene = makeScene();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      scene.nodes.root!.children = ["a", "b", "c"];
+      const sel = createSelectorRegistry(scene);
+      // Warm caches
+      sel.getChildren("root");
+      sel.getNode("a");
+      // Invalidate only "a"
+      sel.invalidate("a");
+      // "b" and "c" should still be in the (now stale but cached) children list
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(3);
+    });
+
+    it("invalidateAll clears dependency graph", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.invalidateAll();
+      // After full invalidation, everything recomputes fresh
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("scene version change clears the graph", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      scene.version = 1;
+      // checkVersion fires on next call, clears graph
+      sel.getNode("root");
+      sel.invalidate("a");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
 });
