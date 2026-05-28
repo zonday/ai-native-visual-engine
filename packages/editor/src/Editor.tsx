@@ -26,6 +26,7 @@ export interface EditorProps {
   interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
+  onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
   onDispatchRuntime?: (action: RuntimeAction) => void;
   onDispatchDocument?: (action: DocumentAction) => void;
 }
@@ -38,6 +39,7 @@ export function Editor({
   interactionEngine,
   onTransform,
   onUpdateProps,
+  onViewportChange,
   onDispatchRuntime,
   onDispatchDocument,
 }: EditorProps) {
@@ -102,6 +104,7 @@ export function Editor({
           interactionEngine={interactionEngine}
           onTransform={onTransform}
           onUpdateProps={onUpdateProps}
+          onViewportChange={onViewportChange}
         />
       </main>
       <aside className="w-72 border-l border-slate-200 overflow-auto shrink-0">

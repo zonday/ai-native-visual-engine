@@ -38,6 +38,9 @@ export interface SceneRendererProps {
   onSelectNode?: (nodeId: string, options?: SelectNodeOptions) => void;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
+  onViewportChange?: (
+    viewport: import("@ai-native/core").ViewportState,
+  ) => void;
 }
 
 function renderNode(
@@ -200,6 +203,7 @@ export function SceneRenderer({
   onSelectNode,
   onTransform,
   onUpdateProps,
+  onViewportChange,
 }: SceneRendererProps) {
   const moveDragRef = useRef<{
     nodeId: string;
@@ -221,10 +225,31 @@ export function SceneRenderer({
   const onTransformRef = useRef(onTransform);
   onTransformRef.current = onTransform;
 
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
+
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    origVpX: number;
+    origVpY: number;
+  } | null>(null);
+
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      const pan = panRef.current;
+      if (pan) {
+        const dx = e.clientX - pan.startX;
+        const dy = e.clientY - pan.startY;
+        onViewportChangeRef.current?.({
+          x: pan.origVpX + dx,
+          y: pan.origVpY + dy,
+          zoom: zoomRef.current,
+        });
+        return;
+      }
       const drag = moveDragRef.current;
       if (!drag || !onTransformRef.current) return;
       didDragRef.current = true;
@@ -241,6 +266,11 @@ export function SceneRenderer({
     };
 
     const handleMouseUp = (e: MouseEvent) => {
+      const pan = panRef.current;
+      if (pan) {
+        panRef.current = null;
+        return;
+      }
       const drag = moveDragRef.current;
       if (!drag) return;
       if (onTransformRef.current && didDragRef.current) {
@@ -318,6 +348,19 @@ export function SceneRenderer({
   const sceneMouseDown = useCallback(
     (e: React.MouseEvent) => {
       didDragRef.current = false;
+      // Middle mouse button — start pan
+      if (e.button === 1) {
+        e.preventDefault();
+        didDragRef.current = true;
+        const vp = contextRef.current.viewport ?? { x: 0, y: 0, zoom: 1 };
+        panRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          origVpX: vp.x,
+          origVpY: vp.y,
+        };
+        return;
+      }
       if (!onTransform) return;
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
@@ -362,6 +405,22 @@ export function SceneRenderer({
       );
     },
     [onSelectNode, context.interactionEngine, context.computedEngine],
+  );
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!onViewportChange) return;
+      const vp = contextRef.current.viewport ?? { x: 0, y: 0, zoom: 1 };
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.001;
+        const newZoom = Math.max(0.1, Math.min(10, vp.zoom * (1 + delta)));
+        onViewportChange({ ...vp, zoom: newZoom });
+      } else {
+        onViewportChange({ ...vp, x: vp.x + e.deltaX, y: vp.y + e.deltaY });
+      }
+    },
+    [onViewportChange],
   );
 
   const statesByType = useMemo(() => {
@@ -415,6 +474,7 @@ export function SceneRenderer({
           data-scene-root
           onClick={sceneClickHandler}
           onMouseDown={sceneMouseDown}
+          onWheel={handleWheel}
           style={viewportStyle}
         >
           {rootContent}
