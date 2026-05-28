@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import type { TransformEvent } from "./renderer.js";
 import { SelectionChrome } from "./selection-chrome.js";
 
@@ -15,8 +15,6 @@ export function SelectionOverlay({
   layoutByNode,
   onTransform,
 }: SelectionOverlayProps) {
-  const [, _forceUpdate] = useState(0);
-
   // Re-read positions on every render (triggered by parent when selectedIds changes)
   const rects = useRef<Map<string, DOMRect>>(new Map());
   rects.current.clear();

@@ -113,10 +113,6 @@ function renderNode(
     ...(resolvedNode.style as React.CSSProperties | undefined),
   };
 
-  const _layoutMode =
-    resolvedNode.layout && typeof resolvedNode.layout.mode === "string"
-      ? resolvedNode.layout.mode
-      : undefined;
   const isLocked = node.locked === true;
   if (isLocked && ctx.mode === "editor") {
     style.opacity = 0.7;
