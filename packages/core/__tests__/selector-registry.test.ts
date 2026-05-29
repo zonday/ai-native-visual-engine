@@ -374,7 +374,7 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("SelectorNode graph tracking", () => {
+  describe("SelectorNode caching", () => {
     it("getChildren creates a SelectorNode with type 'children'", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
@@ -382,7 +382,7 @@ describe("SelectorRegistry", () => {
       expect(children).toHaveLength(2);
     });
 
-    it("invalidateAll bumps version signals reaching all SelectorNodes", () => {
+    it("invalidateAll reaches all SelectorNodes through globalEpoch", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
@@ -491,7 +491,7 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("isDescendantOf graph integration", () => {
+  describe("isDescendantOf compound caching", () => {
     it("caches result across calls within same scene version", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
@@ -531,7 +531,7 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("SelectorNode graph propagation", () => {
+  describe("multi-selector coordination", () => {
     it("compound and leaf selectors coexist after invalidateAll", () => {
       const sel = createSelectorRegistry(makeScene());
       sel.isDescendantOf("a1", "root");
@@ -543,7 +543,7 @@ describe("SelectorRegistry", () => {
       expect(sel.getAncestors("a1")).toHaveLength(2);
     });
 
-    it("structural invalidation cascades through isDescendantOf dependency chain", () => {
+    it("structural invalidation reaches compound selector", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       expect(sel.isDescendantOf("a1", "root")).toBe(true);
@@ -552,21 +552,19 @@ describe("SelectorRegistry", () => {
       a1Node.parentId = undefined;
       const aNode = assertNode(scene.nodes.a, "a");
       aNode.children = [];
-      // Structural invalidation bumps structural signals for a1 and a
+      // Structural invalidation bumps structural signals for a1 and a;
+      // isDescendantOf re-evaluates through alien-signals computed→computed chain
       sel.invalidate("a1", "structural");
       sel.invalidate("a", "structural");
-      // isDescendantOf re-evaluates through signal→ancestors→isDescendantOf chain
       expect(sel.isDescendantOf("a1", "root")).toBe(false);
       expect(sel.isDescendantOf("a1", "a")).toBe(false);
     });
 
-    it("version increment does not cause stack overflow with graph edges", () => {
+    it("invalidateAll does not throw with compound selectors", () => {
       const sel = createSelectorRegistry(makeScene());
-      // Prime selectors that form edges via activeSelector tracking
       sel.isDescendantOf("a1", "root");
       sel.getAncestors("a1");
       sel.getChildren("root");
-      // invalidateAll should not overflow even with subs edges
       expect(() => sel.invalidateAll()).not.toThrow();
     });
   });
@@ -681,7 +679,7 @@ describe("SelectorRegistry", () => {
       expect(sel.getDepth("a1")).toBe(0);
     });
 
-    it("auto-flush outside batch when batchDepth is 0", () => {
+    it("batch outside block triggers immediate signal propagation", () => {
       const sel = createSelectorRegistry(makeScene());
       sel.getChildren("root");
 
@@ -761,9 +759,9 @@ describe("SelectorRegistry", () => {
       expect(after[0]?.id).toBe("b");
     });
 
-    it("disposal cleans deps/subs edges", () => {
+    it("disposal allows re-creation on next access", () => {
       const sel = createSelectorRegistry(makeScene());
-      // Establish graph edge: isDescendantOf → ancestors
+      // isDescendantOf reads ancestors internally
       sel.isDescendantOf("a1", "root");
       sel.getAncestors("a1");
 
@@ -785,8 +783,8 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("sync clears scheduler state", () => {
-    it("sync clears dirtyNodes to prevent stale propagation", () => {
+  describe("sync clears cached selectors", () => {
+    it("sync clears cache and creates fresh selectors", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
@@ -803,7 +801,7 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toEqual([]);
     });
 
-    it("scene version change clears dirtyNodes", () => {
+    it("scene version change clears cached selectors", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");

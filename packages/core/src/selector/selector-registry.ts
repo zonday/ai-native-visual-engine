@@ -98,6 +98,7 @@ export function createSelectorRegistry(
       dispose(): void {
         if (disposed) return;
         disposed = true;
+        fn.dispose();
         const innerMap = computedCache.get(type);
         if (innerMap && innerMap.get(key) === node) {
           innerMap.delete(key);
