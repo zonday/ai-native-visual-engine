@@ -115,6 +115,36 @@ describe("SelectorRegistry", () => {
       expect(nodes[0]?.id).toBe("a");
       expect(nodes[1]?.id).toBe("b");
     });
+
+    it("returns fresh array on each call (no string-keyed cache)", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const r1 = sel.getNodes(["a", "b"]);
+      const r2 = sel.getNodes(["a", "b"]);
+      // getNodes no longer uses a string-keyed cache, so each call
+      // produces a new array. This avoids key collision and unbounded
+      // memory growth from array-join keys.
+      expect(r1).not.toBe(r2);
+      expect(r1).toEqual(r2);
+    });
+
+    it("reads version signals for each requested node", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.getNode("b");
+      // After calling getNodes, invalidating one node should trigger
+      // recompute of individual getNode but getNodes re-reads all
+      // requested node signals each time (no cached computed).
+      sel.invalidateAll();
+      const nodes = sel.getNodes(["a", "b"]);
+      expect(nodes).toHaveLength(2);
+    });
+
+    it("handles requesting nonexistent nodes", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodes(["a", "missing"])).toHaveLength(1);
+      expect(sel.getNodes(["missing1", "missing2"])).toHaveLength(0);
+    });
   });
 
   describe("getAllNodes", () => {
@@ -198,6 +228,24 @@ describe("SelectorRegistry", () => {
       const visible = sel.getVisibleNodes();
       expect(visible.every((n) => n.visible !== false)).toBe(true);
     });
+
+    it("re-evaluates when a known node is invalidated", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // Query node "a" to create its version signal
+      sel.getNode("a");
+      // First visible set includes all nodes
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+      // Hide node a and invalidate
+      const aNode = scene.nodes.a;
+      if (!aNode) throw new Error("a missing");
+      aNode.visible = false;
+      sel.invalidate("a");
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(3);
+      expect(visible.find((n) => n.id === "a")).toBeUndefined();
+    });
   });
 
   describe("cache invalidation", () => {
@@ -210,14 +258,32 @@ describe("SelectorRegistry", () => {
       expect(sel.getNode("a")?.id).toBe("a");
     });
 
-    it("invalidates all caches on invalidateAll", () => {
+    it("invalidateAll bumps version signals triggering recompute", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getNode("a");
       sel.getChildren("root");
+      // invalidateAll bumps all existing version signals (does NOT
+      // clear computedCache). The reactive scope marks dependent
+      // computeds as dirty; they are lazily re-evaluated on access.
       sel.invalidateAll();
       expect(sel.getNode("a")?.id).toBe("a");
       expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("cache type separation prevents key collision", () => {
+      // Different selector types use separate inner maps even when
+      // the sub-key is identical (e.g. getChildren("a") vs getAncestors("a")).
+      // With a flat string key both would collide as "a" + type prefix.
+      const sel = createSelectorRegistry(makeScene());
+      const children = sel.getChildren("a");
+      expect(children).toHaveLength(1);
+      expect(children[0]?.id).toBe("a1");
+
+      const ancestors = sel.getAncestors("a1");
+      expect(ancestors).toHaveLength(2);
+      expect(ancestors[0]?.id).toBe("a");
+      expect(ancestors[1]?.id).toBe("root");
     });
   });
 

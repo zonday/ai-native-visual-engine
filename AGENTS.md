@@ -48,6 +48,7 @@ These are non-negotiable. Any violation blocks implementation.
 11. Subdirectories must not contain `index.ts` barrel files. Every module file exports its own symbols directly. The top-level `index.ts` is the only aggregation point, and it must list every export explicitly.
 12. The top-level `index.ts` must follow the minimum-exports principle: export only what external consumers actually need (public API). Internal helpers, individual plugin component exports, and layout utilities must NOT be exported from the barrel — consumers import them from the specific module file.
 13. All exports MUST have at least one production consumer (import) outside their own definition file. Exports used only by tests or by no one at all must be removed. This applies to both barrel exports and individual module exports — if nothing outside the file imports it, `export` is forbidden.
+14. Organize files by feature: one directory = one feature concept. Sub-directories may nest under a feature when it has multiple sub-concerns. A single-file feature MUST NOT be wrapped in a directory — use a flat file instead.
 
 ## Testing
 
@@ -60,7 +61,7 @@ Every new feature, bug fix, and behavior change MUST include tests. Tests MUST b
 3. Every new compiler pipeline stage MUST have tests covering valid input to expected output and invalid input to expected diagnostics.
 4. Every new renderer component MUST have at least one test verifying correct rendering from a minimal scene fixture.
 5. Bug fixes MUST include a regression test that fails before the fix and passes after.
-6. Package tests MUST live in a package-level `__tests__/` directory (for example `packages/core/__tests__/`). Do NOT place test files inside `src/` or create per-subdirectory test barrels.
+6. Package tests MUST live in a package-level `__tests__/` directory mirroring `src/` layout. For example, `src/selector/selector-registry.ts` → `__tests__/selector/selector-registry.test.ts`. Do NOT place test files inside `src/`.
 7. Every package `tsconfig.json` MUST include the `__tests__` directory in its `include` array so that `tsc --noEmit` type-checks test files. Example: `"include": ["src", "__tests__"]`.
 
 ### Meaningful Tests

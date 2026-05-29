@@ -21,10 +21,23 @@ export interface SelectorRegistry {
   getVersion(): number;
 }
 
-export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
+type SelectorType =
+  | "children"
+  | "parent"
+  | "root"
+  | "allNodes"
+  | "ancestors"
+  | "descendants"
+  | "siblings"
+  | "depth"
+  | "visibleNodes";
+
+export function createSelectorRegistry(
+  scene: Readonly<SceneGraph>,
+): SelectorRegistry {
   const { signal, computed } = createScope();
   const versionSignals = new Map<NodeId, Signal<number>>();
-  const computedCache = new Map<string, () => unknown>();
+  const computedCache = new Map<SelectorType, Map<string, () => unknown>>();
   let syncedVersion = scene.version;
 
   function getVersionSignal(nodeId: string): () => number {
@@ -36,30 +49,37 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
     return s;
   }
 
+  function bumpAllVersionSignals(): void {
+    for (const [, s] of versionSignals) {
+      s(s() + 1);
+    }
+  }
+
   function checkVersion(): void {
     if (scene.version !== syncedVersion) {
+      // Scene was fully replaced (undo/redo/sync): all node references changed.
+      // Wipe everything — old version signals point to stale scene nodes,
+      // and old computed values close over the replaced scene reference.
       versionSignals.clear();
       computedCache.clear();
       syncedVersion = scene.version;
     }
   }
 
-  function getCached<T>(key: string, compute: () => T): () => T {
-    // Selectors may read scene.nodes[id] directly (instead of registry.getNode)
-    // because:
-    //   1. checkVersion() must run BEFORE computed evaluation, not inside it —
-    //      calling getNode() inside a computed could re-enter checkVersion()
-    //      and clear the cache map that holds the currently-evaluating computed.
-    //   2. Dependency tracking is already explicit via getVersionSignal(nodeId)()
-    //      at the top of each computed getter, so there is no tracking gap.
-    //   3. runtime-engine.md §12 permits direct scene.nodes access inside
-    //      selector implementations.
-    // Child iteration does use registry.getNode(childId) to maintain per-child
-    // dependency registration through version signals.
-    let c = computedCache.get(key) as (() => T) | undefined;
+  function getCached<T>(
+    type: SelectorType,
+    key: string,
+    compute: () => T,
+  ): () => T {
+    let innerMap = computedCache.get(type);
+    if (!innerMap) {
+      innerMap = new Map();
+      computedCache.set(type, innerMap);
+    }
+    let c = innerMap.get(key) as (() => T) | undefined;
     if (!c) {
       c = computed(compute) as () => T;
-      computedCache.set(key, c);
+      innerMap.set(key, c);
     }
     return c;
   }
@@ -81,7 +101,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getChildren(nodeId: NodeId): SceneNode[] {
       checkVersion();
-      return getCached(`children:${nodeId}`, () => {
+      return getCached("children", nodeId, () => {
         getVersionSignal(nodeId)();
         const node = scene.nodes[nodeId];
         if (!node?.children) return [];
@@ -96,7 +116,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getParent(nodeId: NodeId): SceneNode | undefined {
       checkVersion();
-      return getCached(`parent:${nodeId}`, () => {
+      return getCached("parent", nodeId, () => {
         getVersionSignal(nodeId)();
         const node = scene.nodes[nodeId];
         return node?.parentId ? registry.getNode(node.parentId) : undefined;
@@ -105,7 +125,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getRoot(): SceneNode {
       checkVersion();
-      return getCached("root", () => {
+      return getCached("root", "root", () => {
         getVersionSignal(scene.rootId)();
         const root = scene.nodes[scene.rootId];
         if (!root) {
@@ -117,25 +137,22 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
       checkVersion();
-      const key = `nodes:${nodeIds.join(",")}`;
-      return getCached(key, () => {
-        const result: SceneNode[] = [];
-        for (const id of nodeIds) {
-          const node = registry.getNode(id);
-          if (node) result.push(node);
-        }
-        return result;
-      })();
+      for (const id of nodeIds) {
+        getVersionSignal(id)();
+      }
+      return nodeIds
+        .map((id) => scene.nodes[id])
+        .filter((n): n is SceneNode => n !== undefined);
     },
 
     getAllNodes(): SceneNode[] {
       checkVersion();
-      return getCached("allNodes", () => Object.values(scene.nodes))();
+      return getCached("allNodes", "all", () => Object.values(scene.nodes))();
     },
 
     getAncestors(nodeId: NodeId): SceneNode[] {
       checkVersion();
-      return getCached(`ancestors:${nodeId}`, () => {
+      return getCached("ancestors", nodeId, () => {
         getVersionSignal(nodeId)();
         const ancestors: SceneNode[] = [];
         let current = scene.nodes[nodeId]?.parentId;
@@ -151,10 +168,12 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getDescendants(nodeId: NodeId): SceneNode[] {
       checkVersion();
-      return getCached(`descendants:${nodeId}`, () => {
+      return getCached("descendants", nodeId, () => {
         getVersionSignal(nodeId)();
         const descendants: SceneNode[] = [];
         function walk(id: string, depth: number = 0): void {
+          // Depth limit is defense-in-depth: mutation layer MUST prevent cycles,
+          // but a safety guard prevents stack overflow on corrupted data.
           if (depth > 1000) return;
           const node = scene.nodes[id];
           if (!node?.children) return;
@@ -173,7 +192,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getSiblings(nodeId: NodeId): SceneNode[] {
       checkVersion();
-      return getCached(`siblings:${nodeId}`, () => {
+      return getCached("siblings", nodeId, () => {
         getVersionSignal(nodeId)();
         const node = scene.nodes[nodeId];
         if (!node?.parentId) return [];
@@ -188,7 +207,7 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getDepth(nodeId: NodeId): number {
       checkVersion();
-      return getCached(`depth:${nodeId}`, () => {
+      return getCached("depth", nodeId, () => {
         getVersionSignal(nodeId)();
         let depth = 0;
         let current = scene.nodes[nodeId]?.parentId;
@@ -209,9 +228,14 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
 
     getVisibleNodes(): SceneNode[] {
       checkVersion();
-      return getCached("visibleNodes", () => {
+      return getCached("visibleNodes", "all", () => {
+        // Register dependencies on previously-accessed nodes without
+        // creating new signals for unseen nodes (avoids the global-
+        // dependency perf trap the reviewer flagged). Full refresh is
+        // guaranteed by checkVersion() on scene version change.
         for (const id of Object.keys(scene.nodes)) {
-          getVersionSignal(id)();
+          const s = versionSignals.get(id);
+          if (s) s();
         }
         return Object.values(scene.nodes).filter(
           (node) => node.visible !== false,
@@ -227,11 +251,19 @@ export function createSelectorRegistry(scene: SceneGraph): SelectorRegistry {
     },
 
     invalidateAll(): void {
-      versionSignals.clear();
-      computedCache.clear();
+      // Incremental: bump version signals so all dependent computeds are
+      // marked dirty by the reactive scope. The computedCache survives —
+      // entries are lazily re-evaluated when accessed.
+      bumpAllVersionSignals();
     },
 
     sync(newScene: SceneGraph): void {
+      // HAZARD: `scene` is a mutable captured reference. Computed closures
+      // that read `scene.nodes` during evaluation may see inconsistent state
+      // if `sync()` is called while a computed is mid-evaluation. Currently
+      // safe because JS is single-threaded and sync() is called outside the
+      // reactive flush cycle, but this WILL break with async selectors /
+      // worker rendering. Future: sceneSignal = signal(newScene).
       scene = newScene;
       versionSignals.clear();
       computedCache.clear();
