@@ -70,10 +70,13 @@ export const UpdateSelectionActionSchema = z.object({
 
 export const BatchActionsSchema = z.object({
   type: z.literal("batch-actions"),
+  // z.any() is required here because RuntimeActionSchema includes
+  // BatchActionsSchema itself, creating a circular Zod dependency.
+  // Batch actions may contain nested batch actions (e.g. inverse rollup).
   actions: z.array(z.any()),
 });
 
-export const RuntimeActionSchema = z.discriminatedUnion("type", [
+const runtimeActionSchemas = [
   CreateNodeActionSchema,
   RemoveNodeActionSchema,
   MoveNodeActionSchema,
@@ -85,6 +88,10 @@ export const RuntimeActionSchema = z.discriminatedUnion("type", [
   UpdateRuntimeActionSchema,
   UpdateSelectionActionSchema,
   BatchActionsSchema,
+] as const;
+
+export const RuntimeActionSchema = z.discriminatedUnion("type", [
+  ...runtimeActionSchemas,
 ]);
 
 export type CreateNodeAction = z.infer<typeof CreateNodeActionSchema>;
