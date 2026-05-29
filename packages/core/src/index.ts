@@ -65,6 +65,7 @@ export { createScheduler, type Scheduler } from "./scheduler/scheduler.js";
 // ── Selector ──
 export {
   createSelectorRegistry,
+  type NodeField,
   type ScenePatch,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
