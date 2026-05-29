@@ -109,6 +109,7 @@ export function createComputedStateEngine(
   ): {
     x: number;
     y: number;
+    rotation: number;
   } {
     const layout = selectors.getNodeLayout(nodeId);
     const mode = (layout as { mode?: string } | undefined)?.mode;
@@ -116,9 +117,10 @@ export function createComputedStateEngine(
       return {
         x: getLayoutValue(selectors, nodeId, "x"),
         y: getLayoutValue(selectors, nodeId, "y"),
+        rotation: getLayoutValue(selectors, nodeId, "rotation"),
       };
     }
-    return { x: 0, y: 0 };
+    return { x: 0, y: 0, rotation: 0 };
   }
 
   const engine: ComputedStateEngine = {
@@ -161,7 +163,7 @@ export function createComputedStateEngine(
             return {
               x: local.x,
               y: local.y,
-              rotation: 0,
+              rotation: local.rotation,
               scaleX: 1,
               scaleY: 1,
             };
@@ -171,7 +173,7 @@ export function createComputedStateEngine(
           return {
             x: parentTx.x + local.x,
             y: parentTx.y + local.y,
-            rotation: parentTx.rotation + 0,
+            rotation: parentTx.rotation + local.rotation,
             scaleX: 1,
             scaleY: 1,
           };
