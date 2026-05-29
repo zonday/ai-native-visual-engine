@@ -38,6 +38,14 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
     }
   }
 
+  if (!Number.isFinite(action.rotation)) {
+    throw new HandlerError(
+      "scene.invalid-rotation",
+      `Invalid rotation value: ${action.rotation}`,
+      "rotate-node",
+      { nodeId: action.nodeId },
+    );
+  }
   const normalized = normalizeRotation(action.rotation);
 
   const updatedNode = {

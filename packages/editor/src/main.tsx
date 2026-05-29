@@ -1,460 +1,75 @@
 import "./index.css";
-import type {
-  DocumentAction,
-  HistoryState,
-  RuntimeAction,
-  SceneGraph,
-  VisualDocument,
-} from "@ai-native/core";
-import {
-  createBatchHandler,
-  createComputedStateEngine,
-  createConstraintMiddleware,
-  createConstraintRegistry,
-  createDefaultDocumentRegistries,
-  createDefaultRuntimeRegistries,
-  createDocumentBatchHandler,
-  createDocumentCommandBus,
-  createHistoryState,
-  createInteractionEngine,
-  createNewDocument,
-  createRuntimeCommandBus,
-  createRuntimeTransactionManager,
-  createScheduler,
-  createSelectorRegistry,
-  createTransactionFlag,
-  createTransactionMiddleware,
-  createUndoHistoryMiddleware,
-  createValidatorMiddleware,
-  DEFAULT_LAYOUT_CONSTRAINTS,
-  DocumentActionSchema,
-  openDocumentSession,
-  RuntimeActionSchema,
-  redoAction,
-  setCheckpoint,
-  undoAction,
-  validateGraphInvariants,
-} from "@ai-native/core";
-import type { TransformEvent } from "@ai-native/renderer-react";
-import { createRendererRegistry } from "@ai-native/renderer-react";
 import { Redo2, Undo2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { commandRegistry } from "./commands/command-registry.js";
 import type { Command } from "./commands/types.js";
 import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
 import { useCommands } from "./hooks/use-commands.js";
+import { useEditorActions } from "./hooks/use-editor-actions.js";
+import { useEditorEngines } from "./hooks/use-editor-engines.js";
+import { useEditorState } from "./hooks/use-editor-state.js";
 import { useHotkey } from "./hooks/use-hotkey.js";
 import { DebugPanel } from "./panels/debug-panel.js";
 import { useEditorStore } from "./store.js";
 
-function createBootstrapDoc(): VisualDocument {
-  return createNewDocument({ title: "My Dashboard" });
-}
-
 function App() {
-  const [doc, setDoc] = useState(() => createBootstrapDoc());
-  const [activePageId] = useState(() => doc.pages[0]?.id ?? "");
-
-  const [scene, setScene] = useState<SceneGraph>(() => {
-    const session = openDocumentSession(doc);
-    return session.getActiveScene();
-  });
-
-  type EditorAction = RuntimeAction | DocumentAction;
-  const historyRef = useRef<HistoryState<EditorAction>>(createHistoryState());
-  const isUndoingRef = useRef(false);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
-  const syncHistoryState = useCallback(() => {
-    setCanUndo(historyRef.current.undoStack.length > 0);
-    setCanRedo(historyRef.current.redoStack.length > 0);
-  }, []);
-
-  // Set checkpoint after initial mount to prevent undoing past initial state
-  useEffect(() => {
-    historyRef.current = setCheckpoint(historyRef.current);
-  }, []);
-
-  const selectorRegistry = useMemo(
-    () => createSelectorRegistry(scene),
-    [scene],
-  );
-
-  const interactionEngine = useMemo(() => createInteractionEngine(), []);
-
-  const constraintRegistry = useMemo(() => {
-    const reg = createConstraintRegistry();
-    for (const c of DEFAULT_LAYOUT_CONSTRAINTS) {
-      reg.register(c);
-    }
-    return reg;
-  }, []);
-
-  const runtimeRegistries = useMemo(
-    () =>
-      createDefaultRuntimeRegistries(() => ({
-        ok: false,
-        scene: { version: 0, rootId: "", nodes: {} },
-        error: { code: "nested", message: "nested" },
-      })),
-    [],
-  );
-
-  const transactionFlagRef = useRef(createTransactionFlag());
-
-  const runtimeTm = useMemo(
-    () =>
-      createRuntimeTransactionManager(
-        runtimeRegistries.handlerRegistry,
-        runtimeRegistries.inverseRegistry,
-      ),
-    [runtimeRegistries],
-  );
-
-  const schedulerRef = useRef(createScheduler({ mode: "sync" }));
-  const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
-
-  // Wire interaction engine into scheduler — clear stale selections after compute
-  useEffect(() => {
-    const s = schedulerRef.current;
-    return s.subscribe({
-      onAfterCompute: () => {
-        const selected = interactionEngine.getSelection();
-        const valid = selected.filter((id) => selectorRegistry.getNode(id));
-        if (valid.length !== selected.length) {
-          interactionEngine.select(valid);
-        }
-      },
-    });
-  }, [interactionEngine, selectorRegistry]);
-
-  const runtimeBus = useMemo(() => {
-    const { handlerRegistry } = runtimeRegistries;
-    const middlewares = [
-      createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
-      createConstraintMiddleware(constraintRegistry),
-      createTransactionMiddleware({
-        transactionManager: runtimeTm,
-        transactionFlag: transactionFlagRef.current,
-        handlerRegistry,
-        getContext: () => ({ now: Date.now, actorId: "editor" }),
-        getActorId: () => "editor",
-        getHistory: () => historyRef.current as HistoryState<RuntimeAction>,
-        setHistory: (s) => {
-          historyRef.current = s as HistoryState<EditorAction>;
-          syncHistoryState();
-        },
-        markDirty: (nodeIds) => {
-          schedulerRef.current.markDirty(nodeIds);
-          for (const id of nodeIds) {
-            computedEngineRef.current.invalidate(id);
-          }
-        },
-        shouldExcludeFromHistory: () => isUndoingRef.current,
-        onAfterCommit: (sceneState) => {
-          const violations = validateGraphInvariants(sceneState as SceneGraph);
-          for (const v of violations) {
-            console.error(`[graph-invariant] ${v.code}: ${v.message}`);
-          }
-        },
-      }),
-    ];
-
-    const bus = createRuntimeCommandBus(handlerRegistry, middlewares, scene, {
-      now: Date.now,
-      actorId: "editor",
-    });
-
-    const batchEntry = handlerRegistry.get("batch-actions");
-    if (batchEntry) {
-      handlerRegistry.set("batch-actions", {
-        ...batchEntry,
-        handler: createBatchHandler((action) =>
-          bus.dispatch(action),
-        ) as typeof batchEntry.handler,
-      });
-    }
-
-    return bus;
-  }, [
+  // State management
+  const {
+    doc,
+    setDoc,
     scene,
-    constraintRegistry,
+    setScene,
+    activePageId,
+    historyRef,
+    isUndoingRef,
+    canUndo,
+    canRedo,
     syncHistoryState,
-    runtimeTm,
-    runtimeRegistries,
-  ]);
+  } = useEditorState();
 
-  const documentBus = useMemo(() => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
-      ok: false,
-      document: doc,
-      error: { code: "nested", message: "nested" },
-    }));
-    const middlewares = [
-      createValidatorMiddleware<VisualDocument, DocumentAction>(
-        DocumentActionSchema,
-      ),
-      createUndoHistoryMiddleware(
-        () => historyRef.current as HistoryState<DocumentAction>,
-        (s: HistoryState<DocumentAction>) => {
-          historyRef.current = s as HistoryState<EditorAction>;
-          syncHistoryState();
-        },
-        () => "editor",
-        handlerRegistry,
-        () => ({ now: Date.now, actorId: "editor" }),
-        () => isUndoingRef.current,
-      ),
-    ];
-
-    const bus = createDocumentCommandBus(handlerRegistry, middlewares, doc, {
-      now: Date.now,
-      actorId: "editor",
-    });
-
-    const batchDocEntry = handlerRegistry.get("batch-document-actions");
-    if (batchDocEntry) {
-      handlerRegistry.set("batch-document-actions", {
-        ...batchDocEntry,
-        handler: createDocumentBatchHandler((action) =>
-          bus.dispatch(action),
-        ) as typeof batchDocEntry.handler,
-      });
-    }
-
-    return bus;
-  }, [doc, syncHistoryState]);
-
-  const dispatchRuntime = useCallback(
-    (action: RuntimeAction) => {
-      const result = runtimeBus.dispatch(action);
-      if (result.ok) {
-        setScene(result.scene);
-        setDoc((currentDoc) => {
-          const currentPage = currentDoc.pages.find(
-            (page) => page.id === activePageId,
-          );
-          if (!currentPage) return currentDoc;
-          return {
-            ...currentDoc,
-            scenes: {
-              ...currentDoc.scenes,
-              [currentPage.sceneId]: {
-                version: result.scene.version,
-                rootId: result.scene.rootId,
-                nodes: result.scene.nodes,
-                metadata: result.scene.metadata,
-              },
-            },
-          };
-        });
-      }
-    },
-    [activePageId, runtimeBus],
+  // Engine and command bus creation
+  const engines = useEditorEngines(
+    scene,
+    doc,
+    activePageId,
+    historyRef,
+    isUndoingRef,
+    syncHistoryState,
   );
+  const {
+    selectorRegistry,
+    interactionEngine,
+    computedEngineRef,
+    schedulerRef,
+    registry,
+  } = engines;
 
-  const addPage = useCallback(() => {
-    const sceneId = `scene-${Date.now()}`;
-    const p = {
-      type: "create-page" as const,
-      page: { id: `p-${Date.now()}`, name: "New Page", sceneId },
-      scene: {
-        version: 0,
-        rootId: "r",
-        nodes: { r: { id: "r", type: "container", children: [] } },
-      },
-    };
-    const result = documentBus.dispatch(p);
-    if (result.ok) setDoc(result.document);
-  }, [documentBus]);
-
-  const addNode = useCallback(
-    (type: string, layout?: Record<string, unknown>) => {
-      const id = `n-${Date.now()}`;
-      dispatchRuntime({
-        type: "create-node",
-        node: { id, type, layout },
-        parentId: scene.rootId,
-      });
-    },
-    [dispatchRuntime, scene.rootId],
-  );
-
-  const handleTransform = useCallback(
-    (event: TransformEvent) => {
-      const el = document.querySelector(
-        `[data-node-id="${event.nodeId}"]`,
-      ) as HTMLElement | null;
-
-      if (!event.commit) {
-        if (!el) return;
-        if (event.type === "move") {
-          el.style.transform = `translate(${event.deltaX}px, ${event.deltaY}px)`;
-        } else if (event.type === "resize") {
-          const node = selectorRegistry.getNode(event.nodeId);
-          const layout = (node?.layout ?? {}) as Record<string, unknown>;
-          el.style.width = `${Math.max(10, (Number(layout.width) || 100) + event.deltaX)}px`;
-          el.style.height = `${Math.max(10, (Number(layout.height) || 100) + event.deltaY)}px`;
-        }
-        return;
-      }
-
-      // Reset visual transform
-      if (el) {
-        el.style.transform = "";
-        el.style.width = "";
-        el.style.height = "";
-      }
-
-      const node = selectorRegistry.getNode(event.nodeId);
-      if (!node) return;
-      const layout = (node.layout ?? {}) as Record<string, unknown>;
-
-      if (event.type === "move") {
-        dispatchRuntime({
-          type: "update-layout",
-          nodeId: event.nodeId,
-          layout: {
-            x: (Number(layout.x) || 0) + event.deltaX,
-            y: (Number(layout.y) || 0) + event.deltaY,
-          },
-        });
-      } else if (event.type === "resize") {
-        dispatchRuntime({
-          type: "update-layout",
-          nodeId: event.nodeId,
-          layout: {
-            width: (Number(layout.width) || 100) + event.deltaX,
-            height: (Number(layout.height) || 100) + event.deltaY,
-          },
-        });
-      } else if (event.type === "rotate") {
-        const rotation = (Number(layout.rotation) || 0) + event.deltaX;
-        dispatchRuntime({
-          type: "rotate-node",
-          nodeId: event.nodeId,
-          rotation,
-        });
-      }
-    },
-    [dispatchRuntime, selectorRegistry],
-  );
-
-  const handleUpdateProps = useCallback(
-    (nodeId: string, props: Record<string, unknown>) => {
-      dispatchRuntime({ type: "update-props", nodeId, props });
-    },
-    [dispatchRuntime],
-  );
-
-  const handleUndo = useCallback(() => {
-    const result = undoAction(historyRef.current);
-    if (!result) return;
-    isUndoingRef.current = true;
-    const entry: RuntimeAction | DocumentAction = result.inverseActions[0] as
-      | RuntimeAction
-      | DocumentAction;
-    const isRuntime = "nodeId" in entry || "activeStates" in entry;
-    const dispatchResult = isRuntime
-      ? runtimeBus.dispatch(entry as RuntimeAction)
-      : documentBus.dispatch(entry as DocumentAction);
-    isUndoingRef.current = false;
-    if (dispatchResult.ok) {
-      historyRef.current = result.state;
-      syncHistoryState();
-      if ("scene" in dispatchResult) {
-        setScene(dispatchResult.scene);
-        setDoc((d) => {
-          const page = d.pages.find((p) => p.id === activePageId);
-          if (!page) return d;
-          return {
-            ...d,
-            scenes: {
-              ...d.scenes,
-              [page.sceneId]: {
-                ...dispatchResult.scene,
-              },
-            },
-          };
-        });
-      } else {
-        setDoc(dispatchResult.document);
-      }
-    }
-  }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
-
-  const handleRedo = useCallback(() => {
-    const result = redoAction(historyRef.current);
-    if (!result) return;
-    isUndoingRef.current = true;
-    const entry: RuntimeAction | DocumentAction = result.actions[0] as
-      | RuntimeAction
-      | DocumentAction;
-    const isRuntime = "nodeId" in entry || "activeStates" in entry;
-    const dispatchResult = isRuntime
-      ? runtimeBus.dispatch(entry as RuntimeAction)
-      : documentBus.dispatch(entry as DocumentAction);
-    isUndoingRef.current = false;
-    if (dispatchResult.ok) {
-      historyRef.current = result.state;
-      syncHistoryState();
-      if ("scene" in dispatchResult) {
-        setScene(dispatchResult.scene);
-        setDoc((d) => {
-          const page = d.pages.find((p) => p.id === activePageId);
-          if (!page) return d;
-          return {
-            ...d,
-            scenes: {
-              ...d.scenes,
-              [page.sceneId]: {
-                ...dispatchResult.scene,
-              },
-            },
-          };
-        });
-      } else {
-        setDoc(dispatchResult.document);
-      }
-    }
-  }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
-
-  const handleDelete = useCallback(() => {
-    const selected = interactionEngine.getSelection();
-    const rootId = scene.rootId;
-    for (const nodeId of selected) {
-      if (nodeId === rootId) continue;
-      dispatchRuntime({ type: "remove-node", nodeId });
-    }
-  }, [interactionEngine, scene.rootId, dispatchRuntime]);
-
-  const handleMoveSelectedNode = useCallback(
-    (direction: "up" | "down") => {
-      const selection = interactionEngine.getSelection();
-      const nodeId = selection[0];
-      if (selection.length !== 1 || !nodeId) return;
-      if (nodeId === scene.rootId) return;
-      const parent = selectorRegistry.getParent(nodeId);
-      if (!parent) return;
-      const siblings = selectorRegistry.getChildren(parent.id);
-      const idx = siblings.findIndex((s) => s.id === nodeId);
-      if (idx === -1) return;
-      const newIndex =
-        direction === "up"
-          ? Math.max(0, idx - 1)
-          : Math.min(siblings.length - 1, idx + 1);
-      if (newIndex === idx) return;
-      dispatchRuntime({
-        type: "move-node",
-        nodeId,
-        parentId: parent.id,
-        index: newIndex,
-      });
-    },
-    [interactionEngine, scene.rootId, selectorRegistry, dispatchRuntime],
+  // Action handler callbacks
+  const {
+    dispatchRuntime,
+    addPage,
+    addNode,
+    handleTransform,
+    handleUpdateProps,
+    handleUndo,
+    handleRedo,
+    handleDelete,
+    handleMoveSelectedNode,
+    handleDispatchDocument,
+    showDebug,
+    setShowDebug,
+  } = useEditorActions(
+    engines,
+    scene,
+    activePageId,
+    doc,
+    setDoc,
+    setScene,
+    historyRef,
+    isUndoingRef,
+    syncHistoryState,
   );
 
   const handleUndoRef = useRef(handleUndo);
@@ -550,17 +165,6 @@ function App() {
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [showDebug, setShowDebug] = useState(false);
-
-  const handleDispatchDocument = useCallback(
-    (action: DocumentAction) => {
-      const result = documentBus.dispatch(action);
-      if (result.ok) setDoc(result.document);
-    },
-    [documentBus],
-  );
-
-  const registry = useMemo(() => createRendererRegistry(), []);
 
   const firstPageSceneId =
     doc.pages.find((p) => p.id === activePageId)?.sceneId ?? "";

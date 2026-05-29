@@ -171,8 +171,8 @@ export function createScope(): ReactiveScope {
       if (e.cleanup) {
         try {
           e.cleanup();
-        } catch {
-          /* isolate cleanup error */
+        } catch (err) {
+          console.warn("[reactive-scope] effect cleanup error:", err);
         }
       }
       e.depsTail = undefined;
@@ -344,8 +344,8 @@ export function createScope(): ReactiveScope {
       if (e.cleanup) {
         try {
           e.cleanup();
-        } catch {
-          /* isolate cleanup error */
+        } catch (err) {
+          console.warn("[reactive-scope] effect cleanup error:", err);
         }
         e.cleanup = undefined;
       }

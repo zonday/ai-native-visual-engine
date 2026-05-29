@@ -111,7 +111,9 @@ export function autoLayoutGrid(
   if (!container) return { positions: [], collisions: [] };
 
   const gridLayout = container.layout as GridLayout | undefined;
-  const columns = gridLayout?.columns ?? 4;
+  const columns = Number.isFinite(gridLayout?.columns)
+    ? (gridLayout?.columns as number)
+    : 4;
 
   const childIds = container.children ?? [];
 
@@ -123,10 +125,16 @@ export function autoLayoutGrid(
     if (!node) continue;
     const layout = node.layout as GridItemLayout | undefined;
 
-    let x = layout?.x;
-    let y = layout?.y;
-    const w = Math.max(layout?.w ?? 1, 1);
-    const h = Math.max(layout?.h ?? 1, 1);
+    let x = Number.isFinite(layout?.x) ? (layout?.x as number) : undefined;
+    let y = Number.isFinite(layout?.y) ? (layout?.y as number) : undefined;
+    const w = Math.max(
+      Number.isFinite(layout?.w) ? (layout?.w as number) : 1,
+      1,
+    );
+    const h = Math.max(
+      Number.isFinite(layout?.h) ? (layout?.h as number) : 1,
+      1,
+    );
 
     if (x === undefined || y === undefined) {
       let found = false;

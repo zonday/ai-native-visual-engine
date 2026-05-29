@@ -80,9 +80,9 @@ export function createScheduler(options?: {
     notifyBeforeRender();
     // Render phase: subscribers produce output here
     dirtySet.clear();
-    locked = false;
     phase = "idle";
     notifyAfterRender();
+    locked = false;
   }
 
   function scheduleMicrotask(): void {

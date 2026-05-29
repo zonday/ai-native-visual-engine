@@ -33,9 +33,13 @@ export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
     action.node as Record<string, unknown>,
   ) as typeof action.node;
 
+  const rawIndex =
+    action.index !== undefined && Number.isFinite(action.index)
+      ? action.index
+      : undefined;
   const index =
-    action.index !== undefined
-      ? Math.min(Math.max(0, action.index), (parent.children ?? []).length)
+    rawIndex !== undefined
+      ? Math.min(Math.max(0, rawIndex), (parent.children ?? []).length)
       : (parent.children ?? []).length;
 
   const node: SceneNode = {

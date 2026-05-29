@@ -59,7 +59,7 @@ export function createBatchHandler(
 export function computeBatchInverse(
   sceneBefore: SceneGraph,
   action: BatchActions,
-  dispatch: (action: RuntimeAction) => DispatchResult,
+  dispatch: (scene: SceneGraph, action: RuntimeAction) => DispatchResult,
   context: RuntimeContext,
   inverseOf: (
     sceneBefore: SceneGraph,
@@ -75,7 +75,7 @@ export function computeBatchInverse(
   for (const child of flat) {
     const inv = inverseOf(currentScene, child, context);
     if (inv) inverses.push(inv);
-    const result = dispatch(child);
+    const result = dispatch(currentScene, child);
     if (!result.ok) break;
     currentScene = result.scene;
   }
@@ -102,13 +102,15 @@ export function createBatchInverse(
   inverseRegistry: InverseRegistry,
 ): InverseComputer<BatchActions> {
   return (sceneBefore, action, context) => {
-    let currentScene = sceneBefore;
-    const dispatch = (childAction: RuntimeAction): DispatchResult => {
+    const dispatch = (
+      sceneForAction: SceneGraph,
+      childAction: RuntimeAction,
+    ): DispatchResult => {
       const entry = handlerRegistry.get(childAction.type);
       if (!entry) {
         return {
           ok: false,
-          scene: currentScene,
+          scene: sceneForAction,
           error: {
             code: "scene.unknown-action-type",
             message: `Unknown action type: ${childAction.type}`,
@@ -117,12 +119,12 @@ export function createBatchInverse(
         };
       }
       try {
-        currentScene = entry.handler(currentScene, childAction, context);
-        return { ok: true, scene: currentScene };
+        const next = entry.handler(sceneForAction, childAction, context);
+        return { ok: true, scene: next };
       } catch (err) {
         return {
           ok: false,
-          scene: currentScene,
+          scene: sceneForAction,
           error: {
             code: "scene.handler-error",
             message: err instanceof Error ? err.message : String(err),

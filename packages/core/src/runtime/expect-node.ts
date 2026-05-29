@@ -6,6 +6,14 @@ export function expectNode(
   nodeId: string,
   actionType: string,
 ): SceneNode {
+  if (!scene?.nodes) {
+    throw new HandlerError(
+      "scene.invalid-scene",
+      `Scene is null or missing nodes for action: ${actionType}`,
+      actionType,
+      { nodeId },
+    );
+  }
   const node = scene.nodes[nodeId];
   if (!node) {
     throw new HandlerError(

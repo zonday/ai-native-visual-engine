@@ -77,10 +77,14 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
       { nodeId: action.parentId },
     );
   }
+  const rawIndex =
+    action.index !== undefined && Number.isFinite(action.index)
+      ? action.index
+      : undefined;
   const index =
-    action.index !== undefined
+    rawIndex !== undefined
       ? Math.min(
-          Math.max(0, action.index),
+          Math.max(0, rawIndex),
           (updatedNewParent.children ?? []).length,
         )
       : (updatedNewParent.children ?? []).length;

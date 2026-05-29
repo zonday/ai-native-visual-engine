@@ -284,7 +284,8 @@ export class TransactionManager<
         action,
         active.context,
       );
-    } catch {
+    } catch (err) {
+      console.warn("[transaction] inverse computation failed:", err);
       return undefined;
     }
   }
