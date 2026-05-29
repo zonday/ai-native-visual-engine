@@ -231,8 +231,8 @@ describe("SelectorRegistry", () => {
       a.children = [];
       const a1 = assertNode(scene.nodes.a1, "a1");
       a1.parentId = undefined;
-      sel.invalidate("a1", "structural");
-      sel.invalidate("a", "structural");
+      sel.invalidate("a1");
+      sel.invalidate("a");
 
       const descendants = sel.getDescendants("root");
       expect(descendants).toHaveLength(2);
@@ -391,7 +391,7 @@ describe("SelectorRegistry", () => {
       sel.getVisibleNodes();
 
       // Bump only structural signal
-      sel.invalidate("a", "structural");
+      sel.invalidate("a");
 
       // getChildren re-evaluates
       const children = sel.getChildren("root");
@@ -441,8 +441,8 @@ describe("SelectorRegistry", () => {
       const root = assertNode(scene.nodes.root, "root");
       root.children = ["a", "b", "a1"];
       // Invalidate structural signal for affected nodes
-      sel.invalidate("a1", "structural");
-      sel.invalidate("root", "structural");
+      sel.invalidate("a1");
+      sel.invalidate("root");
       // getDepth should re-evaluate
       expect(sel.getDepth("a1")).toBe(1);
     });
@@ -471,7 +471,7 @@ describe("SelectorRegistry", () => {
       // structural signal propagation
       const root = assertNode(scene.nodes.root, "root");
       root.children = ["a"];
-      sel.invalidate("root", "structural");
+      sel.invalidate("root");
       // getVisibleNodes reads ALL visible signals (including root,
       // which has a signal from getNode), but structural bump does
       // NOT mark its computed dirty — so it returns cached result
@@ -488,7 +488,9 @@ describe("SelectorRegistry", () => {
       // getChildren("root") reads node:a internally, creating dependency on versionSignals["a"]
       expect(sel.getChildren("root")).toHaveLength(2);
       // Update scene data THEN invalidate targeted node
+      // Update root's children and invalidate both affected nodes
       if (scene.nodes.root) scene.nodes.root.children = ["a"];
+      sel.invalidate("root");
       sel.invalidate("a");
       // children:root computed is dirty (depends on a's version signal), re-evaluates
       const children = sel.getChildren("root");
@@ -540,7 +542,7 @@ describe("SelectorRegistry", () => {
       aNode.children = [];
       expect(sel.isDescendantOf("a1", "root")).toBe(true);
       // After invalidation, re-evaluates to fresh result
-      sel.invalidate("a1", "structural");
+      sel.invalidate("a1");
       expect(sel.isDescendantOf("a1", "root")).toBe(false);
     });
 
@@ -553,7 +555,7 @@ describe("SelectorRegistry", () => {
       a1Node.parentId = undefined;
       const aNode = assertNode(scene.nodes.a, "a");
       aNode.children = [];
-      sel.invalidate("a1", "structural");
+      sel.invalidate("a1");
       expect(sel.isDescendantOf("a1", "root")).toBe(false);
       expect(sel.isDescendantOf("a1", "a")).toBe(false);
     });
@@ -591,8 +593,8 @@ describe("SelectorRegistry", () => {
       aNode.children = [];
       // Structural invalidation bumps structural signals for a1 and a;
       // isDescendantOf re-evaluates through alien-signals computed→computed chain
-      sel.invalidate("a1", "structural");
-      sel.invalidate("a", "structural");
+      sel.invalidate("a1");
+      sel.invalidate("a");
       expect(sel.isDescendantOf("a1", "root")).toBe(false);
       expect(sel.isDescendantOf("a1", "a")).toBe(false);
     });
@@ -672,7 +674,7 @@ describe("SelectorRegistry", () => {
       sel.batch(() => {
         const root = assertNode(scene.nodes.root, "root");
         root.children = ["a"];
-        sel.invalidate("root", "structural");
+        sel.invalidate("root");
         afterInside = true;
       });
 
@@ -687,7 +689,7 @@ describe("SelectorRegistry", () => {
 
       sel.batch(() => {
         sel.batch(() => {
-          sel.invalidate("a", "structural");
+          sel.invalidate("a");
           innerDone = true;
         });
         outerDone = true;
@@ -705,11 +707,11 @@ describe("SelectorRegistry", () => {
       sel.batch(() => {
         const root = assertNode(scene.nodes.root, "root");
         root.children = ["a"];
-        sel.invalidate("root", "structural");
+        sel.invalidate("root");
 
         const a1 = assertNode(scene.nodes.a1, "a1");
         a1.parentId = undefined;
-        sel.invalidate("a1", "structural");
+        sel.invalidate("a1");
       });
 
       expect(sel.getChildren("root")).toHaveLength(1);
@@ -720,7 +722,7 @@ describe("SelectorRegistry", () => {
       const sel = createSelectorRegistry(makeScene());
       sel.getChildren("root");
 
-      sel.invalidate("a", "structural");
+      sel.invalidate("a");
       expect(sel.getChildren("root")).toHaveLength(2);
     });
   });
@@ -737,7 +739,7 @@ describe("SelectorRegistry", () => {
       sel.getChildren("root");
 
       sel.batch(() => {
-        sel.invalidate("a", "structural");
+        sel.invalidate("a");
         sel.flush();
       });
 
@@ -788,7 +790,7 @@ describe("SelectorRegistry", () => {
       // Mutate scene and invalidate
       const root = assertNode(scene.nodes.root, "root");
       root.children = ["b"];
-      sel.invalidate("root", "structural");
+      sel.invalidate("root");
 
       // New selector should see fresh data
       const after = sel.getChildren("root");
