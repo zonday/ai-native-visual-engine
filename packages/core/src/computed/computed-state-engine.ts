@@ -43,12 +43,8 @@ function getLayoutValue(
   nodeId: NodeId,
   key: string,
 ): number {
-  const layout = selectors.getNodeLayout(nodeId);
-  if (layout && typeof layout === "object" && key in layout) {
-    const value = (layout as Record<string, unknown>)[key];
-    return typeof value === "number" ? value : 0;
-  }
-  return 0;
+  const value = selectors.getNodeLayoutKey(nodeId, key);
+  return typeof value === "number" ? value : 0;
 }
 
 function getNodeWidth(

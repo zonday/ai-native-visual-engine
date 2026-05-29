@@ -36,7 +36,7 @@ interface SelectorNode<T = unknown> {
 }
 
 export type ScenePatch =
-  | { type: "set-prop"; nodeId: NodeId; field: NodeField }
+  | { type: "set-prop"; nodeId: NodeId; field: NodeField; key?: string }
   | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
   | { type: "add-node"; nodeId: NodeId }
   | { type: "remove-node"; nodeId: NodeId };
@@ -56,7 +56,9 @@ export interface SelectorRegistry {
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
   getVisibleNodes(): SceneNode[];
   getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodeLayoutKey(nodeId: NodeId, key: string): unknown;
   getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodePropsKey(nodeId: NodeId, key: string): unknown;
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
@@ -86,7 +88,9 @@ type SelectorType =
   | "visibleNodes"
   | "isDescendantOf"
   | "nodeLayout"
+  | "nodeLayoutKey"
   | "nodeProps"
+  | "nodePropsKey"
   | "nodeVisibility";
 
 export function createSelectorRegistry(
@@ -105,6 +109,8 @@ export function createSelectorRegistry(
   const visibleSignals = new Map<NodeId, Signal<number>>();
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
+  const layoutKeySignals = new Map<string, Signal<number>>();
+  const propsKeySignals = new Map<string, Signal<number>>();
   const nodeExistenceSignal = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   const accessCounts = new WeakMap<SelectorNode, number>();
@@ -242,10 +248,46 @@ export function createSelectorRegistry(
     getSignal(visibleSignals, nodeId)();
   }
 
+  function trackLayoutKey(nodeId: NodeId, key: string): void {
+    const k = `${nodeId}:${key}`;
+    let s = layoutKeySignals.get(k);
+    if (!s) {
+      s = signal(0);
+      layoutKeySignals.set(k, s);
+    }
+    s();
+  }
+
+  function bumpLayoutKey(nodeId: NodeId, key: string): void {
+    const k = `${nodeId}:${key}`;
+    const s = layoutKeySignals.get(k);
+    if (s) s(s() + 1);
+  }
+
+  function trackPropsKey(nodeId: NodeId, key: string): void {
+    const k = `${nodeId}:${key}`;
+    let s = propsKeySignals.get(k);
+    if (!s) {
+      s = signal(0);
+      propsKeySignals.set(k, s);
+    }
+    s();
+  }
+
+  function bumpPropsKey(nodeId: NodeId, key: string): void {
+    const k = `${nodeId}:${key}`;
+    const s = propsKeySignals.get(k);
+    if (s) s(s() + 1);
+  }
+
   // ── Patch routing ──
   function handlePatch(patch: ScenePatch): void {
     if (patch.type === "set-prop") {
-      const { nodeId, field } = patch;
+      const { nodeId, field, key } = patch;
+      if (key) {
+        if (field === "layout") bumpLayoutKey(nodeId, key);
+        else if (field === "props") bumpPropsKey(nodeId, key);
+      }
       if (field === "visible") markVisibilityIndexDirty();
       if (field === "children" || field === "parent") markTreeIndexDirty();
       bumpSignal(
@@ -582,10 +624,32 @@ export function createSelectorRegistry(
       }).get();
     },
 
+    getNodeLayoutKey(nodeId: NodeId, key: string): unknown {
+      return getCached("nodeLayoutKey", `${nodeId}:${key}`, () => {
+        trackLayout(nodeId);
+        trackLayoutKey(nodeId, key);
+        const layout = currentScene.nodes[nodeId]?.layout;
+        return layout && typeof layout === "object"
+          ? (layout as Record<string, unknown>)[key]
+          : undefined;
+      }).get();
+    },
+
     getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeProps", nodeId, () => {
         trackProps(nodeId);
         return currentScene.nodes[nodeId]?.props;
+      }).get();
+    },
+
+    getNodePropsKey(nodeId: NodeId, key: string): unknown {
+      return getCached("nodePropsKey", `${nodeId}:${key}`, () => {
+        trackProps(nodeId);
+        trackPropsKey(nodeId, key);
+        const props = currentScene.nodes[nodeId]?.props;
+        return props && typeof props === "object"
+          ? (props as Record<string, unknown>)[key]
+          : undefined;
       }).get();
     },
 
