@@ -291,7 +291,7 @@ export type SceneGraph = z.infer<typeof SceneGraphSchema>;
 // at the type level. DeepMutable is the inverse for explicit escape hatches.
 export type DeepReadonly<T> = {
   readonly [K in keyof T]: T[K] extends object
-    ? T[K] extends Function
+    ? T[K] extends (...args: never) => unknown
       ? T[K]
       : DeepReadonly<T[K]>
     : T[K];
@@ -299,7 +299,7 @@ export type DeepReadonly<T> = {
 
 export type DeepMutable<T> = {
   -readonly [K in keyof T]: T[K] extends object
-    ? T[K] extends Function
+    ? T[K] extends (...args: never) => unknown
       ? T[K]
       : DeepMutable<T[K]>
     : T[K];
