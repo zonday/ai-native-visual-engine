@@ -705,7 +705,7 @@ export function createSelectorRegistry(
     },
 
     removeSelector(type: string, key: string): boolean {
-      const innerMap = computedCache.get(type);
+      const innerMap = computedCache.get(type as SelectorType);
       if (!innerMap) return false;
       const node = innerMap.get(key);
       if (!node) return false;
