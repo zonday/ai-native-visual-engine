@@ -1,5 +1,5 @@
-import { redoAction, undoAction } from "./engine/history.js";
 import type { HistoryState } from "./engine/history.js";
+import { redoAction, undoAction } from "./engine/history.js";
 import type { ActiveTransaction } from "./engine/transaction-manager.js";
 import type {
   TransactionResult,
