@@ -360,11 +360,13 @@ export function createSelectorRegistry(
     },
 
     notifyNodeAdded(nodeId: NodeId): void {
+      readStructural(nodeId);
       bumpExistence();
       bumpTreeStructure();
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
+      readStructural(nodeId);
       bumpExistence();
       bumpTreeStructure();
     },
