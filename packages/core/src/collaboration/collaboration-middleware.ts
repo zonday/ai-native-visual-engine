@@ -1,4 +1,5 @@
 import type { DocumentAction } from "../document/actions.js";
+import type { DispatchResult } from "../engine/command-bus.js";
 import type { RuntimeAction } from "../runtime/actions.js";
 import type { PageId } from "../types.js";
 import type { YjsDocProvider } from "./yjs-provider.js";
@@ -44,16 +45,19 @@ export function createCollaborationMiddleware(
     documentMiddleware: <TState>(
       action: DocumentAction,
       state: TState,
-      next: () => {
-        ok: boolean;
-        state: TState;
-        error?: { code: string; message: string };
-      },
-    ) => {
+      next: () => DispatchResult<TState>,
+    ): DispatchResult<TState> => {
       if (options.readonly) {
         return remoteAction
           ? next()
-          : { ok: false, state, error: { code: "collaboration.readonly" } };
+          : {
+              ok: false,
+              state,
+              error: {
+                code: "collaboration.readonly",
+                message: "Document is read-only",
+              },
+            };
       }
       if (remoteAction) return next();
 
@@ -71,16 +75,19 @@ export function createCollaborationMiddleware(
     sceneMiddleware: <TState>(
       action: RuntimeAction,
       state: TState,
-      next: () => {
-        ok: boolean;
-        state: TState;
-        error?: { code: string; message: string };
-      },
-    ) => {
+      next: () => DispatchResult<TState>,
+    ): DispatchResult<TState> => {
       if (options.readonly) {
         return remoteAction
           ? next()
-          : { ok: false, state, error: { code: "collaboration.readonly" } };
+          : {
+              ok: false,
+              state,
+              error: {
+                code: "collaboration.readonly",
+                message: "Scene is read-only",
+              },
+            };
       }
       if (remoteAction) return next();
 

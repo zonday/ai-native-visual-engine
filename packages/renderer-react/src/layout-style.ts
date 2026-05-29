@@ -25,8 +25,10 @@ export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
     return style;
   }
 
-  // For nodes without a specific layout mode, still apply basic size
+  // For nodes without a specific layout mode, still apply basic size and position
   const style: React.CSSProperties = {};
+  if (typeof layout.x === "number") style.left = layout.x;
+  if (typeof layout.y === "number") style.top = layout.y;
   if (typeof layout.width === "number") style.width = layout.width;
   if (typeof layout.height === "number") style.height = layout.height;
   return style;

@@ -192,6 +192,9 @@ export function Inspector({
   const nodeLayout = (selectedNode.layout ?? {}) as Record<string, unknown>;
   const layoutMode =
     typeof nodeLayout.mode === "string" ? nodeLayout.mode : undefined;
+  const parentIsGrid =
+    selectedId &&
+    selectorRegistry?.getParent(selectedId)?.layout?.mode === "grid";
 
   return (
     <div className="p-3">
@@ -268,20 +271,6 @@ export function Inspector({
       {/* Style Section */}
       <SectionHeader title="Style" />
       <div className="text-xs space-y-1.5">
-        <FieldRow label="Width">
-          <DebouncedField
-            type="number"
-            value={(nodeStyle.width as number) ?? 0}
-            onChange={(v) => patchStyle("width", v)}
-          />
-        </FieldRow>
-        <FieldRow label="Height">
-          <DebouncedField
-            type="number"
-            value={(nodeStyle.height as number) ?? 0}
-            onChange={(v) => patchStyle("height", v)}
-          />
-        </FieldRow>
         <FieldRow label="Opacity">
           <DebouncedField
             type="number"
@@ -320,11 +309,57 @@ export function Inspector({
       {/* Layout Section */}
       <SectionHeader title="Layout" />
       <div className="text-xs space-y-1.5">
-        {layoutMode === "flex" ? (
+        <FieldRow label="Mode">
+          <select
+            value={layoutMode ?? ""}
+            onChange={(e) => patchLayout("mode", e.target.value || undefined)}
+            className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
+          >
+            <option value="">relative</option>
+            <option value="absolute">absolute</option>
+            <option value="flex">flex</option>
+            <option value="grid">grid</option>
+            {parentIsGrid || layoutMode === "grid-item" ? (
+              <option value="grid-item">grid-item</option>
+            ) : null}
+          </select>
+        </FieldRow>
+        {layoutMode === "absolute" ? (
+          <>
+            <FieldRow label="X">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.x as number) ?? 0}
+                onChange={(v) => patchLayout("x", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Y">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.y as number) ?? 0}
+                onChange={(v) => patchLayout("y", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
+          </>
+        ) : layoutMode === "flex" ? (
           <>
             <FieldRow label="Direction">
               <select
-                defaultValue={(nodeLayout.direction as string) ?? "row"}
+                value={(nodeLayout.direction as string) ?? "row"}
                 onChange={(e) => patchLayout("direction", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
@@ -343,7 +378,7 @@ export function Inspector({
             </FieldRow>
             <FieldRow label="Align">
               <select
-                defaultValue={(nodeLayout.align as string) ?? "stretch"}
+                value={(nodeLayout.align as string) ?? "stretch"}
                 onChange={(e) => patchLayout("align", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
@@ -355,7 +390,7 @@ export function Inspector({
             </FieldRow>
             <FieldRow label="Justify">
               <select
-                defaultValue={(nodeLayout.justify as string) ?? "flex-start"}
+                value={(nodeLayout.justify as string) ?? "flex-start"}
                 onChange={(e) => patchLayout("justify", e.target.value)}
                 className="w-full px-1.5 py-0.5 text-xs border border-slate-300 rounded bg-white"
               >
@@ -364,6 +399,20 @@ export function Inspector({
                 <option value="flex-end">flex-end</option>
                 <option value="space-between">space-between</option>
               </select>
+            </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
             </FieldRow>
           </>
         ) : layoutMode === "grid" ? (
@@ -380,6 +429,65 @@ export function Inspector({
                 type="number"
                 value={(nodeLayout.gap as number) ?? 8}
                 onChange={(v) => patchLayout("gap", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
+              />
+            </FieldRow>
+          </>
+        ) : layoutMode === "grid-item" ? (
+          <>
+            <FieldRow label="Column">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.x as number) ?? 0}
+                onChange={(v) => patchLayout("x", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Row">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.y as number) ?? 0}
+                onChange={(v) => patchLayout("y", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Span W">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.w as number) ?? 1}
+                onChange={(v) => patchLayout("w", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Span H">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.h as number) ?? 1}
+                onChange={(v) => patchLayout("h", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Width">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.width as number) ?? 0}
+                onChange={(v) => patchLayout("width", v)}
+              />
+            </FieldRow>
+            <FieldRow label="Height">
+              <DebouncedField
+                type="number"
+                value={(nodeLayout.height as number) ?? 0}
+                onChange={(v) => patchLayout("height", v)}
               />
             </FieldRow>
           </>

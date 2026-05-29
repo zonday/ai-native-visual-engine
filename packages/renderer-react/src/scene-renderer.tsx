@@ -1,7 +1,9 @@
 import type {
   ComputedStateEngine,
+  InteractionEngine,
   PrototypeComponent,
   SceneNode,
+  ViewportState,
 } from "@ai-native/core";
 import { resolveInstance, resolveStateProps } from "@ai-native/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,9 +40,7 @@ export interface SceneRendererProps {
   onSelectNode?: (nodeId: string, options?: SelectNodeOptions) => void;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
-  onViewportChange?: (
-    viewport: import("@ai-native/core").ViewportState,
-  ) => void;
+  onViewportChange?: (viewport: ViewportState) => void;
   selectedIds?: string[];
 }
 
@@ -140,8 +140,8 @@ function handleSceneClick(
   e: React.MouseEvent,
   scene: RenderContext["scene"],
   onSelectNode: SceneRendererProps["onSelectNode"],
-  interactionEngine?: import("@ai-native/core").InteractionEngine,
-  computedEngine?: import("@ai-native/core").ComputedStateEngine,
+  interactionEngine?: InteractionEngine,
+  computedEngine?: ComputedStateEngine,
 ): void {
   if (!onSelectNode) return;
 

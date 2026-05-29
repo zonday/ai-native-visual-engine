@@ -72,19 +72,21 @@ export type { DocumentAction } from "./document/actions.js";
 export { DocumentActionSchema } from "./document/actions.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
-export {
-  createDocumentHistoryState,
-  type DocumentHistoryState,
-  pushDocumentUndoTransaction,
-  redoDocumentAction,
-  undoDocumentAction,
-} from "./document/history.js";
 export { createDefaultDocumentRegistries } from "./document/inverse.js";
 export {
   createDocumentTransactionManager,
   type DocumentTransactionManager,
 } from "./document/transaction.js";
-export { pushUndoTransaction } from "./engine/history.js";
+export {
+  clearCheckpoint,
+  createHistoryState,
+  type HistoryState,
+  pushUndo,
+  pushUndoTransaction,
+  redoAction,
+  setCheckpoint,
+  undoAction,
+} from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
@@ -127,12 +129,6 @@ export { extractPlainText } from "./rich-text.js";
 export type { RuntimeAction } from "./runtime/actions.js";
 export { RuntimeActionSchema } from "./runtime/actions.js";
 export { createBatchHandler } from "./runtime/handlers/batch.js";
-export {
-  createRuntimeHistoryState,
-  pushRuntimeUndoTransaction,
-  redoRuntimeAction,
-  undoRuntimeAction,
-} from "./runtime/history.js";
 export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export {

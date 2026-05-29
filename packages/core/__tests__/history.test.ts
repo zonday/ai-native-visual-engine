@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import {
-  createDocumentHistoryState,
-  type DocumentHistoryState,
-  pushDocumentUndo,
-  redoDocumentAction,
-  undoDocumentAction,
-} from "../src/document/history.js";
-import { replayActions } from "../src/engine/history.js";
+  createHistoryState,
+  type HistoryState,
+  pushUndo,
+  redoAction,
+  replayActions,
+  undoAction,
+} from "../src/engine/history.js";
+
+const createDocumentHistoryState = createHistoryState<DocumentAction>;
+const pushDocumentUndo = pushUndo<DocumentAction>;
+const undoDocumentAction = undoAction<DocumentAction>;
+const redoDocumentAction = redoAction<DocumentAction>;
+type DocumentHistoryState = HistoryState<DocumentAction>;
 
 function makeEntry(
   action: DocumentAction,

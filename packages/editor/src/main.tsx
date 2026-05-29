@@ -1,7 +1,7 @@
 import "./index.css";
 import type {
   DocumentAction,
-  DocumentHistoryState,
+  HistoryState,
   RuntimeAction,
   SceneGraph,
   VisualDocument,
@@ -15,11 +15,10 @@ import {
   createDefaultRuntimeRegistries,
   createDocumentBatchHandler,
   createDocumentCommandBus,
-  createDocumentHistoryState,
+  createHistoryState,
   createInteractionEngine,
   createNewDocument,
   createRuntimeCommandBus,
-  createRuntimeHistoryState,
   createRuntimeTransactionManager,
   createScheduler,
   createSelectorRegistry,
@@ -31,10 +30,9 @@ import {
   DocumentActionSchema,
   openDocumentSession,
   RuntimeActionSchema,
-  redoDocumentAction,
-  redoRuntimeAction,
-  undoDocumentAction,
-  undoRuntimeAction,
+  redoAction,
+  setCheckpoint,
+  undoAction,
   validateGraphInvariants,
 } from "@ai-native/core";
 import type { TransformEvent } from "@ai-native/renderer-react";
@@ -48,6 +46,7 @@ import { Button } from "./components/ui/button.js";
 import { Editor } from "./Editor.js";
 import { useCommands } from "./hooks/use-commands.js";
 import { useHotkey } from "./hooks/use-hotkey.js";
+import { DebugPanel } from "./panels/debug-panel.js";
 import { useEditorStore } from "./store.js";
 
 function createBootstrapDoc(): VisualDocument {
@@ -63,21 +62,20 @@ function App() {
     return session.getActiveScene();
   });
 
-  const runtimeHistoryRef = useRef(createRuntimeHistoryState());
-  const documentHistoryRef = useRef(createDocumentHistoryState());
+  type EditorAction = RuntimeAction | DocumentAction;
+  const historyRef = useRef<HistoryState<EditorAction>>(createHistoryState());
   const isUndoingRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
   const syncHistoryState = useCallback(() => {
-    setCanUndo(
-      runtimeHistoryRef.current.undoStack.length > 0 ||
-        documentHistoryRef.current.undoStack.length > 0,
-    );
-    setCanRedo(
-      runtimeHistoryRef.current.redoStack.length > 0 ||
-        documentHistoryRef.current.redoStack.length > 0,
-    );
+    setCanUndo(historyRef.current.undoStack.length > 0);
+    setCanRedo(historyRef.current.redoStack.length > 0);
+  }, []);
+
+  // Set checkpoint after initial mount to prevent undoing past initial state
+  useEffect(() => {
+    historyRef.current = setCheckpoint(historyRef.current);
   }, []);
 
   const selectorRegistry = useMemo(
@@ -144,9 +142,9 @@ function App() {
         handlerRegistry,
         getContext: () => ({ now: Date.now, actorId: "editor" }),
         getActorId: () => "editor",
-        getHistory: () => runtimeHistoryRef.current,
+        getHistory: () => historyRef.current as HistoryState<RuntimeAction>,
         setHistory: (s) => {
-          runtimeHistoryRef.current = s;
+          historyRef.current = s as HistoryState<EditorAction>;
           syncHistoryState();
         },
         markDirty: (nodeIds) => {
@@ -200,9 +198,9 @@ function App() {
         DocumentActionSchema,
       ),
       createUndoHistoryMiddleware(
-        () => documentHistoryRef.current,
-        (s: DocumentHistoryState) => {
-          documentHistoryRef.current = s;
+        () => historyRef.current as HistoryState<DocumentAction>,
+        (s: HistoryState<DocumentAction>) => {
+          historyRef.current = s as HistoryState<EditorAction>;
           syncHistoryState();
         },
         () => "editor",
@@ -287,7 +285,29 @@ function App() {
 
   const handleTransform = useCallback(
     (event: TransformEvent) => {
-      if (!event.commit) return;
+      const el = document.querySelector(
+        `[data-node-id="${event.nodeId}"]`,
+      ) as HTMLElement | null;
+
+      if (!event.commit) {
+        if (!el) return;
+        if (event.type === "move") {
+          el.style.transform = `translate(${event.deltaX}px, ${event.deltaY}px)`;
+        } else if (event.type === "resize") {
+          const node = selectorRegistry.getNode(event.nodeId);
+          const layout = (node?.layout ?? {}) as Record<string, unknown>;
+          el.style.width = `${Math.max(10, (Number(layout.width) || 100) + event.deltaX)}px`;
+          el.style.height = `${Math.max(10, (Number(layout.height) || 100) + event.deltaY)}px`;
+        }
+        return;
+      }
+
+      // Reset visual transform
+      if (el) {
+        el.style.transform = "";
+        el.style.width = "";
+        el.style.height = "";
+      }
 
       const node = selectorRegistry.getNode(event.nodeId);
       if (!node) return;
@@ -331,21 +351,21 @@ function App() {
   );
 
   const handleUndo = useCallback(() => {
-    const rtHS = runtimeHistoryRef.current;
-    const docHS = documentHistoryRef.current;
-    const rtEntry = rtHS.undoStack.at(-1);
-    const docEntry = docHS.undoStack.at(-1);
-    if (!rtEntry && !docEntry) return;
-
-    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
-      const result = undoRuntimeAction(rtHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = runtimeBus.dispatch(result.inverseAction);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        runtimeHistoryRef.current = result.state;
-        syncHistoryState();
+    const result = undoAction(historyRef.current);
+    if (!result) return;
+    isUndoingRef.current = true;
+    const entry: RuntimeAction | DocumentAction = result.inverseActions[0] as
+      | RuntimeAction
+      | DocumentAction;
+    const isRuntime = "nodeId" in entry || "activeStates" in entry;
+    const dispatchResult = isRuntime
+      ? runtimeBus.dispatch(entry as RuntimeAction)
+      : documentBus.dispatch(entry as DocumentAction);
+    isUndoingRef.current = false;
+    if (dispatchResult.ok) {
+      historyRef.current = result.state;
+      syncHistoryState();
+      if ("scene" in dispatchResult) {
         setScene(dispatchResult.scene);
         setDoc((d) => {
           const page = d.pages.find((p) => p.id === activePageId);
@@ -355,45 +375,33 @@ function App() {
             scenes: {
               ...d.scenes,
               [page.sceneId]: {
-                version: dispatchResult.scene.version,
-                rootId: dispatchResult.scene.rootId,
-                nodes: dispatchResult.scene.nodes,
-                metadata: dispatchResult.scene.metadata,
+                ...dispatchResult.scene,
               },
             },
           };
         });
-      }
-    } else if (docEntry) {
-      const result = undoDocumentAction(docHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = documentBus.dispatch(result.inverseAction);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        documentHistoryRef.current = result.state;
-        syncHistoryState();
+      } else {
         setDoc(dispatchResult.document);
       }
     }
   }, [runtimeBus, documentBus, activePageId, syncHistoryState]);
 
   const handleRedo = useCallback(() => {
-    const rtHS = runtimeHistoryRef.current;
-    const docHS = documentHistoryRef.current;
-    const rtEntry = rtHS.redoStack.at(-1);
-    const docEntry = docHS.redoStack.at(-1);
-    if (!rtEntry && !docEntry) return;
-
-    if (rtEntry && (!docEntry || rtEntry.timestamp >= docEntry.timestamp)) {
-      const result = redoRuntimeAction(rtHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = runtimeBus.dispatch(result.action);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        runtimeHistoryRef.current = result.state;
-        syncHistoryState();
+    const result = redoAction(historyRef.current);
+    if (!result) return;
+    isUndoingRef.current = true;
+    const entry: RuntimeAction | DocumentAction = result.actions[0] as
+      | RuntimeAction
+      | DocumentAction;
+    const isRuntime = "nodeId" in entry || "activeStates" in entry;
+    const dispatchResult = isRuntime
+      ? runtimeBus.dispatch(entry as RuntimeAction)
+      : documentBus.dispatch(entry as DocumentAction);
+    isUndoingRef.current = false;
+    if (dispatchResult.ok) {
+      historyRef.current = result.state;
+      syncHistoryState();
+      if ("scene" in dispatchResult) {
         setScene(dispatchResult.scene);
         setDoc((d) => {
           const page = d.pages.find((p) => p.id === activePageId);
@@ -403,24 +411,12 @@ function App() {
             scenes: {
               ...d.scenes,
               [page.sceneId]: {
-                version: dispatchResult.scene.version,
-                rootId: dispatchResult.scene.rootId,
-                nodes: dispatchResult.scene.nodes,
-                metadata: dispatchResult.scene.metadata,
+                ...dispatchResult.scene,
               },
             },
           };
         });
-      }
-    } else if (docEntry) {
-      const result = redoDocumentAction(docHS);
-      if (!result) return;
-      isUndoingRef.current = true;
-      const dispatchResult = documentBus.dispatch(result.action);
-      isUndoingRef.current = false;
-      if (dispatchResult.ok) {
-        documentHistoryRef.current = result.state;
-        syncHistoryState();
+      } else {
         setDoc(dispatchResult.document);
       }
     }
@@ -554,6 +550,7 @@ function App() {
 
   const setViewport = useEditorStore((s) => s.setViewport);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleDispatchDocument = useCallback(
     (action: DocumentAction) => {
@@ -651,6 +648,17 @@ function App() {
         >
           ⊞ Fit
         </button>
+        <button
+          type="button"
+          onClick={() => setShowDebug((v) => !v)}
+          className={`px-2 py-1 border rounded text-xs cursor-pointer ${
+            showDebug
+              ? "bg-blue-100 border-blue-400 text-blue-700"
+              : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          🐞 Debug
+        </button>
         <span className="ml-auto text-xs text-slate-500">
           Pages: {doc.pages.length} | Nodes:{" "}
           {selectorRegistry.getAllNodes().length}
@@ -675,6 +683,15 @@ function App() {
         onDispatchDocument={handleDispatchDocument}
         canvasContainerRef={canvasContainerRef}
       />
+      {showDebug && (
+        <aside className="w-80 border-l border-slate-200 overflow-auto shrink-0">
+          <DebugPanel
+            doc={doc}
+            scene={currentScene}
+            history={historyRef.current}
+          />
+        </aside>
+      )}
     </div>
   );
 }

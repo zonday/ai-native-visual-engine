@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { Middleware } from "../src/engine/command-bus.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
 import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
-import type { RuntimeMiddleware } from "../src/runtime/middleware.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
+import type { SceneGraph } from "../src/types.js";
+
+type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
+
 import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {
@@ -92,7 +96,7 @@ describe("createRuntimeCommandBus", () => {
       type: "test-action",
     } as unknown as RuntimeAction);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("scene.handler-error");
+    expect(result.error?.code).toBe("handler-error");
     expect(result.error?.message).toBe("Kaboom!");
   });
 

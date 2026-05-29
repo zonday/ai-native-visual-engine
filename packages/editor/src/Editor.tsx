@@ -3,6 +3,7 @@ import type {
   InteractionEngine,
   RuntimeAction,
   SelectorRegistry,
+  ViewportState,
   VisualDocument,
 } from "@ai-native/core";
 import type {
@@ -26,7 +27,7 @@ export interface EditorProps {
   interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
-  onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
+  onViewportChange?: (vp: ViewportState) => void;
   onDispatchRuntime?: (action: RuntimeAction) => void;
   onDispatchDocument?: (action: DocumentAction) => void;
   canvasContainerRef?: React.Ref<HTMLDivElement>;

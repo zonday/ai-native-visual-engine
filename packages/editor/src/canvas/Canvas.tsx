@@ -1,4 +1,4 @@
-import type { InteractionEngine } from "@ai-native/core";
+import type { InteractionEngine, ViewportState } from "@ai-native/core";
 import type {
   ComponentRegistry,
   RenderContext,
@@ -14,7 +14,7 @@ export interface CanvasProps {
   interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;
-  onViewportChange?: (vp: import("@ai-native/core").ViewportState) => void;
+  onViewportChange?: (vp: ViewportState) => void;
   selectedIds?: string[];
 }
 
