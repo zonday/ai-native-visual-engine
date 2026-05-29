@@ -106,7 +106,7 @@ export function createSelectorRegistry(
   let flattenedNodes: NodeId[] = [];
   const treeIndex = new Map<NodeId, TreeIndexEntry>();
   let treeIndexDirty = false;
-  const descResultCache = new Map<NodeId, SceneNode[]>();
+  const descResultCache = new Map<NodeId, NodeId[]>();
 
   const visibilityIndexSignal = signal(0);
   let visibleNodeIds: Set<NodeId> = new Set();
