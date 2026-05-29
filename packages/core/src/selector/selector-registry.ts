@@ -86,12 +86,7 @@ type SelectorType =
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
 ): SelectorRegistry {
-  const {
-    signal,
-    computed,
-    endBatch,
-    flush: flushScope,
-  } = createScope();
+  const { signal, computed, startBatch, endBatch, flush: flushScope } = createScope();
   const childrenSignals = new Map<NodeId, Signal<number>>();
   const parentSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
@@ -652,6 +647,7 @@ export function createSelectorRegistry(
 
     batch<T>(fn: () => T): T {
       batchDepth++;
+      if (batchDepth === 1) startBatch();
       try {
         return fn();
       } finally {
