@@ -10,7 +10,8 @@ interface SelectorNode<T = unknown> {
   subs: Set<SelectorNode>;
   version: number;
   get(): T;
-  invalidate(visited?: Set<SelectorNode>): void;
+  bumpVersion(): void;
+  invalidate(): void;
 }
 
 export interface SelectorRegistry {
@@ -80,14 +81,18 @@ export function createSelectorRegistry(
     key: string,
     compute: () => T,
   ): SelectorNode<T> {
-    let version = 0;
-    const nodeVersion = signal(0);
+    const versionSignal = signal(0);
     const deps = new Set<SelectorNode>();
     const subs = new Set<SelectorNode>();
 
     const fn = computed(() => {
       globalEpoch();
-      nodeVersion();
+      versionSignal();
+      // Cleanup stale edges from previous evaluation
+      for (const dep of deps) {
+        dep.subs.delete(node);
+      }
+      deps.clear();
       return compute();
     });
 
@@ -97,7 +102,7 @@ export function createSelectorRegistry(
       deps,
       subs,
       get version() {
-        return version;
+        return versionSignal();
       },
       get(): T {
         if (activeSelector && activeSelector !== node) {
@@ -112,14 +117,22 @@ export function createSelectorRegistry(
           activeSelector = prev;
         }
       },
-      invalidate(visited?: Set<SelectorNode>): void {
-        version++;
-        nodeVersion(nodeVersion() + 1);
-        for (const sub of subs) {
-          if (visited?.has(sub)) continue;
-          visited ??= new Set();
-          visited.add(sub);
-          sub.invalidate(visited);
+      bumpVersion(): void {
+        versionSignal(versionSignal() + 1);
+      },
+      invalidate(): void {
+        // Non-recursive graph propagation via explicit stack
+        const seen = new Set<SelectorNode>();
+        const stack: SelectorNode[] = [node];
+        while (stack.length > 0) {
+          const n = stack.pop();
+          if (n === undefined) break;
+          if (seen.has(n)) continue;
+          seen.add(n);
+          n.bumpVersion();
+          for (const sub of n.subs) {
+            if (!seen.has(sub)) stack.push(sub);
+          }
         }
       },
     };
