@@ -115,11 +115,11 @@ export function createSelectorRegistry(
     const versionSignal = signal(0);
     const deps = new Set<SelectorNode>();
     const subs = new Set<SelectorNode>();
+    let disposed = false;
 
     const fn = computed(() => {
       globalEpoch();
       versionSignal();
-      // Cleanup stale edges from previous evaluation
       for (const dep of deps) {
         dep.subs.delete(node);
       }
@@ -136,6 +136,9 @@ export function createSelectorRegistry(
         return versionSignal();
       },
       get(): T {
+        if (disposed) {
+          throw new Error(`SelectorNode(${type},${key}) has been disposed`);
+        }
         if (activeSelector && activeSelector !== node) {
           activeSelector.deps.add(node);
           subs.add(activeSelector);
@@ -152,10 +155,15 @@ export function createSelectorRegistry(
         versionSignal(versionSignal() + 1);
       },
       invalidate(): void {
+        // Reserved for future use — signal-level invalidation
+        // (registry.invalidate) bypasses SelectorNode.invalidate().
+        // This path exists for non-signal-backed graph edges.
         node.bumpVersion();
         enqueueDirty(node);
       },
       dispose(): void {
+        if (disposed) return;
+        disposed = true;
         for (const dep of deps) {
           dep.subs.delete(node);
         }
