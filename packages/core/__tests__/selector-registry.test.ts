@@ -298,6 +298,23 @@ describe("SelectorRegistry", () => {
       expect(visible.find((n) => n.id === "a")).toBeUndefined();
     });
 
+    it("re-evaluates when a hidden node becomes visible", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      sel.invalidate("a", "visible");
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(3);
+
+      // Reveal a
+      aNode.visible = true;
+      sel.invalidate("a", "visible");
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+      expect(visible.find((n) => n.id === "a")).toBeDefined();
+    });
+
     it("re-evaluates when a new node is added (structural dependency)", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
