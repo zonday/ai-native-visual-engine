@@ -1,5 +1,5 @@
 import type { DocumentAction } from "../document/actions.js";
-import type { DispatchResult, Middleware } from "../engine/command-bus.js";
+import type { DispatchResult } from "../engine/command-bus.js";
 import type { RuntimeAction } from "../runtime/actions.js";
 import type { PageId } from "../types.js";
 import type { YjsDocProvider } from "./yjs-provider.js";
