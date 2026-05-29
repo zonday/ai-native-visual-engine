@@ -13,6 +13,8 @@ interface TreeIndexEntry {
 interface SelectorNode<T = unknown> {
   readonly type: string;
   readonly key: string;
+  ref(): void;
+  unref(): void;
   get(): T;
   invalidate(): void;
   dispose(): void;
@@ -190,6 +192,7 @@ export function createSelectorRegistry(
     compute: () => T,
   ): SelectorNode<T> {
     let disposed = false;
+    let refCount = 0;
     const versionSignal = signal(0);
 
     const fn = computed(() => {
@@ -197,9 +200,28 @@ export function createSelectorRegistry(
       return compute();
     });
 
+    function tryDispose(): void {
+      if (disposed) return;
+      if (refCount > 0) return;
+      disposed = true;
+      fn.dispose();
+      accessCounts.delete(node);
+      const innerMap = computedCache.get(type);
+      if (innerMap && innerMap.get(key) === node) {
+        innerMap.delete(key);
+      }
+    }
+
     const node: SelectorNode<T> = {
       type,
       key,
+      ref(): void {
+        refCount++;
+      },
+      unref(): void {
+        if (refCount > 0) refCount--;
+        tryDispose();
+      },
       get(): T {
         if (disposed) {
           throw new Error(`SelectorNode(${type},${key}) has been disposed`);
@@ -212,14 +234,8 @@ export function createSelectorRegistry(
         versionSignal(versionSignal() + 1);
       },
       dispose(): void {
-        if (disposed) return;
-        disposed = true;
-        fn.dispose();
-        accessCounts.delete(node);
-        const innerMap = computedCache.get(type);
-        if (innerMap && innerMap.get(key) === node) {
-          innerMap.delete(key);
-        }
+        refCount = 0;
+        tryDispose();
       },
     };
 
@@ -566,6 +582,11 @@ export function createSelectorRegistry(
     },
 
     invalidateAll(): void {
+      if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+        console.warn(
+          "[selector-registry] invalidateAll() degrades incremental architecture — prefer targeted invalidate or applyPatch",
+        );
+      }
       for (const innerMap of computedCache.values()) {
         for (const node of innerMap.values()) {
           node.invalidate();
