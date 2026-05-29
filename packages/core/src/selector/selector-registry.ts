@@ -418,6 +418,7 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
+        visibilityIndexSignal();
         for (const id of visibleNodeIds) {
           getSignal(visibleSignals, id)();
         }
