@@ -6,15 +6,13 @@ import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 //   • Signal maps for fine-grained field dependency tracking
 //   • SelectorNode cache (memoized computed wrappers)
 //   • Lazy-rebuilt secondary indexes (tree, visibility)
-//   • Patch-based signal routing (applyPatch / invalidate)
 //
 // Does NOT own:
 //   • Scene data (external SceneGraph, mutated by action handlers)
 //   • Mutation timing or batching (handled by caller)
 //
 // Contract: callers mutate scene data directly, then call
-// invalidate() or applyPatch() to notify the registry.
-// The registry never writes to currentScene.nodes — it only reads.
+// invalidate() to notify the registry.
 
 type NodeField = "visible" | "layout" | "props" | "children" | "parent";
 
@@ -36,7 +34,7 @@ interface SelectorNode<T = unknown> {
 }
 
 export type ScenePatch =
-  | { type: "set-prop"; nodeId: NodeId; field: NodeField; value: unknown }
+  | { type: "set-prop"; nodeId: NodeId; field: NodeField }
   | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
   | { type: "add-node"; nodeId: NodeId }
   | { type: "remove-node"; nodeId: NodeId };
@@ -225,6 +223,36 @@ export function createSelectorRegistry(
     getSignal(visibleSignals, nodeId)();
   }
 
+  // ── Patch routing ──
+  function handlePatch(patch: ScenePatch): void {
+    if (patch.type === "set-prop") {
+      const { nodeId, field } = patch;
+      if (field === "visible") markVisibilityIndexDirty();
+      if (field === "children" || field === "parent") markTreeIndexDirty();
+      bumpSignal(
+        field === "children"
+          ? childrenSignals
+          : field === "parent"
+            ? parentSignals
+            : field === "visible"
+              ? visibleSignals
+              : field === "layout"
+                ? layoutSignals
+                : propsSignals,
+        nodeId,
+      );
+    } else if (patch.type === "reparent") {
+      markTreeIndexDirty();
+      bumpSignal(parentSignals, patch.nodeId);
+      if (patch.oldParent) bumpSignal(childrenSignals, patch.oldParent);
+      bumpSignal(childrenSignals, patch.newParent);
+    } else if (patch.type === "add-node" || patch.type === "remove-node") {
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
+      bumpExistence();
+    }
+  }
+
   // ── SelectorNode ──
   function createNode<T>(
     type: string,
@@ -345,37 +373,6 @@ export function createSelectorRegistry(
       enforceCacheLimit();
     }
     return n;
-  }
-
-  // ── Patch Apply (signal routing only — scene mutation is external) ──
-  function handlePatch(patch: ScenePatch): void {
-    if (patch.type === "set-prop") {
-      const { nodeId, field } = patch;
-      if (field === "visible") markVisibilityIndexDirty();
-      if (field === "children" || field === "parent") markTreeIndexDirty();
-      bumpSignal(
-        field === "children"
-          ? childrenSignals
-          : field === "parent"
-            ? parentSignals
-            : field === "visible"
-              ? visibleSignals
-              : field === "layout"
-                ? layoutSignals
-                : propsSignals,
-        nodeId,
-      );
-    } else if (patch.type === "reparent") {
-      const { nodeId, oldParent, newParent } = patch;
-      markTreeIndexDirty();
-      bumpSignal(parentSignals, nodeId);
-      if (oldParent) bumpSignal(childrenSignals, oldParent);
-      bumpSignal(childrenSignals, newParent);
-    } else if (patch.type === "add-node" || patch.type === "remove-node") {
-      markTreeIndexDirty();
-      markVisibilityIndexDirty();
-      bumpExistence();
-    }
   }
 
   const registry: SelectorRegistry = {

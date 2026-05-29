@@ -269,7 +269,11 @@ export function createComputedStateEngine(
     },
 
     invalidate(nodeId: NodeId): void {
-      selectors.invalidate(nodeId, "layout");
+      selectors.applyPatch({
+        type: "set-prop",
+        nodeId,
+        field: "layout",
+      });
       worldCache.delete(nodeId);
       boundsCache.delete(nodeId);
       visibleBoundsCache.delete(nodeId);
