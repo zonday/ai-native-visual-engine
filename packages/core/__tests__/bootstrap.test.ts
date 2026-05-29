@@ -28,7 +28,7 @@ describe("createNewDocument", () => {
     const doc = createNewDocument();
     expect(doc.pages).toHaveLength(1);
     expect(doc.pages[0]?.name).toBe("Untitled");
-    expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
+    expect(doc.scenes[doc.pages[0]?.sceneId]).toBeDefined();
   });
 
   it("uses the provided title", () => {
