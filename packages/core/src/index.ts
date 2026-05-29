@@ -40,6 +40,8 @@ export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
+// ── Immer Patch Routing ──
+export { produceScene, routeImmerPatches } from "./immer-patch-router.js";
 // ── Interaction ──
 export {
   createInteractionEngine,
@@ -66,8 +68,6 @@ export {
   type ScenePatch,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
-// ── Immer Patch Routing ──
-export { routeImmerPatches } from "./immer-patch-router.js";
 // ── Session ──
 export { openDocumentSession } from "./session.js";
 // ── Core types ──

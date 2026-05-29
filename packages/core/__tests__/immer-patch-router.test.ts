@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
 import type { Patch } from "immer";
-import { routeImmerPatches } from "../src/immer-patch-router.js";
+import { describe, expect, it, vi } from "vitest";
+import { routeImmerPatches, produceScene } from "../src/immer-patch-router.js";
 import { createSelectorRegistry } from "../src/selector/selector-registry.js";
 
 function makeScene() {
@@ -80,7 +80,11 @@ describe("routeImmerPatches", () => {
     const sel = createSelectorRegistry(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
-      { op: "replace", path: ["nodes", "a", "props"], value: { text: "hello" } },
+      {
+        op: "replace",
+        path: ["nodes", "a", "props"],
+        value: { text: "hello" },
+      },
     ];
     routeImmerPatches(patches, sel);
     expect(spy).toHaveBeenCalledWith({
@@ -110,9 +114,7 @@ describe("routeImmerPatches", () => {
   it("routes remove node to remove-node", () => {
     const sel = createSelectorRegistry(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
-    const patches: Patch[] = [
-      { op: "remove", path: ["nodes", "b"] },
-    ];
+    const patches: Patch[] = [{ op: "remove", path: ["nodes", "b"] }];
     routeImmerPatches(patches, sel);
     expect(spy).toHaveBeenCalledWith({
       type: "remove-node",
@@ -161,6 +163,67 @@ describe("routeImmerPatches", () => {
       type: "set-prop",
       nodeId: "b",
       field: "visible",
+    });
+  });
+
+  describe("produceScene + handleSceneUpdate + routeImmerPatches (e2e)", () => {
+    it("mutates layout field — selector reads updated value", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getNodeLayout("a");
+      expect(before).toBeUndefined();
+
+      const [next, patches] = produceScene(scene, (draft) => {
+        draft.nodes.a.layout = { mode: "absolute", x: 100, y: 50 };
+      });
+      sel.handleSceneUpdate(next);
+      routeImmerPatches(patches, sel);
+
+      const after = sel.getNodeLayout("a");
+      expect(after?.x).toBe(100);
+    });
+
+    it("mutates visible field — getVisibleNodes reflects change", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+
+      const [next, patches] = produceScene(scene, (draft) => {
+        draft.nodes.b.visible = false;
+      });
+      sel.handleSceneUpdate(next);
+      routeImmerPatches(patches, sel);
+
+      const visible = sel.getVisibleNodes();
+      expect(visible.find((n) => n.id === "b")).toBeUndefined();
+    });
+
+    it("adds a new node — getAllNodes count increases", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes().length;
+
+      const [next, patches] = produceScene(scene, (draft) => {
+        draft.nodes.c = { id: "c", type: "text", parentId: "root" };
+        draft.nodes.root.children = [...(draft.nodes.root.children ?? []), "c"];
+      });
+      sel.handleSceneUpdate(next);
+      routeImmerPatches(patches, sel);
+
+      expect(sel.getAllNodes()).toHaveLength(before + 1);
+    });
+
+    it("removes a node — getAllNodes count decreases", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes().length;
+
+      const [next, patches] = produceScene(scene, (draft) => {
+        delete draft.nodes.b;
+      });
+      sel.handleSceneUpdate(next);
+      routeImmerPatches(patches, sel);
+
+      expect(sel.getAllNodes()).toHaveLength(before - 1);
     });
   });
 });
