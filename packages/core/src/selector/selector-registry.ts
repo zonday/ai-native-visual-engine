@@ -59,6 +59,8 @@ export interface SelectorRegistry {
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
   applyPatch(patch: ScenePatch): void;
+  retainSelector(type: string, key: string): void;
+  releaseSelector(type: string, key: string): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
@@ -87,7 +89,6 @@ export function createSelectorRegistry(
   const {
     signal,
     computed,
-    startBatch,
     endBatch,
     flush: flushScope,
   } = createScope();
@@ -100,6 +101,8 @@ export function createSelectorRegistry(
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   const accessCounts = new WeakMap<SelectorNode, number>();
   let currentScene = scene;
+  let batchDepth = 0;
+  const pendingBatchSignals = new Set<string>();
 
   // ── Indexes ──
   const treeIndexSignal = signal(0);
@@ -152,6 +155,10 @@ export function createSelectorRegistry(
   function markTreeIndexDirty(): void {
     if (treeIndexDirty) return;
     treeIndexDirty = true;
+    if (batchDepth > 0) {
+      pendingBatchSignals.add("treeIndex");
+      return;
+    }
     treeIndexSignal(treeIndexSignal() + 1);
   }
 
@@ -174,6 +181,10 @@ export function createSelectorRegistry(
   function markVisibilityIndexDirty(): void {
     if (visibilityIndexDirty) return;
     visibilityIndexDirty = true;
+    if (batchDepth > 0) {
+      pendingBatchSignals.add("visibilityIndex");
+      return;
+    }
     visibilityIndexSignal(visibilityIndexSignal() + 1);
   }
 
@@ -315,6 +326,16 @@ export function createSelectorRegistry(
     nodeExistenceSignal(nodeExistenceSignal() + 1);
   }
 
+  function flushPendingSignals(): void {
+    if (pendingBatchSignals.has("treeIndex") && treeIndexDirty) {
+      treeIndexSignal(treeIndexSignal() + 1);
+    }
+    if (pendingBatchSignals.has("visibilityIndex") && visibilityIndexDirty) {
+      visibilityIndexSignal(visibilityIndexSignal() + 1);
+    }
+    pendingBatchSignals.clear();
+  }
+
   function disposeAll(): void {
     for (const innerMap of computedCache.values()) {
       const nodes = [...innerMap.values()];
@@ -369,6 +390,7 @@ export function createSelectorRegistry(
     let n = innerMap.get(key) as SelectorNode<T> | undefined;
     if (!n) {
       n = createNode(type, key, compute);
+      n.ref();
       innerMap.set(key, n);
       enforceCacheLimit();
     }
@@ -629,12 +651,30 @@ export function createSelectorRegistry(
     },
 
     batch<T>(fn: () => T): T {
-      startBatch();
+      batchDepth++;
       try {
         return fn();
       } finally {
-        endBatch();
+        batchDepth--;
+        if (batchDepth === 0) {
+          flushPendingSignals();
+          endBatch();
+        }
       }
+    },
+
+    retainSelector(type: string, key: string): void {
+      const innerMap = computedCache.get(type);
+      if (!innerMap) return;
+      const node = innerMap.get(key);
+      if (node) node.ref();
+    },
+
+    releaseSelector(type: string, key: string): void {
+      const innerMap = computedCache.get(type);
+      if (!innerMap) return;
+      const node = innerMap.get(key);
+      if (node) node.unref();
     },
 
     flush(): void {
