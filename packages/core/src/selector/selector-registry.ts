@@ -23,7 +23,7 @@ interface SelectorNode<T = unknown> {
 export type ScenePatch =
   | { type: "set-prop"; nodeId: NodeId; field: NodeField; value: unknown }
   | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
-  | { type: "add-node"; nodeId: NodeId }
+  | { type: "add-node"; nodeId: NodeId; node: SceneNode }
   | { type: "remove-node"; nodeId: NodeId };
 
 export interface SelectorRegistry {
@@ -240,7 +240,9 @@ export function createSelectorRegistry(
     const node: SelectorNode<T> = {
       type,
       key,
-      ref(): void { refCount++; },
+      ref(): void {
+        refCount++;
+      },
       unref(): void {
         if (refCount > 0) refCount--;
         tryDispose();
@@ -287,6 +289,15 @@ export function createSelectorRegistry(
     }
     if (total <= MAX_CACHED_SELECTORS) return;
 
+    // Decay all access counts before comparison to prevent old
+    // high-count entries from dominating cache permanently.
+    for (const innerMap of computedCache.values()) {
+      for (const node of innerMap.values()) {
+        const count = accessCounts.get(node) ?? 1;
+        accessCounts.set(node, Math.max(Math.floor(count / 2), 1));
+      }
+    }
+
     let minAccess = Infinity;
     let minNode: SelectorNode | null = null;
     for (const innerMap of computedCache.values()) {
@@ -327,16 +338,22 @@ export function createSelectorRegistry(
       const { nodeId, field } = patch;
       const node = currentScene.nodes[nodeId];
       if (node) {
-        (node as Record<string, unknown>)[field === "parent" ? "parentId" : field] = patch.value;
+        (node as Record<string, unknown>)[
+          field === "parent" ? "parentId" : field
+        ] = patch.value;
       }
       if (field === "visible") markVisibilityIndexDirty();
       if (field === "children" || field === "parent") markTreeIndexDirty();
       bumpSignal(
-        field === "children" ? childrenSignals
-        : field === "parent" ? parentSignals
-        : field === "visible" ? visibleSignals
-        : field === "layout" ? layoutSignals
-        : propsSignals,
+        field === "children"
+          ? childrenSignals
+          : field === "parent"
+            ? parentSignals
+            : field === "visible"
+              ? visibleSignals
+              : field === "layout"
+                ? layoutSignals
+                : propsSignals,
         nodeId,
       );
     } else if (patch.type === "reparent") {
@@ -348,7 +365,13 @@ export function createSelectorRegistry(
       bumpSignal(parentSignals, patch.nodeId);
       if (patch.oldParent) bumpSignal(childrenSignals, patch.oldParent);
       bumpSignal(childrenSignals, patch.newParent);
-    } else if (patch.type === "add-node" || patch.type === "remove-node") {
+    } else if (patch.type === "add-node") {
+      currentScene.nodes[patch.nodeId] = patch.node;
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
+      bumpExistence();
+    } else if (patch.type === "remove-node") {
+      delete currentScene.nodes[patch.nodeId];
       markTreeIndexDirty();
       markVisibilityIndexDirty();
       bumpExistence();
@@ -394,6 +417,7 @@ export function createSelectorRegistry(
 
     getRoot(): SceneNode {
       return getCached("root", "root", () => {
+        nodeExistenceSignal();
         const root = currentScene.nodes[currentScene.rootId];
         if (!root) {
           throw new Error(`Root node "${currentScene.rootId}" not found`);
@@ -583,7 +607,10 @@ export function createSelectorRegistry(
     },
 
     invalidateAll(): void {
-      if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+      if (
+        typeof process !== "undefined" &&
+        process.env?.NODE_ENV !== "production"
+      ) {
         console.warn(
           "[selector-registry] invalidateAll() degrades incremental architecture",
         );
