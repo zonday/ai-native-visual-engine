@@ -22,15 +22,15 @@ export function routeImmerPatches(
   registry: SelectorRegistry,
 ): void {
   for (const patch of patches) {
-    const [scope, id, field] = patch.path;
+    const [scope, id, field] = patch.path.map(String);
+    if (!scope || !id) continue;
 
     // Only route scene node patches
     if (scope !== "nodes") continue;
-    if (!id) continue;
 
-    if (patch.op === "add" && field === undefined) {
+    if (patch.op === "add" && !field) {
       registry.applyPatch({ type: "add-node", nodeId: id });
-    } else if (patch.op === "remove" && field === undefined) {
+    } else if (patch.op === "remove" && !field) {
       registry.applyPatch({ type: "remove-node", nodeId: id });
     } else if (field) {
       const nodeField = FIELD_MAP[field];

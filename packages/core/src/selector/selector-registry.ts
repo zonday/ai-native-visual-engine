@@ -14,7 +14,7 @@ import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 // Contract: callers mutate scene data directly, then call
 // invalidate() to notify the registry.
 
-type NodeField = "visible" | "layout" | "props" | "children" | "parent";
+export type NodeField = "visible" | "layout" | "props" | "children" | "parent";
 
 const MAX_CACHED_SELECTORS = 5000;
 

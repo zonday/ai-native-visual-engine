@@ -283,8 +283,27 @@ export const SceneGraphSchema = z.object({
 export type PersistedSceneGraph = z.infer<typeof PersistedSceneGraphSchema>;
 export type SelectionState = z.infer<typeof SelectionStateSchema>;
 export type ViewportState = z.infer<typeof ViewportStateSchema>;
-export type SceneNode = z.infer<typeof SceneNodeSchema>;
+export type SceneNode = DeepReadonly<z.infer<typeof SceneNodeSchema>>;
 export type SceneGraph = z.infer<typeof SceneGraphSchema>;
+
+// ── Deep Readonly Utilities ──
+// DeepReadonly makes all properties (including nested objects) readonly
+// at the type level. DeepMutable is the inverse for explicit escape hatches.
+export type DeepReadonly<T> = {
+  readonly [K in keyof T]: T[K] extends object
+    ? T[K] extends Function
+      ? T[K]
+      : DeepReadonly<T[K]>
+    : T[K];
+};
+
+export type DeepMutable<T> = {
+  -readonly [K in keyof T]: T[K] extends object
+    ? T[K] extends Function
+      ? T[K]
+      : DeepMutable<T[K]>
+    : T[K];
+};
 
 // ── Document ──
 export const PrototypeComponentSchema = z.object({
