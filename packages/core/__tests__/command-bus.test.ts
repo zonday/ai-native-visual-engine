@@ -130,7 +130,7 @@ describe("createDocumentCommandBus", () => {
 
     const result = bus.dispatch(action);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("document.handler-error");
+    expect(result.error?.code).toBe("handler-error");
     expect(result.error?.message).toBe("Kaboom!");
   });
 
@@ -219,7 +219,7 @@ describe("createDocumentCommandBus", () => {
     } as unknown as DocumentAction);
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("document.handler-error");
+    expect(result.error?.code).toBe("handler-error");
     consoleSpy.mockRestore();
   });
 

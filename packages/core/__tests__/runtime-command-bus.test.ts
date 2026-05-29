@@ -96,7 +96,7 @@ describe("createRuntimeCommandBus", () => {
       type: "test-action",
     } as unknown as RuntimeAction);
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("scene.handler-error");
+    expect(result.error?.code).toBe("handler-error");
     expect(result.error?.message).toBe("Kaboom!");
   });
 
