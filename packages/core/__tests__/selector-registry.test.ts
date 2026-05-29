@@ -921,4 +921,36 @@ describe("SelectorRegistry", () => {
       expect(after).toHaveLength(3);
     });
   });
+
+  describe("retainSelector/releaseSelector", () => {
+    it("retainSelector increments refcount, selector stays alive", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.retainSelector("children", "root");
+      sel.releaseSelector("children", "root");
+      // Internal ref still holds (getCached auto-ref) — selector alive
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("removeSelector force-disposes despite refcount", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.retainSelector("children", "root");
+      sel.removeSelector("children", "root");
+      // removeSelector bypasses refcount — cached entry gone
+      expect(sel.getChildren("root")).toHaveLength(2); // re-created
+    });
+
+    it("retain then full release then re-access re-creates", () => {
+      const sel = createSelectorRegistry(makeScene());
+      // gteCached creates with refCount=1, retainSelector → 2
+      sel.retainSelector("children", "root");
+      sel.getChildren("root");
+      // release twice: 2→1→0 → dispose
+      sel.releaseSelector("children", "root");
+      sel.releaseSelector("children", "root");
+      // Next access re-creates
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
 });
