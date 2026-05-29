@@ -256,6 +256,7 @@ export function createSelectorRegistry(
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
         readStructural(nodeId);
+        treeStructureSignal();
         const descendants: SceneNode[] = [];
         function walk(id: string, visited: Set<string>): void {
           if (visited.has(id)) return;
@@ -366,7 +367,7 @@ export function createSelectorRegistry(
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
-      readStructural(nodeId);
+      bumpSignal(structuralSignals, nodeId);
       bumpExistence();
       bumpTreeStructure();
     },
