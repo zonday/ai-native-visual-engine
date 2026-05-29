@@ -14,16 +14,26 @@ function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
         type: "container",
         parentId: "root",
         children: ["a1"],
+        layout: {
+          mode: "absolute" as const,
+          x: 100,
+          y: 50,
+          width: 200,
+          height: 100,
+        },
       },
       a1: {
         id: "a1",
         type: "text",
         parentId: "a",
+        layout: {
+          mode: "absolute" as const,
+          x: 10,
+          y: 20,
+          width: 100,
+          height: 30,
+        },
       },
-    },
-    layouts: {
-      a: { mode: "absolute" as const, x: 100, y: 50, width: 200, height: 100 },
-      a1: { mode: "absolute" as const, x: 10, y: 20, width: 100, height: 30 },
     },
     ...custom,
   };
@@ -110,10 +120,11 @@ describe("ComputedStateEngine", () => {
     });
 
     it("returns null for invisible node", () => {
-      const sel = createSelectorRegistry({
-        ...makeScene(),
-        visibility: { a: false },
-      });
+      const scene = makeScene();
+      const a = scene.nodes.a;
+      if (!a) throw new Error("a missing");
+      a.visible = false;
+      const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       expect(eng.getVisibleBounds("a")).toBeNull();
     });
@@ -183,7 +194,7 @@ describe("ComputedStateEngine", () => {
       eng.getWorldTransform("a");
       eng.getWorldTransform("a1");
       // Mutate node a's layout
-      (scene.layouts?.a as Record<string, unknown>).x = 200;
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       // Invalidate only "a" — deletes its cache entries
       eng.invalidate("a");
       // "a" recomputes from fresh scene data
@@ -200,7 +211,7 @@ describe("ComputedStateEngine", () => {
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       eng.getWorldTransform("a1");
-      (scene.layouts?.a as Record<string, unknown>).x = 200;
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       // Full invalidation of both layers
       sel.invalidateAll();
       eng.invalidateAll();
@@ -214,7 +225,7 @@ describe("ComputedStateEngine", () => {
       const eng = createComputedStateEngine(sel);
       eng.getWorldTransform("a1");
       // Mutate AND bump scene version
-      (scene.layouts?.a as Record<string, unknown>).x = 200;
+      (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       scene.version = 1;
       sel.invalidateAll();
       eng.invalidateAll();

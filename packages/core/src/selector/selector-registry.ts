@@ -311,12 +311,11 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
-        const vis = currentScene.visibility;
         for (const id of Object.keys(currentScene.nodes)) {
           readVisible(id);
         }
         return Object.values(currentScene.nodes).filter(
-          (node) => vis?.[node.id] !== false,
+          (node) => node.visible !== false,
         );
       }).get();
     },
@@ -324,21 +323,21 @@ export function createSelectorRegistry(
     getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeLayout", nodeId, () => {
         readLayout(nodeId);
-        return currentScene.layouts?.[nodeId];
+        return currentScene.nodes[nodeId]?.layout;
       }).get();
     },
 
     getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeProps", nodeId, () => {
         readProps(nodeId);
-        return currentScene.props?.[nodeId];
+        return currentScene.nodes[nodeId]?.props;
       }).get();
     },
 
     getNodeVisibility(nodeId: NodeId): boolean | undefined {
       return getCached("nodeVisibility", nodeId, () => {
         readVisible(nodeId);
-        return currentScene.visibility?.[nodeId];
+        return currentScene.nodes[nodeId]?.visible;
       }).get();
     },
 
