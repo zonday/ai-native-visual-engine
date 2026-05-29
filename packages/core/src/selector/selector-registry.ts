@@ -121,11 +121,12 @@ export function createSelectorRegistry(
   let activeReaction: Set<SelectorNode> | null = null;
 
   // ── Indexes ──
+  const subtreeSignals = new Map<NodeId, Signal<number>>();
   const treeIndexSignal = signal(0);
   let flattenedNodes: NodeId[] = [];
   const treeIndex = new Map<NodeId, TreeIndexEntry>();
   let treeIndexDirty = false;
-  const descResultCache = new Map<NodeId, NodeId[]>();
+  const descResultCache = new Map<NodeId, { version: number; ids: NodeId[] }>();
 
   const visibilityIndexSignal = signal(0);
   let visibleNodeIds: Set<NodeId> = new Set();
@@ -173,9 +174,28 @@ export function createSelectorRegistry(
     treeIndexDirty = true;
     if (batchDepth > 0) {
       pendingBatchSignals.add("treeIndex");
+    }
+  }
+
+  function trackSubtree(nodeId: NodeId): number {
+    return getSignal(subtreeSignals, nodeId)();
+  }
+
+  function markSubtreeDirty(nodeId: NodeId): void {
+    // Walk up ancestor chain, bumping each node's subtree signal.
+    // treeIndexSignal is bumped as global fallback for batch/emergency.
+    let current: NodeId | undefined = nodeId;
+
+    if (batchDepth > 0) {
+      pendingBatchSignals.add("treeIndex");
       return;
     }
     treeIndexSignal(treeIndexSignal() + 1);
+    while (current) {
+      const s = subtreeSignals.get(current);
+      if (s) s(s() + 1);
+      current = currentScene.nodes[current]?.parentId;
+    }
   }
 
   function rebuildVisibilityIndex(): void {
@@ -289,7 +309,10 @@ export function createSelectorRegistry(
         else if (field === "props") bumpPropsKey(nodeId, key);
       }
       if (field === "visible") markVisibilityIndexDirty();
-      if (field === "children" || field === "parent") markTreeIndexDirty();
+      if (field === "children" || field === "parent") {
+        markSubtreeDirty(nodeId);
+        markTreeIndexDirty();
+      }
       bumpSignal(
         field === "children"
           ? childrenSignals
@@ -303,11 +326,15 @@ export function createSelectorRegistry(
         nodeId,
       );
     } else if (patch.type === "reparent") {
+      markSubtreeDirty(patch.nodeId);
+      if (patch.oldParent) markSubtreeDirty(patch.oldParent);
+      markSubtreeDirty(patch.newParent);
       markTreeIndexDirty();
       bumpSignal(parentSignals, patch.nodeId);
       if (patch.oldParent) bumpSignal(childrenSignals, patch.oldParent);
       bumpSignal(childrenSignals, patch.newParent);
     } else if (patch.type === "add-node" || patch.type === "remove-node") {
+      markSubtreeDirty(patch.nodeId);
       markTreeIndexDirty();
       markVisibilityIndexDirty();
       bumpSignal(childrenSignals, patch.nodeId);
@@ -534,6 +561,9 @@ export function createSelectorRegistry(
         trackChildren(nodeId);
         ensureTreeIndex();
         treeIndexSignal();
+        const version = trackSubtree(nodeId);
+        const cached = descResultCache.get(nodeId);
+        if (cached && cached.version === version) return cached.ids;
         const entry = treeIndex.get(nodeId);
         if (!entry) return [];
         const ids = flattenedNodes.slice(
@@ -547,12 +577,12 @@ export function createSelectorRegistry(
         const prev = descResultCache.get(nodeId);
         if (
           prev &&
-          prev.length === ids.length &&
-          prev.every((id, i) => id === ids[i])
+          prev.ids.length === ids.length &&
+          prev.ids.every((id, i) => id === ids[i])
         ) {
-          return prev;
+          return prev.ids;
         }
-        descResultCache.set(nodeId, ids);
+        descResultCache.set(nodeId, { version, ids });
         return ids;
       }).get();
     },
@@ -593,6 +623,7 @@ export function createSelectorRegistry(
         trackParent(nodeId);
         ensureTreeIndex();
         treeIndexSignal();
+        trackSubtree(ancestorId);
         const anc = treeIndex.get(ancestorId);
         const desc = treeIndex.get(nodeId);
         if (!anc || !desc) return false;
@@ -662,7 +693,10 @@ export function createSelectorRegistry(
 
     invalidate(nodeId: NodeId, field?: NodeField): void {
       const isStructural = !field || field === "children" || field === "parent";
-      if (isStructural) markTreeIndexDirty();
+      if (isStructural) {
+        markSubtreeDirty(nodeId);
+        markTreeIndexDirty();
+      }
       if (!field || field === "visible") markVisibilityIndexDirty();
 
       if (!field) {
