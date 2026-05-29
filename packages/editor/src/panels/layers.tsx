@@ -224,7 +224,7 @@ export function Layers({
 
       // Prevent dropping on own descendants
       const descendants = selectorRegistry.getDescendants(draggedId);
-      if (descendants.some((d) => d.id === overId)) return;
+      if (descendants.includes(overId)) return;
 
       // Determine drop target: if over node is a container, drop as its child
       const overChildren = selectorRegistry.getChildren(overId);
