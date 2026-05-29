@@ -166,13 +166,13 @@ describe("SelectorRegistry", () => {
       expect(r1).toBe(r2);
     });
 
-    it("returns fresh result after structural invalidate", () => {
+    it("returns fresh result after notifyNodeAdded", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const before = sel.getAllNodes();
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
       if (scene.nodes.root) scene.nodes.root.children?.push("c");
-      sel.invalidate("c", "structural");
+      sel.notifyNodeAdded("c");
       const after = sel.getAllNodes();
       expect(after).toHaveLength(5);
       expect(before).not.toBe(after);
@@ -297,7 +297,7 @@ describe("SelectorRegistry", () => {
         visible: true,
       };
       root.children = [...(root.children ?? []), "c"];
-      sel.invalidate("root", "structural");
+      sel.notifyNodeAdded("c");
 
       visible = sel.getVisibleNodes();
       expect(visible).toHaveLength(5);
@@ -829,8 +829,62 @@ describe("SelectorRegistry", () => {
       sel.getChildren("root");
 
       scene.version = 10;
-      sel.getNode("root"); // triggers checkVersion → clear all
+      sel.getNode("root"); // reads fresh from currentScene
       expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("getNodeLayout", () => {
+    it("returns layout for node with layout data", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.layout = { x: 100, y: 200 };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodeLayout("a")?.x).toBe(100);
+    });
+
+    it("returns undefined for node with no layout", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeLayout("nonexistent")).toBeUndefined();
+    });
+  });
+
+  describe("getNodeProps", () => {
+    it("returns props for node with props data", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.props = { text: "hello" };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodeProps("a")?.text).toBe("hello");
+    });
+
+    it("returns undefined for node with no props", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeProps("nonexistent")).toBeUndefined();
+    });
+  });
+
+  describe("notifyNodeAdded/notifyNodeRemoved", () => {
+    it("notifyNodeAdded triggers getAllNodes recompute", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      expect(before).toHaveLength(4);
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      sel.notifyNodeAdded("c");
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(5);
+    });
+
+    it("notifyNodeRemoved triggers getAllNodes recompute", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      expect(before).toHaveLength(4);
+      delete scene.nodes.a;
+      sel.notifyNodeRemoved("a");
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(3);
     });
   });
 });

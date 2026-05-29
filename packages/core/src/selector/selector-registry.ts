@@ -24,8 +24,12 @@ export interface SelectorRegistry {
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
   getVisibleNodes(): SceneNode[];
+  getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
+  notifyNodeAdded(nodeId: NodeId): void;
+  notifyNodeRemoved(nodeId: NodeId): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
@@ -43,7 +47,9 @@ type SelectorType =
   | "siblings"
   | "depth"
   | "visibleNodes"
-  | "isDescendantOf";
+  | "isDescendantOf"
+  | "nodeLayout"
+  | "nodeProps";
 
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
@@ -59,7 +65,8 @@ export function createSelectorRegistry(
   const visibleSignals = new Map<NodeId, Signal<number>>();
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
-  const sceneStructureSignal = signal(0);
+  const nodeExistenceSignal = signal(0);
+  const treeStructureSignal = signal(0);
   const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
@@ -116,8 +123,12 @@ export function createSelectorRegistry(
     return node;
   }
 
-  function bumpSceneStructure(): void {
-    sceneStructureSignal(sceneStructureSignal() + 1);
+  function bumpExistence(): void {
+    nodeExistenceSignal(nodeExistenceSignal() + 1);
+  }
+
+  function bumpTreeStructure(): void {
+    treeStructureSignal(treeStructureSignal() + 1);
   }
 
   function disposeAll(): void {
@@ -154,6 +165,14 @@ export function createSelectorRegistry(
 
   function readVisible(nodeId: string): void {
     getSignal(visibleSignals, nodeId)();
+  }
+
+  function readLayout(nodeId: string): void {
+    getSignal(layoutSignals, nodeId)();
+  }
+
+  function readProps(nodeId: string): void {
+    getSignal(propsSignals, nodeId)();
   }
 
   const registry: SelectorRegistry = {
@@ -214,7 +233,7 @@ export function createSelectorRegistry(
 
     getAllNodes(): SceneNode[] {
       return getCached("allNodes", "all", () => {
-        sceneStructureSignal();
+        nodeExistenceSignal();
         return Object.values(currentScene.nodes);
       }).get();
     },
@@ -294,7 +313,7 @@ export function createSelectorRegistry(
 
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
-        sceneStructureSignal();
+        nodeExistenceSignal();
         for (const id of Object.keys(currentScene.nodes)) {
           readVisible(id);
         }
@@ -304,18 +323,33 @@ export function createSelectorRegistry(
       }).get();
     },
 
+    getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
+      return getCached("nodeLayout", nodeId, () => {
+        readLayout(nodeId);
+        return currentScene.nodes[nodeId]?.layout;
+      }).get();
+    },
+
+    getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
+      return getCached("nodeProps", nodeId, () => {
+        readProps(nodeId);
+        return currentScene.nodes[nodeId]?.props;
+      }).get();
+    },
+
     invalidate(nodeId: NodeId, field?: NodeField): void {
       if (!field) {
         bumpSignal(structuralSignals, nodeId);
         bumpSignal(visibleSignals, nodeId);
         bumpSignal(layoutSignals, nodeId);
         bumpSignal(propsSignals, nodeId);
-        bumpSceneStructure();
+        bumpTreeStructure();
+        bumpExistence();
         return;
       }
       if (field === "structural") {
         bumpSignal(structuralSignals, nodeId);
-        bumpSceneStructure();
+        bumpTreeStructure();
       } else if (field === "visible") {
         bumpSignal(visibleSignals, nodeId);
       } else if (field === "layout") {
@@ -323,6 +357,16 @@ export function createSelectorRegistry(
       } else if (field === "props") {
         bumpSignal(propsSignals, nodeId);
       }
+    },
+
+    notifyNodeAdded(nodeId: NodeId): void {
+      bumpExistence();
+      bumpTreeStructure();
+    },
+
+    notifyNodeRemoved(nodeId: NodeId): void {
+      bumpExistence();
+      bumpTreeStructure();
     },
 
     invalidateAll(): void {
@@ -336,7 +380,8 @@ export function createSelectorRegistry(
       layoutSignals.clear();
       propsSignals.clear();
       disposeAll();
-      bumpSceneStructure();
+      bumpExistence();
+      bumpTreeStructure();
     },
 
     getVersion(): number {
