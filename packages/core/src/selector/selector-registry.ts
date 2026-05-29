@@ -71,7 +71,6 @@ export function createSelectorRegistry(
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
   const nodeExistenceSignal = signal(0);
-  const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
 
@@ -98,9 +97,10 @@ export function createSelectorRegistry(
     compute: () => T,
   ): SelectorNode<T> {
     let disposed = false;
+    const versionSignal = signal(0);
 
     const fn = computed(() => {
-      globalEpoch();
+      versionSignal();
       return compute();
     });
 
@@ -114,9 +114,7 @@ export function createSelectorRegistry(
         return fn();
       },
       invalidate(): void {
-        // Reserved for future patch-based invalidation.
-        // Currently invalidateAll uses globalEpoch; per-node
-        // version-based invalidation will use this method.
+        versionSignal(versionSignal() + 1);
       },
       dispose(): void {
         if (disposed) return;
@@ -420,7 +418,11 @@ export function createSelectorRegistry(
     },
 
     invalidateAll(): void {
-      globalEpoch(globalEpoch() + 1);
+      for (const innerMap of computedCache.values()) {
+        for (const node of innerMap.values()) {
+          node.invalidate();
+        }
+      }
       bumpExistence();
     },
 
