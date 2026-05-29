@@ -38,8 +38,12 @@ export interface ComputedStateEngine {
   invalidateAll(): void;
 }
 
-function getLayoutValue(node: SceneNode, key: string): number {
-  const layout = node.layout;
+function getLayoutValue(
+  selectors: SelectorRegistry,
+  nodeId: NodeId,
+  key: string,
+): number {
+  const layout = selectors.getNodeLayout(nodeId);
   if (layout && typeof layout === "object" && key in layout) {
     const value = (layout as Record<string, unknown>)[key];
     return typeof value === "number" ? value : 0;
@@ -47,8 +51,12 @@ function getLayoutValue(node: SceneNode, key: string): number {
   return 0;
 }
 
-function getNodeWidth(node: SceneNode): number {
-  const w = getLayoutValue(node, "width");
+function getNodeWidth(
+  selectors: SelectorRegistry,
+  node: SceneNode,
+  nodeId: NodeId,
+): number {
+  const w = getLayoutValue(selectors, nodeId, "width");
   if (w > 0) return w;
   if (node.type === "text") return 150;
   if (node.type === "container" && node.children && node.children.length > 0)
@@ -56,8 +64,12 @@ function getNodeWidth(node: SceneNode): number {
   return 100;
 }
 
-function getNodeHeight(node: SceneNode): number {
-  const h = getLayoutValue(node, "height");
+function getNodeHeight(
+  selectors: SelectorRegistry,
+  node: SceneNode,
+  nodeId: NodeId,
+): number {
+  const h = getLayoutValue(selectors, nodeId, "height");
   if (h > 0) return h;
   if (node.type === "text") return 24;
   if (node.type === "container" && node.children && node.children.length > 0)
@@ -91,15 +103,19 @@ export function createComputedStateEngine(
     localCache.clear();
   }
 
-  function getWorldSpaceLayout(node: SceneNode): {
+  function getWorldSpaceLayout(
+    selectors: SelectorRegistry,
+    nodeId: NodeId,
+  ): {
     x: number;
     y: number;
   } {
-    const mode = (node.layout as { mode?: string } | undefined)?.mode;
+    const layout = selectors.getNodeLayout(nodeId);
+    const mode = (layout as { mode?: string } | undefined)?.mode;
     if (mode === "absolute" || mode === "free") {
       return {
-        x: getLayoutValue(node, "x"),
-        y: getLayoutValue(node, "y"),
+        x: getLayoutValue(selectors, nodeId, "x"),
+        y: getLayoutValue(selectors, nodeId, "y"),
       };
     }
     return { x: 0, y: 0 };
@@ -118,9 +134,9 @@ export function createComputedStateEngine(
           const node = selectors.getNode(nodeId);
           if (!node) return { x: 0, y: 0, rotation: 0 };
           return {
-            x: getLayoutValue(node, "x"),
-            y: getLayoutValue(node, "y"),
-            rotation: getLayoutValue(node, "rotation"),
+            x: getLayoutValue(selectors, nodeId, "x"),
+            y: getLayoutValue(selectors, nodeId, "y"),
+            rotation: getLayoutValue(selectors, nodeId, "rotation"),
           };
         });
         localCache.set(nodeId, c);
@@ -138,15 +154,14 @@ export function createComputedStateEngine(
             return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
           }
 
-          const local = getWorldSpaceLayout(node);
-          const rotation = getLayoutValue(node, "rotation");
+          const local = getWorldSpaceLayout(selectors, nodeId);
           const parent = selectors.getParent(nodeId);
 
           if (!parent) {
             return {
               x: local.x,
               y: local.y,
-              rotation,
+              rotation: 0,
               scaleX: 1,
               scaleY: 1,
             };
@@ -156,9 +171,9 @@ export function createComputedStateEngine(
           return {
             x: parentTx.x + local.x,
             y: parentTx.y + local.y,
-            rotation: parentTx.rotation + rotation,
-            scaleX: parentTx.scaleX,
-            scaleY: parentTx.scaleY,
+            rotation: parentTx.rotation + 0,
+            scaleX: 1,
+            scaleY: 1,
           };
         });
         worldCache.set(nodeId, c);
@@ -172,20 +187,11 @@ export function createComputedStateEngine(
       if (!c) {
         c = computed(() => {
           const node = selectors.getNode(nodeId);
-          if (!node) {
-            return { x: 0, y: 0, width: 0, height: 0 };
-          }
-
+          if (!node) return { x: 0, y: 0, width: 0, height: 0 };
+          const w = getNodeWidth(selectors, node, nodeId);
+          const h = getNodeHeight(selectors, node, nodeId);
           const tx = engine.getWorldTransform(nodeId);
-          const w = getNodeWidth(node);
-          const h = getNodeHeight(node);
-
-          return {
-            x: tx.x,
-            y: tx.y,
-            width: w,
-            height: h,
-          };
+          return { x: tx.x, y: tx.y, width: w, height: h };
         });
         boundsCache.set(nodeId, c);
       }
@@ -194,44 +200,43 @@ export function createComputedStateEngine(
 
     getVisibleBounds(
       nodeId: NodeId,
-      viewport?: ViewportRect,
+      _viewport?: ViewportRect,
     ): ComputedBounds | null {
       clearIfStale();
-      const cacheKey = viewport
-        ? `vb:${nodeId}:${viewport.x},${viewport.y},${viewport.width},${viewport.height}`
-        : `vb:${nodeId}`;
-      let c = visibleBoundsCache.get(cacheKey);
+      const key = _viewport
+        ? `${nodeId}:${_viewport.x},${_viewport.y},${_viewport.width},${_viewport.height}`
+        : nodeId;
+      let c = visibleBoundsCache.get(key);
       if (!c) {
         c = computed(() => {
           const node = selectors.getNode(nodeId);
-          if (!node || node.visible === false) {
-            return null;
-          }
-
+          if (!node) return null;
           const bounds = engine.getComputedBounds(nodeId);
-
-          if (!viewport) {
-            return bounds;
+          const visible = selectors.getNodeVisibility(nodeId);
+          if (visible === false) return null;
+          if (!_viewport) return bounds;
+          const inView =
+            bounds.x < _viewport.x + _viewport.width &&
+            bounds.x + bounds.width > _viewport.x &&
+            bounds.y < _viewport.y + _viewport.height &&
+            bounds.y + bounds.height > _viewport.y;
+          if (!inView) {
+            return { x: bounds.x, y: bounds.y, width: 0, height: 0 };
           }
-
-          const ix = Math.max(bounds.x, viewport.x);
-          const iy = Math.max(bounds.y, viewport.y);
-          const ir = Math.min(
-            bounds.x + bounds.width,
-            viewport.x + viewport.width,
-          );
-          const ib = Math.min(
-            bounds.y + bounds.height,
-            viewport.y + viewport.height,
-          );
-          const iw = Math.max(0, ir - ix);
-          const ih = Math.max(0, ib - iy);
-
-          return iw > 0 && ih > 0
-            ? { x: ix, y: iy, width: iw, height: ih }
-            : { x: 0, y: 0, width: 0, height: 0 };
+          return {
+            x: Math.max(bounds.x, _viewport.x),
+            y: Math.max(bounds.y, _viewport.y),
+            width:
+              Math.min(bounds.x + bounds.width, _viewport.x + _viewport.width) -
+              Math.max(bounds.x, _viewport.x),
+            height:
+              Math.min(
+                bounds.y + bounds.height,
+                _viewport.y + _viewport.height,
+              ) - Math.max(bounds.y, _viewport.y),
+          };
         });
-        visibleBoundsCache.set(cacheKey, c);
+        visibleBoundsCache.set(key, c);
       }
       return c();
     },
@@ -254,31 +259,24 @@ export function createComputedStateEngine(
 
     getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number {
       const bounds = engine.getComputedBounds(nodeId);
-      switch (edge) {
-        case "top":
-          return bounds.y;
-        case "bottom":
-          return bounds.y + bounds.height;
-        case "left":
-          return bounds.x;
-        case "right":
-          return bounds.x + bounds.width;
-      }
+      if (edge === "top") return bounds.y;
+      if (edge === "bottom") return bounds.y + bounds.height;
+      if (edge === "left") return bounds.x;
+      if (edge === "right") return bounds.x + bounds.width;
+      return 0;
     },
 
     invalidate(nodeId: NodeId): void {
+      selectors.invalidate(nodeId, "layout");
       worldCache.delete(nodeId);
       boundsCache.delete(nodeId);
+      visibleBoundsCache.delete(nodeId);
       centerCache.delete(nodeId);
       localCache.delete(nodeId);
-      for (const key of visibleBoundsCache.keys()) {
-        if (key === `vb:${nodeId}` || key.startsWith(`vb:${nodeId}:`)) {
-          visibleBoundsCache.delete(key);
-        }
-      }
     },
 
     invalidateAll(): void {
+      selectors.invalidateAll();
       worldCache.clear();
       boundsCache.clear();
       visibleBoundsCache.clear();

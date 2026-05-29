@@ -200,7 +200,8 @@ describe("ComputedStateEngine", () => {
       // "a" recomputes from fresh scene data
       const afterA = eng.getWorldTransform("a");
       expect(afterA.x).toBe(200);
-      // "a1" should still be cached (invalidation was per-node)
+      // "a" was invalidated — its cache cleared, new computed reads fresh layout (x=200)
+      // "a1" cache NOT cleared — a1's computed still in engine's scope, returns cached 110
       const afterA1 = eng.getWorldTransform("a1");
       expect(afterA1.x).toBe(110);
     });
