@@ -48,14 +48,21 @@ type SelectorType =
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
 ): SelectorRegistry {
-  const { signal, computed, startBatch, endBatch, flush: flushScope } = createScope();
+  const {
+    signal,
+    computed,
+    startBatch,
+    endBatch,
+    flush: flushScope,
+  } = createScope();
   const structuralSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
+  const layoutSignals = new Map<NodeId, Signal<number>>();
+  const propsSignals = new Map<NodeId, Signal<number>>();
   const sceneStructureSignal = signal(0);
   const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
-  let syncedVersion = scene.version;
 
   function getSignal(
     map: Map<NodeId, Signal<number>>,
@@ -123,15 +130,6 @@ export function createSelectorRegistry(
     computedCache.clear();
   }
 
-  function checkVersion(): void {
-    if (currentScene.version !== syncedVersion) {
-      structuralSignals.clear();
-      visibleSignals.clear();
-      disposeAll();
-      syncedVersion = currentScene.version;
-    }
-  }
-
   function getCached<T>(
     type: SelectorType,
     key: string,
@@ -160,7 +158,6 @@ export function createSelectorRegistry(
 
   const registry: SelectorRegistry = {
     getNode(nodeId: NodeId): SceneNode | undefined {
-      checkVersion();
       readStructural(nodeId);
       return currentScene.nodes[nodeId];
     },
@@ -174,7 +171,6 @@ export function createSelectorRegistry(
     },
 
     getChildren(nodeId: NodeId): SceneNode[] {
-      checkVersion();
       return getCached("children", nodeId, () => {
         readStructural(nodeId);
         const node = currentScene.nodes[nodeId];
@@ -189,7 +185,6 @@ export function createSelectorRegistry(
     },
 
     getParent(nodeId: NodeId): SceneNode | undefined {
-      checkVersion();
       return getCached("parent", nodeId, () => {
         readStructural(nodeId);
         const node = currentScene.nodes[nodeId];
@@ -198,7 +193,6 @@ export function createSelectorRegistry(
     },
 
     getRoot(): SceneNode {
-      checkVersion();
       return getCached("root", "root", () => {
         readStructural(currentScene.rootId);
         const root = currentScene.nodes[currentScene.rootId];
@@ -210,7 +204,6 @@ export function createSelectorRegistry(
     },
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
-      checkVersion();
       for (const id of nodeIds) {
         readStructural(id);
       }
@@ -220,7 +213,6 @@ export function createSelectorRegistry(
     },
 
     getAllNodes(): SceneNode[] {
-      checkVersion();
       return getCached("allNodes", "all", () => {
         sceneStructureSignal();
         return Object.values(currentScene.nodes);
@@ -228,7 +220,6 @@ export function createSelectorRegistry(
     },
 
     getAncestors(nodeId: NodeId): SceneNode[] {
-      checkVersion();
       return getCached("ancestors", nodeId, () => {
         readStructural(nodeId);
         const ancestors: SceneNode[] = [];
@@ -244,7 +235,6 @@ export function createSelectorRegistry(
     },
 
     getDescendants(nodeId: NodeId): SceneNode[] {
-      checkVersion();
       return getCached("descendants", nodeId, () => {
         readStructural(nodeId);
         const descendants: SceneNode[] = [];
@@ -267,7 +257,6 @@ export function createSelectorRegistry(
     },
 
     getSiblings(nodeId: NodeId): SceneNode[] {
-      checkVersion();
       return getCached("siblings", nodeId, () => {
         readStructural(nodeId);
         const node = currentScene.nodes[nodeId];
@@ -283,7 +272,6 @@ export function createSelectorRegistry(
     },
 
     getDepth(nodeId: NodeId): number {
-      checkVersion();
       return getCached("depth", nodeId, () => {
         readStructural(nodeId);
         let depth = 0;
@@ -298,7 +286,6 @@ export function createSelectorRegistry(
     },
 
     isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean {
-      checkVersion();
       return getCached("isDescendantOf", `${nodeId}:${ancestorId}`, () => {
         const ancestors = registry.getAncestors(nodeId);
         return ancestors.some((a) => a.id === ancestorId);
@@ -306,7 +293,6 @@ export function createSelectorRegistry(
     },
 
     getVisibleNodes(): SceneNode[] {
-      checkVersion();
       return getCached("visibleNodes", "all", () => {
         sceneStructureSignal();
         for (const id of Object.keys(currentScene.nodes)) {
@@ -319,10 +305,11 @@ export function createSelectorRegistry(
     },
 
     invalidate(nodeId: NodeId, field?: NodeField): void {
-      checkVersion();
       if (!field) {
         bumpSignal(structuralSignals, nodeId);
         bumpSignal(visibleSignals, nodeId);
+        bumpSignal(layoutSignals, nodeId);
+        bumpSignal(propsSignals, nodeId);
         bumpSceneStructure();
         return;
       }
@@ -332,11 +319,9 @@ export function createSelectorRegistry(
       } else if (field === "visible") {
         bumpSignal(visibleSignals, nodeId);
       } else if (field === "layout") {
-        bumpSignal(structuralSignals, nodeId);
-        bumpSceneStructure();
+        bumpSignal(layoutSignals, nodeId);
       } else if (field === "props") {
-        bumpSignal(structuralSignals, nodeId);
-        bumpSceneStructure();
+        bumpSignal(propsSignals, nodeId);
       }
     },
 
@@ -348,9 +333,10 @@ export function createSelectorRegistry(
       currentScene = newScene;
       structuralSignals.clear();
       visibleSignals.clear();
+      layoutSignals.clear();
+      propsSignals.clear();
       disposeAll();
       bumpSceneStructure();
-      syncedVersion = newScene.version;
     },
 
     getVersion(): number {

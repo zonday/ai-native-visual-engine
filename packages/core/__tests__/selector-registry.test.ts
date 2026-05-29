@@ -43,7 +43,7 @@ describe("SelectorRegistry", () => {
       expect(r1).toBe(r2);
     });
 
-    it("returns fresh result after scene version changes", () => {
+    it("returns same reference when scene data unchanged", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const before = sel.getNode("a");
@@ -290,7 +290,12 @@ describe("SelectorRegistry", () => {
 
       // Add a new node to the scene
       const root = assertNode(scene.nodes.root, "root");
-      scene.nodes.c = { id: "c", type: "text", parentId: "root", visible: true };
+      scene.nodes.c = {
+        id: "c",
+        type: "text",
+        parentId: "root",
+        visible: true,
+      };
       root.children = [...(root.children ?? []), "c"];
       sel.invalidate("root", "structural");
 
@@ -497,7 +502,7 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toHaveLength(2);
     });
 
-    it("scene version change clears all signals and computeds", () => {
+    it("invalidate reaches dependent computed entries", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
@@ -818,7 +823,7 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toEqual([]);
     });
 
-    it("scene version change clears cached selectors", () => {
+    it("cached selector persists across scene version changes", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
