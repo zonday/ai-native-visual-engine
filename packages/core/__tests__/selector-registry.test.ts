@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createSelectorRegistry } from "../src/selector/selector-registry.js";
 import type { SceneGraph, SceneNode } from "../src/types.js";
 
-function assertNode(n: SceneNode | undefined, id: string): SceneNode {
+function assertNode(n: SceneNode | undefined, id: string): MutableSceneNode {
   if (!n) throw new Error(`Expected node ${id}`);
-  return n;
+  return n as MutableSceneNode;
 }
+
+type MutableSceneNode = { -readonly [K in keyof SceneNode]: SceneNode[K] };
 
 function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
   return {
