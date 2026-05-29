@@ -3,27 +3,30 @@ import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 
 type NodeField = "structural" | "visible" | "layout" | "props";
 
+const MAX_CACHED_SELECTORS = 5000;
+
 interface SelectorNode<T = unknown> {
   readonly type: string;
   readonly key: string;
   get(): T;
+  invalidate(): void;
   dispose(): void;
 }
 
 export interface SelectorRegistry {
-  getNode(nodeId: NodeId): Readonly<SceneNode> | undefined;
-  getNodeUnsafe(nodeId: NodeId): Readonly<SceneNode>;
-  getChildren(nodeId: NodeId): Readonly<SceneNode>[];
-  getParent(nodeId: NodeId): Readonly<SceneNode> | undefined;
-  getRoot(): Readonly<SceneNode>;
-  getNodes(nodeIds: NodeId[]): Readonly<SceneNode>[];
-  getAllNodes(): Readonly<SceneNode>[];
-  getAncestors(nodeId: NodeId): Readonly<SceneNode>[];
-  getDescendants(nodeId: NodeId): Readonly<SceneNode>[];
-  getSiblings(nodeId: NodeId): Readonly<SceneNode>[];
+  getNode(nodeId: NodeId): SceneNode | undefined;
+  getNodeUnsafe(nodeId: NodeId): SceneNode;
+  getChildren(nodeId: NodeId): SceneNode[];
+  getParent(nodeId: NodeId): SceneNode | undefined;
+  getRoot(): SceneNode;
+  getNodes(nodeIds: NodeId[]): SceneNode[];
+  getAllNodes(): SceneNode[];
+  getAncestors(nodeId: NodeId): SceneNode[];
+  getDescendants(nodeId: NodeId): SceneNode[];
+  getSiblings(nodeId: NodeId): SceneNode[];
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
-  getVisibleNodes(): Readonly<SceneNode>[];
+  getVisibleNodes(): SceneNode[];
   getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
@@ -110,6 +113,11 @@ export function createSelectorRegistry(
         }
         return fn();
       },
+      invalidate(): void {
+        // Reserved for future patch-based invalidation.
+        // Currently invalidateAll uses globalEpoch; per-node
+        // version-based invalidation will use this method.
+      },
       dispose(): void {
         if (disposed) return;
         disposed = true;
@@ -126,6 +134,33 @@ export function createSelectorRegistry(
 
   function bumpExistence(): void {
     nodeExistenceSignal(nodeExistenceSignal() + 1);
+  }
+
+  function enforceCacheLimit(): void {
+    let total = 0;
+    for (const innerMap of computedCache.values()) {
+      total += innerMap.size;
+    }
+    if (total <= MAX_CACHED_SELECTORS) return;
+    // Evict entire least-accessed type
+    let minType: SelectorType | null = null;
+    let minSize = Infinity;
+    for (const [type, innerMap] of computedCache) {
+      if (innerMap.size < minSize) {
+        minSize = innerMap.size;
+        minType = type as SelectorType;
+      }
+    }
+    if (minType !== null) {
+      const map = computedCache.get(minType);
+      if (map) {
+        const nodes = [...map.values()];
+        for (const node of nodes) {
+          node.dispose();
+        }
+        computedCache.delete(minType);
+      }
+    }
   }
 
   function disposeAll(): void {
@@ -152,30 +187,48 @@ export function createSelectorRegistry(
     if (!n) {
       n = createNode(type, key, compute);
       innerMap.set(key, n);
+      enforceCacheLimit();
     }
     return n;
   }
 
-  function readStructural(nodeId: string): void {
+  // Auto dependency tracking: wraps SceneNode in a Proxy that reads
+  // field-specific signals on property access. Selector authors call
+  // getNode(id) and access .children / .layout / .props / .visible
+  // without manually declaring signal dependencies.
+  // Proxy is cached per nodeId for referential stability. Cleared on sync().
+  const proxyCache = new Map<NodeId, SceneNode>();
+
+  function createTrackedNode(nodeId: NodeId): SceneNode | undefined {
+    const node = currentScene.nodes[nodeId];
+    if (!node) return undefined;
+
+    // Always track structural signal on access — establishes/updates
+    // the alien-signals reactive dependency for the caller's computed.
     getSignal(structuralSignals, nodeId)();
-  }
 
-  function readVisible(nodeId: string): void {
-    getSignal(visibleSignals, nodeId)();
-  }
+    let proxy = proxyCache.get(nodeId);
+    if (proxy) return proxy;
 
-  function readLayout(nodeId: string): void {
-    getSignal(layoutSignals, nodeId)();
-  }
-
-  function readProps(nodeId: string): void {
-    getSignal(propsSignals, nodeId)();
+    proxy = new Proxy(node, {
+      get(target, prop) {
+        if (prop === "layout") {
+          getSignal(layoutSignals, nodeId)();
+        } else if (prop === "props") {
+          getSignal(propsSignals, nodeId)();
+        } else if (prop === "visible") {
+          getSignal(visibleSignals, nodeId)();
+        }
+        return Reflect.get(target, prop);
+      },
+    });
+    proxyCache.set(nodeId, proxy);
+    return proxy;
   }
 
   const registry: SelectorRegistry = {
     getNode(nodeId: NodeId): SceneNode | undefined {
-      readStructural(nodeId);
-      return currentScene.nodes[nodeId];
+      return createTrackedNode(nodeId);
     },
 
     getNodeUnsafe(nodeId: NodeId): SceneNode {
@@ -188,8 +241,7 @@ export function createSelectorRegistry(
 
     getChildren(nodeId: NodeId): SceneNode[] {
       return getCached("children", nodeId, () => {
-        readStructural(nodeId);
-        const node = currentScene.nodes[nodeId];
+        const node = registry.getNode(nodeId);
         if (!node?.children) return [];
         const result: SceneNode[] = [];
         for (const childId of node.children) {
@@ -202,16 +254,14 @@ export function createSelectorRegistry(
 
     getParent(nodeId: NodeId): SceneNode | undefined {
       return getCached("parent", nodeId, () => {
-        readStructural(nodeId);
-        const node = currentScene.nodes[nodeId];
+        const node = registry.getNode(nodeId);
         return node?.parentId ? registry.getNode(node.parentId) : undefined;
       }).get();
     },
 
     getRoot(): SceneNode {
       return getCached("root", "root", () => {
-        readStructural(currentScene.rootId);
-        const root = currentScene.nodes[currentScene.rootId];
+        const root = registry.getNode(currentScene.rootId);
         if (!root) {
           throw new Error(`Root node "${currentScene.rootId}" not found`);
         }
@@ -221,7 +271,7 @@ export function createSelectorRegistry(
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
       for (const id of nodeIds) {
-        readStructural(id);
+        getSignal(structuralSignals, id)();
       }
       return nodeIds
         .map((id) => currentScene.nodes[id])
@@ -237,7 +287,7 @@ export function createSelectorRegistry(
 
     getAncestors(nodeId: NodeId): SceneNode[] {
       return getCached("ancestors", nodeId, () => {
-        readStructural(nodeId);
+        getSignal(structuralSignals, nodeId)();
         const ancestors: SceneNode[] = [];
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
@@ -252,7 +302,7 @@ export function createSelectorRegistry(
 
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
-        readStructural(nodeId);
+        getSignal(structuralSignals, nodeId)();
         const descendants: SceneNode[] = [];
         function walk(id: string, visited: Set<string>): void {
           if (visited.has(id)) return;
@@ -274,10 +324,8 @@ export function createSelectorRegistry(
 
     getSiblings(nodeId: NodeId): SceneNode[] {
       return getCached("siblings", nodeId, () => {
-        readStructural(nodeId);
-        const node = currentScene.nodes[nodeId];
+        const node = registry.getNode(nodeId);
         if (!node?.parentId) return [];
-        readStructural(node.parentId);
         const parent = registry.getNode(node.parentId);
         if (!parent) return [];
         return (parent.children ?? [])
@@ -289,7 +337,7 @@ export function createSelectorRegistry(
 
     getDepth(nodeId: NodeId): number {
       return getCached("depth", nodeId, () => {
-        readStructural(nodeId);
+        getSignal(structuralSignals, nodeId)();
         let depth = 0;
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
@@ -312,7 +360,7 @@ export function createSelectorRegistry(
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
         for (const id of Object.keys(currentScene.nodes)) {
-          readVisible(id);
+          getSignal(visibleSignals, id)();
         }
         return Object.values(currentScene.nodes).filter(
           (node) => node.visible !== false,
@@ -322,21 +370,21 @@ export function createSelectorRegistry(
 
     getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeLayout", nodeId, () => {
-        readLayout(nodeId);
+        getSignal(layoutSignals, nodeId)();
         return currentScene.nodes[nodeId]?.layout;
       }).get();
     },
 
     getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeProps", nodeId, () => {
-        readProps(nodeId);
+        getSignal(propsSignals, nodeId)();
         return currentScene.nodes[nodeId]?.props;
       }).get();
     },
 
     getNodeVisibility(nodeId: NodeId): boolean | undefined {
       return getCached("nodeVisibility", nodeId, () => {
-        readVisible(nodeId);
+        getSignal(visibleSignals, nodeId)();
         return currentScene.nodes[nodeId]?.visible;
       }).get();
     },
@@ -382,6 +430,7 @@ export function createSelectorRegistry(
       visibleSignals.clear();
       layoutSignals.clear();
       propsSignals.clear();
+      proxyCache.clear();
       disposeAll();
       bumpExistence();
     },
