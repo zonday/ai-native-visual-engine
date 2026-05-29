@@ -960,7 +960,9 @@ describe("SelectorRegistry", () => {
     it("fires callback before sync disposes selectors", () => {
       const sel = createSelectorRegistry(makeScene());
       let fired = false;
-      const unreg = sel.onBeforeDispose(() => { fired = true; });
+      const unreg = sel.onBeforeDispose(() => {
+        fired = true;
+      });
       sel.sync(makeScene());
       expect(fired).toBe(true);
       unreg();
@@ -969,7 +971,9 @@ describe("SelectorRegistry", () => {
     it("unregister prevents callback from firing", () => {
       const sel = createSelectorRegistry(makeScene());
       let fired = false;
-      const unreg = sel.onBeforeDispose(() => { fired = true; });
+      const unreg = sel.onBeforeDispose(() => {
+        fired = true;
+      });
       unreg();
       sel.sync(makeScene());
       expect(fired).toBe(false);
@@ -978,12 +982,55 @@ describe("SelectorRegistry", () => {
     it("multiple callbacks all fire", () => {
       const sel = createSelectorRegistry(makeScene());
       let count = 0;
-      const unreg1 = sel.onBeforeDispose(() => { count++; });
-      const unreg2 = sel.onBeforeDispose(() => { count++; });
+      const unreg1 = sel.onBeforeDispose(() => {
+        count++;
+      });
+      const unreg2 = sel.onBeforeDispose(() => {
+        count++;
+      });
       sel.sync(makeScene());
       expect(count).toBe(2);
       unreg1();
       unreg2();
+    });
+  });
+
+  describe("commitScene", () => {
+    it("updates layout and bumps signal", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeLayout("a")).toBeUndefined();
+
+      sel.commitScene((draft) => {
+        draft.nodes.a!.layout = { mode: "absolute", x: 100, y: 50 };
+      });
+
+      expect(sel.getNodeLayout("a")?.x).toBe(100);
+    });
+
+    it("adds node and bumps existence", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const before = sel.getAllNodes().length;
+
+      sel.commitScene((draft) => {
+        draft.nodes.c = { id: "c", type: "text", parentId: "root" };
+        draft.nodes.root!.children = [
+          ...(draft.nodes.root!.children ?? []),
+          "c",
+        ];
+      });
+
+      expect(sel.getAllNodes()).toHaveLength(before + 1);
+    });
+
+    it("removes node and bumps existence", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const before = sel.getAllNodes().length;
+
+      sel.commitScene((draft) => {
+        delete draft.nodes.b;
+      });
+
+      expect(sel.getAllNodes()).toHaveLength(before - 1);
     });
   });
 });
