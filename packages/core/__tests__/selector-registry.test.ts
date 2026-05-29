@@ -955,4 +955,35 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toHaveLength(2);
     });
   });
+
+  describe("onBeforeDispose", () => {
+    it("fires callback before sync disposes selectors", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let fired = false;
+      const unreg = sel.onBeforeDispose(() => { fired = true; });
+      sel.sync(makeScene());
+      expect(fired).toBe(true);
+      unreg();
+    });
+
+    it("unregister prevents callback from firing", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let fired = false;
+      const unreg = sel.onBeforeDispose(() => { fired = true; });
+      unreg();
+      sel.sync(makeScene());
+      expect(fired).toBe(false);
+    });
+
+    it("multiple callbacks all fire", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let count = 0;
+      const unreg1 = sel.onBeforeDispose(() => { count++; });
+      const unreg2 = sel.onBeforeDispose(() => { count++; });
+      sel.sync(makeScene());
+      expect(count).toBe(2);
+      unreg1();
+      unreg2();
+    });
+  });
 });
