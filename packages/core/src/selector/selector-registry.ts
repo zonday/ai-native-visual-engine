@@ -127,6 +127,7 @@ export function createSelectorRegistry(
     for (const [id, entry] of index) {
       treeIndex.set(id, entry);
     }
+    descResultCache.clear();
   }
 
   function ensureTreeIndex(): void {
