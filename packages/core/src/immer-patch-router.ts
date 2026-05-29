@@ -1,14 +1,8 @@
-import {
-  enablePatches,
-  type Patch,
-  produceWithPatches,
-  setAutoFreeze,
-} from "immer";
+import { enablePatches, type Patch, setAutoFreeze } from "immer";
 import type {
   NodeField,
   SelectorRegistry,
 } from "./selector/selector-registry.js";
-import type { DeepMutable, SceneGraph } from "./types.js";
 
 // Enable Immer patches support (required for produceWithPatches)
 enablePatches();
@@ -25,26 +19,6 @@ const FIELD_MAP: Record<string, NodeField> = {
   parentId: "parent",
   children: "children",
 };
-
-/**
- * Immutable scene mutation via Immer produceWithPatches.
- * Returns [newScene, patches] for use with handleSceneUpdate + routeImmerPatches.
- *
- * Usage:
- *   const [next, patches] = produceScene(scene, (draft) => {
- *     draft.nodes.a.layout.x = 200;
- *   });
- *   registry.handleSceneUpdate(next);
- *   routeImmerPatches(patches, registry);
- */
-export function produceScene(
-  base: SceneGraph,
-  recipe: (draft: DeepMutable<SceneGraph>) => void,
-): [SceneGraph, Patch[], Patch[]] {
-  return produceWithPatches(base, (draft) => {
-    recipe(draft as DeepMutable<SceneGraph>);
-  }) as [SceneGraph, Patch[], Patch[]];
-}
 
 /**
  * Routes Immer patches to applyPatch on the registry.

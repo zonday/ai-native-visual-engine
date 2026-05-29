@@ -43,11 +43,9 @@ export type ScenePatch =
 
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
-  getNodeUnsafe(nodeId: NodeId): SceneNode;
   getChildren(nodeId: NodeId): SceneNode[];
   getParent(nodeId: NodeId): SceneNode | undefined;
   getRoot(): SceneNode;
-  getNodes(nodeIds: NodeId[]): SceneNode[];
   getAllNodes(): SceneNode[];
   getAncestors(nodeId: NodeId): SceneNode[];
   getDescendants(nodeId: NodeId): NodeId[];
@@ -63,10 +61,7 @@ export interface SelectorRegistry {
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
   applyPatch(patch: ScenePatch): void;
-  retainSelector(type: string, key: string): void;
-  releaseSelector(type: string, key: string): void;
   sync(newScene: SceneGraph): void;
-  handleSceneUpdate(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
   flush(): void;
@@ -160,7 +155,6 @@ export function createSelectorRegistry(
     for (const [id, entry] of index) {
       treeIndex.set(id, entry);
     }
-    descResultCache.clear();
   }
 
   function ensureTreeIndex(): void {
@@ -426,6 +420,7 @@ export function createSelectorRegistry(
       }
     }
     computedCache.clear();
+    descResultCache.clear();
   }
 
   function enforceCacheLimit(): void {
@@ -486,14 +481,6 @@ export function createSelectorRegistry(
       return currentScene.nodes[nodeId];
     },
 
-    getNodeUnsafe(nodeId: NodeId): SceneNode {
-      const node = registry.getNode(nodeId);
-      if (!node) {
-        throw new Error(`Node "${nodeId}" not found in scene`);
-      }
-      return node;
-    },
-
     getChildren(nodeId: NodeId): SceneNode[] {
       return getCached("children", nodeId, () => {
         trackChildren(nodeId);
@@ -525,12 +512,6 @@ export function createSelectorRegistry(
         }
         return root;
       }).get();
-    },
-
-    getNodes(nodeIds: NodeId[]): SceneNode[] {
-      return nodeIds
-        .map((id) => currentScene.nodes[id])
-        .filter((n): n is SceneNode => n !== undefined);
     },
 
     getAllNodes(): SceneNode[] {
@@ -758,23 +739,6 @@ export function createSelectorRegistry(
       bumpExistence();
     },
 
-    /**
-     * Lightweight scene swap for use with routeImmerPatches.
-     * Replaces currentScene and rebuilds indexes without clearing
-     * signals or disposing the computed cache. Callers must route
-     * patches separately via routeImmerPatches to bump the
-     * corresponding signals.
-     *
-     * Usage:
-     *   sel.handleSceneUpdate(newScene);
-     *   routeImmerPatches(patches, sel);
-     */
-    handleSceneUpdate(newScene: SceneGraph): void {
-      currentScene = newScene;
-      markTreeIndexDirty();
-      markVisibilityIndexDirty();
-    },
-
     getVersion(): number {
       return currentScene.version;
     },
@@ -791,20 +755,6 @@ export function createSelectorRegistry(
           endBatch();
         }
       }
-    },
-
-    retainSelector(type: string, key: string): void {
-      const innerMap = computedCache.get(type as SelectorType);
-      if (!innerMap) return;
-      const node = innerMap.get(key);
-      if (node) node.ref();
-    },
-
-    releaseSelector(type: string, key: string): void {
-      const innerMap = computedCache.get(type as SelectorType);
-      if (!innerMap) return;
-      const node = innerMap.get(key);
-      if (node) node.unref();
     },
 
     flush(): void {

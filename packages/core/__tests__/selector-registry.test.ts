@@ -55,20 +55,6 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("getNodeUnsafe", () => {
-    it("returns node by id", () => {
-      const sel = createSelectorRegistry(makeScene());
-      expect(sel.getNodeUnsafe("a").id).toBe("a");
-    });
-
-    it("throws for missing node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      expect(() => sel.getNodeUnsafe("nonexistent")).toThrow(
-        'Node "nonexistent" not found',
-      );
-    });
-  });
-
   describe("getChildren", () => {
     it("returns child nodes of a container", () => {
       const sel = createSelectorRegistry(makeScene());
@@ -111,46 +97,6 @@ describe("SelectorRegistry", () => {
     it("returns root node", () => {
       const sel = createSelectorRegistry(makeScene());
       expect(sel.getRoot().id).toBe("root");
-    });
-  });
-
-  describe("getNodes", () => {
-    it("returns multiple nodes by ids", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const nodes = sel.getNodes(["a", "b"]);
-      expect(nodes).toHaveLength(2);
-      expect(nodes[0]?.id).toBe("a");
-      expect(nodes[1]?.id).toBe("b");
-    });
-
-    it("returns fresh array on each call (no string-keyed cache)", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const r1 = sel.getNodes(["a", "b"]);
-      const r2 = sel.getNodes(["a", "b"]);
-      // getNodes no longer uses a string-keyed cache, so each call
-      // produces a new array. This avoids key collision and unbounded
-      // memory growth from array-join keys.
-      expect(r1).not.toBe(r2);
-      expect(r1).toEqual(r2);
-    });
-
-    it("reads version signals for each requested node", () => {
-      const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
-      sel.getNode("a");
-      sel.getNode("b");
-      // After calling getNodes, invalidating one node should trigger
-      // recompute of individual getNode but getNodes re-reads all
-      // requested node signals each time (no cached computed).
-      sel.invalidateAll();
-      const nodes = sel.getNodes(["a", "b"]);
-      expect(nodes).toHaveLength(2);
-    });
-
-    it("handles requesting nonexistent nodes", () => {
-      const sel = createSelectorRegistry(makeScene());
-      expect(sel.getNodes(["a", "missing"])).toHaveLength(1);
-      expect(sel.getNodes(["missing1", "missing2"])).toHaveLength(0);
     });
   });
 
@@ -924,38 +870,6 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("retainSelector/releaseSelector", () => {
-    it("retainSelector increments refcount, selector stays alive", () => {
-      const sel = createSelectorRegistry(makeScene());
-      sel.getChildren("root");
-      sel.retainSelector("children", "root");
-      sel.releaseSelector("children", "root");
-      // Internal ref still holds (getCached auto-ref) — selector alive
-      expect(sel.getChildren("root")).toHaveLength(2);
-    });
-
-    it("removeSelector force-disposes despite refcount", () => {
-      const sel = createSelectorRegistry(makeScene());
-      sel.getChildren("root");
-      sel.retainSelector("children", "root");
-      sel.removeSelector("children", "root");
-      // removeSelector bypasses refcount — cached entry gone
-      expect(sel.getChildren("root")).toHaveLength(2); // re-created
-    });
-
-    it("retain then full release then re-access re-creates", () => {
-      const sel = createSelectorRegistry(makeScene());
-      // gteCached creates with refCount=1, retainSelector → 2
-      sel.retainSelector("children", "root");
-      sel.getChildren("root");
-      // release twice: 2→1→0 → dispose
-      sel.releaseSelector("children", "root");
-      sel.releaseSelector("children", "root");
-      // Next access re-creates
-      expect(sel.getChildren("root")).toHaveLength(2);
-    });
-  });
-
   describe("path-level field selectors", () => {
     it("getNodeLayoutKey returns specific layout key", () => {
       const scene = makeScene();
@@ -985,7 +899,12 @@ describe("SelectorRegistry", () => {
 
       // Invalidate layout.x specifically
       a.layout = { mode: "absolute", x: 200, y: 50, rotation: 0 };
-      sel.applyPatch({ type: "set-prop", nodeId: "a", field: "layout", key: "x" });
+      sel.applyPatch({
+        type: "set-prop",
+        nodeId: "a",
+        field: "layout",
+        key: "x",
+      });
 
       // x should be updated, rotation still cached
       expect(sel.getNodeLayoutKey("a", "x")).toBe(200);
