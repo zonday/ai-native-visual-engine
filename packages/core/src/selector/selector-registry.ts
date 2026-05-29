@@ -62,6 +62,7 @@ export interface SelectorRegistry {
   retainSelector(type: string, key: string): void;
   releaseSelector(type: string, key: string): void;
   sync(newScene: SceneGraph): void;
+  handleSceneUpdate(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
   flush(): void;
@@ -645,6 +646,23 @@ export function createSelectorRegistry(
       rebuildVisibilityIndex();
       visibilityIndexDirty = false;
       bumpExistence();
+    },
+
+    /**
+     * Lightweight scene swap for use with routeImmerPatches.
+     * Replaces currentScene and rebuilds indexes without clearing
+     * signals or disposing the computed cache. Callers must route
+     * patches separately via routeImmerPatches to bump the
+     * corresponding signals.
+     *
+     * Usage:
+     *   sel.handleSceneUpdate(newScene);
+     *   routeImmerPatches(patches, sel);
+     */
+    handleSceneUpdate(newScene: SceneGraph): void {
+      currentScene = newScene;
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
     },
 
     getVersion(): number {
