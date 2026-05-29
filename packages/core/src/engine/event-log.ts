@@ -28,11 +28,19 @@ export function replayEvents<TState, TAction extends { type: string }>(
     ok: boolean;
     error?: { message?: string };
   },
-  skipActionTypes?: string[],
+  skipActionTypes?: readonly string[],
 ): void {
+  const skipSet = skipActionTypes ? new Set(skipActionTypes) : undefined;
   for (const entry of log.actions) {
-    if (skipActionTypes?.includes(entry.action.type)) continue;
-    const result = dispatch(entry.action);
+    if (skipSet?.has(entry.action.type)) continue;
+    let result: { ok: boolean; error?: { message?: string } };
+    try {
+      result = dispatch(entry.action);
+    } catch (err) {
+      throw new Error(
+        `Replay threw at action ${entry.action.type}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     if (!result.ok) {
       throw new Error(
         `Replay failed at action ${entry.action.type}: ${result.error?.message}`,

@@ -55,26 +55,9 @@ export const constraintPrecheckStage = createStage<
 
   "auto-layout": (
     action,
-    context: CompilerContext,
+    _context: CompilerContext,
   ): StageOutcome<NormalizedSemanticAction> => {
-    const a = action as Extract<
-      NormalizedSemanticAction,
-      { type: "auto-layout" }
-    >;
-    const diagnostics: SemanticDiagnostic[] = [];
-    if (context.scene) {
-      const nodeIds = collectAllNodeIds(context);
-      if (!nodeIds.has(a.pageId)) {
-        diagnostics.push(
-          diag(
-            "compiler.page-not-found",
-            `Page "${a.pageId}" not found in scene`,
-          ),
-        );
-      }
-    }
-    if (diagnostics.length > 0) return { ok: false, diagnostics };
-    return { ok: true, output: a };
+    return { ok: true, output: action };
   },
 
   "create-dashboard": (

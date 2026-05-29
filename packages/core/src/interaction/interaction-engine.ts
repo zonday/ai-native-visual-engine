@@ -45,8 +45,8 @@ export function createInteractionEngine(): InteractionEngine {
     for (const listener of listeners) {
       try {
         listener(event);
-      } catch {
-        // Isolate listener errors — one bad listener must not break others
+      } catch (err) {
+        console.warn("[interaction-engine] listener error:", err);
       }
     }
   }

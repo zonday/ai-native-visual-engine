@@ -25,14 +25,16 @@ export function pushUndo<TAction>(
   maxStackSize = DEFAULT_MAX_UNDO_STACK,
 ): HistoryState<TAction> {
   const undoStack = [...state.undoStack, entry];
-  const trimmed =
-    undoStack.length > maxStackSize
-      ? undoStack.slice(undoStack.length - maxStackSize)
-      : undoStack;
+  const trimCount =
+    undoStack.length > maxStackSize ? undoStack.length - maxStackSize : 0;
+  const trimmed = trimCount > 0 ? undoStack.slice(trimCount) : undoStack;
   return {
     undoStack: trimmed,
     redoStack: [],
-    checkpointIndex: state.checkpointIndex,
+    checkpointIndex:
+      state.checkpointIndex !== undefined
+        ? Math.max(0, state.checkpointIndex - trimCount)
+        : undefined,
   };
 }
 

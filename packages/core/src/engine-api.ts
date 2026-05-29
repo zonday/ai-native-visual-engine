@@ -493,7 +493,7 @@ export function createEngineAPI(
         throw new Error("TransactionManager not configured");
       }
       const scene = getScene();
-      const context = { now: Date.now };
+      const context = { now: Date.now, actorId: "engine-api" };
       return transactionManager.begin(source, scene, context, metadata);
     },
     applyAction(active, action) {

@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { verifyJwt } from "./collab/jwt-utils.js";
 
 interface Env {
   COLLAB_ROOM: DurableObjectNamespace<CollabRoom>;
@@ -64,34 +65,6 @@ class CollabRoom extends DurableObject {
   }
 
   async webSocketError(_ws: WebSocket, _error: unknown) {}
-}
-
-async function verifyJwt(token: string, secret: string): Promise<boolean> {
-  try {
-    const [headerB64, payloadB64, sigB64] = token.split(".");
-    if (!headerB64 || !payloadB64 || !sigB64) return false;
-
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-
-    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    const sig = base64UrlDecode(sigB64);
-    return crypto.subtle.verify("HMAC", key, sig, data);
-  } catch {
-    return false;
-  }
-}
-
-function base64UrlDecode(str: string): Uint8Array {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = 4 - (base64.length % 4);
-  const padded = base64 + (padding === 4 ? "" : "=".repeat(padding));
-  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 
 export { CollabRoom };

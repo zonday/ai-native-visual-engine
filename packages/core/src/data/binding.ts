@@ -11,6 +11,9 @@ export async function resolveBinding(
   binding: Binding,
   registry: DataSourceRegistry,
 ): Promise<ResolvedBinding> {
+  if (!registry) {
+    throw new Error("DataSourceRegistry is required to resolve bindings");
+  }
   const resolvedAt = Date.now();
   try {
     const sourceId = binding.source;

@@ -1,5 +1,8 @@
 import type { HistoryState, SceneGraph, VisualDocument } from "@ai-native/core";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+const jsonReplacer = (_key: string, val: unknown) =>
+  typeof val === "function" ? undefined : val;
 
 export interface DebugPanelProps {
   doc: VisualDocument;
@@ -9,6 +12,12 @@ export interface DebugPanelProps {
 
 export function DebugPanel({ doc, scene, history }: DebugPanelProps) {
   const [tab, setTab] = useState<"doc" | "scene" | "history">("history");
+
+  const docJson = useMemo(() => JSON.stringify(doc, jsonReplacer, 2), [doc]);
+  const sceneJson = useMemo(
+    () => JSON.stringify(scene, jsonReplacer, 2),
+    [scene],
+  );
 
   return (
     <div className="h-full flex flex-col bg-gray-50 text-xs font-mono">
@@ -71,20 +80,12 @@ export function DebugPanel({ doc, scene, history }: DebugPanelProps) {
         )}
         {tab === "doc" && (
           <pre className="text-[10px] whitespace-pre-wrap break-all">
-            {JSON.stringify(
-              doc,
-              (_key, val) => (typeof val === "function" ? undefined : val),
-              2,
-            )}
+            {docJson}
           </pre>
         )}
         {tab === "scene" && (
           <pre className="text-[10px] whitespace-pre-wrap break-all">
-            {JSON.stringify(
-              scene,
-              (_key, val) => (typeof val === "function" ? undefined : val),
-              2,
-            )}
+            {sceneJson}
           </pre>
         )}
       </div>

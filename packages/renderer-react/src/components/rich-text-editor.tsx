@@ -5,6 +5,7 @@ import Underline from "@tiptap/extension-underline";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import DOMPurify from "dompurify";
 import { useCallback, useMemo, useRef } from "react";
 import { useEditorCallbacks } from "../editor-callbacks.js";
 import type { RenderContext } from "../renderer.js";
@@ -90,8 +91,8 @@ function RichEditor({ node, ctx }: RichTextEditorProps) {
       <div
         data-component="text"
         data-richtext="static"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML from Tiptap ProseMirror serializer is safe
-        dangerouslySetInnerHTML={{ __html: html }}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
       />
     );
   }

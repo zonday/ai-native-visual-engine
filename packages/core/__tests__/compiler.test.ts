@@ -342,7 +342,7 @@ describe("compileSemanticAction", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("rejects auto-layout with missing page producing PageNotFound diagnostic", () => {
+  it("accepts auto-layout even when pageId does not correspond to a scene node", () => {
     const result = compileSemanticAction(
       {
         type: "auto-layout",
@@ -362,10 +362,10 @@ describe("compileSemanticAction", () => {
       },
     );
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.diagnostics[0]?.code).toBe("compiler.page-not-found");
-    }
+    // pageId is a document-level concept, not a scene node ID.
+    // The compiler no longer checks for pageId in scene node IDs,
+    // so this should pass through to the next pipeline stage.
+    expect(result.ok).toBe(true);
   });
 
   it("accepts update-theme-intent with themeId and pageId producing set-page-theme action", () => {

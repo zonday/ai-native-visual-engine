@@ -134,7 +134,7 @@ describe("computeBatchInverse", () => {
     const inverse = computeBatchInverse(
       emptyScene,
       batchAction,
-      dispatch,
+      (_scene, action) => dispatch(action),
       { now: Date.now },
       () => undefined,
     );
