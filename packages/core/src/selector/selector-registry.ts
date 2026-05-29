@@ -1,6 +1,21 @@
 import { createScope, type Signal } from "../deps/reactive-scope.js";
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 
+// ── Selector Registry ──
+// Query layer only. Owns:
+//   • Signal maps for fine-grained field dependency tracking
+//   • SelectorNode cache (memoized computed wrappers)
+//   • Lazy-rebuilt secondary indexes (tree, visibility)
+//   • Patch-based signal routing (applyPatch / invalidate)
+//
+// Does NOT own:
+//   • Scene data (external SceneGraph, mutated by action handlers)
+//   • Mutation timing or batching (handled by caller)
+//
+// Contract: callers mutate scene data directly, then call
+// invalidate() or applyPatch() to notify the registry.
+// The registry never writes to currentScene.nodes — it only reads.
+
 type NodeField = "visible" | "layout" | "props" | "children" | "parent";
 
 const MAX_CACHED_SELECTORS = 5000;
@@ -339,11 +354,15 @@ export function createSelectorRegistry(
       if (field === "visible") markVisibilityIndexDirty();
       if (field === "children" || field === "parent") markTreeIndexDirty();
       bumpSignal(
-        field === "children" ? childrenSignals
-        : field === "parent" ? parentSignals
-        : field === "visible" ? visibleSignals
-        : field === "layout" ? layoutSignals
-        : propsSignals,
+        field === "children"
+          ? childrenSignals
+          : field === "parent"
+            ? parentSignals
+            : field === "visible"
+              ? visibleSignals
+              : field === "layout"
+                ? layoutSignals
+                : propsSignals,
         nodeId,
       );
     } else if (patch.type === "reparent") {
