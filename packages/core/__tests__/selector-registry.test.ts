@@ -172,7 +172,7 @@ describe("SelectorRegistry", () => {
       const before = sel.getAllNodes();
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
       if (scene.nodes.root) scene.nodes.root.children?.push("c");
-      sel.notifyNodeAdded("c");
+      sel.applyPatch({ type: "add-node", nodeId: "c" });
       const after = sel.getAllNodes();
       expect(after).toHaveLength(5);
       expect(before).not.toBe(after);
@@ -330,7 +330,7 @@ describe("SelectorRegistry", () => {
         visible: true,
       };
       root.children = [...(root.children ?? []), "c"];
-      sel.notifyNodeAdded("c");
+      sel.applyPatch({ type: "add-node", nodeId: "c" });
 
       visible = sel.getVisibleNodes();
       expect(visible).toHaveLength(5);
@@ -898,14 +898,14 @@ describe("SelectorRegistry", () => {
     });
   });
 
-  describe("notifyNodeAdded/notifyNodeRemoved", () => {
-    it("notifyNodeAdded triggers getAllNodes recompute", () => {
+  describe("applyPatch add-node/remove-node", () => {
+    it("add-node triggers getAllNodes recompute", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const before = sel.getAllNodes();
       expect(before).toHaveLength(4);
       scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-      sel.notifyNodeAdded("c");
+      sel.applyPatch({ type: "add-node", nodeId: "c" });
       const after = sel.getAllNodes();
       expect(after).toHaveLength(5);
     });
@@ -916,7 +916,7 @@ describe("SelectorRegistry", () => {
       const before = sel.getAllNodes();
       expect(before).toHaveLength(4);
       delete scene.nodes.a;
-      sel.notifyNodeRemoved("a");
+      sel.applyPatch({ type: "remove-node", nodeId: "a" });
       const after = sel.getAllNodes();
       expect(after).toHaveLength(3);
     });

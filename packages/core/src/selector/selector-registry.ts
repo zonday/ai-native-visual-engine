@@ -58,8 +58,6 @@ export interface SelectorRegistry {
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
-  notifyNodeAdded(nodeId: NodeId): void;
-  notifyNodeRemoved(nodeId: NodeId): void;
   applyPatch(patch: ScenePatch): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
@@ -249,6 +247,8 @@ export function createSelectorRegistry(
     } else if (patch.type === "add-node" || patch.type === "remove-node") {
       markTreeIndexDirty();
       markVisibilityIndexDirty();
+      bumpSignal(childrenSignals, patch.nodeId);
+      bumpSignal(parentSignals, patch.nodeId);
       bumpExistence();
     }
   }
@@ -584,22 +584,6 @@ export function createSelectorRegistry(
       } else if (field === "props") {
         bumpSignal(propsSignals, nodeId);
       }
-    },
-
-    notifyNodeAdded(nodeId: NodeId): void {
-      markTreeIndexDirty();
-      markVisibilityIndexDirty();
-      bumpSignal(childrenSignals, nodeId);
-      bumpSignal(parentSignals, nodeId);
-      bumpExistence();
-    },
-
-    notifyNodeRemoved(nodeId: NodeId): void {
-      markTreeIndexDirty();
-      markVisibilityIndexDirty();
-      bumpSignal(childrenSignals, nodeId);
-      bumpSignal(parentSignals, nodeId);
-      bumpExistence();
     },
 
     applyPatch(patch: ScenePatch): void {
