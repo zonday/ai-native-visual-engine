@@ -94,22 +94,12 @@ export function createSelectorRegistry(
     if (isFlushing) return;
     isFlushing = true;
     try {
-      let iterations = 0;
-      const MAX_ITERATIONS = 10000;
-      while (dirtyNodes.size > 0) {
-        if (++iterations > MAX_ITERATIONS) {
-          dirtyNodes.clear();
-          break;
-        }
-        const snapshot = [...dirtyNodes];
-        dirtyNodes.clear();
-        for (const node of snapshot) {
-          for (const sub of node.subs) {
-            sub.bumpVersion();
-            dirtyNodes.add(sub);
-          }
-        }
-      }
+      // Reactivity (dependency tracking, dirty marking, lazy recompute)
+      // is handled by alien-signals at the signal level. The scheduler
+      // is a coordination scope (batch/transaction boundary, dirty-track
+      // for cache management). SelectorNode-level propagation through
+      // deps/subs is reserved for future non-signal-backed graph edges.
+      dirtyNodes.clear();
     } finally {
       isFlushing = false;
     }
@@ -168,6 +158,9 @@ export function createSelectorRegistry(
       dispose(): void {
         for (const dep of deps) {
           dep.subs.delete(node);
+        }
+        for (const sub of subs) {
+          sub.deps.delete(node);
         }
         deps.clear();
         subs.clear();

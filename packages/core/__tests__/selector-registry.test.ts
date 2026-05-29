@@ -627,7 +627,7 @@ describe("SelectorRegistry", () => {
   });
 
   describe("scheduler batch", () => {
-    it("batch defers graph propagation until end", () => {
+    it("batch defers dirty clear until end", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       sel.getChildren("root");
@@ -635,17 +635,12 @@ describe("SelectorRegistry", () => {
 
       let afterInside = false;
       sel.batch(() => {
-        // Multiple invalidations inside batch — graph propagation
-        // is deferred but signal-level still marks computeds dirty
         const root = assertNode(scene.nodes.root, "root");
         root.children = ["a"];
         sel.invalidate("root", "structural");
-        // Signal-level: getChildren's computed marked dirty immediately
-        // SelectorNode graph: propagation deferred
         afterInside = true;
       });
 
-      // After batch, flush propagates version bumps through subs
       expect(afterInside).toBe(true);
       expect(sel.getChildren("root")).toHaveLength(1);
     });
@@ -668,12 +663,11 @@ describe("SelectorRegistry", () => {
       expect(sel.getChildren("root")).toHaveLength(2);
     });
 
-    it("flush after batch correctly propagates to fixed point", () => {
+    it("batch groups multiple invalidations coherently", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
 
       sel.batch(() => {
-        // Multiple invalidations in batch
         const root = assertNode(scene.nodes.root, "root");
         root.children = ["a"];
         sel.invalidate("root", "structural");
@@ -691,7 +685,6 @@ describe("SelectorRegistry", () => {
       const sel = createSelectorRegistry(makeScene());
       sel.getChildren("root");
 
-      // Outside batch, invalidate triggers auto-flush
       sel.invalidate("a", "structural");
       expect(sel.getChildren("root")).toHaveLength(2);
     });
@@ -710,7 +703,6 @@ describe("SelectorRegistry", () => {
 
       sel.batch(() => {
         sel.invalidate("a", "structural");
-        // Calling flush inside batch should be safe (re-entrant guard)
         sel.flush();
       });
 
