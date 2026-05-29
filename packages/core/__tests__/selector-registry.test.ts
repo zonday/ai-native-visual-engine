@@ -219,13 +219,14 @@ describe("SelectorRegistry", () => {
       expect(descendants[0]?.id).toBe("a1");
     });
 
-    it("re-evaluates after deep structural change (treeStructureSignal fix)", () => {
+    it("re-evaluates after local structural change (per-node signal)", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       // Initial: root > a > a1, root > b → 3 descendants
       expect(sel.getDescendants("root")).toHaveLength(3);
 
-      // Remove a1 from a (deep structural change — root's signal unchanged)
+      // Remove a1 from a (deep structural change — root's signal unchanged,
+      // but getDescendants reads per-node signals through registry.getNode())
       const a = assertNode(scene.nodes.a, "a");
       a.children = [];
       const a1 = assertNode(scene.nodes.a1, "a1");
@@ -234,7 +235,6 @@ describe("SelectorRegistry", () => {
       sel.invalidate("a", "structural");
 
       const descendants = sel.getDescendants("root");
-      // Should be [a, b] = 2, not stale [a, a1, b] = 3
       expect(descendants).toHaveLength(2);
       expect(descendants.find((n) => n.id === "a1")).toBeUndefined();
     });
