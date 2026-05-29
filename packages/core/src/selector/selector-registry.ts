@@ -1,7 +1,7 @@
 import { createScope, type Signal } from "../deps/reactive-scope.js";
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 
-type NodeField = "structural" | "visible" | "layout" | "props";
+type NodeField = "visible" | "layout" | "props" | "children" | "parent";
 
 const MAX_CACHED_SELECTORS = 5000;
 
@@ -66,12 +66,14 @@ export function createSelectorRegistry(
     endBatch,
     flush: flushScope,
   } = createScope();
-  const structuralSignals = new Map<NodeId, Signal<number>>();
+  const childrenSignals = new Map<NodeId, Signal<number>>();
+  const parentSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
   const nodeExistenceSignal = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
+  const accessCounts = new WeakMap<SelectorNode, number>();
   let currentScene = scene;
 
   function getSignal(
@@ -111,6 +113,8 @@ export function createSelectorRegistry(
         if (disposed) {
           throw new Error(`SelectorNode(${type},${key}) has been disposed`);
         }
+        const count = (accessCounts.get(node) ?? 0) + 1;
+        accessCounts.set(node, count);
         return fn();
       },
       invalidate(): void {
@@ -120,6 +124,7 @@ export function createSelectorRegistry(
         if (disposed) return;
         disposed = true;
         fn.dispose();
+        accessCounts.delete(node);
         const innerMap = computedCache.get(type);
         if (innerMap && innerMap.get(key) === node) {
           innerMap.delete(key);
@@ -127,38 +132,12 @@ export function createSelectorRegistry(
       },
     };
 
+    accessCounts.set(node, 1);
     return node;
   }
 
   function bumpExistence(): void {
     nodeExistenceSignal(nodeExistenceSignal() + 1);
-  }
-
-  function enforceCacheLimit(): void {
-    let total = 0;
-    for (const innerMap of computedCache.values()) {
-      total += innerMap.size;
-    }
-    if (total <= MAX_CACHED_SELECTORS) return;
-    // Evict entire least-accessed type
-    let minType: SelectorType | null = null;
-    let minSize = Infinity;
-    for (const [type, innerMap] of computedCache) {
-      if (innerMap.size < minSize) {
-        minSize = innerMap.size;
-        minType = type as SelectorType;
-      }
-    }
-    if (minType !== null) {
-      const map = computedCache.get(minType);
-      if (map) {
-        const nodes = [...map.values()];
-        for (const node of nodes) {
-          node.dispose();
-        }
-        computedCache.delete(minType);
-      }
-    }
   }
 
   function disposeAll(): void {
@@ -169,6 +148,31 @@ export function createSelectorRegistry(
       }
     }
     computedCache.clear();
+  }
+
+  function enforceCacheLimit(): void {
+    let total = 0;
+    for (const innerMap of computedCache.values()) {
+      total += innerMap.size;
+    }
+    if (total <= MAX_CACHED_SELECTORS) return;
+
+    let minAccess = Infinity;
+    let minNode: SelectorNode | null = null;
+
+    for (const innerMap of computedCache.values()) {
+      for (const node of innerMap.values()) {
+        const count = accessCounts.get(node) ?? 0;
+        if (count < minAccess) {
+          minAccess = count;
+          minNode = node;
+        }
+      }
+    }
+
+    if (minNode) {
+      minNode.dispose();
+    }
   }
 
   function getCached<T>(
@@ -190,34 +194,34 @@ export function createSelectorRegistry(
     return n;
   }
 
-  // Auto dependency tracking: wraps SceneNode in a Proxy that reads
-  // field-specific signals on property access. Selector authors call
-  // getNode(id) and access .children / .layout / .props / .visible
-  // without manually declaring signal dependencies.
-  // Proxy is cached per nodeId for referential stability. Cleared on sync().
+  // Proxy-based auto dependency tracking.
+  // Each property access reads the corresponding field signal.
+  // Target is an empty object — every getter dynamically reads
+  // from currentScene.nodes[nodeId] for a live view that survives sync().
   const proxyCache = new Map<NodeId, SceneNode>();
 
   function createTrackedNode(nodeId: NodeId): SceneNode | undefined {
-    const node = currentScene.nodes[nodeId];
-    if (!node) return undefined;
-
-    // Always track structural signal on access — establishes/updates
-    // the alien-signals reactive dependency for the caller's computed.
-    getSignal(structuralSignals, nodeId)();
+    if (!currentScene.nodes[nodeId]) return undefined;
 
     let proxy = proxyCache.get(nodeId);
     if (proxy) return proxy;
 
-    proxy = new Proxy(node, {
-      get(target, prop) {
-        if (prop === "layout") {
+    proxy = new Proxy({} as SceneNode, {
+      get(_, prop) {
+        const n = currentScene.nodes[nodeId];
+        if (!n) return undefined;
+        if (prop === "children") {
+          getSignal(childrenSignals, nodeId)();
+        } else if (prop === "parentId") {
+          getSignal(parentSignals, nodeId)();
+        } else if (prop === "layout") {
           getSignal(layoutSignals, nodeId)();
         } else if (prop === "props") {
           getSignal(propsSignals, nodeId)();
         } else if (prop === "visible") {
           getSignal(visibleSignals, nodeId)();
         }
-        return Reflect.get(target, prop);
+        return Reflect.get(n, prop);
       },
     });
     proxyCache.set(nodeId, proxy);
@@ -269,7 +273,7 @@ export function createSelectorRegistry(
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
       for (const id of nodeIds) {
-        getSignal(structuralSignals, id)();
+        getSignal(childrenSignals, id)();
       }
       return nodeIds
         .map((id) => currentScene.nodes[id])
@@ -285,7 +289,7 @@ export function createSelectorRegistry(
 
     getAncestors(nodeId: NodeId): SceneNode[] {
       return getCached("ancestors", nodeId, () => {
-        getSignal(structuralSignals, nodeId)();
+        getSignal(parentSignals, nodeId)();
         const ancestors: SceneNode[] = [];
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
@@ -300,7 +304,7 @@ export function createSelectorRegistry(
 
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
-        getSignal(structuralSignals, nodeId)();
+        getSignal(childrenSignals, nodeId)();
         const descendants: SceneNode[] = [];
         function walk(id: string, visited: Set<string>): void {
           if (visited.has(id)) return;
@@ -308,6 +312,7 @@ export function createSelectorRegistry(
           const node = currentScene.nodes[id];
           if (!node?.children) return;
           for (const childId of node.children) {
+            getSignal(childrenSignals, childId)();
             const child = registry.getNode(childId);
             if (child) {
               descendants.push(child);
@@ -335,7 +340,7 @@ export function createSelectorRegistry(
 
     getDepth(nodeId: NodeId): number {
       return getCached("depth", nodeId, () => {
-        getSignal(structuralSignals, nodeId)();
+        getSignal(parentSignals, nodeId)();
         let depth = 0;
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
@@ -389,15 +394,18 @@ export function createSelectorRegistry(
 
     invalidate(nodeId: NodeId, field?: NodeField): void {
       if (!field) {
-        bumpSignal(structuralSignals, nodeId);
+        bumpSignal(childrenSignals, nodeId);
+        bumpSignal(parentSignals, nodeId);
         bumpSignal(visibleSignals, nodeId);
         bumpSignal(layoutSignals, nodeId);
         bumpSignal(propsSignals, nodeId);
         bumpExistence();
         return;
       }
-      if (field === "structural") {
-        bumpSignal(structuralSignals, nodeId);
+      if (field === "children") {
+        bumpSignal(childrenSignals, nodeId);
+      } else if (field === "parent") {
+        bumpSignal(parentSignals, nodeId);
       } else if (field === "visible") {
         bumpSignal(visibleSignals, nodeId);
       } else if (field === "layout") {
@@ -408,12 +416,14 @@ export function createSelectorRegistry(
     },
 
     notifyNodeAdded(nodeId: NodeId): void {
-      bumpSignal(structuralSignals, nodeId);
+      bumpSignal(childrenSignals, nodeId);
+      bumpSignal(parentSignals, nodeId);
       bumpExistence();
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
-      bumpSignal(structuralSignals, nodeId);
+      bumpSignal(childrenSignals, nodeId);
+      bumpSignal(parentSignals, nodeId);
       bumpExistence();
     },
 
@@ -428,7 +438,8 @@ export function createSelectorRegistry(
 
     sync(newScene: SceneGraph): void {
       currentScene = newScene;
-      structuralSignals.clear();
+      childrenSignals.clear();
+      parentSignals.clear();
       visibleSignals.clear();
       layoutSignals.clear();
       propsSignals.clear();
