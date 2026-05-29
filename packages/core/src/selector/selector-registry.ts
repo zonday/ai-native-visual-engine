@@ -286,7 +286,7 @@ export function createSelectorRegistry(
       disposed = true;
       fn.dispose();
       accessCounts.delete(node);
-      const innerMap = computedCache.get(type);
+      const innerMap = computedCache.get(type as SelectorType);
       if (innerMap && innerMap.get(key) === node) {
         innerMap.delete(key);
       }
@@ -666,14 +666,14 @@ export function createSelectorRegistry(
     },
 
     retainSelector(type: string, key: string): void {
-      const innerMap = computedCache.get(type);
+      const innerMap = computedCache.get(type as SelectorType);
       if (!innerMap) return;
       const node = innerMap.get(key);
       if (node) node.ref();
     },
 
     releaseSelector(type: string, key: string): void {
-      const innerMap = computedCache.get(type);
+      const innerMap = computedCache.get(type as SelectorType);
       if (!innerMap) return;
       const node = innerMap.get(key);
       if (node) node.unref();
@@ -684,7 +684,7 @@ export function createSelectorRegistry(
     },
 
     removeSelector(type: string, key: string): boolean {
-      const innerMap = computedCache.get(type);
+      const innerMap = computedCache.get(type as SelectorType);
       if (!innerMap) return false;
       const node = innerMap.get(key);
       if (!node) return false;
