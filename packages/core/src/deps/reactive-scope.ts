@@ -33,7 +33,7 @@ export type Signal<T> = {
   (value: T): void;
 };
 
-export type Computed<T> = () => T;
+export type Computed<T> = (() => T) & { dispose(): void };
 
 export type Effect = () => void;
 
@@ -307,6 +307,17 @@ export function createScope(): ReactiveScope {
       const sub = activeSub;
       if (sub !== undefined) link(node, sub, cycle);
       return node.value as T;
+    };
+    oper.dispose = () => {
+      let cur: Link | undefined = node.depsTail;
+      while (cur !== undefined) {
+        const prev = cur.prevDep;
+        unlink(cur, node);
+        cur = prev;
+      }
+      node.subs = undefined;
+      node.subsTail = undefined;
+      node.flags = RF.None;
     };
     return oper;
   }
