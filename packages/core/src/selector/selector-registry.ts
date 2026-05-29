@@ -1,5 +1,7 @@
 import { createScope, type Signal } from "../deps/reactive-scope.js";
-import type { NodeId, SceneGraph, SceneNode } from "../types.js";
+import { produceWithPatches, type Patch } from "immer";
+import type { NodeId, SceneGraph, SceneNode, DeepMutable } from "../types.js";
+import { routeImmerPatches } from "../immer-patch-router.js";
 
 // ── Selector Registry ──
 // Query layer only. Owns:
@@ -67,6 +69,7 @@ export interface SelectorRegistry {
   batch<T>(fn: () => T): T;
   flush(): void;
   removeSelector(type: string, key: string): boolean;
+  commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void;
   onBeforeDispose(cb: () => void): () => void;
 }
 
@@ -716,6 +719,20 @@ export function createSelectorRegistry(
     onBeforeDispose(cb: () => void): () => void {
       disposeCallbacks.add(cb);
       return () => disposeCallbacks.delete(cb);
+    },
+
+    commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void {
+      const [next, patches] = produceWithPatches(
+        currentScene,
+        (draft: DeepMutable<SceneGraph>) => {
+          recipe(draft as DeepMutable<SceneGraph>);
+        },
+      ) as [SceneGraph, Patch[], Patch[]];
+      // eslint-disable-next-line no-restricted-imports
+      currentScene = next;
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
+      routeImmerPatches(patches, registry);
     },
   };
 
