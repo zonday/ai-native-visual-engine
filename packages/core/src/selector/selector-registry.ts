@@ -23,7 +23,7 @@ interface SelectorNode<T = unknown> {
 export type ScenePatch =
   | { type: "set-prop"; nodeId: NodeId; field: NodeField; value: unknown }
   | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
-  | { type: "add-node"; nodeId: NodeId; node: SceneNode }
+  | { type: "add-node"; nodeId: NodeId }
   | { type: "remove-node"; nodeId: NodeId };
 
 export interface SelectorRegistry {
@@ -332,60 +332,27 @@ export function createSelectorRegistry(
     return n;
   }
 
-  // ── Patch Apply (owns both scene mutation and signal bump) ──
-  // Always creates new node objects — never mutates originals.
-  // This preserves Readonly<SceneGraph> semantics and prevents
-  // external code from bypassing invalidation via stale references.
+  // ── Patch Apply (signal routing only — scene mutation is external) ──
   function handlePatch(patch: ScenePatch): void {
     if (patch.type === "set-prop") {
       const { nodeId, field } = patch;
-      const node = currentScene.nodes[nodeId];
-      if (!node) return;
-      const key = field === "parent" ? "parentId" : field;
-      currentScene.nodes[nodeId] = { ...node, [key]: patch.value };
       if (field === "visible") markVisibilityIndexDirty();
       if (field === "children" || field === "parent") markTreeIndexDirty();
       bumpSignal(
-        field === "children"
-          ? childrenSignals
-          : field === "parent"
-            ? parentSignals
-            : field === "visible"
-              ? visibleSignals
-              : field === "layout"
-                ? layoutSignals
-                : propsSignals,
+        field === "children" ? childrenSignals
+        : field === "parent" ? parentSignals
+        : field === "visible" ? visibleSignals
+        : field === "layout" ? layoutSignals
+        : propsSignals,
         nodeId,
       );
     } else if (patch.type === "reparent") {
       const { nodeId, oldParent, newParent } = patch;
-      const node = currentScene.nodes[nodeId];
-      const newP = currentScene.nodes[newParent];
-      if (!node || !newP) return;
-      // Atomically update parentId + both parents' children
-      currentScene.nodes[nodeId] = { ...node, parentId: newParent };
-      const oldP = oldParent ? currentScene.nodes[oldParent] : undefined;
-      if (oldP?.children && oldParent) {
-        currentScene.nodes[oldParent] = {
-          ...oldP,
-          children: oldP.children.filter((id) => id !== nodeId),
-        };
-      }
-      currentScene.nodes[newParent] = {
-        ...newP,
-        children: [...(newP.children ?? []), nodeId],
-      };
       markTreeIndexDirty();
       bumpSignal(parentSignals, nodeId);
       if (oldParent) bumpSignal(childrenSignals, oldParent);
       bumpSignal(childrenSignals, newParent);
-    } else if (patch.type === "add-node") {
-      currentScene.nodes[patch.nodeId] = patch.node;
-      markTreeIndexDirty();
-      markVisibilityIndexDirty();
-      bumpExistence();
-    } else if (patch.type === "remove-node") {
-      delete currentScene.nodes[patch.nodeId];
+    } else if (patch.type === "add-node" || patch.type === "remove-node") {
       markTreeIndexDirty();
       markVisibilityIndexDirty();
       bumpExistence();
