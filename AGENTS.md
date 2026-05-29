@@ -47,6 +47,7 @@ These are non-negotiable. Any violation blocks implementation.
 10. Exports must be explicit. Never use `export * from` — import and re-export only what the consumer needs.
 11. Subdirectories must not contain `index.ts` barrel files. Every module file exports its own symbols directly. The top-level `index.ts` is the only aggregation point, and it must list every export explicitly.
 12. The top-level `index.ts` must follow the minimum-exports principle: export only what external consumers actually need (public API). Internal helpers, individual plugin component exports, and layout utilities must NOT be exported from the barrel — consumers import them from the specific module file.
+13. All exports MUST have at least one production consumer (import) outside their own definition file. Exports used only by tests or by no one at all must be removed. This applies to both barrel exports and individual module exports — if nothing outside the file imports it, `export` is forbidden.
 
 ## Testing
 
