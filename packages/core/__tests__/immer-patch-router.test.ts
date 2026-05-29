@@ -174,7 +174,7 @@ describe("routeImmerPatches", () => {
       expect(before).toBeUndefined();
 
       const [next, patches] = produceScene(scene, (draft) => {
-        draft.nodes["a"]!.layout = { mode: "absolute", x: 100, y: 50 };
+        draft.nodes.a!.layout = { mode: "absolute", x: 100, y: 50 };
       });
       sel.handleSceneUpdate(next);
       routeImmerPatches(patches, sel);
@@ -188,7 +188,7 @@ describe("routeImmerPatches", () => {
       const sel = createSelectorRegistry(scene);
 
       const [next, patches] = produceScene(scene, (draft) => {
-        draft.nodes["b"]!.visible = false;
+        draft.nodes.b!.visible = false;
       });
       sel.handleSceneUpdate(next);
       routeImmerPatches(patches, sel);
@@ -203,8 +203,11 @@ describe("routeImmerPatches", () => {
       const before = sel.getAllNodes().length;
 
       const [next, patches] = produceScene(scene, (draft) => {
-        draft.nodes["c"] = { id: "c", type: "text", parentId: "root" };
-        draft.nodes["root"]!.children = [...(draft.nodes["root"]!.children ?? []), "c"];
+        draft.nodes.c = { id: "c", type: "text", parentId: "root" };
+        draft.nodes.root!.children = [
+          ...(draft.nodes.root!.children ?? []),
+          "c",
+        ];
       });
       sel.handleSceneUpdate(next);
       routeImmerPatches(patches, sel);
@@ -218,7 +221,7 @@ describe("routeImmerPatches", () => {
       const before = sel.getAllNodes().length;
 
       const [next, patches] = produceScene(scene, (draft) => {
-        delete draft.nodes["b"];
+        delete draft.nodes.b;
       });
       sel.handleSceneUpdate(next);
       routeImmerPatches(patches, sel);
