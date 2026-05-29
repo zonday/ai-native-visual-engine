@@ -1,5 +1,5 @@
-import type { HistoryState } from "./engine/history.js";
 import { redoAction, undoAction } from "./engine/history.js";
+import type { HistoryState } from "./engine/history.js";
 import type { ActiveTransaction } from "./engine/transaction-manager.js";
 import type {
   TransactionResult,
@@ -151,7 +151,7 @@ export function createEngineAPI(
   getScene: () => SceneGraph,
   pageId: PageId,
   commandBus: CommandBus,
-  getHistory: () => RuntimeHistoryState,
+  getHistory: () => HistoryState<RuntimeAction>,
   transactionManager?: RuntimeTransactionManager,
 ): EngineAPI {
   const subscribers = new Map<string, Set<Subscriber<unknown>>>();
@@ -371,7 +371,7 @@ export function createEngineAPI(
       return getHistory().redoStack.length > 0;
     },
     undo() {
-      const result = undoRuntimeAction(getHistory());
+      const result = undoAction(getHistory());
       if (result) {
         for (const inv of result.inverseActions) {
           dispatchAndNotify(inv);
@@ -379,7 +379,7 @@ export function createEngineAPI(
       }
     },
     redo() {
-      const result = redoRuntimeAction(getHistory());
+      const result = redoAction(getHistory());
       if (result) {
         for (const act of result.actions) {
           dispatchAndNotify(act);
