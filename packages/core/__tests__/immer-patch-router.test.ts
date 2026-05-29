@@ -1,6 +1,6 @@
 import type { Patch } from "immer";
 import { describe, expect, it, vi } from "vitest";
-import { produceScene, routeImmerPatches } from "../src/immer-patch-router.js";
+import { routeImmerPatches } from "../src/immer-patch-router.js";
 import { createSelectorRegistry } from "../src/selector/selector-registry.js";
 
 function makeScene() {
@@ -168,63 +168,49 @@ describe("routeImmerPatches", () => {
 
   describe("produceScene + handleSceneUpdate + routeImmerPatches (e2e)", () => {
     it("mutates layout field — selector reads updated value", () => {
-      const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
-      const before = sel.getNodeLayout("a");
-      expect(before).toBeUndefined();
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeLayout("a")).toBeUndefined();
 
-      const [next, patches] = produceScene(scene, (draft) => {
+      sel.commitScene((draft) => {
         draft.nodes.a!.layout = { mode: "absolute", x: 100, y: 50 };
       });
-      sel.handleSceneUpdate(next);
-      routeImmerPatches(patches, sel);
 
-      const after = sel.getNodeLayout("a");
-      expect(after?.x).toBe(100);
+      expect(sel.getNodeLayout("a")?.x).toBe(100);
     });
 
     it("mutates visible field — getVisibleNodes reflects change", () => {
-      const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
+      const sel = createSelectorRegistry(makeScene());
 
-      const [next, patches] = produceScene(scene, (draft) => {
+      sel.commitScene((draft) => {
         draft.nodes.b!.visible = false;
       });
-      sel.handleSceneUpdate(next);
-      routeImmerPatches(patches, sel);
 
       const visible = sel.getVisibleNodes();
       expect(visible.find((n) => n.id === "b")).toBeUndefined();
     });
 
     it("adds a new node — getAllNodes count increases", () => {
-      const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
+      const sel = createSelectorRegistry(makeScene());
       const before = sel.getAllNodes().length;
 
-      const [next, patches] = produceScene(scene, (draft) => {
+      sel.commitScene((draft) => {
         draft.nodes.c = { id: "c", type: "text", parentId: "root" };
         draft.nodes.root!.children = [
           ...(draft.nodes.root!.children ?? []),
           "c",
         ];
       });
-      sel.handleSceneUpdate(next);
-      routeImmerPatches(patches, sel);
 
       expect(sel.getAllNodes()).toHaveLength(before + 1);
     });
 
     it("removes a node — getAllNodes count decreases", () => {
-      const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
+      const sel = createSelectorRegistry(makeScene());
       const before = sel.getAllNodes().length;
 
-      const [next, patches] = produceScene(scene, (draft) => {
+      sel.commitScene((draft) => {
         delete draft.nodes.b;
       });
-      sel.handleSceneUpdate(next);
-      routeImmerPatches(patches, sel);
 
       expect(sel.getAllNodes()).toHaveLength(before - 1);
     });
