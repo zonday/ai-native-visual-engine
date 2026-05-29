@@ -11,19 +11,19 @@ interface SelectorNode<T = unknown> {
 }
 
 export interface SelectorRegistry {
-  getNode(nodeId: NodeId): SceneNode | undefined;
-  getNodeUnsafe(nodeId: NodeId): SceneNode;
-  getChildren(nodeId: NodeId): SceneNode[];
-  getParent(nodeId: NodeId): SceneNode | undefined;
-  getRoot(): SceneNode;
-  getNodes(nodeIds: NodeId[]): SceneNode[];
-  getAllNodes(): SceneNode[];
-  getAncestors(nodeId: NodeId): SceneNode[];
-  getDescendants(nodeId: NodeId): SceneNode[];
-  getSiblings(nodeId: NodeId): SceneNode[];
+  getNode(nodeId: NodeId): Readonly<SceneNode> | undefined;
+  getNodeUnsafe(nodeId: NodeId): Readonly<SceneNode>;
+  getChildren(nodeId: NodeId): Readonly<SceneNode>[];
+  getParent(nodeId: NodeId): Readonly<SceneNode> | undefined;
+  getRoot(): Readonly<SceneNode>;
+  getNodes(nodeIds: NodeId[]): Readonly<SceneNode>[];
+  getAllNodes(): Readonly<SceneNode>[];
+  getAncestors(nodeId: NodeId): Readonly<SceneNode>[];
+  getDescendants(nodeId: NodeId): Readonly<SceneNode>[];
+  getSiblings(nodeId: NodeId): Readonly<SceneNode>[];
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
-  getVisibleNodes(): SceneNode[];
+  getVisibleNodes(): Readonly<SceneNode>[];
   getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
