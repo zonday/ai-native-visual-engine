@@ -442,6 +442,7 @@ export function createSelectorRegistry(
         const ancestors: SceneNode[] = [];
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
+          trackParent(currentId);
           const parent = currentScene.nodes[currentId];
           if (!parent) break;
           ancestors.push(parent);
@@ -500,6 +501,7 @@ export function createSelectorRegistry(
         let depth = 0;
         let currentId = currentScene.nodes[nodeId]?.parentId;
         while (currentId) {
+          trackParent(currentId);
           depth++;
           const parent = currentScene.nodes[currentId];
           currentId = parent?.parentId;
