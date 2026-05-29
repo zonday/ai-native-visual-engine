@@ -180,745 +180,745 @@ describe("SelectorRegistry", () => {
 
     it("returns fresh result after invalidateAll", () => {
       const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const before = sel.getAllNodes();
-        scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-        sel.invalidateAll();
-        const after = sel.getAllNodes();
-        expect(after).toHaveLength(5);
-        expect(before).not.toBe(after);
-      });
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      sel.invalidateAll();
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(5);
+      expect(before).not.toBe(after);
+    });
+  });
+
+  describe("getAncestors", () => {
+    it("returns ancestors from parent to root", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const ancestors = sel.getAncestors("a1");
+      expect(ancestors).toHaveLength(2);
+      expect(ancestors[0]?.id).toBe("a");
+      expect(ancestors[1]?.id).toBe("root");
     });
 
-    describe("getAncestors", () => {
-      it("returns ancestors from parent to root", () => {
-        const sel = createSelectorRegistry(makeScene());
-        const ancestors = sel.getAncestors("a1");
-        expect(ancestors).toHaveLength(2);
-        expect(ancestors[0]?.id).toBe("a");
-        expect(ancestors[1]?.id).toBe("root");
-      });
+    it("returns empty for root", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getAncestors("root")).toEqual([]);
+    });
+  });
 
-      it("returns empty for root", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.getAncestors("root")).toEqual([]);
-      });
+  describe("getDescendants", () => {
+    it("returns all descendants recursively", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const descendants = sel.getDescendants("root");
+      expect(descendants).toHaveLength(3);
     });
 
-    describe("getDescendants", () => {
-      it("returns all descendants recursively", () => {
-        const sel = createSelectorRegistry(makeScene());
-        const descendants = sel.getDescendants("root");
-        expect(descendants).toHaveLength(3);
+    it("returns direct children for shallow node", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const descendants = sel.getDescendants("a");
+      expect(descendants).toHaveLength(1);
+      expect(descendants[0]).toBe("a1");
+    });
+
+    it("re-evaluates after local structural change (per-node signal)", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // Initial: root > a > a1, root > b → 3 descendants
+      expect(sel.getDescendants("root")).toHaveLength(3);
+
+      // Remove a1 from a (deep structural change — root's signal unchanged,
+      // but getDescendants reads per-node signals through registry.getNode())
+      const a = assertNode(scene.nodes.a, "a");
+      a.children = [];
+      const a1 = assertNode(scene.nodes.a1, "a1");
+      a1.parentId = undefined;
+      sel.invalidate("a1");
+      sel.invalidate("a");
+
+      const descendants = sel.getDescendants("root");
+      expect(descendants).toHaveLength(2);
+      expect(descendants.find((n) => n.id === "a1")).toBeUndefined();
+    });
+  });
+
+  describe("getSiblings", () => {
+    it("returns sibling nodes excluding self", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const siblings = sel.getSiblings("a");
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0]?.id).toBe("b");
+    });
+  });
+
+  describe("getDepth", () => {
+    it("returns 0 for root", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getDepth("root")).toBe(0);
+    });
+
+    it("returns correct depth for nested node", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getDepth("a1")).toBe(2);
+    });
+  });
+
+  describe("isDescendantOf", () => {
+    it("returns true for nested node", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+    });
+
+    it("returns false for unrelated nodes", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.isDescendantOf("b", "a")).toBe(false);
+    });
+  });
+
+  describe("getVisibleNodes", () => {
+    it("includes nodes without visible=false", () => {
+      const scene = makeScene();
+      const b = assertNode(scene.nodes.b, "b");
+      b.visible = false;
+      const sel = createSelectorRegistry(scene);
+      const visible = sel.getVisibleNodes();
+      expect(visible.every((n) => n.id !== "b")).toBe(true);
+    });
+
+    it("re-evaluates when a known node is invalidated", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+      // Hide node a and invalidate
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      sel.invalidate("a");
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(3);
+      expect(visible.find((n) => n.id === "a")).toBeUndefined();
+    });
+
+    it("re-evaluates when a hidden node becomes visible", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      sel.invalidate("a", "visible");
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(3);
+
+      // Reveal a
+      aNode.visible = true;
+      sel.invalidate("a", "visible");
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+      expect(visible.find((n) => n.id === "a")).toBeDefined();
+    });
+
+    it("re-evaluates when a new node is added (structural dependency)", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+
+      // Add a new node to the scene
+      const root = assertNode(scene.nodes.root, "root");
+      scene.nodes.c = {
+        id: "c",
+        type: "text",
+        parentId: "root",
+        visible: true,
+      };
+      root.children = [...(root.children ?? []), "c"];
+      sel.applyPatch({ type: "add-node", nodeId: "c" });
+
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(5);
+      expect(visible.find((n) => n.id === "c")).toBeDefined();
+    });
+  });
+
+  describe("cache invalidation", () => {
+    it("invalidates cache on explicit invalidate", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.invalidate("a");
+      // After invalidate, getNode should re-read from scene
+      expect(sel.getNode("a")?.id).toBe("a");
+    });
+
+    it("invalidateAll bumps version signals triggering recompute", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.getChildren("root");
+      // invalidateAll bumps all existing version signals (does NOT
+      // clear computedCache). The reactive scope marks dependent
+      // computeds as dirty; they are lazily re-evaluated on access.
+      sel.invalidateAll();
+      expect(sel.getNode("a")?.id).toBe("a");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("cache type separation prevents key collision", () => {
+      // Different selector types use separate inner maps even when
+      // the sub-key is identical (e.g. getChildren("a") vs getAncestors("a")).
+      // With a flat string key both would collide as "a" + type prefix.
+      const sel = createSelectorRegistry(makeScene());
+      const children = sel.getChildren("a");
+      expect(children).toHaveLength(1);
+      expect(children[0]?.id).toBe("a1");
+
+      const ancestors = sel.getAncestors("a1");
+      expect(ancestors).toHaveLength(2);
+      expect(ancestors[0]?.id).toBe("a");
+      expect(ancestors[1]?.id).toBe("root");
+    });
+  });
+
+  describe("property-level invalidation", () => {
+    it("invalidate with 'visible' field only affects visible-signal dependents", () => {
+      const scene = makeScene();
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.getChildren("root");
+
+      // Bump only visible signal — getChildren should NOT re-evaluate
+      sel.invalidate("a", "visible");
+
+      // getVisibleNodes re-reads visible signals
+      const visible = sel.getVisibleNodes();
+      expect(visible.find((n) => n.id === "a")).toBeUndefined();
+
+      // getChildren depends on structural signal — unchanged
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(2);
+    });
+
+    it("invalidate with 'structural' field only affects tree-selector dependents", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a"];
+
+      sel.getNode("a");
+      sel.getVisibleNodes();
+
+      // Bump only structural signal
+      sel.invalidate("a");
+
+      // getChildren re-evaluates
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(1);
+
+      // getVisibleNodes depends on visible signal — unchanged
+      sel.getVisibleNodes();
+    });
+
+    it("invalidate without field bumps all signals for node", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.invalidate("a");
+      // After full invalidate, getNode re-reads from scene
+      expect(sel.getNode("a")?.id).toBe("a");
+    });
+  });
+
+  describe("SelectorNode caching", () => {
+    it("getChildren creates a SelectorNode with type 'children'", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(2);
+    });
+
+    it("invalidateAll reaches all SelectorNodes through globalEpoch", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+      sel.invalidateAll();
+      // Both selectors should re-evaluate correctly
+      expect(sel.getChildren("root")).toHaveLength(2);
+      expect(sel.getAncestors("a1")).toHaveLength(2);
+    });
+
+    it("structural change within same version propagates to dependent selectors", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // getDepth("a1") depends on structural signals of the ancestor chain
+      expect(sel.getDepth("a1")).toBe(2);
+      // Move a1 to root — changes parentId
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = "root";
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a", "b", "a1"];
+      // Invalidate structural signal for affected nodes
+      sel.invalidate("a1");
+      sel.invalidate("root");
+      // getDepth should re-evaluate
+      expect(sel.getDepth("a1")).toBe(1);
+    });
+
+    it("field-specific invalidate does not leak to unrelated selectors", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getVisibleNodes();
+      // Toggle visible on node a
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      // Only bump visible signal — getChildren must NOT re-evaluate
+      sel.invalidate("a", "visible");
+      // getChildren("root") still sees 2 children
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("structural signal change does not invalidate getVisibleNodes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.getVisibleNodes();
+      // Bump structural but not visible — visibleNodes should still read
+      // fresh scene data but its computed was not marked dirty by
+      // structural signal propagation
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a"];
+      sel.invalidate("root");
+      // getVisibleNodes reads ALL visible signals (including root,
+      // which has a signal from getNode), but structural bump does
+      // NOT mark its computed dirty — so it returns cached result
+      // that still includes all original nodes
+      const visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+    });
+  });
+
+  describe("reactive dependency invalidation (alien-signals)", () => {
+    it("invalidate cascades to dependent computed entries via version signal", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // getChildren("root") reads node:a internally, creating dependency on versionSignals["a"]
+      expect(sel.getChildren("root")).toHaveLength(2);
+      // Update scene data THEN invalidate targeted node
+      // Update root's children and invalidate both affected nodes
+      if (scene.nodes.root) scene.nodes.root.children = ["a"];
+      sel.invalidate("root");
+      sel.invalidate("a");
+      // children:root computed is dirty (depends on a's version signal), re-evaluates
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(1);
+    });
+
+    it("invalidate recalculates correctly without data loss", () => {
+      const scene = makeScene();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      const root = scene.nodes.root;
+      if (!root) throw new Error("root missing");
+      root.children = ["a", "b", "c"];
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getNode("a");
+      sel.invalidate("a");
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(3);
+    });
+
+    it("invalidateAll clears all computeds and signals", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.invalidateAll();
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("invalidate reaches dependent computed entries", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      scene.version = 1;
+      sel.getNode("root");
+      sel.invalidate("a");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("isDescendantOf compound caching", () => {
+    it("caches result across calls within same scene version", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Direct mutation without invalidation — cache still returns cached result
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // After invalidation, re-evaluates to fresh result
+      sel.invalidate("a1");
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+    });
+
+    it("re-evaluates after invalidation when compound dependency changes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Move a1 to orphan it from root's tree
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      sel.invalidate("a1");
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+      expect(sel.isDescendantOf("a1", "a")).toBe(false);
+    });
+
+    it("isDescendantOf caches after invalidateAll", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      sel.invalidateAll();
+      // After invalidateAll, compound selector still evaluates correctly
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+    });
+  });
+
+  describe("multi-selector coordination", () => {
+    it("compound and leaf selectors coexist after invalidateAll", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.isDescendantOf("a1", "root");
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+      sel.invalidateAll();
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(2);
+      expect(sel.getAncestors("a1")).toHaveLength(2);
+    });
+
+    it("structural invalidation reaches compound selector", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Orphan a1
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      // Structural invalidation bumps structural signals for a1 and a;
+      // isDescendantOf re-evaluates through alien-signals computed→computed chain
+      sel.invalidate("a1");
+      sel.invalidate("a");
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+      expect(sel.isDescendantOf("a1", "a")).toBe(false);
+    });
+
+    it("invalidateAll does not throw with compound selectors", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.isDescendantOf("a1", "root");
+      sel.getAncestors("a1");
+      sel.getChildren("root");
+      expect(() => sel.invalidateAll()).not.toThrow();
+    });
+  });
+
+  describe("sync", () => {
+    it("returns fresh data after sync with new scene", () => {
+      const oldScene = makeScene();
+      const sel = createSelectorRegistry(oldScene);
+      expect(sel.getAllNodes()).toHaveLength(4);
+      const newScene: SceneGraph = {
+        version: 1,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container" },
+          x: { id: "x", type: "text" },
+        },
+      };
+      sel.sync(newScene);
+      expect(sel.getAllNodes()).toHaveLength(2);
+      expect(sel.getAllNodes().find((n) => n.id === "x")).toBeDefined();
+    });
+
+    it("clears cached selectors after sync", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getChildren("root");
+      const newScene: SceneGraph = {
+        version: 2,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container", children: ["new"] },
+          new: { id: "new", type: "text", parentId: "root" },
+        },
+      };
+      sel.sync(newScene);
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(1);
+      expect(after[0]?.id).toBe("new");
+      expect(after).not.toBe(before);
+    });
+
+    it("sync resets sceneStructureSignal so getAllNodes is fresh", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getAllNodes();
+      const newScene: SceneGraph = {
+        version: 3,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container", children: ["a"] },
+          a: { id: "a", type: "text", parentId: "root" },
+        },
+      };
+      sel.sync(newScene);
+      const all = sel.getAllNodes();
+      expect(all).toHaveLength(2);
+    });
+  });
+
+  describe("scheduler batch", () => {
+    it("batch defers dirty clear until end", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+
+      let afterInside = false;
+      sel.batch(() => {
+        const root = assertNode(scene.nodes.root, "root");
+        root.children = ["a"];
+        sel.invalidate("root");
+        afterInside = true;
       });
 
-      it("returns direct children for shallow node", () => {
-        const sel = createSelectorRegistry(makeScene());
-        const descendants = sel.getDescendants("a");
-        expect(descendants).toHaveLength(1);
-        expect(descendants[0]).toBe("a1");
+      expect(afterInside).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(1);
+    });
+
+    it("nested batch only flushes at outermost end", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let innerDone = false;
+      let outerDone = false;
+
+      sel.batch(() => {
+        sel.batch(() => {
+          sel.invalidate("a");
+          innerDone = true;
+        });
+        outerDone = true;
       });
 
-      it("re-evaluates after local structural change (per-node signal)", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        // Initial: root > a > a1, root > b → 3 descendants
-        expect(sel.getDescendants("root")).toHaveLength(3);
+      expect(innerDone).toBe(true);
+      expect(outerDone).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
 
-        // Remove a1 from a (deep structural change — root's signal unchanged,
-        // but getDescendants reads per-node signals through registry.getNode())
-        const a = assertNode(scene.nodes.a, "a");
-        a.children = [];
+    it("batch groups multiple invalidations coherently", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+
+      sel.batch(() => {
+        const root = assertNode(scene.nodes.root, "root");
+        root.children = ["a"];
+        sel.invalidate("root");
+
         const a1 = assertNode(scene.nodes.a1, "a1");
         a1.parentId = undefined;
         sel.invalidate("a1");
+      });
+
+      expect(sel.getChildren("root")).toHaveLength(1);
+      expect(sel.getDepth("a1")).toBe(0);
+    });
+
+    it("batch outside block triggers immediate signal propagation", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+
+      sel.invalidate("a");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("flush", () => {
+    it("explicit flush does not throw", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(() => sel.flush()).not.toThrow();
+    });
+
+    it("flush is re-entrant safe", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+
+      sel.batch(() => {
         sel.invalidate("a");
-
-        const descendants = sel.getDescendants("root");
-        expect(descendants).toHaveLength(2);
-        expect(descendants.find((n) => n.id === "a1")).toBeUndefined();
+        sel.flush();
       });
+
+      expect(sel.getChildren("root")).toHaveLength(2);
     });
 
-    describe("getSiblings", () => {
-      it("returns sibling nodes excluding self", () => {
-        const sel = createSelectorRegistry(makeScene());
-        const siblings = sel.getSiblings("a");
-        expect(siblings).toHaveLength(1);
-        expect(siblings[0]?.id).toBe("b");
-      });
+    it("flush is idempotent with no dirty nodes", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(() => sel.flush()).not.toThrow();
+      expect(() => sel.flush()).not.toThrow();
+    });
+  });
+
+  describe("removeSelector", () => {
+    it("removes selector and returns true", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(sel.removeSelector("children", "root")).toBe(true);
     });
 
-    describe("getDepth", () => {
-      it("returns 0 for root", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.getDepth("root")).toBe(0);
-      });
-
-      it("returns correct depth for nested node", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.getDepth("a1")).toBe(2);
-      });
+    it("returns false for non-existent selector type", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.removeSelector("nonexistent", "key")).toBe(false);
     });
 
-    describe("isDescendantOf", () => {
-      it("returns true for nested node", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-      });
-
-      it("returns false for unrelated nodes", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.isDescendantOf("b", "a")).toBe(false);
-      });
+    it("returns false after removal", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(sel.removeSelector("children", "root")).toBe(true);
+      expect(sel.removeSelector("children", "root")).toBe(false);
     });
 
-    describe("getVisibleNodes", () => {
-      it("includes nodes without visible=false", () => {
-        const scene = makeScene();
-        const b = assertNode(scene.nodes.b, "b");
-        b.visible = false;
-        const sel = createSelectorRegistry(scene);
-        const visible = sel.getVisibleNodes();
-        expect(visible.every((n) => n.id !== "b")).toBe(true);
-      });
-
-      it("re-evaluates when a known node is invalidated", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        let visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(4);
-        // Hide node a and invalidate
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.visible = false;
-        sel.invalidate("a");
-        visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(3);
-        expect(visible.find((n) => n.id === "a")).toBeUndefined();
-      });
-
-      it("re-evaluates when a hidden node becomes visible", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.visible = false;
-        sel.invalidate("a", "visible");
-        let visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(3);
-
-        // Reveal a
-        aNode.visible = true;
-        sel.invalidate("a", "visible");
-        visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(4);
-        expect(visible.find((n) => n.id === "a")).toBeDefined();
-      });
-
-      it("re-evaluates when a new node is added (structural dependency)", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        let visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(4);
-
-        // Add a new node to the scene
-        const root = assertNode(scene.nodes.root, "root");
-        scene.nodes.c = {
-          id: "c",
-          type: "text",
-          parentId: "root",
-          visible: true,
-        };
-        root.children = [...(root.children ?? []), "c"];
-        sel.applyPatch({ type: "add-node", nodeId: "c" });
-
-        visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(5);
-        expect(visible.find((n) => n.id === "c")).toBeDefined();
-      });
+    it("re-creates selector on next access after removal", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(2);
+      expect(after[0]?.id).toBe("a");
     });
 
-    describe("cache invalidation", () => {
-      it("invalidates cache on explicit invalidate", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        sel.invalidate("a");
-        // After invalidate, getNode should re-read from scene
-        expect(sel.getNode("a")?.id).toBe("a");
-      });
+    it("works after removal and scene mutation", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
 
-      it("invalidateAll bumps version signals triggering recompute", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        sel.getChildren("root");
-        // invalidateAll bumps all existing version signals (does NOT
-        // clear computedCache). The reactive scope marks dependent
-        // computeds as dirty; they are lazily re-evaluated on access.
-        sel.invalidateAll();
-        expect(sel.getNode("a")?.id).toBe("a");
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
+      // Mutate scene and invalidate
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["b"];
+      sel.invalidate("root");
 
-      it("cache type separation prevents key collision", () => {
-        // Different selector types use separate inner maps even when
-        // the sub-key is identical (e.g. getChildren("a") vs getAncestors("a")).
-        // With a flat string key both would collide as "a" + type prefix.
-        const sel = createSelectorRegistry(makeScene());
-        const children = sel.getChildren("a");
-        expect(children).toHaveLength(1);
-        expect(children[0]?.id).toBe("a1");
-
-        const ancestors = sel.getAncestors("a1");
-        expect(ancestors).toHaveLength(2);
-        expect(ancestors[0]?.id).toBe("a");
-        expect(ancestors[1]?.id).toBe("root");
-      });
+      // New selector should see fresh data
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(1);
+      expect(after[0]?.id).toBe("b");
     });
 
-    describe("property-level invalidation", () => {
-      it("invalidate with 'visible' field only affects visible-signal dependents", () => {
-        const scene = makeScene();
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.visible = false;
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        sel.getChildren("root");
+    it("disposal allows re-creation on next access", () => {
+      const sel = createSelectorRegistry(makeScene());
+      // isDescendantOf reads ancestors internally
+      sel.isDescendantOf("a1", "root");
+      sel.getAncestors("a1");
 
-        // Bump only visible signal — getChildren should NOT re-evaluate
-        sel.invalidate("a", "visible");
+      // Remove the ancestors selector
+      sel.removeSelector("ancestors", "a1");
 
-        // getVisibleNodes re-reads visible signals
-        const visible = sel.getVisibleNodes();
-        expect(visible.find((n) => n.id === "a")).toBeUndefined();
-
-        // getChildren depends on structural signal — unchanged
-        const children = sel.getChildren("root");
-        expect(children).toHaveLength(2);
-      });
-
-      it("invalidate with 'structural' field only affects tree-selector dependents", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const root = assertNode(scene.nodes.root, "root");
-        root.children = ["a"];
-
-        sel.getNode("a");
-        sel.getVisibleNodes();
-
-        // Bump only structural signal
-        sel.invalidate("a");
-
-        // getChildren re-evaluates
-        const children = sel.getChildren("root");
-        expect(children).toHaveLength(1);
-
-        // getVisibleNodes depends on visible signal — unchanged
-        sel.getVisibleNodes();
-      });
-
-      it("invalidate without field bumps all signals for node", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        sel.invalidate("a");
-        // After full invalidate, getNode re-reads from scene
-        expect(sel.getNode("a")?.id).toBe("a");
-      });
+      // isDescendantOf should still work (creates new ancestors on get)
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
     });
 
-    describe("SelectorNode caching", () => {
-      it("getChildren creates a SelectorNode with type 'children'", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const children = sel.getChildren("root");
-        expect(children).toHaveLength(2);
-      });
+    it("dispose is idempotent", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
+      // Second call should be safe
+      sel.removeSelector("children", "root");
+      // Re-created selector works
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
 
-      it("invalidateAll reaches all SelectorNodes through globalEpoch", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.getAncestors("a1");
-        sel.invalidateAll();
-        // Both selectors should re-evaluate correctly
-        expect(sel.getChildren("root")).toHaveLength(2);
-        expect(sel.getAncestors("a1")).toHaveLength(2);
-      });
+  describe("sync clears cached selectors", () => {
+    it("sync clears cache and creates fresh selectors", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
 
-      it("structural change within same version propagates to dependent selectors", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        // getDepth("a1") depends on structural signals of the ancestor chain
-        expect(sel.getDepth("a1")).toBe(2);
-        // Move a1 to root — changes parentId
-        const a1Node = assertNode(scene.nodes.a1, "a1");
-        a1Node.parentId = "root";
-        const root = assertNode(scene.nodes.root, "root");
-        root.children = ["a", "b", "a1"];
-        // Invalidate structural signal for affected nodes
-        sel.invalidate("a1");
-        sel.invalidate("root");
-        // getDepth should re-evaluate
-        expect(sel.getDepth("a1")).toBe(1);
-      });
-
-      it("field-specific invalidate does not leak to unrelated selectors", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.getVisibleNodes();
-        // Toggle visible on node a
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.visible = false;
-        // Only bump visible signal — getChildren must NOT re-evaluate
-        sel.invalidate("a", "visible");
-        // getChildren("root") still sees 2 children
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-
-      it("structural signal change does not invalidate getVisibleNodes", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getNode("a");
-        sel.getVisibleNodes();
-        // Bump structural but not visible — visibleNodes should still read
-        // fresh scene data but its computed was not marked dirty by
-        // structural signal propagation
-        const root = assertNode(scene.nodes.root, "root");
-        root.children = ["a"];
-        sel.invalidate("root");
-        // getVisibleNodes reads ALL visible signals (including root,
-        // which has a signal from getNode), but structural bump does
-        // NOT mark its computed dirty — so it returns cached result
-        // that still includes all original nodes
-        const visible = sel.getVisibleNodes();
-        expect(visible).toHaveLength(4);
-      });
+      const newScene: SceneGraph = {
+        version: 5,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container" },
+        },
+      };
+      sel.sync(newScene);
+      // After sync, scheduler state is clean, getChildren creates fresh
+      expect(sel.getChildren("root")).toEqual([]);
     });
 
-    describe("reactive dependency invalidation (alien-signals)", () => {
-      it("invalidate cascades to dependent computed entries via version signal", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        // getChildren("root") reads node:a internally, creating dependency on versionSignals["a"]
-        expect(sel.getChildren("root")).toHaveLength(2);
-        // Update scene data THEN invalidate targeted node
-        // Update root's children and invalidate both affected nodes
-        if (scene.nodes.root) scene.nodes.root.children = ["a"];
-        sel.invalidate("root");
-        sel.invalidate("a");
-        // children:root computed is dirty (depends on a's version signal), re-evaluates
-        const children = sel.getChildren("root");
-        expect(children).toHaveLength(1);
-      });
+    it("cached selector persists across scene version changes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
 
-      it("invalidate recalculates correctly without data loss", () => {
-        const scene = makeScene();
-        scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-        const root = scene.nodes.root;
-        if (!root) throw new Error("root missing");
-        root.children = ["a", "b", "c"];
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.getNode("a");
-        sel.invalidate("a");
-        const children = sel.getChildren("root");
-        expect(children).toHaveLength(3);
-      });
+      scene.version = 10;
+      sel.getNode("root"); // reads fresh from currentScene
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
 
-      it("invalidateAll clears all computeds and signals", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.invalidateAll();
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-
-      it("invalidate reaches dependent computed entries", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        scene.version = 1;
-        sel.getNode("root");
-        sel.invalidate("a");
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
+  describe("getNodeLayout", () => {
+    it("returns layout for node with layout data", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.layout = { x: 100, y: 200 };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodeLayout("a")?.x).toBe(100);
     });
 
-    describe("isDescendantOf compound caching", () => {
-      it("caches result across calls within same scene version", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        // Direct mutation without invalidation — cache still returns cached result
-        const a1Node = assertNode(scene.nodes.a1, "a1");
-        a1Node.parentId = undefined;
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.children = [];
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        // After invalidation, re-evaluates to fresh result
-        sel.invalidate("a1");
-        expect(sel.isDescendantOf("a1", "root")).toBe(false);
-      });
+    it("returns undefined for node with no layout", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeLayout("nonexistent")).toBeUndefined();
+    });
+  });
 
-      it("re-evaluates after invalidation when compound dependency changes", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        // Move a1 to orphan it from root's tree
-        const a1Node = assertNode(scene.nodes.a1, "a1");
-        a1Node.parentId = undefined;
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.children = [];
-        sel.invalidate("a1");
-        expect(sel.isDescendantOf("a1", "root")).toBe(false);
-        expect(sel.isDescendantOf("a1", "a")).toBe(false);
-      });
-
-      it("isDescendantOf caches after invalidateAll", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        sel.invalidateAll();
-        // After invalidateAll, compound selector still evaluates correctly
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-      });
+  describe("getNodeProps", () => {
+    it("returns props for node with props data", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.props = { text: "hello" };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodeProps("a")?.text).toBe("hello");
     });
 
-    describe("multi-selector coordination", () => {
-      it("compound and leaf selectors coexist after invalidateAll", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.isDescendantOf("a1", "root");
-        sel.getChildren("root");
-        sel.getAncestors("a1");
-        sel.invalidateAll();
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        expect(sel.getChildren("root")).toHaveLength(2);
-        expect(sel.getAncestors("a1")).toHaveLength(2);
-      });
+    it("returns undefined for node with no props", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.getNodeProps("nonexistent")).toBeUndefined();
+    });
+  });
 
-      it("structural invalidation reaches compound selector", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-        // Orphan a1
-        const a1Node = assertNode(scene.nodes.a1, "a1");
-        a1Node.parentId = undefined;
-        const aNode = assertNode(scene.nodes.a, "a");
-        aNode.children = [];
-        // Structural invalidation bumps structural signals for a1 and a;
-        // isDescendantOf re-evaluates through alien-signals computed→computed chain
-        sel.invalidate("a1");
-        sel.invalidate("a");
-        expect(sel.isDescendantOf("a1", "root")).toBe(false);
-        expect(sel.isDescendantOf("a1", "a")).toBe(false);
-      });
-
-      it("invalidateAll does not throw with compound selectors", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.isDescendantOf("a1", "root");
-        sel.getAncestors("a1");
-        sel.getChildren("root");
-        expect(() => sel.invalidateAll()).not.toThrow();
-      });
+  describe("applyPatch add-node/remove-node", () => {
+    it("add-node triggers getAllNodes recompute", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      expect(before).toHaveLength(4);
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      sel.applyPatch({ type: "add-node", nodeId: "c" });
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(5);
     });
 
-    describe("sync", () => {
-      it("returns fresh data after sync with new scene", () => {
-        const oldScene = makeScene();
-        const sel = createSelectorRegistry(oldScene);
-        expect(sel.getAllNodes()).toHaveLength(4);
-        const newScene: SceneGraph = {
-          version: 1,
-          rootId: "root",
-          nodes: {
-            root: { id: "root", type: "container" },
-            x: { id: "x", type: "text" },
-          },
-        };
-        sel.sync(newScene);
-        expect(sel.getAllNodes()).toHaveLength(2);
-        expect(sel.getAllNodes().find((n) => n.id === "x")).toBeDefined();
-      });
-
-      it("clears cached selectors after sync", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const before = sel.getChildren("root");
-        const newScene: SceneGraph = {
-          version: 2,
-          rootId: "root",
-          nodes: {
-            root: { id: "root", type: "container", children: ["new"] },
-            new: { id: "new", type: "text", parentId: "root" },
-          },
-        };
-        sel.sync(newScene);
-        const after = sel.getChildren("root");
-        expect(after).toHaveLength(1);
-        expect(after[0]?.id).toBe("new");
-        expect(after).not.toBe(before);
-      });
-
-      it("sync resets sceneStructureSignal so getAllNodes is fresh", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getAllNodes();
-        const newScene: SceneGraph = {
-          version: 3,
-          rootId: "root",
-          nodes: {
-            root: { id: "root", type: "container", children: ["a"] },
-            a: { id: "a", type: "text", parentId: "root" },
-          },
-        };
-        sel.sync(newScene);
-        const all = sel.getAllNodes();
-        expect(all).toHaveLength(2);
-      });
-    });
-
-    describe("scheduler batch", () => {
-      it("batch defers dirty clear until end", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.getAncestors("a1");
-
-        let afterInside = false;
-        sel.batch(() => {
-          const root = assertNode(scene.nodes.root, "root");
-          root.children = ["a"];
-          sel.invalidate("root");
-          afterInside = true;
-        });
-
-        expect(afterInside).toBe(true);
-        expect(sel.getChildren("root")).toHaveLength(1);
-      });
-
-      it("nested batch only flushes at outermost end", () => {
-        const sel = createSelectorRegistry(makeScene());
-        let innerDone = false;
-        let outerDone = false;
-
-        sel.batch(() => {
-          sel.batch(() => {
-            sel.invalidate("a");
-            innerDone = true;
-          });
-          outerDone = true;
-        });
-
-        expect(innerDone).toBe(true);
-        expect(outerDone).toBe(true);
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-
-      it("batch groups multiple invalidations coherently", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-
-        sel.batch(() => {
-          const root = assertNode(scene.nodes.root, "root");
-          root.children = ["a"];
-          sel.invalidate("root");
-
-          const a1 = assertNode(scene.nodes.a1, "a1");
-          a1.parentId = undefined;
-          sel.invalidate("a1");
-        });
-
-        expect(sel.getChildren("root")).toHaveLength(1);
-        expect(sel.getDepth("a1")).toBe(0);
-      });
-
-      it("batch outside block triggers immediate signal propagation", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-
-        sel.invalidate("a");
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-    });
-
-    describe("flush", () => {
-      it("explicit flush does not throw", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-        expect(() => sel.flush()).not.toThrow();
-      });
-
-      it("flush is re-entrant safe", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-
-        sel.batch(() => {
-          sel.invalidate("a");
-          sel.flush();
-        });
-
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-
-      it("flush is idempotent with no dirty nodes", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(() => sel.flush()).not.toThrow();
-        expect(() => sel.flush()).not.toThrow();
-      });
-    });
-
-    describe("removeSelector", () => {
-      it("removes selector and returns true", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-        expect(sel.removeSelector("children", "root")).toBe(true);
-      });
-
-      it("returns false for non-existent selector type", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.removeSelector("nonexistent", "key")).toBe(false);
-      });
-
-      it("returns false after removal", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-        expect(sel.removeSelector("children", "root")).toBe(true);
-        expect(sel.removeSelector("children", "root")).toBe(false);
-      });
-
-      it("re-creates selector on next access after removal", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-        sel.removeSelector("children", "root");
-        const after = sel.getChildren("root");
-        expect(after).toHaveLength(2);
-        expect(after[0]?.id).toBe("a");
-      });
-
-      it("works after removal and scene mutation", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-        sel.removeSelector("children", "root");
-
-        // Mutate scene and invalidate
-        const root = assertNode(scene.nodes.root, "root");
-        root.children = ["b"];
-        sel.invalidate("root");
-
-        // New selector should see fresh data
-        const after = sel.getChildren("root");
-        expect(after).toHaveLength(1);
-        expect(after[0]?.id).toBe("b");
-      });
-
-      it("disposal allows re-creation on next access", () => {
-        const sel = createSelectorRegistry(makeScene());
-        // isDescendantOf reads ancestors internally
-        sel.isDescendantOf("a1", "root");
-        sel.getAncestors("a1");
-
-        // Remove the ancestors selector
-        sel.removeSelector("ancestors", "a1");
-
-        // isDescendantOf should still work (creates new ancestors on get)
-        expect(sel.isDescendantOf("a1", "root")).toBe(true);
-      });
-
-      it("dispose is idempotent", () => {
-        const sel = createSelectorRegistry(makeScene());
-        sel.getChildren("root");
-        sel.removeSelector("children", "root");
-        // Second call should be safe
-        sel.removeSelector("children", "root");
-        // Re-created selector works
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-    });
-
-    describe("sync clears cached selectors", () => {
-      it("sync clears cache and creates fresh selectors", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-
-        const newScene: SceneGraph = {
-          version: 5,
-          rootId: "root",
-          nodes: {
-            root: { id: "root", type: "container" },
-          },
-        };
-        sel.sync(newScene);
-        // After sync, scheduler state is clean, getChildren creates fresh
-        expect(sel.getChildren("root")).toEqual([]);
-      });
-
-      it("cached selector persists across scene version changes", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        sel.getChildren("root");
-
-        scene.version = 10;
-        sel.getNode("root"); // reads fresh from currentScene
-        expect(sel.getChildren("root")).toHaveLength(2);
-      });
-    });
-
-    describe("getNodeLayout", () => {
-      it("returns layout for node with layout data", () => {
-        const scene = makeScene();
-        const a = assertNode(scene.nodes.a, "a");
-        a.layout = { x: 100, y: 200 };
-        const sel = createSelectorRegistry(scene);
-        expect(sel.getNodeLayout("a")?.x).toBe(100);
-      });
-
-      it("returns undefined for node with no layout", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.getNodeLayout("nonexistent")).toBeUndefined();
-      });
-    });
-
-    describe("getNodeProps", () => {
-      it("returns props for node with props data", () => {
-        const scene = makeScene();
-        const a = assertNode(scene.nodes.a, "a");
-        a.props = { text: "hello" };
-        const sel = createSelectorRegistry(scene);
-        expect(sel.getNodeProps("a")?.text).toBe("hello");
-      });
-
-      it("returns undefined for node with no props", () => {
-        const sel = createSelectorRegistry(makeScene());
-        expect(sel.getNodeProps("nonexistent")).toBeUndefined();
-      });
-    });
-
-    describe("applyPatch add-node/remove-node", () => {
-      it("add-node triggers getAllNodes recompute", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const before = sel.getAllNodes();
-        expect(before).toHaveLength(4);
-        scene.nodes.c = { id: "c", type: "text", parentId: "root" };
-        sel.applyPatch({ type: "add-node", nodeId: "c" });
-        const after = sel.getAllNodes();
-        expect(after).toHaveLength(5);
-      });
-
-      it("remove-node triggers getAllNodes recompute", () => {
-        const scene = makeScene();
-        const sel = createSelectorRegistry(scene);
-        const before = sel.getAllNodes();
-        expect(before).toHaveLength(4);
-        delete scene.nodes.a;
-        sel.applyPatch({ type: "remove-node", nodeId: "a" });
-        const after = sel.getAllNodes();
-        expect(after).toHaveLength(3);
+    it("remove-node triggers getAllNodes recompute", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      expect(before).toHaveLength(4);
+      delete scene.nodes.a;
+      sel.applyPatch({ type: "remove-node", nodeId: "a" });
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(3);
     });
   });
 });
