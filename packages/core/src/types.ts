@@ -269,6 +269,9 @@ export const SceneGraphSchema = z.object({
   version: z.number(),
   rootId: z.string(),
   nodes: z.record(z.string(), SceneNodeSchema),
+  layouts: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+  props: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+  visibility: z.record(z.string(), z.boolean()).optional(),
   selection: SelectionStateSchema.optional(),
   viewport: ViewportStateSchema.optional(),
   metadata: z

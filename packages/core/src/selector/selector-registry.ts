@@ -68,7 +68,6 @@ export function createSelectorRegistry(
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
   const nodeExistenceSignal = signal(0);
-  const treeStructureSignal = signal(0);
   const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
@@ -136,10 +135,6 @@ export function createSelectorRegistry(
     nodeExistenceSignal(nodeExistenceSignal() + 1);
   }
 
-  function bumpTreeStructure(): void {
-    treeStructureSignal(treeStructureSignal() + 1);
-  }
-
   function disposeAllAndClearFields(): void {
     for (const innerMap of computedCache.values()) {
       const nodes = [...innerMap.values()];
@@ -157,10 +152,35 @@ export function createSelectorRegistry(
     nodeLayouts.clear();
     nodeProps.clear();
     nodeVisibilities.clear();
-    for (const [id, node] of Object.entries(currentScene.nodes)) {
-      if (node.layout !== undefined) nodeLayouts.set(id, node.layout);
-      if (node.props !== undefined) nodeProps.set(id, node.props);
-      if (node.visible !== undefined) nodeVisibilities.set(id, node.visible);
+    // Prefer separate stores in SceneGraph (layouts/props/visibility
+    // maps decoupled from topology — updated independently of nodes).
+    // Fall back to node-level fields for backward compat.
+    const src = currentScene;
+    if (src.layouts) {
+      for (const [id, layout] of Object.entries(src.layouts)) {
+        nodeLayouts.set(id, layout);
+      }
+    }
+    if (src.props) {
+      for (const [id, prop] of Object.entries(src.props)) {
+        nodeProps.set(id, prop);
+      }
+    }
+    if (src.visibility) {
+      for (const [id, visible] of Object.entries(src.visibility)) {
+        nodeVisibilities.set(id, visible);
+      }
+    }
+    for (const [id, node] of Object.entries(src.nodes)) {
+      if (!nodeLayouts.has(id) && node.layout !== undefined) {
+        nodeLayouts.set(id, node.layout);
+      }
+      if (!nodeProps.has(id) && node.props !== undefined) {
+        nodeProps.set(id, node.props);
+      }
+      if (!nodeVisibilities.has(id) && node.visible !== undefined) {
+        nodeVisibilities.set(id, node.visible);
+      }
     }
   }
 
@@ -279,7 +299,6 @@ export function createSelectorRegistry(
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
         readStructural(nodeId);
-        treeStructureSignal();
         const descendants: SceneNode[] = [];
         function walk(id: string, visited: Set<string>): void {
           if (visited.has(id)) return;
@@ -377,13 +396,11 @@ export function createSelectorRegistry(
         bumpSignal(visibleSignals, nodeId);
         bumpSignal(layoutSignals, nodeId);
         bumpSignal(propsSignals, nodeId);
-        bumpTreeStructure();
         bumpExistence();
         return;
       }
       if (field === "structural") {
         bumpSignal(structuralSignals, nodeId);
-        bumpTreeStructure();
       } else if (field === "visible") {
         bumpSignal(visibleSignals, nodeId);
       } else if (field === "layout") {
@@ -396,19 +413,16 @@ export function createSelectorRegistry(
     notifyNodeAdded(nodeId: NodeId): void {
       bumpSignal(structuralSignals, nodeId);
       bumpExistence();
-      bumpTreeStructure();
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
       bumpSignal(structuralSignals, nodeId);
       bumpExistence();
-      bumpTreeStructure();
     },
 
     invalidateAll(): void {
       globalEpoch(globalEpoch() + 1);
       bumpExistence();
-      bumpTreeStructure();
     },
 
     sync(newScene: SceneGraph): void {
@@ -420,7 +434,6 @@ export function createSelectorRegistry(
       disposeAllAndClearFields();
       extractFieldData();
       bumpExistence();
-      bumpTreeStructure();
     },
 
     getVersion(): number {
