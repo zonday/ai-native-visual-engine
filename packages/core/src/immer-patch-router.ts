@@ -1,9 +1,17 @@
-import { produceWithPatches, setAutoFreeze, enablePatches, type Patch } from "immer";
+import {
+  enablePatches,
+  type Patch,
+  produceWithPatches,
+  setAutoFreeze,
+} from "immer";
+import type {
+  NodeField,
+  SelectorRegistry,
+} from "./selector/selector-registry.js";
+import type { DeepMutable, SceneGraph } from "./types.js";
 
 // Enable Immer patches support (required for produceWithPatches)
 enablePatches();
-import type { NodeField, SelectorRegistry } from "./selector/selector-registry.js";
-import type { SceneGraph, DeepMutable } from "./types.js";
 
 // Enable auto-freeze in dev to catch invalid mutations early
 if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
