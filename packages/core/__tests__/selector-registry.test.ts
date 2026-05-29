@@ -281,6 +281,23 @@ describe("SelectorRegistry", () => {
       expect(visible).toHaveLength(3);
       expect(visible.find((n) => n.id === "a")).toBeUndefined();
     });
+
+    it("re-evaluates when a new node is added (structural dependency)", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      let visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
+
+      // Add a new node to the scene
+      const root = assertNode(scene.nodes.root, "root");
+      scene.nodes.c = { id: "c", type: "text", parentId: "root", visible: true };
+      root.children = [...(root.children ?? []), "c"];
+      sel.invalidate("root", "structural");
+
+      visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(5);
+      expect(visible.find((n) => n.id === "c")).toBeDefined();
+    });
   });
 
   describe("cache invalidation", () => {

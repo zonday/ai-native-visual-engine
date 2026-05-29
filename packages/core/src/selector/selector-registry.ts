@@ -48,7 +48,7 @@ type SelectorType =
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
 ): SelectorRegistry {
-  const { signal, computed, startBatch, endBatch, flush } = createScope();
+  const { signal, computed, startBatch, endBatch, flush: flushScope } = createScope();
   const structuralSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
   const sceneStructureSignal = signal(0);
@@ -115,7 +115,8 @@ export function createSelectorRegistry(
 
   function disposeAll(): void {
     for (const innerMap of computedCache.values()) {
-      for (const node of innerMap.values()) {
+      const nodes = [...innerMap.values()];
+      for (const node of nodes) {
         node.dispose();
       }
     }
@@ -307,6 +308,7 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       checkVersion();
       return getCached("visibleNodes", "all", () => {
+        sceneStructureSignal();
         for (const id of Object.keys(currentScene.nodes)) {
           readVisible(id);
         }
@@ -340,7 +342,6 @@ export function createSelectorRegistry(
 
     invalidateAll(): void {
       globalEpoch(globalEpoch() + 1);
-      bumpSceneStructure();
     },
 
     sync(newScene: SceneGraph): void {
@@ -366,7 +367,7 @@ export function createSelectorRegistry(
     },
 
     flush(): void {
-      flush();
+      flushScope();
     },
 
     removeSelector(type: string, key: string): boolean {
