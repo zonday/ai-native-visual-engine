@@ -158,6 +158,36 @@ describe("SelectorRegistry", () => {
       const all = sel.getAllNodes();
       expect(all).toHaveLength(4);
     });
+
+    it("memoizes result when no structural change", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const r1 = sel.getAllNodes();
+      const r2 = sel.getAllNodes();
+      expect(r1).toBe(r2);
+    });
+
+    it("returns fresh result after structural invalidate", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      if (scene.nodes.root) scene.nodes.root.children?.push("c");
+      sel.invalidate("c", "structural");
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(5);
+      expect(before).not.toBe(after);
+    });
+
+    it("returns fresh result after invalidateAll", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getAllNodes();
+      scene.nodes.c = { id: "c", type: "text", parentId: "root" };
+      sel.invalidateAll();
+      const after = sel.getAllNodes();
+      expect(after).toHaveLength(5);
+      expect(before).not.toBe(after);
+    });
   });
 
   describe("getAncestors", () => {
@@ -458,6 +488,141 @@ describe("SelectorRegistry", () => {
       sel.getNode("root");
       sel.invalidate("a");
       expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("isDescendantOf graph integration", () => {
+    it("caches result across calls within same scene version", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Direct mutation without invalidation — cache still returns cached result
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // After invalidation, re-evaluates to fresh result
+      sel.invalidate("a1", "structural");
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+    });
+
+    it("re-evaluates after invalidation when compound dependency changes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Move a1 to orphan it from root's tree
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      sel.invalidate("a1", "structural");
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+      expect(sel.isDescendantOf("a1", "a")).toBe(false);
+    });
+
+    it("isDescendantOf caches after invalidateAll", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      sel.invalidateAll();
+      // After invalidateAll, compound selector still evaluates correctly
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+    });
+  });
+
+  describe("SelectorNode graph propagation", () => {
+    it("compound and leaf selectors coexist after invalidateAll", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.isDescendantOf("a1", "root");
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+      sel.invalidateAll();
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(2);
+      expect(sel.getAncestors("a1")).toHaveLength(2);
+    });
+
+    it("structural invalidation cascades through isDescendantOf dependency chain", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+      // Orphan a1
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = undefined;
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.children = [];
+      // Structural invalidation bumps structural signals for a1 and a
+      sel.invalidate("a1", "structural");
+      sel.invalidate("a", "structural");
+      // isDescendantOf re-evaluates through signal→ancestors→isDescendantOf chain
+      expect(sel.isDescendantOf("a1", "root")).toBe(false);
+      expect(sel.isDescendantOf("a1", "a")).toBe(false);
+    });
+
+    it("version increment does not cause stack overflow with graph edges", () => {
+      const sel = createSelectorRegistry(makeScene());
+      // Prime selectors that form edges via activeSelector tracking
+      sel.isDescendantOf("a1", "root");
+      sel.getAncestors("a1");
+      sel.getChildren("root");
+      // invalidateAll should not overflow even with subs edges
+      expect(() => sel.invalidateAll()).not.toThrow();
+    });
+  });
+
+  describe("sync", () => {
+    it("returns fresh data after sync with new scene", () => {
+      const oldScene = makeScene();
+      const sel = createSelectorRegistry(oldScene);
+      expect(sel.getAllNodes()).toHaveLength(4);
+      const newScene: SceneGraph = {
+        version: 1,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container" },
+          x: { id: "x", type: "text" },
+        },
+      };
+      sel.sync(newScene);
+      expect(sel.getAllNodes()).toHaveLength(2);
+      expect(sel.getAllNodes().find((n) => n.id === "x")).toBeDefined();
+    });
+
+    it("clears cached selectors after sync", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const before = sel.getChildren("root");
+      const newScene: SceneGraph = {
+        version: 2,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container", children: ["new"] },
+          new: { id: "new", type: "text", parentId: "root" },
+        },
+      };
+      sel.sync(newScene);
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(1);
+      expect(after[0]?.id).toBe("new");
+      expect(after).not.toBe(before);
+    });
+
+    it("sync resets sceneStructureSignal so getAllNodes is fresh", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getAllNodes();
+      const newScene: SceneGraph = {
+        version: 3,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container", children: ["a"] },
+          a: { id: "a", type: "text", parentId: "root" },
+        },
+      };
+      sel.sync(newScene);
+      const all = sel.getAllNodes();
+      expect(all).toHaveLength(2);
     });
   });
 });
