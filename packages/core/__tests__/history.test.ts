@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import {
   createHistoryState,
+  type HistoryState,
   pushUndo,
   redoAction,
+  replayActions,
   undoAction,
-  type HistoryState,
 } from "../src/engine/history.js";
-import { replayActions } from "../src/engine/history.js";
 
 const createDocumentHistoryState = createHistoryState<DocumentAction>;
 const pushDocumentUndo = pushUndo<DocumentAction>;

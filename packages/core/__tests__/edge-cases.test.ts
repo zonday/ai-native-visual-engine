@@ -13,6 +13,7 @@ import {
 import type { HistoryState } from "../src/engine/history.js";
 
 type DocumentHistoryState = HistoryState<DocumentAction>;
+
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";

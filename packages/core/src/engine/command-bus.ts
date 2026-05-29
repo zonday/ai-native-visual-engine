@@ -149,10 +149,7 @@ export function wrapCommandBus<
   TResult,
 >(
   bus: CommandBus<TState, TAction>,
-  mapResult: (
-    inner: DispatchResult<TState>,
-    action: TAction,
-  ) => TResult,
+  mapResult: (inner: DispatchResult<TState>, action: TAction) => TResult,
 ): { dispatch(action: TAction): TResult; getState(): TState } {
   return {
     dispatch(action: TAction): TResult {

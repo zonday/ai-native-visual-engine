@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { RuntimeAction } from "../src/runtime/actions.js";
 import {
   createHistoryState,
   pushUndo,
   redoAction,
   undoAction,
 } from "../src/engine/history.js";
+import type { RuntimeAction } from "../src/runtime/actions.js";
 
 const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
 const pushRuntimeUndo = pushUndo<RuntimeAction>;

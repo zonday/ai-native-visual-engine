@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { HistoryState } from "../src/engine/history.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeContext } from "../src/runtime/handler.js";
@@ -7,9 +8,9 @@ import {
   createNodeHandler,
   createNodeInverse,
 } from "../src/runtime/handlers/create-node.js";
-import type { HistoryState } from "../src/engine/history.js";
 
 type RuntimeHistoryState = HistoryState<RuntimeAction>;
+
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
