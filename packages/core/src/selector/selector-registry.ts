@@ -86,7 +86,13 @@ type SelectorType =
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
 ): SelectorRegistry {
-  const { signal, computed, startBatch, endBatch, flush: flushScope } = createScope();
+  const {
+    signal,
+    computed,
+    startBatch,
+    endBatch,
+    flush: flushScope,
+  } = createScope();
   const childrenSignals = new Map<NodeId, Signal<number>>();
   const parentSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
