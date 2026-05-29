@@ -956,6 +956,63 @@ describe("SelectorRegistry", () => {
     });
   });
 
+  describe("path-level field selectors", () => {
+    it("getNodeLayoutKey returns specific layout key", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a as Record<string, unknown>;
+      a.layout = { mode: "absolute", x: 100, y: 50 };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodeLayoutKey("a", "x")).toBe(100);
+      expect(sel.getNodeLayoutKey("a", "nonexistent")).toBeUndefined();
+    });
+
+    it("getNodePropsKey returns specific props key", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a as Record<string, unknown>;
+      a.props = { text: "hello" };
+      const sel = createSelectorRegistry(scene);
+      expect(sel.getNodePropsKey("a", "text")).toBe("hello");
+    });
+
+    it("invalidate with key bumps only that key's signal", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a as Record<string, unknown>;
+      a.layout = { mode: "absolute", x: 100, y: 50, rotation: 0 };
+      const sel = createSelectorRegistry(scene);
+      // Read both keys to establish deps
+      expect(sel.getNodeLayoutKey("a", "x")).toBe(100);
+      expect(sel.getNodeLayoutKey("a", "rotation")).toBe(0);
+
+      // Invalidate layout.x specifically
+      a.layout = { mode: "absolute", x: 200, y: 50, rotation: 0 };
+      sel.applyPatch({ type: "set-prop", nodeId: "a", field: "layout", key: "x" });
+
+      // x should be updated, rotation still cached
+      expect(sel.getNodeLayoutKey("a", "x")).toBe(200);
+      expect(sel.getNodeLayoutKey("a", "rotation")).toBe(0);
+    });
+
+    it("getNodeLayoutKey creates reactive dependency via alien-signals", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a as Record<string, unknown>;
+      a.layout = { mode: "absolute", x: 100 };
+      const sel = createSelectorRegistry(scene);
+      let trackedX = 0;
+      const stop = sel.autorun(() => {
+        trackedX = sel.getNodeLayoutKey("a", "x") as number;
+      });
+      expect(trackedX).toBe(100);
+
+      // Change layout.x via Immer (deep modify, not full replace)
+      sel.commitScene((draft) => {
+        draft.nodes.a!.layout!.x = 200;
+      });
+
+      expect(trackedX).toBe(200);
+      stop();
+    });
+  });
+
   describe("onBeforeDispose", () => {
     it("fires callback before sync disposes selectors", () => {
       const sel = createSelectorRegistry(makeScene());

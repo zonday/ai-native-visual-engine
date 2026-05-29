@@ -59,7 +59,7 @@ export function routeImmerPatches(
   registry: SelectorRegistry,
 ): void {
   for (const patch of patches) {
-    const [scope, id, field] = patch.path.map(String);
+    const [scope, id, field, ...rest] = patch.path.map(String);
     if (!scope || !id) continue;
 
     // Only route scene node patches
@@ -72,7 +72,12 @@ export function routeImmerPatches(
     } else if (field) {
       const nodeField = FIELD_MAP[field];
       if (nodeField) {
-        registry.applyPatch({ type: "set-prop", nodeId: id, field: nodeField });
+        const key = rest[0]; // sub-key for path-level tracking (e.g., "x" in ["nodes","a","layout","x"])
+        registry.applyPatch(
+          key && (field === "layout" || field === "props")
+            ? { type: "set-prop", nodeId: id, field: nodeField, key }
+            : { type: "set-prop", nodeId: id, field: nodeField },
+        );
       }
     }
   }
