@@ -327,7 +327,15 @@ export function createSelectorRegistry(
       bumpSignal(parentSignals, patch.nodeId);
       if (patch.oldParent) bumpSignal(childrenSignals, patch.oldParent);
       bumpSignal(childrenSignals, patch.newParent);
-    } else if (patch.type === "add-node" || patch.type === "remove-node") {
+    } else if (patch.type === "remove-node") {
+      markSubtreeDirty(patch.nodeId);
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
+      bumpSignal(childrenSignals, patch.nodeId);
+      bumpSignal(parentSignals, patch.nodeId);
+      bumpExistence();
+      descResultCache.delete(patch.nodeId);
+    } else if (patch.type === "add-node") {
       markSubtreeDirty(patch.nodeId);
       markTreeIndexDirty();
       markVisibilityIndexDirty();
