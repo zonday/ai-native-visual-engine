@@ -5,6 +5,11 @@ type NodeField = "visible" | "layout" | "props" | "children" | "parent";
 
 const MAX_CACHED_SELECTORS = 5000;
 
+interface TreeIndexEntry {
+  preorder: number;
+  subtreeSize: number;
+}
+
 interface SelectorNode<T = unknown> {
   readonly type: string;
   readonly key: string;
@@ -75,6 +80,64 @@ export function createSelectorRegistry(
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   const accessCounts = new WeakMap<SelectorNode, number>();
   let currentScene = scene;
+
+  // ── Tree Index ──
+  // Preorder-flattened node list + subtree size for O(1) descendants.
+  // Rebuilt on structural changes before signal bumps.
+  const treeIndexSignal = signal(0);
+  let flattenedNodes: NodeId[] = [];
+  const treeIndex = new Map<NodeId, TreeIndexEntry>();
+
+  function rebuildTreeIndex(): void {
+    const result: NodeId[] = [];
+    const index = new Map<NodeId, TreeIndexEntry>();
+
+    function walk(id: NodeId): number {
+      const node = currentScene.nodes[id];
+      if (!node) return 0;
+      const preorder = result.length;
+      result.push(id);
+      let size = 1;
+      if (node.children) {
+        for (const childId of node.children) {
+          size += walk(childId);
+        }
+      }
+      index.set(id, { preorder, subtreeSize: size });
+      return size;
+    }
+
+    if (currentScene.rootId) {
+      walk(currentScene.rootId);
+    }
+
+    flattenedNodes = result;
+    treeIndex.clear();
+    for (const [id, entry] of index) {
+      treeIndex.set(id, entry);
+    }
+    treeIndexSignal(treeIndexSignal() + 1);
+  }
+
+  // ── Visibility Index ──
+  // Set of visible node IDs for O(visible count) getVisibleNodes.
+  const visibilityIndexSignal = signal(0);
+  let visibleNodeIds: Set<NodeId> = new Set();
+
+  function rebuildVisibilityIndex(): void {
+    const next = new Set<NodeId>();
+    for (const [id, node] of Object.entries(currentScene.nodes)) {
+      if (node.visible !== false) {
+        next.add(id);
+      }
+    }
+    visibleNodeIds = next;
+    visibilityIndexSignal(visibilityIndexSignal() + 1);
+  }
+
+  // ── Initial index build ──
+  rebuildTreeIndex();
+  rebuildVisibilityIndex();
 
   function getSignal(
     map: Map<NodeId, Signal<number>>,
@@ -305,23 +368,16 @@ export function createSelectorRegistry(
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
         getSignal(childrenSignals, nodeId)();
-        const descendants: SceneNode[] = [];
-        function walk(id: string, visited: Set<string>): void {
-          if (visited.has(id)) return;
-          visited.add(id);
-          const node = currentScene.nodes[id];
-          if (!node?.children) return;
-          for (const childId of node.children) {
-            getSignal(childrenSignals, childId)();
-            const child = registry.getNode(childId);
-            if (child) {
-              descendants.push(child);
-              walk(childId, visited);
-            }
-          }
-        }
-        walk(nodeId, new Set());
-        return descendants;
+        treeIndexSignal();
+        const entry = treeIndex.get(nodeId);
+        if (!entry) return [];
+        const ids = flattenedNodes.slice(
+          entry.preorder + 1,
+          entry.preorder + entry.subtreeSize,
+        );
+        return ids
+          .map((id) => currentScene.nodes[id])
+          .filter((n): n is SceneNode => n !== undefined);
       }).get();
     },
 
@@ -362,12 +418,12 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
-        for (const id of Object.keys(currentScene.nodes)) {
+        for (const id of visibleNodeIds) {
           getSignal(visibleSignals, id)();
         }
-        return Object.values(currentScene.nodes).filter(
-          (node) => node.visible !== false,
-        );
+        return [...visibleNodeIds]
+          .map((id) => currentScene.nodes[id])
+          .filter((n): n is SceneNode => n !== undefined);
       }).get();
     },
 
@@ -393,6 +449,14 @@ export function createSelectorRegistry(
     },
 
     invalidate(nodeId: NodeId, field?: NodeField): void {
+      const isStructural = !field || field === "children" || field === "parent";
+      if (isStructural) {
+        rebuildTreeIndex();
+      }
+      if (!field || field === "visible") {
+        rebuildVisibilityIndex();
+      }
+
       if (!field) {
         bumpSignal(childrenSignals, nodeId);
         bumpSignal(parentSignals, nodeId);
@@ -416,12 +480,16 @@ export function createSelectorRegistry(
     },
 
     notifyNodeAdded(nodeId: NodeId): void {
+      rebuildTreeIndex();
+      rebuildVisibilityIndex();
       bumpSignal(childrenSignals, nodeId);
       bumpSignal(parentSignals, nodeId);
       bumpExistence();
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
+      rebuildTreeIndex();
+      rebuildVisibilityIndex();
       bumpSignal(childrenSignals, nodeId);
       bumpSignal(parentSignals, nodeId);
       bumpExistence();
@@ -445,6 +513,8 @@ export function createSelectorRegistry(
       propsSignals.clear();
       proxyCache.clear();
       disposeAll();
+      rebuildTreeIndex();
+      rebuildVisibilityIndex();
       bumpExistence();
     },
 
