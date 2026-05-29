@@ -12,6 +12,7 @@ interface SelectorNode<T = unknown> {
   get(): T;
   bumpVersion(): void;
   invalidate(): void;
+  dispose(): void;
 }
 
 export interface SelectorRegistry {
@@ -32,6 +33,11 @@ export interface SelectorRegistry {
   invalidateAll(): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
+
+  // Scheduler
+  batch<T>(fn: () => T): T;
+  flush(): void;
+  removeSelector(type: string, key: string): boolean;
 }
 
 type SelectorType =
@@ -56,6 +62,9 @@ export function createSelectorRegistry(
   const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let syncedVersion = scene.version;
+  const dirtyNodes = new Set<SelectorNode>();
+  let batchDepth = 0;
+  let isFlushing = false;
 
   function getSignal(
     map: Map<NodeId, Signal<number>>,
@@ -72,6 +81,38 @@ export function createSelectorRegistry(
   function bumpSignal(map: Map<NodeId, Signal<number>>, nodeId: string): void {
     const s = map.get(nodeId);
     if (s) s(s() + 1);
+  }
+
+  function enqueueDirty(node: SelectorNode): void {
+    dirtyNodes.add(node);
+    if (batchDepth === 0 && !isFlushing) {
+      flushScheduler();
+    }
+  }
+
+  function flushScheduler(): void {
+    if (isFlushing) return;
+    isFlushing = true;
+    try {
+      let iterations = 0;
+      const MAX_ITERATIONS = 10000;
+      while (dirtyNodes.size > 0) {
+        if (++iterations > MAX_ITERATIONS) {
+          dirtyNodes.clear();
+          break;
+        }
+        const snapshot = [...dirtyNodes];
+        dirtyNodes.clear();
+        for (const node of snapshot) {
+          for (const sub of node.subs) {
+            sub.bumpVersion();
+            dirtyNodes.add(sub);
+          }
+        }
+      }
+    } finally {
+      isFlushing = false;
+    }
   }
 
   let activeSelector: SelectorNode | null = null;
@@ -121,18 +162,18 @@ export function createSelectorRegistry(
         versionSignal(versionSignal() + 1);
       },
       invalidate(): void {
-        // Non-recursive graph propagation via explicit stack
-        const seen = new Set<SelectorNode>();
-        const stack: SelectorNode[] = [node];
-        while (stack.length > 0) {
-          const n = stack.pop();
-          if (n === undefined) break;
-          if (seen.has(n)) continue;
-          seen.add(n);
-          n.bumpVersion();
-          for (const sub of n.subs) {
-            if (!seen.has(sub)) stack.push(sub);
-          }
+        node.bumpVersion();
+        enqueueDirty(node);
+      },
+      dispose(): void {
+        for (const dep of deps) {
+          dep.subs.delete(node);
+        }
+        deps.clear();
+        subs.clear();
+        const innerMap = computedCache.get(type);
+        if (innerMap && innerMap.get(key) === node) {
+          innerMap.delete(key);
         }
       },
     };
@@ -149,6 +190,7 @@ export function createSelectorRegistry(
       structuralSignals.clear();
       visibleSignals.clear();
       computedCache.clear();
+      dirtyNodes.clear();
       syncedVersion = scene.version;
     }
   }
@@ -368,12 +410,38 @@ export function createSelectorRegistry(
       structuralSignals.clear();
       visibleSignals.clear();
       computedCache.clear();
+      dirtyNodes.clear();
       bumpSceneStructure();
       syncedVersion = newScene.version;
     },
 
     getVersion(): number {
       return scene.version;
+    },
+
+    batch<T>(fn: () => T): T {
+      batchDepth++;
+      try {
+        return fn();
+      } finally {
+        batchDepth--;
+        if (batchDepth === 0) {
+          flushScheduler();
+        }
+      }
+    },
+
+    flush(): void {
+      flushScheduler();
+    },
+
+    removeSelector(type: string, key: string): boolean {
+      const innerMap = computedCache.get(type);
+      if (!innerMap) return false;
+      const node = innerMap.get(key);
+      if (!node) return false;
+      node.dispose();
+      return true;
     },
   };
 
