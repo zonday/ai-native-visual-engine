@@ -67,6 +67,7 @@ export interface SelectorRegistry {
   batch<T>(fn: () => T): T;
   flush(): void;
   removeSelector(type: string, key: string): boolean;
+  onBeforeDispose(cb: () => void): () => void;
 }
 
 type SelectorType =
@@ -105,6 +106,7 @@ export function createSelectorRegistry(
   let currentScene = scene;
   let batchDepth = 0;
   const pendingBatchSignals = new Set<string>();
+  const disposeCallbacks = new Set<() => void>();
 
   // ── Indexes ──
   const treeIndexSignal = signal(0);
@@ -634,6 +636,7 @@ export function createSelectorRegistry(
     },
 
     sync(newScene: SceneGraph): void {
+      for (const cb of disposeCallbacks) cb();
       currentScene = newScene;
       childrenSignals.clear();
       parentSignals.clear();
@@ -702,12 +705,17 @@ export function createSelectorRegistry(
     },
 
     removeSelector(type: string, key: string): boolean {
-      const innerMap = computedCache.get(type as SelectorType);
+      const innerMap = computedCache.get(type);
       if (!innerMap) return false;
       const node = innerMap.get(key);
       if (!node) return false;
       node.dispose();
       return true;
+    },
+
+    onBeforeDispose(cb: () => void): () => void {
+      disposeCallbacks.add(cb);
+      return () => disposeCallbacks.delete(cb);
     },
   };
 
