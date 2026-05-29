@@ -95,6 +95,9 @@ export function createSelectorRegistry(
   let flattenedNodes: NodeId[] = [];
   const treeIndex = new Map<NodeId, TreeIndexEntry>();
   let treeIndexDirty = false;
+  // Cache for structural sharing: returns same array reference
+  // when subtree content is unchanged across re-evaluations.
+  const descResultCache = new Map<NodeId, SceneNode[]>();
 
   function rebuildTreeIndexInternal(): void {
     const result: NodeId[] = [];
@@ -459,9 +462,20 @@ export function createSelectorRegistry(
           entry.preorder + 1,
           entry.preorder + entry.subtreeSize,
         );
-        return ids
+        // Structural sharing: if IDs match previous array, return same
+        // reference. Prevents unnecessary array allocation + React re-render
+        // when subtree content hasn't semantically changed.
+        const prev = descResultCache.get(nodeId);
+        const same =
+          prev &&
+          prev.length === ids.length &&
+          prev.every((n, i) => n && n.id === ids[i]);
+        if (same && prev) return prev;
+        const result = ids
           .map((id) => currentScene.nodes[id])
           .filter((n): n is SceneNode => n !== undefined);
+        descResultCache.set(nodeId, result);
+        return result;
       }).get();
     },
 
@@ -493,9 +507,18 @@ export function createSelectorRegistry(
     },
 
     isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean {
+      if (nodeId === ancestorId) return false;
       return getCached("isDescendantOf", `${nodeId}:${ancestorId}`, () => {
-        const ancestors = registry.getAncestors(nodeId);
-        return ancestors.some((a) => a.id === ancestorId);
+        getSignal(parentSignals, nodeId)();
+        ensureTreeIndex();
+        treeIndexSignal();
+        const anc = treeIndex.get(ancestorId);
+        const desc = treeIndex.get(nodeId);
+        if (!anc || !desc) return false;
+        return (
+          anc.preorder <= desc.preorder &&
+          desc.preorder < anc.preorder + anc.subtreeSize
+        );
       }).get();
     },
 
@@ -582,7 +605,10 @@ export function createSelectorRegistry(
     },
 
     invalidateAll(): void {
-      if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+      if (
+        typeof process !== "undefined" &&
+        process.env?.NODE_ENV !== "production"
+      ) {
         console.warn(
           "[selector-registry] invalidateAll() degrades incremental architecture — prefer targeted invalidate or applyPatch",
         );
