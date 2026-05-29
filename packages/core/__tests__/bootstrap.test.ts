@@ -5,6 +5,10 @@ import {
   generateId,
 } from "../src/bootstrap.js";
 
+function nonNull<T>(value: T): NonNullable<T> {
+  return value as NonNullable<T>;
+}
+
 describe("createEmptyScene", () => {
   it("returns a PersistedSceneGraph with a single root node", () => {
     const scene = createEmptyScene();
@@ -28,7 +32,7 @@ describe("createNewDocument", () => {
     const doc = createNewDocument();
     expect(doc.pages).toHaveLength(1);
     expect(doc.pages[0]?.name).toBe("Untitled");
-    expect(doc.scenes[doc.pages[0]?.sceneId]).toBeDefined();
+    expect(doc.scenes[nonNull(doc.pages[0]).sceneId]).toBeDefined();
   });
 
   it("uses the provided title", () => {

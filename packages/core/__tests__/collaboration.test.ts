@@ -3,6 +3,7 @@ import type {
   SerializedDocumentAction,
   SerializedRuntimeAction,
 } from "../src/collaboration/types.js";
+
 import { createYjsDocProvider } from "../src/collaboration/yjs-provider.js";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
@@ -78,9 +79,10 @@ describe("YjsDocProvider — §5.4 serialization envelope", () => {
 
     p.broadcastDocumentAction(sda("create-page"));
 
-    expect(received?.actorId).toBe("a");
-    expect(received?.timestamp).toBe(1);
-    expect(received?.action.type).toBe("create-page");
+    const docEntry = received as unknown as SerializedDocumentAction;
+    expect(docEntry.actorId).toBe("a");
+    expect(docEntry.timestamp).toBe(1);
+    expect(docEntry.action.type).toBe("create-page");
   });
 
   it("scene action includes actorId, timestamp, and pageId", () => {
@@ -92,10 +94,11 @@ describe("YjsDocProvider — §5.4 serialization envelope", () => {
 
     p.broadcastSceneAction(sra("update-layout"));
 
-    expect(received?.actorId).toBe("a");
-    expect(received?.timestamp).toBe(1);
-    expect(received?.pageId).toBe("page-1");
-    expect(received?.action.type).toBe("update-layout");
+    const sceneEntry = received as unknown as SerializedRuntimeAction;
+    expect(sceneEntry.actorId).toBe("a");
+    expect(sceneEntry.timestamp).toBe(1);
+    expect(sceneEntry.pageId).toBe("page-1");
+    expect(sceneEntry.action.type).toBe("update-layout");
   });
 });
 
