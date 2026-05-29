@@ -365,8 +365,8 @@ export function createSelectorRegistry(
       // Atomically update parentId + both parents' children
       currentScene.nodes[nodeId] = { ...node, parentId: newParent };
       const oldP = oldParent ? currentScene.nodes[oldParent] : undefined;
-      if (oldP?.children) {
-        currentScene.nodes[oldParent!] = {
+      if (oldP?.children && oldParent) {
+        currentScene.nodes[oldParent] = {
           ...oldP,
           children: oldP.children.filter((id) => id !== nodeId),
         };
