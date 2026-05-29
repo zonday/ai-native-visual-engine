@@ -236,7 +236,7 @@ describe("SelectorRegistry", () => {
 
       const descendants = sel.getDescendants("root");
       expect(descendants).toHaveLength(2);
-      expect(descendants.find((n) => n.id === "a1")).toBeUndefined();
+      expect(descendants.includes("a1")).toBe(false);
     });
   });
 
