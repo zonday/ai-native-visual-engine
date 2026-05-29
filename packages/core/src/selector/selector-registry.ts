@@ -72,13 +72,6 @@ export function createSelectorRegistry(
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
 
-  // Field data separated from SceneNode for granular signal tracking.
-  // Consumers use getNodeLayout / getNodeProps / getNodeVisibility
-  // instead of accessing these fields through getNode().
-  const nodeLayouts = new Map<NodeId, Record<string, unknown>>();
-  const nodeProps = new Map<NodeId, Record<string, unknown>>();
-  const nodeVisibilities = new Map<NodeId, boolean | undefined>();
-
   function getSignal(
     map: Map<NodeId, Signal<number>>,
     nodeId: string,
@@ -135,7 +128,7 @@ export function createSelectorRegistry(
     nodeExistenceSignal(nodeExistenceSignal() + 1);
   }
 
-  function disposeAllAndClearFields(): void {
+  function disposeAll(): void {
     for (const innerMap of computedCache.values()) {
       const nodes = [...innerMap.values()];
       for (const node of nodes) {
@@ -143,45 +136,6 @@ export function createSelectorRegistry(
       }
     }
     computedCache.clear();
-    nodeLayouts.clear();
-    nodeProps.clear();
-    nodeVisibilities.clear();
-  }
-
-  function extractFieldData(): void {
-    nodeLayouts.clear();
-    nodeProps.clear();
-    nodeVisibilities.clear();
-    // Prefer separate stores in SceneGraph (layouts/props/visibility
-    // maps decoupled from topology — updated independently of nodes).
-    // Fall back to node-level fields for backward compat.
-    const src = currentScene;
-    if (src.layouts) {
-      for (const [id, layout] of Object.entries(src.layouts)) {
-        nodeLayouts.set(id, layout);
-      }
-    }
-    if (src.props) {
-      for (const [id, prop] of Object.entries(src.props)) {
-        nodeProps.set(id, prop);
-      }
-    }
-    if (src.visibility) {
-      for (const [id, visible] of Object.entries(src.visibility)) {
-        nodeVisibilities.set(id, visible);
-      }
-    }
-    for (const [id, node] of Object.entries(src.nodes)) {
-      if (!nodeLayouts.has(id) && node.layout !== undefined) {
-        nodeLayouts.set(id, node.layout);
-      }
-      if (!nodeProps.has(id) && node.props !== undefined) {
-        nodeProps.set(id, node.props);
-      }
-      if (!nodeVisibilities.has(id) && node.visible !== undefined) {
-        nodeVisibilities.set(id, node.visible);
-      }
-    }
   }
 
   function getCached<T>(
@@ -357,11 +311,12 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
+        const vis = currentScene.visibility;
         for (const id of Object.keys(currentScene.nodes)) {
           readVisible(id);
         }
         return Object.values(currentScene.nodes).filter(
-          (node) => node.visible !== false,
+          (node) => vis?.[node.id] !== false,
         );
       }).get();
     },
@@ -369,24 +324,21 @@ export function createSelectorRegistry(
     getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeLayout", nodeId, () => {
         readLayout(nodeId);
-        if (nodeLayouts.has(nodeId)) return nodeLayouts.get(nodeId);
-        return currentScene.nodes[nodeId]?.layout;
+        return currentScene.layouts?.[nodeId];
       }).get();
     },
 
     getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeProps", nodeId, () => {
         readProps(nodeId);
-        if (nodeProps.has(nodeId)) return nodeProps.get(nodeId);
-        return currentScene.nodes[nodeId]?.props;
+        return currentScene.props?.[nodeId];
       }).get();
     },
 
     getNodeVisibility(nodeId: NodeId): boolean | undefined {
       return getCached("nodeVisibility", nodeId, () => {
         readVisible(nodeId);
-        if (nodeVisibilities.has(nodeId)) return nodeVisibilities.get(nodeId);
-        return currentScene.nodes[nodeId]?.visible;
+        return currentScene.visibility?.[nodeId];
       }).get();
     },
 
@@ -431,8 +383,7 @@ export function createSelectorRegistry(
       visibleSignals.clear();
       layoutSignals.clear();
       propsSignals.clear();
-      disposeAllAndClearFields();
-      extractFieldData();
+      disposeAll();
       bumpExistence();
     },
 

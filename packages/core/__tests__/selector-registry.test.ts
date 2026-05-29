@@ -275,27 +275,24 @@ describe("SelectorRegistry", () => {
 
   describe("getVisibleNodes", () => {
     it("includes nodes without visible=false", () => {
-      const scene = makeScene();
-      const b = scene.nodes.b;
-      if (!b) throw new Error("b missing");
-      b.visible = false;
+      const scene = makeScene({
+        visibility: { root: true, a: true, a1: true, b: false },
+      });
       const sel = createSelectorRegistry(scene);
       const visible = sel.getVisibleNodes();
-      expect(visible.every((n) => n.visible !== false)).toBe(true);
+      expect(visible.every((n) => n.id !== "b")).toBe(true);
     });
 
     it("re-evaluates when a known node is invalidated", () => {
-      const scene = makeScene();
+      const scene = makeScene({
+        visibility: { root: true, a: true, a1: true, b: true },
+      });
       const sel = createSelectorRegistry(scene);
-      // Query node "a" to create its version signal
       sel.getNode("a");
-      // First visible set includes all nodes
       let visible = sel.getVisibleNodes();
       expect(visible).toHaveLength(4);
       // Hide node a and invalidate
-      const aNode = scene.nodes.a;
-      if (!aNode) throw new Error("a missing");
-      aNode.visible = false;
+      scene.visibility = { ...scene.visibility, a: false };
       sel.invalidate("a");
       visible = sel.getVisibleNodes();
       expect(visible).toHaveLength(3);
@@ -366,11 +363,10 @@ describe("SelectorRegistry", () => {
 
   describe("property-level invalidation", () => {
     it("invalidate with 'visible' field only affects visible-signal dependents", () => {
-      const scene = makeScene();
+      const scene = makeScene({
+        visibility: { root: true, a: false, b: true, a1: true },
+      });
       const sel = createSelectorRegistry(scene);
-      // Query a node to create both structural and visible signals
-      const aNode = assertNode(scene.nodes.a, "a");
-      aNode.visible = false;
       sel.getNode("a");
       sel.getChildren("root");
 
@@ -856,10 +852,10 @@ describe("SelectorRegistry", () => {
 
   describe("getNodeLayout", () => {
     it("returns layout for node with layout data", () => {
-      const scene = makeScene();
-      const a = assertNode(scene.nodes.a, "a");
-      a.layout = { x: 100, y: 200 };
-      const sel = createSelectorRegistry(scene);
+      const sel = createSelectorRegistry({
+        ...makeScene(),
+        layouts: { a: { x: 100, y: 200 } },
+      });
       expect(sel.getNodeLayout("a")?.x).toBe(100);
     });
 
@@ -871,10 +867,10 @@ describe("SelectorRegistry", () => {
 
   describe("getNodeProps", () => {
     it("returns props for node with props data", () => {
-      const scene = makeScene();
-      const a = assertNode(scene.nodes.a, "a");
-      a.props = { text: "hello" };
-      const sel = createSelectorRegistry(scene);
+      const sel = createSelectorRegistry({
+        ...makeScene(),
+        props: { a: { text: "hello" } },
+      });
       expect(sel.getNodeProps("a")?.text).toBe("hello");
     });
 
