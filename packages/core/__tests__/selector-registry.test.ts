@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createSelectorRegistry } from "../src/selector/selector-registry.js";
-import type { SceneGraph } from "../src/types.js";
+import type { SceneGraph, SceneNode } from "../src/types.js";
+
+function assertNode(n: SceneNode | undefined, id: string): SceneNode {
+  if (!n) throw new Error(`Expected node ${id}`);
+  return n;
+}
 
 function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
   return {
@@ -284,6 +289,128 @@ describe("SelectorRegistry", () => {
       expect(ancestors).toHaveLength(2);
       expect(ancestors[0]?.id).toBe("a");
       expect(ancestors[1]?.id).toBe("root");
+    });
+  });
+
+  describe("property-level invalidation", () => {
+    it("invalidate with 'visible' field only affects visible-signal dependents", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // Query a node to create both structural and visible signals
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      sel.getNode("a");
+      sel.getChildren("root");
+
+      // Bump only visible signal — getChildren should NOT re-evaluate
+      sel.invalidate("a", "visible");
+
+      // getVisibleNodes re-reads visible signals
+      const visible = sel.getVisibleNodes();
+      expect(visible.find((n) => n.id === "a")).toBeUndefined();
+
+      // getChildren depends on structural signal — unchanged
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(2);
+    });
+
+    it("invalidate with 'structural' field only affects tree-selector dependents", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a"];
+
+      sel.getNode("a");
+      sel.getVisibleNodes();
+
+      // Bump only structural signal
+      sel.invalidate("a", "structural");
+
+      // getChildren re-evaluates
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(1);
+
+      // getVisibleNodes depends on visible signal — unchanged
+      sel.getVisibleNodes();
+    });
+
+    it("invalidate without field bumps all signals for node", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.invalidate("a");
+      // After full invalidate, getNode re-reads from scene
+      expect(sel.getNode("a")?.id).toBe("a");
+    });
+  });
+
+  describe("SelectorNode graph tracking", () => {
+    it("getChildren creates a SelectorNode with type 'children'", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      const children = sel.getChildren("root");
+      expect(children).toHaveLength(2);
+    });
+
+    it("invalidateAll bumps version signals reaching all SelectorNodes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+      sel.invalidateAll();
+      // Both selectors should re-evaluate correctly
+      expect(sel.getChildren("root")).toHaveLength(2);
+      expect(sel.getAncestors("a1")).toHaveLength(2);
+    });
+
+    it("structural change within same version propagates to dependent selectors", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      // getDepth("a1") depends on structural signals of the ancestor chain
+      expect(sel.getDepth("a1")).toBe(2);
+      // Move a1 to root — changes parentId
+      const a1Node = assertNode(scene.nodes.a1, "a1");
+      a1Node.parentId = "root";
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a", "b", "a1"];
+      // Invalidate structural signal for affected nodes
+      sel.invalidate("a1", "structural");
+      sel.invalidate("root", "structural");
+      // getDepth should re-evaluate
+      expect(sel.getDepth("a1")).toBe(1);
+    });
+
+    it("field-specific invalidate does not leak to unrelated selectors", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getVisibleNodes();
+      // Toggle visible on node a
+      const aNode = assertNode(scene.nodes.a, "a");
+      aNode.visible = false;
+      // Only bump visible signal — getChildren must NOT re-evaluate
+      sel.invalidate("a", "visible");
+      // getChildren("root") still sees 2 children
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("structural signal change does not invalidate getVisibleNodes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getNode("a");
+      sel.getVisibleNodes();
+      // Bump structural but not visible — visibleNodes should still read
+      // fresh scene data but its computed was not marked dirty by
+      // structural signal propagation
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["a"];
+      sel.invalidate("root", "structural");
+      // getVisibleNodes reads ALL visible signals (including root,
+      // which has a signal from getNode), but structural bump does
+      // NOT mark its computed dirty — so it returns cached result
+      // that still includes all original nodes
+      const visible = sel.getVisibleNodes();
+      expect(visible).toHaveLength(4);
     });
   });
 

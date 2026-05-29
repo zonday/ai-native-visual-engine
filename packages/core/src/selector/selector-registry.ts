@@ -1,6 +1,18 @@
 import { createScope, type Signal } from "../deps/reactive-scope.js";
 import type { NodeId, SceneGraph, SceneNode } from "../types.js";
 
+type NodeField = "structural" | "visible" | "layout" | "props";
+
+interface SelectorNode<T = unknown> {
+  readonly type: string;
+  readonly key: string;
+  deps: Set<SelectorNode>;
+  subs: Set<SelectorNode>;
+  version: number;
+  get(): T;
+  invalidate(): void;
+}
+
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
   getNodeUnsafe(nodeId: NodeId): SceneNode;
@@ -15,7 +27,7 @@ export interface SelectorRegistry {
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
   getVisibleNodes(): SceneNode[];
-  invalidate(nodeId: NodeId): void;
+  invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
@@ -32,35 +44,71 @@ type SelectorType =
   | "depth"
   | "visibleNodes";
 
+function defaultSelectorNode<T>(
+  type: string,
+  key: string,
+  compute: () => T,
+): SelectorNode<T> {
+  let version = 0;
+  const deps = new Set<SelectorNode>();
+  const subs = new Set<SelectorNode>();
+
+  const node: SelectorNode<T> = {
+    type,
+    key,
+    deps,
+    subs,
+    get version() {
+      return version;
+    },
+    get(): T {
+      return compute();
+    },
+    invalidate(): void {
+      version++;
+      for (const sub of subs) {
+        sub.invalidate();
+      }
+    },
+  };
+
+  return node;
+}
+
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
 ): SelectorRegistry {
   const { signal, computed } = createScope();
-  const versionSignals = new Map<NodeId, Signal<number>>();
-  const computedCache = new Map<SelectorType, Map<string, () => unknown>>();
+  const structuralSignals = new Map<NodeId, Signal<number>>();
+  const visibleSignals = new Map<NodeId, Signal<number>>();
+  const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let syncedVersion = scene.version;
 
-  function getVersionSignal(nodeId: string): () => number {
-    let s = versionSignals.get(nodeId);
+  function getSignal(
+    map: Map<NodeId, Signal<number>>,
+    nodeId: string,
+  ): () => number {
+    let s = map.get(nodeId);
     if (!s) {
       s = signal(0);
-      versionSignals.set(nodeId, s);
+      map.set(nodeId, s);
     }
     return s;
   }
 
-  function bumpAllVersionSignals(): void {
-    for (const [, s] of versionSignals) {
-      s(s() + 1);
-    }
+  function bumpSignal(map: Map<NodeId, Signal<number>>, nodeId: string): void {
+    const s = map.get(nodeId);
+    if (s) s(s() + 1);
+  }
+
+  function bumpAll(map: Map<NodeId, Signal<number>>): void {
+    for (const [, s] of map) s(s() + 1);
   }
 
   function checkVersion(): void {
     if (scene.version !== syncedVersion) {
-      // Scene was fully replaced (undo/redo/sync): all node references changed.
-      // Wipe everything — old version signals point to stale scene nodes,
-      // and old computed values close over the replaced scene reference.
-      versionSignals.clear();
+      structuralSignals.clear();
+      visibleSignals.clear();
       computedCache.clear();
       syncedVersion = scene.version;
     }
@@ -70,24 +118,33 @@ export function createSelectorRegistry(
     type: SelectorType,
     key: string,
     compute: () => T,
-  ): () => T {
+  ): SelectorNode<T> {
     let innerMap = computedCache.get(type);
     if (!innerMap) {
       innerMap = new Map();
       computedCache.set(type, innerMap);
     }
-    let c = innerMap.get(key) as (() => T) | undefined;
-    if (!c) {
-      c = computed(compute) as () => T;
-      innerMap.set(key, c);
+    let n = innerMap.get(key) as SelectorNode<T> | undefined;
+    if (!n) {
+      const reactiveFn = computed(compute) as () => T;
+      n = defaultSelectorNode(type, key, reactiveFn);
+      innerMap.set(key, n);
     }
-    return c;
+    return n;
+  }
+
+  function readStructural(nodeId: string): void {
+    getSignal(structuralSignals, nodeId)();
+  }
+
+  function readVisible(nodeId: string): void {
+    getSignal(visibleSignals, nodeId)();
   }
 
   const registry: SelectorRegistry = {
     getNode(nodeId: NodeId): SceneNode | undefined {
       checkVersion();
-      getVersionSignal(nodeId)();
+      readStructural(nodeId);
       return scene.nodes[nodeId];
     },
 
@@ -102,7 +159,7 @@ export function createSelectorRegistry(
     getChildren(nodeId: NodeId): SceneNode[] {
       checkVersion();
       return getCached("children", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         const node = scene.nodes[nodeId];
         if (!node?.children) return [];
         const result: SceneNode[] = [];
@@ -111,34 +168,34 @@ export function createSelectorRegistry(
           if (child) result.push(child);
         }
         return result;
-      })();
+      }).get();
     },
 
     getParent(nodeId: NodeId): SceneNode | undefined {
       checkVersion();
       return getCached("parent", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         const node = scene.nodes[nodeId];
         return node?.parentId ? registry.getNode(node.parentId) : undefined;
-      })();
+      }).get();
     },
 
     getRoot(): SceneNode {
       checkVersion();
       return getCached("root", "root", () => {
-        getVersionSignal(scene.rootId)();
+        readStructural(scene.rootId);
         const root = scene.nodes[scene.rootId];
         if (!root) {
           throw new Error(`Root node "${scene.rootId}" not found`);
         }
         return root;
-      })();
+      }).get();
     },
 
     getNodes(nodeIds: NodeId[]): SceneNode[] {
       checkVersion();
       for (const id of nodeIds) {
-        getVersionSignal(id)();
+        readStructural(id);
       }
       return nodeIds
         .map((id) => scene.nodes[id])
@@ -147,13 +204,15 @@ export function createSelectorRegistry(
 
     getAllNodes(): SceneNode[] {
       checkVersion();
-      return getCached("allNodes", "all", () => Object.values(scene.nodes))();
+      return getCached("allNodes", "all", () =>
+        Object.values(scene.nodes),
+      ).get();
     },
 
     getAncestors(nodeId: NodeId): SceneNode[] {
       checkVersion();
       return getCached("ancestors", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         const ancestors: SceneNode[] = [];
         let current = scene.nodes[nodeId]?.parentId;
         while (current) {
@@ -163,17 +222,15 @@ export function createSelectorRegistry(
           current = parent.parentId;
         }
         return ancestors;
-      })();
+      }).get();
     },
 
     getDescendants(nodeId: NodeId): SceneNode[] {
       checkVersion();
       return getCached("descendants", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         const descendants: SceneNode[] = [];
         function walk(id: string, depth: number = 0): void {
-          // Depth limit is defense-in-depth: mutation layer MUST prevent cycles,
-          // but a safety guard prevents stack overflow on corrupted data.
           if (depth > 1000) return;
           const node = scene.nodes[id];
           if (!node?.children) return;
@@ -187,28 +244,29 @@ export function createSelectorRegistry(
         }
         walk(nodeId, 0);
         return descendants;
-      })();
+      }).get();
     },
 
     getSiblings(nodeId: NodeId): SceneNode[] {
       checkVersion();
       return getCached("siblings", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         const node = scene.nodes[nodeId];
         if (!node?.parentId) return [];
+        readStructural(node.parentId);
         const parent = registry.getNode(node.parentId);
         if (!parent) return [];
         return (parent.children ?? [])
           .filter((id) => id !== nodeId)
           .map((id) => registry.getNode(id))
           .filter((n): n is SceneNode => n !== undefined);
-      })();
+      }).get();
     },
 
     getDepth(nodeId: NodeId): number {
       checkVersion();
       return getCached("depth", nodeId, () => {
-        getVersionSignal(nodeId)();
+        readStructural(nodeId);
         let depth = 0;
         let current = scene.nodes[nodeId]?.parentId;
         while (current) {
@@ -217,7 +275,7 @@ export function createSelectorRegistry(
           current = parent?.parentId;
         }
         return depth;
-      })();
+      }).get();
     },
 
     isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean {
@@ -229,43 +287,36 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       checkVersion();
       return getCached("visibleNodes", "all", () => {
-        // Register dependencies on previously-accessed nodes without
-        // creating new signals for unseen nodes (avoids the global-
-        // dependency perf trap the reviewer flagged). Full refresh is
-        // guaranteed by checkVersion() on scene version change.
         for (const id of Object.keys(scene.nodes)) {
-          const s = versionSignals.get(id);
-          if (s) s();
+          readVisible(id);
         }
         return Object.values(scene.nodes).filter(
           (node) => node.visible !== false,
         );
-      })();
+      }).get();
     },
 
-    invalidate(nodeId: NodeId): void {
-      const s = versionSignals.get(nodeId);
-      if (s) {
-        s(s() + 1);
+    invalidate(nodeId: NodeId, field?: NodeField): void {
+      if (!field) {
+        bumpSignal(structuralSignals, nodeId);
+        bumpSignal(visibleSignals, nodeId);
+        return;
       }
+      if (field === "structural") bumpSignal(structuralSignals, nodeId);
+      else if (field === "visible") bumpSignal(visibleSignals, nodeId);
+      else if (field === "layout") bumpSignal(structuralSignals, nodeId);
+      else if (field === "props") bumpSignal(structuralSignals, nodeId);
     },
 
     invalidateAll(): void {
-      // Incremental: bump version signals so all dependent computeds are
-      // marked dirty by the reactive scope. The computedCache survives —
-      // entries are lazily re-evaluated when accessed.
-      bumpAllVersionSignals();
+      bumpAll(structuralSignals);
+      bumpAll(visibleSignals);
     },
 
     sync(newScene: SceneGraph): void {
-      // HAZARD: `scene` is a mutable captured reference. Computed closures
-      // that read `scene.nodes` during evaluation may see inconsistent state
-      // if `sync()` is called while a computed is mid-evaluation. Currently
-      // safe because JS is single-threaded and sync() is called outside the
-      // reactive flush cycle, but this WILL break with async selectors /
-      // worker rendering. Future: sceneSignal = signal(newScene).
       scene = newScene;
-      versionSignals.clear();
+      structuralSignals.clear();
+      visibleSignals.clear();
       computedCache.clear();
       syncedVersion = newScene.version;
     },
