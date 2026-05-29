@@ -26,6 +26,7 @@ export interface SelectorRegistry {
   getVisibleNodes(): SceneNode[];
   getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodeVisibility(nodeId: NodeId): boolean | undefined;
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
   notifyNodeAdded(nodeId: NodeId): void;
@@ -49,7 +50,8 @@ type SelectorType =
   | "visibleNodes"
   | "isDescendantOf"
   | "nodeLayout"
-  | "nodeProps";
+  | "nodeProps"
+  | "nodeVisibility";
 
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
@@ -70,6 +72,13 @@ export function createSelectorRegistry(
   const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let currentScene = scene;
+
+  // Field data separated from SceneNode for granular signal tracking.
+  // Consumers use getNodeLayout / getNodeProps / getNodeVisibility
+  // instead of accessing these fields through getNode().
+  const nodeLayouts = new Map<NodeId, Record<string, unknown>>();
+  const nodeProps = new Map<NodeId, Record<string, unknown>>();
+  const nodeVisibilities = new Map<NodeId, boolean | undefined>();
 
   function getSignal(
     map: Map<NodeId, Signal<number>>,
@@ -131,7 +140,7 @@ export function createSelectorRegistry(
     treeStructureSignal(treeStructureSignal() + 1);
   }
 
-  function disposeAll(): void {
+  function disposeAllAndClearFields(): void {
     for (const innerMap of computedCache.values()) {
       const nodes = [...innerMap.values()];
       for (const node of nodes) {
@@ -139,6 +148,20 @@ export function createSelectorRegistry(
       }
     }
     computedCache.clear();
+    nodeLayouts.clear();
+    nodeProps.clear();
+    nodeVisibilities.clear();
+  }
+
+  function extractFieldData(): void {
+    nodeLayouts.clear();
+    nodeProps.clear();
+    nodeVisibilities.clear();
+    for (const [id, node] of Object.entries(currentScene.nodes)) {
+      if (node.layout !== undefined) nodeLayouts.set(id, node.layout);
+      if (node.props !== undefined) nodeProps.set(id, node.props);
+      if (node.visible !== undefined) nodeVisibilities.set(id, node.visible);
+    }
   }
 
   function getCached<T>(
@@ -327,6 +350,7 @@ export function createSelectorRegistry(
     getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeLayout", nodeId, () => {
         readLayout(nodeId);
+        if (nodeLayouts.has(nodeId)) return nodeLayouts.get(nodeId);
         return currentScene.nodes[nodeId]?.layout;
       }).get();
     },
@@ -334,7 +358,16 @@ export function createSelectorRegistry(
     getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
       return getCached("nodeProps", nodeId, () => {
         readProps(nodeId);
+        if (nodeProps.has(nodeId)) return nodeProps.get(nodeId);
         return currentScene.nodes[nodeId]?.props;
+      }).get();
+    },
+
+    getNodeVisibility(nodeId: NodeId): boolean | undefined {
+      return getCached("nodeVisibility", nodeId, () => {
+        readVisible(nodeId);
+        if (nodeVisibilities.has(nodeId)) return nodeVisibilities.get(nodeId);
+        return currentScene.nodes[nodeId]?.visible;
       }).get();
     },
 
@@ -361,7 +394,7 @@ export function createSelectorRegistry(
     },
 
     notifyNodeAdded(nodeId: NodeId): void {
-      readStructural(nodeId);
+      bumpSignal(structuralSignals, nodeId);
       bumpExistence();
       bumpTreeStructure();
     },
@@ -374,6 +407,8 @@ export function createSelectorRegistry(
 
     invalidateAll(): void {
       globalEpoch(globalEpoch() + 1);
+      bumpExistence();
+      bumpTreeStructure();
     },
 
     sync(newScene: SceneGraph): void {
@@ -382,7 +417,8 @@ export function createSelectorRegistry(
       visibleSignals.clear();
       layoutSignals.clear();
       propsSignals.clear();
-      disposeAll();
+      disposeAllAndClearFields();
+      extractFieldData();
       bumpExistence();
       bumpTreeStructure();
     },
