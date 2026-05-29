@@ -18,6 +18,12 @@ interface SelectorNode<T = unknown> {
   dispose(): void;
 }
 
+export type ScenePatch =
+  | { type: "set-prop"; nodeId: NodeId; field: NodeField; value: unknown }
+  | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
+  | { type: "add-node"; nodeId: NodeId }
+  | { type: "remove-node"; nodeId: NodeId };
+
 export interface SelectorRegistry {
   getNode(nodeId: NodeId): SceneNode | undefined;
   getNodeUnsafe(nodeId: NodeId): SceneNode;
@@ -39,6 +45,7 @@ export interface SelectorRegistry {
   invalidateAll(): void;
   notifyNodeAdded(nodeId: NodeId): void;
   notifyNodeRemoved(nodeId: NodeId): void;
+  applyPatch(patch: ScenePatch): void;
   sync(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
@@ -82,13 +89,12 @@ export function createSelectorRegistry(
   let currentScene = scene;
 
   // ── Tree Index ──
-  // Preorder-flattened node list + subtree size for O(1) descendants.
-  // Rebuilt on structural changes before signal bumps.
   const treeIndexSignal = signal(0);
   let flattenedNodes: NodeId[] = [];
   const treeIndex = new Map<NodeId, TreeIndexEntry>();
+  let treeIndexDirty = false;
 
-  function rebuildTreeIndex(): void {
+  function rebuildTreeIndexInternal(): void {
     const result: NodeId[] = [];
     const index = new Map<NodeId, TreeIndexEntry>();
 
@@ -116,15 +122,26 @@ export function createSelectorRegistry(
     for (const [id, entry] of index) {
       treeIndex.set(id, entry);
     }
+  }
+
+  function ensureTreeIndex(): void {
+    if (!treeIndexDirty) return;
+    treeIndexDirty = false;
+    rebuildTreeIndexInternal();
+  }
+
+  function markTreeIndexDirty(): void {
+    if (treeIndexDirty) return;
+    treeIndexDirty = true;
     treeIndexSignal(treeIndexSignal() + 1);
   }
 
   // ── Visibility Index ──
-  // Set of visible node IDs for O(visible count) getVisibleNodes.
   const visibilityIndexSignal = signal(0);
   let visibleNodeIds: Set<NodeId> = new Set();
+  let visibilityIndexDirty = false;
 
-  function rebuildVisibilityIndex(): void {
+  function rebuildVisibilityIndexInternal(): void {
     const next = new Set<NodeId>();
     for (const [id, node] of Object.entries(currentScene.nodes)) {
       if (node.visible !== false) {
@@ -132,12 +149,23 @@ export function createSelectorRegistry(
       }
     }
     visibleNodeIds = next;
+  }
+
+  function ensureVisibilityIndex(): void {
+    if (!visibilityIndexDirty) return;
+    visibilityIndexDirty = false;
+    rebuildVisibilityIndexInternal();
+  }
+
+  function markVisibilityIndexDirty(): void {
+    if (visibilityIndexDirty) return;
+    visibilityIndexDirty = true;
     visibilityIndexSignal(visibilityIndexSignal() + 1);
   }
 
   // ── Initial index build ──
-  rebuildTreeIndex();
-  rebuildVisibilityIndex();
+  rebuildTreeIndexInternal();
+  rebuildVisibilityIndexInternal();
 
   function getSignal(
     map: Map<NodeId, Signal<number>>,
@@ -257,19 +285,26 @@ export function createSelectorRegistry(
     return n;
   }
 
-  // Proxy-based auto dependency tracking.
-  // Each property access reads the corresponding field signal.
-  // Target is an empty object — every getter dynamically reads
-  // from currentScene.nodes[nodeId] for a live view that survives sync().
-  const proxyCache = new Map<NodeId, SceneNode>();
+  // ── Proxy-based auto dependency tracking ──
+  // WeakRef enables GC of unused proxies — only keeps live references
+  // for nodes actively accessed by selectors. Cleanup is lazy.
+  const proxyCache = new Map<NodeId, WeakRef<SceneNode>>();
+  const proxyCleanupThreshold = 5000;
 
   function createTrackedNode(nodeId: NodeId): SceneNode | undefined {
     if (!currentScene.nodes[nodeId]) return undefined;
 
-    let proxy = proxyCache.get(nodeId);
-    if (proxy) return proxy;
+    const existing = proxyCache.get(nodeId)?.deref();
+    if (existing) return existing;
 
-    proxy = new Proxy({} as SceneNode, {
+    // Periodic cleanup of collected WeakRefs
+    if (proxyCache.size > proxyCleanupThreshold) {
+      for (const [id, ref] of proxyCache) {
+        if (!ref.deref()) proxyCache.delete(id);
+      }
+    }
+
+    const proxy = new Proxy({} as SceneNode, {
       get(_, prop) {
         const n = currentScene.nodes[nodeId];
         if (!n) return undefined;
@@ -287,8 +322,40 @@ export function createSelectorRegistry(
         return Reflect.get(n, prop);
       },
     });
-    proxyCache.set(nodeId, proxy);
+    proxyCache.set(nodeId, new WeakRef(proxy));
     return proxy;
+  }
+
+  // ── Patch Apply ──
+  // Encapsulates scene mutation + index update + signal bump.
+  // Callers use applyPatch() instead of manual invalidate().
+  function handlePatch(patch: ScenePatch): void {
+    if (patch.type === "set-prop") {
+      const { nodeId, field } = patch;
+      if (field === "visible") markVisibilityIndexDirty();
+      if (field === "children" || field === "parent") markTreeIndexDirty();
+      bumpSignal(
+        field === "children"
+          ? childrenSignals
+          : field === "parent"
+            ? parentSignals
+            : field === "visible"
+              ? visibleSignals
+              : field === "layout"
+                ? layoutSignals
+                : propsSignals,
+        nodeId,
+      );
+    } else if (patch.type === "reparent") {
+      markTreeIndexDirty();
+      bumpSignal(parentSignals, patch.nodeId);
+      if (patch.oldParent) bumpSignal(childrenSignals, patch.oldParent);
+      bumpSignal(childrenSignals, patch.newParent);
+    } else if (patch.type === "add-node" || patch.type === "remove-node") {
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
+      bumpExistence();
+    }
   }
 
   const registry: SelectorRegistry = {
@@ -368,6 +435,7 @@ export function createSelectorRegistry(
     getDescendants(nodeId: NodeId): SceneNode[] {
       return getCached("descendants", nodeId, () => {
         getSignal(childrenSignals, nodeId)();
+        ensureTreeIndex();
         treeIndexSignal();
         const entry = treeIndex.get(nodeId);
         if (!entry) return [];
@@ -418,6 +486,7 @@ export function createSelectorRegistry(
     getVisibleNodes(): SceneNode[] {
       return getCached("visibleNodes", "all", () => {
         nodeExistenceSignal();
+        ensureVisibilityIndex();
         visibilityIndexSignal();
         for (const id of visibleNodeIds) {
           getSignal(visibleSignals, id)();
@@ -451,12 +520,8 @@ export function createSelectorRegistry(
 
     invalidate(nodeId: NodeId, field?: NodeField): void {
       const isStructural = !field || field === "children" || field === "parent";
-      if (isStructural) {
-        rebuildTreeIndex();
-      }
-      if (!field || field === "visible") {
-        rebuildVisibilityIndex();
-      }
+      if (isStructural) markTreeIndexDirty();
+      if (!field || field === "visible") markVisibilityIndexDirty();
 
       if (!field) {
         bumpSignal(childrenSignals, nodeId);
@@ -481,19 +546,23 @@ export function createSelectorRegistry(
     },
 
     notifyNodeAdded(nodeId: NodeId): void {
-      rebuildTreeIndex();
-      rebuildVisibilityIndex();
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
       bumpSignal(childrenSignals, nodeId);
       bumpSignal(parentSignals, nodeId);
       bumpExistence();
     },
 
     notifyNodeRemoved(nodeId: NodeId): void {
-      rebuildTreeIndex();
-      rebuildVisibilityIndex();
+      markTreeIndexDirty();
+      markVisibilityIndexDirty();
       bumpSignal(childrenSignals, nodeId);
       bumpSignal(parentSignals, nodeId);
       bumpExistence();
+    },
+
+    applyPatch(patch: ScenePatch): void {
+      handlePatch(patch);
     },
 
     invalidateAll(): void {
@@ -514,8 +583,10 @@ export function createSelectorRegistry(
       propsSignals.clear();
       proxyCache.clear();
       disposeAll();
-      rebuildTreeIndex();
-      rebuildVisibilityIndex();
+      rebuildTreeIndexInternal();
+      treeIndexDirty = false;
+      rebuildVisibilityIndexInternal();
+      visibilityIndexDirty = false;
       bumpExistence();
     },
 
