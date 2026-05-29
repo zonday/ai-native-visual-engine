@@ -7,7 +7,7 @@ import type {
   VisualDocument,
 } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DestructiveButton } from "../components/ui/button.js";
+import { Button } from "../components/ui/button.js";
 import { useInteraction } from "../hooks/use-interaction.js";
 import { useEditorStore } from "../store.js";
 
@@ -202,9 +202,9 @@ export function Inspector({
         <h3 className="text-xs font-semibold uppercase tracking-wider m-0">
           Inspector
         </h3>
-        <DestructiveButton type="button" onClick={handleDelete}>
+        <Button type="button" variant="destructive" onClick={handleDelete}>
           Delete
-        </DestructiveButton>
+        </Button>
       </div>
 
       <div className="text-xs space-y-1 pb-2 border-b border-slate-200">

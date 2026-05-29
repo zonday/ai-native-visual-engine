@@ -216,29 +216,6 @@ export type PageMetadata = z.infer<typeof PageMetadataSchema>;
 export type Page = z.infer<typeof PageSchema>;
 
 // ── Scene ──
-export const PersistedSceneGraphSchema = z.object({
-  version: z.number(),
-  rootId: z.string(),
-  nodes: z.record(z.string(), z.any()),
-  metadata: z
-    .object({
-      title: z.string().optional(),
-      createdAt: z.number().optional(),
-      updatedAt: z.number().optional(),
-    })
-    .optional(),
-});
-
-export const SelectionStateSchema = z.object({
-  nodeIds: z.array(z.string()),
-});
-
-export const ViewportStateSchema = z.object({
-  zoom: z.number(),
-  x: z.number(),
-  y: z.number(),
-});
-
 export const SceneNodeSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -263,6 +240,29 @@ export const SceneNodeSchema = z.object({
   locked: z.boolean().optional(),
   prototypeId: z.string().optional(),
   activeStates: z.array(z.string()).optional(),
+});
+
+export const PersistedSceneGraphSchema = z.object({
+  version: z.number(),
+  rootId: z.string(),
+  nodes: z.record(z.string(), SceneNodeSchema),
+  metadata: z
+    .object({
+      title: z.string().optional(),
+      createdAt: z.number().optional(),
+      updatedAt: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const SelectionStateSchema = z.object({
+  nodeIds: z.array(z.string()),
+});
+
+export const ViewportStateSchema = z.object({
+  zoom: z.number(),
+  x: z.number(),
+  y: z.number(),
 });
 
 export const SceneGraphSchema = z.object({
