@@ -216,7 +216,7 @@ describe("SelectorRegistry", () => {
       const sel = createSelectorRegistry(makeScene());
       const descendants = sel.getDescendants("a");
       expect(descendants).toHaveLength(1);
-      expect(descendants[0]?.id).toBe("a1");
+      expect(descendants[0]).toBe("a1");
     });
 
     it("re-evaluates after local structural change (per-node signal)", () => {
