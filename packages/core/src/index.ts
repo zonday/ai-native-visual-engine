@@ -66,6 +66,8 @@ export {
   type ScenePatch,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
+// ── Immer Patch Routing ──
+export { routeImmerPatches } from "./immer-patch-router.js";
 // ── Session ──
 export { openDocumentSession } from "./session.js";
 // ── Core types ──
