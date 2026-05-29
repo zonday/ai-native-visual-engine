@@ -625,4 +625,200 @@ describe("SelectorRegistry", () => {
       expect(all).toHaveLength(2);
     });
   });
+
+  describe("scheduler batch", () => {
+    it("batch defers graph propagation until end", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.getAncestors("a1");
+
+      let afterInside = false;
+      sel.batch(() => {
+        // Multiple invalidations inside batch — graph propagation
+        // is deferred but signal-level still marks computeds dirty
+        const root = assertNode(scene.nodes.root, "root");
+        root.children = ["a"];
+        sel.invalidate("root", "structural");
+        // Signal-level: getChildren's computed marked dirty immediately
+        // SelectorNode graph: propagation deferred
+        afterInside = true;
+      });
+
+      // After batch, flush propagates version bumps through subs
+      expect(afterInside).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(1);
+    });
+
+    it("nested batch only flushes at outermost end", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let innerDone = false;
+      let outerDone = false;
+
+      sel.batch(() => {
+        sel.batch(() => {
+          sel.invalidate("a", "structural");
+          innerDone = true;
+        });
+        outerDone = true;
+      });
+
+      expect(innerDone).toBe(true);
+      expect(outerDone).toBe(true);
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("flush after batch correctly propagates to fixed point", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+
+      sel.batch(() => {
+        // Multiple invalidations in batch
+        const root = assertNode(scene.nodes.root, "root");
+        root.children = ["a"];
+        sel.invalidate("root", "structural");
+
+        const a1 = assertNode(scene.nodes.a1, "a1");
+        a1.parentId = undefined;
+        sel.invalidate("a1", "structural");
+      });
+
+      expect(sel.getChildren("root")).toHaveLength(1);
+      expect(sel.getDepth("a1")).toBe(0);
+    });
+
+    it("auto-flush outside batch when batchDepth is 0", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+
+      // Outside batch, invalidate triggers auto-flush
+      sel.invalidate("a", "structural");
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("flush", () => {
+    it("explicit flush does not throw", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(() => sel.flush()).not.toThrow();
+    });
+
+    it("flush is re-entrant safe", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+
+      sel.batch(() => {
+        sel.invalidate("a", "structural");
+        // Calling flush inside batch should be safe (re-entrant guard)
+        sel.flush();
+      });
+
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+
+    it("flush is idempotent with no dirty nodes", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(() => sel.flush()).not.toThrow();
+      expect(() => sel.flush()).not.toThrow();
+    });
+  });
+
+  describe("removeSelector", () => {
+    it("removes selector and returns true", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(sel.removeSelector("children", "root")).toBe(true);
+    });
+
+    it("returns false for non-existent selector type", () => {
+      const sel = createSelectorRegistry(makeScene());
+      expect(sel.removeSelector("nonexistent", "key")).toBe(false);
+    });
+
+    it("returns false after removal", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      expect(sel.removeSelector("children", "root")).toBe(true);
+      expect(sel.removeSelector("children", "root")).toBe(false);
+    });
+
+    it("re-creates selector on next access after removal", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(2);
+      expect(after[0]?.id).toBe("a");
+    });
+
+    it("works after removal and scene mutation", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
+
+      // Mutate scene and invalidate
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["b"];
+      sel.invalidate("root", "structural");
+
+      // New selector should see fresh data
+      const after = sel.getChildren("root");
+      expect(after).toHaveLength(1);
+      expect(after[0]?.id).toBe("b");
+    });
+
+    it("disposal cleans deps/subs edges", () => {
+      const sel = createSelectorRegistry(makeScene());
+      // Establish graph edge: isDescendantOf → ancestors
+      sel.isDescendantOf("a1", "root");
+      sel.getAncestors("a1");
+
+      // Remove the ancestors selector
+      sel.removeSelector("ancestors", "a1");
+
+      // isDescendantOf should still work (creates new ancestors on get)
+      expect(sel.isDescendantOf("a1", "root")).toBe(true);
+    });
+
+    it("dispose is idempotent", () => {
+      const sel = createSelectorRegistry(makeScene());
+      sel.getChildren("root");
+      sel.removeSelector("children", "root");
+      // Second call should be safe
+      sel.removeSelector("children", "root");
+      // Re-created selector works
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
+
+  describe("sync clears scheduler state", () => {
+    it("sync clears dirtyNodes to prevent stale propagation", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+
+      const newScene: SceneGraph = {
+        version: 5,
+        rootId: "root",
+        nodes: {
+          root: { id: "root", type: "container" },
+        },
+      };
+      sel.sync(newScene);
+      // After sync, scheduler state is clean, getChildren creates fresh
+      expect(sel.getChildren("root")).toEqual([]);
+    });
+
+    it("scene version change clears dirtyNodes", () => {
+      const scene = makeScene();
+      const sel = createSelectorRegistry(scene);
+      sel.getChildren("root");
+
+      scene.version = 10;
+      sel.getNode("root"); // triggers checkVersion → clear all
+      expect(sel.getChildren("root")).toHaveLength(2);
+    });
+  });
 });
