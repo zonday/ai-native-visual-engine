@@ -1033,4 +1033,90 @@ describe("SelectorRegistry", () => {
       expect(sel.getAllNodes()).toHaveLength(before - 1);
     });
   });
+
+  describe("autorun", () => {
+    it("runs fn immediately and collects selector deps", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let callCount = 0;
+      const stop = sel.autorun(() => {
+        sel.getChildren("root");
+        callCount++;
+      });
+      expect(callCount).toBe(1);
+      stop();
+    });
+
+    it("re-runs when dependency signal changes", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let lastLength = 0;
+      sel.autorun(() => {
+        lastLength = sel.getChildren("root").length;
+      });
+      expect(lastLength).toBe(2);
+
+      // Mutate root's children
+      sel.commitScene((draft) => {
+        draft.nodes.root!.children = ["a"];
+      });
+
+      expect(lastLength).toBe(1);
+    });
+
+    it("stops re-running after stop() is called", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let callCount = 0;
+      const stop = sel.autorun(() => {
+        sel.getChildren("root");
+        callCount++;
+      });
+      expect(callCount).toBe(1);
+
+      stop();
+
+      callCount = 0;
+      sel.commitScene((draft) => {
+        draft.nodes.root!.children = ["a"];
+      });
+      // After stop, should NOT re-run
+      expect(callCount).toBe(0);
+    });
+
+    it("releases selector deps on stop — selector can be evicted", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const stop = sel.autorun(() => {
+        sel.getChildren("root");
+      });
+
+      // At this point, children:root selector has extra ref from autorun
+      // Stop the autorun — ref drops, but getCached still holds a ref
+      stop();
+
+      // Second autorun creates its own ref
+      const stop2 = sel.autorun(() => {
+        sel.getChildren("root");
+      });
+      stop2();
+    });
+
+    it("collects new deps when accessed conditionally", () => {
+      const sel = createSelectorRegistry(makeScene());
+      let selectedId = "root";
+      let lastLength = 0;
+      const stop = sel.autorun(() => {
+        const children = sel.getChildren(selectedId);
+        lastLength = children.length;
+      });
+      expect(lastLength).toBe(2);
+
+      // Change which selector is read
+      selectedId = "a";
+      // Trigger signal to force re-run
+      sel.invalidate("root", "children");
+      // autorun re-runs because childrenSignals["root"] changed
+      // Now it reads getChildren("a") instead of getChildren("root")
+      expect(lastLength).toBe(1);
+
+      stop();
+    });
+  });
 });

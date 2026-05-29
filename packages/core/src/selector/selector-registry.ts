@@ -1,7 +1,7 @@
+import { type Patch, produceWithPatches } from "immer";
 import { createScope, type Signal } from "../deps/reactive-scope.js";
-import { produceWithPatches, type Patch } from "immer";
-import type { NodeId, SceneGraph, SceneNode, DeepMutable } from "../types.js";
 import { routeImmerPatches } from "../immer-patch-router.js";
+import type { DeepMutable, NodeId, SceneGraph, SceneNode } from "../types.js";
 
 // ── Selector Registry ──
 // Query layer only. Owns:
@@ -70,6 +70,7 @@ export interface SelectorRegistry {
   flush(): void;
   removeSelector(type: string, key: string): boolean;
   commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void;
+  autorun(fn: () => void): () => void;
   onBeforeDispose(cb: () => void): () => void;
 }
 
@@ -94,6 +95,7 @@ export function createSelectorRegistry(
   const {
     signal,
     computed,
+    effect,
     startBatch,
     endBatch,
     flush: flushScope,
@@ -110,6 +112,7 @@ export function createSelectorRegistry(
   let batchDepth = 0;
   const pendingBatchSignals = new Set<string>();
   const disposeCallbacks = new Set<() => void>();
+  let activeReaction: Set<SelectorNode> | null = null;
 
   // ── Indexes ──
   const treeIndexSignal = signal(0);
@@ -311,6 +314,9 @@ export function createSelectorRegistry(
       get(): T {
         if (disposed) {
           throw new Error(`SelectorNode(${type},${key}) has been disposed`);
+        }
+        if (activeReaction && !activeReaction.has(node)) {
+          activeReaction.add(node);
         }
         const count = (accessCounts.get(node) ?? 0) + 1;
         accessCounts.set(node, count);
@@ -733,6 +739,35 @@ export function createSelectorRegistry(
       markTreeIndexDirty();
       markVisibilityIndexDirty();
       routeImmerPatches(patches, registry);
+    },
+
+    autorun(fn: () => void): () => void {
+      const deps = new Set<SelectorNode>();
+      let stopped = false;
+
+      const dispose = effect(() => {
+        // Unref deps from previous run
+        for (const dep of deps) dep.unref();
+        deps.clear();
+
+        // Run fn with tracking, then ref new deps
+        const prev = activeReaction;
+        activeReaction = deps;
+        try {
+          fn();
+        } finally {
+          activeReaction = prev;
+        }
+        for (const dep of deps) dep.ref();
+      });
+
+      return () => {
+        if (stopped) return;
+        stopped = true;
+        dispose();
+        for (const dep of deps) dep.unref();
+        deps.clear();
+      };
     },
   };
 
