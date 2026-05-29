@@ -13,8 +13,9 @@ function applyAction(
   doc: VisualDocument,
   action: DocumentAction,
 ): VisualDocument {
-  const handler = registries.handlerRegistry.get(action.type)?.handler;
-  return handler!(doc, action, context);
+  const entry = registries.handlerRegistry.get(action.type);
+  if (!entry) throw new Error(`No handler for ${action.type}`);
+  return entry.handler(doc, action, context);
 }
 
 describe("inverse round-trip — action → inverse restores state", () => {

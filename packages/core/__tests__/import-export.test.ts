@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
 import { exportDocument, importDocument } from "../src/import-export.js";
 
+function nonNull<T>(value: T): NonNullable<T> {
+  return value as NonNullable<T>;
+}
+
 describe("importDocument", () => {
   it("imports a valid VisualDocument", () => {
     const doc = createNewDocument({ title: "Imported" });
@@ -43,9 +47,10 @@ describe("exportDocument", () => {
       nodes: { "root-2": { id: "root-2", type: "container", children: [] } },
     };
 
-    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
+    const firstPageId = nonNull(doc.pages[0]).id;
+    const exported = exportDocument(doc, { targetPageIds: [firstPageId] });
     expect(exported.document.pages).toHaveLength(1);
-    expect(exported.document.pages[0]?.id).toBe(doc.pages[0]!.id);
+    expect(exported.document.pages[0]?.id).toBe(firstPageId);
   });
 
   it("strips activeThemeId when includeThemes is false", () => {

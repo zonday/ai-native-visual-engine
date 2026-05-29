@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+
+function nonNull<T>(value: T): NonNullable<T> {
+  return value as NonNullable<T>;
+}
+
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
 import { exportDocument } from "../src/import-export.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
@@ -53,7 +58,8 @@ describe("createNewDocument initialization", () => {
     const parsed = VisualDocumentSchema.safeParse(doc);
     expect(parsed.success).toBe(true);
     expect(doc.pages).toHaveLength(1);
-    expect(doc.scenes[doc.pages[0]!.sceneId]).toBeDefined();
+    const firstPage = nonNull(doc.pages[0]);
+    expect(doc.scenes[firstPage.sceneId]).toBeDefined();
   });
 
   it("sets active theme via themeId option", () => {
@@ -199,7 +205,8 @@ describe("exportDocument with fixtures", () => {
     doc.pages.push({ id: "page-2", name: "Page 2", sceneId: "scene-2" });
     doc.scenes["scene-2"] = createEmptyScene();
 
-    const exported = exportDocument(doc, { targetPageIds: [doc.pages[0]!.id] });
+    const exportedId = nonNull(doc.pages[0]).id;
+    const exported = exportDocument(doc, { targetPageIds: [exportedId] });
     expect(exported.document.pages).toHaveLength(1);
   });
 });
