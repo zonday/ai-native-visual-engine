@@ -50,7 +50,7 @@ export interface SelectorRegistry {
   getNodes(nodeIds: NodeId[]): SceneNode[];
   getAllNodes(): SceneNode[];
   getAncestors(nodeId: NodeId): SceneNode[];
-  getDescendants(nodeId: NodeId): SceneNode[];
+  getDescendants(nodeId: NodeId): NodeId[];
   getSiblings(nodeId: NodeId): SceneNode[];
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
@@ -454,7 +454,7 @@ export function createSelectorRegistry(
       }).get();
     },
 
-    getDescendants(nodeId: NodeId): SceneNode[] {
+    getDescendants(nodeId: NodeId): NodeId[] {
       return getCached("descendants", nodeId, () => {
         trackChildren(nodeId);
         ensureTreeIndex();
@@ -465,17 +465,20 @@ export function createSelectorRegistry(
           entry.preorder + 1,
           entry.preorder + entry.subtreeSize,
         );
+        // Structural sharing: same ID slice → same array reference.
+        // Descendants is a structural-only selector — returns NodeId[],
+        // not SceneNode[]. Consumers requiring full node data compose
+        // with getNode() or field selectors.
         const prev = descResultCache.get(nodeId);
-        const same =
+        if (
           prev &&
           prev.length === ids.length &&
-          prev.every((n, i) => n && n.id === ids[i]);
-        if (same && prev) return prev;
-        const result = ids
-          .map((id) => currentScene.nodes[id])
-          .filter((n): n is SceneNode => n !== undefined);
-        descResultCache.set(nodeId, result);
-        return result;
+          prev.every((id, i) => id === ids[i])
+        ) {
+          return prev;
+        }
+        descResultCache.set(nodeId, ids);
+        return ids;
       }).get();
     },
 
