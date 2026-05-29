@@ -10,7 +10,7 @@ interface SelectorNode<T = unknown> {
   subs: Set<SelectorNode>;
   version: number;
   get(): T;
-  invalidate(): void;
+  invalidate(visited?: Set<SelectorNode>): void;
 }
 
 export interface SelectorRegistry {
@@ -42,38 +42,8 @@ type SelectorType =
   | "descendants"
   | "siblings"
   | "depth"
-  | "visibleNodes";
-
-function defaultSelectorNode<T>(
-  type: string,
-  key: string,
-  compute: () => T,
-): SelectorNode<T> {
-  let version = 0;
-  const deps = new Set<SelectorNode>();
-  const subs = new Set<SelectorNode>();
-
-  const node: SelectorNode<T> = {
-    type,
-    key,
-    deps,
-    subs,
-    get version() {
-      return version;
-    },
-    get(): T {
-      return compute();
-    },
-    invalidate(): void {
-      version++;
-      for (const sub of subs) {
-        sub.invalidate();
-      }
-    },
-  };
-
-  return node;
-}
+  | "visibleNodes"
+  | "isDescendantOf";
 
 export function createSelectorRegistry(
   scene: Readonly<SceneGraph>,
@@ -81,6 +51,8 @@ export function createSelectorRegistry(
   const { signal, computed } = createScope();
   const structuralSignals = new Map<NodeId, Signal<number>>();
   const visibleSignals = new Map<NodeId, Signal<number>>();
+  const sceneStructureSignal = signal(0);
+  const globalEpoch = signal(0);
   const computedCache = new Map<SelectorType, Map<string, SelectorNode>>();
   let syncedVersion = scene.version;
 
@@ -101,8 +73,62 @@ export function createSelectorRegistry(
     if (s) s(s() + 1);
   }
 
-  function bumpAll(map: Map<NodeId, Signal<number>>): void {
-    for (const [, s] of map) s(s() + 1);
+  let activeSelector: SelectorNode | null = null;
+
+  function createNode<T>(
+    type: string,
+    key: string,
+    compute: () => T,
+  ): SelectorNode<T> {
+    let version = 0;
+    const nodeVersion = signal(0);
+    const deps = new Set<SelectorNode>();
+    const subs = new Set<SelectorNode>();
+
+    const fn = computed(() => {
+      globalEpoch();
+      nodeVersion();
+      return compute();
+    });
+
+    const node: SelectorNode<T> = {
+      type,
+      key,
+      deps,
+      subs,
+      get version() {
+        return version;
+      },
+      get(): T {
+        if (activeSelector && activeSelector !== node) {
+          activeSelector.deps.add(node);
+          subs.add(activeSelector);
+        }
+        const prev = activeSelector;
+        activeSelector = node;
+        try {
+          return fn();
+        } finally {
+          activeSelector = prev;
+        }
+      },
+      invalidate(visited?: Set<SelectorNode>): void {
+        version++;
+        nodeVersion(nodeVersion() + 1);
+        for (const sub of subs) {
+          if (visited?.has(sub)) continue;
+          visited ??= new Set();
+          visited.add(sub);
+          sub.invalidate(visited);
+        }
+      },
+    };
+
+    return node;
+  }
+
+  function bumpSceneStructure(): void {
+    sceneStructureSignal(sceneStructureSignal() + 1);
   }
 
   function checkVersion(): void {
@@ -126,8 +152,7 @@ export function createSelectorRegistry(
     }
     let n = innerMap.get(key) as SelectorNode<T> | undefined;
     if (!n) {
-      const reactiveFn = computed(compute) as () => T;
-      n = defaultSelectorNode(type, key, reactiveFn);
+      n = createNode(type, key, compute);
       innerMap.set(key, n);
     }
     return n;
@@ -204,9 +229,10 @@ export function createSelectorRegistry(
 
     getAllNodes(): SceneNode[] {
       checkVersion();
-      return getCached("allNodes", "all", () =>
-        Object.values(scene.nodes),
-      ).get();
+      return getCached("allNodes", "all", () => {
+        sceneStructureSignal();
+        return Object.values(scene.nodes);
+      }).get();
     },
 
     getAncestors(nodeId: NodeId): SceneNode[] {
@@ -280,8 +306,10 @@ export function createSelectorRegistry(
 
     isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean {
       checkVersion();
-      const ancestors = registry.getAncestors(nodeId);
-      return ancestors.some((a) => a.id === ancestorId);
+      return getCached("isDescendantOf", `${nodeId}:${ancestorId}`, () => {
+        const ancestors = registry.getAncestors(nodeId);
+        return ancestors.some((a) => a.id === ancestorId);
+      }).get();
     },
 
     getVisibleNodes(): SceneNode[] {
@@ -300,17 +328,26 @@ export function createSelectorRegistry(
       if (!field) {
         bumpSignal(structuralSignals, nodeId);
         bumpSignal(visibleSignals, nodeId);
+        bumpSceneStructure();
         return;
       }
-      if (field === "structural") bumpSignal(structuralSignals, nodeId);
-      else if (field === "visible") bumpSignal(visibleSignals, nodeId);
-      else if (field === "layout") bumpSignal(structuralSignals, nodeId);
-      else if (field === "props") bumpSignal(structuralSignals, nodeId);
+      if (field === "structural") {
+        bumpSignal(structuralSignals, nodeId);
+        bumpSceneStructure();
+      } else if (field === "visible") {
+        bumpSignal(visibleSignals, nodeId);
+      } else if (field === "layout") {
+        bumpSignal(structuralSignals, nodeId);
+        bumpSceneStructure();
+      } else if (field === "props") {
+        bumpSignal(structuralSignals, nodeId);
+        bumpSceneStructure();
+      }
     },
 
     invalidateAll(): void {
-      bumpAll(structuralSignals);
-      bumpAll(visibleSignals);
+      globalEpoch(globalEpoch() + 1);
+      bumpSceneStructure();
     },
 
     sync(newScene: SceneGraph): void {
@@ -318,6 +355,7 @@ export function createSelectorRegistry(
       structuralSignals.clear();
       visibleSignals.clear();
       computedCache.clear();
+      bumpSceneStructure();
       syncedVersion = newScene.version;
     },
 
