@@ -48,7 +48,9 @@ const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   };
 
   return produce(scene, (draft) => {
-    const parentChildren = [...((draft.nodes[action.parentId] as SceneNode).children ?? [])];
+    const parentChildren = [
+      ...((draft.nodes[action.parentId] as SceneNode).children ?? []),
+    ];
     parentChildren.splice(index, 0, node.id);
     (draft.nodes[action.parentId] as SceneNode).children = parentChildren;
     draft.nodes[node.id] = node;
