@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneGraph, SceneNode } from "../../types.js";
+import type { MutableSceneNode, SceneGraph, SceneNode } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -94,11 +94,12 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
     }
 
     const newParentChildren = [
-      ...((draft.nodes[action.parentId] as SceneNode).children ?? []),
+      ...((draft.nodes[action.parentId] as MutableSceneNode).children ?? []),
     ];
     newParentChildren.splice(index, 0, action.nodeId);
-    (draft.nodes[action.parentId] as any).children = newParentChildren;
-    (draft.nodes[action.nodeId] as any).parentId = action.parentId;
+    (draft.nodes[action.parentId] as MutableSceneNode).children =
+      newParentChildren;
+    (draft.nodes[action.nodeId] as MutableSceneNode).parentId = action.parentId;
     draft.version += 1;
   });
 };

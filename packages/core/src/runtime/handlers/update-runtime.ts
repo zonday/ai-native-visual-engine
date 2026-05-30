@@ -1,6 +1,6 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
-import type { SceneGraph } from "../../types.js";
+import type { MutableSceneNode, SceneGraph } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -24,7 +24,7 @@ const updateRuntimeHandler: RuntimeHandler<UpdateRuntimeAction> = (
   const node = expectNode(scene, action.nodeId, "update-runtime");
 
   return produce(scene, (draft) => {
-    (draft.nodes[action.nodeId] as any).runtime = {
+    (draft.nodes[action.nodeId] as MutableSceneNode).runtime = {
       ...node.runtime,
       ...stripDangerousKeys(action.runtime),
     };

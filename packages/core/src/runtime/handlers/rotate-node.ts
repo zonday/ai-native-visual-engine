@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneGraph, SceneNode } from "../../types.js";
+import type { MutableSceneNode, SceneGraph, SceneNode } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -62,7 +62,7 @@ const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
 
   return produce(scene, (draft) => {
     (
-      (draft.nodes[action.nodeId] as SceneNode).layout as Record<
+      (draft.nodes[action.nodeId] as MutableSceneNode).layout as Record<
         string,
         unknown
       >

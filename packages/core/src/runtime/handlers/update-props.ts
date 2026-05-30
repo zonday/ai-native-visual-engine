@@ -1,6 +1,6 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
-import type { SceneGraph } from "../../types.js";
+import type { MutableSceneNode, SceneGraph } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -24,7 +24,7 @@ const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   const node = expectNode(scene, action.nodeId, "update-props");
 
   return produce(scene, (draft) => {
-    (draft.nodes[action.nodeId] as any).props = {
+    (draft.nodes[action.nodeId] as MutableSceneNode).props = {
       ...node.props,
       ...stripDangerousKeys(action.props),
     };

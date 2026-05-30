@@ -1,6 +1,6 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
-import type { SceneGraph } from "../../types.js";
+import type { MutableSceneNode, SceneGraph } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -30,7 +30,9 @@ const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   expectNode(scene, action.nodeId, "update-bindings");
 
   return produce(scene, (draft) => {
-    (draft.nodes[action.nodeId] as any).bindings = [...action.bindings];
+    (draft.nodes[action.nodeId] as MutableSceneNode).bindings = [
+      ...action.bindings,
+    ];
     draft.version += 1;
   });
 };
