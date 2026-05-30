@@ -5,6 +5,7 @@ import type {
   InverseComputer,
   Validator,
 } from "./handler-registry.js";
+import { buildRegistriesFromEntries } from "./handler-registry.js";
 
 export interface ActionMeta {
   undoable: boolean;
@@ -134,4 +135,32 @@ export class ActionRegistry<
       meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
     };
   }
+}
+
+/**
+ * Convert an ActionRegistry back to the legacy dual-map form for backward
+ * compatibility with consumers that still use handlerRegistry + inverseRegistry.
+ */
+export function splitRegistry<
+  TAction extends { type: string },
+  TState,
+  TContext extends RuntimeContext,
+>(
+  registry: ActionRegistry<TAction, TState, TContext>,
+): ReturnType<typeof buildRegistriesFromEntries<TState, TAction, TContext>> {
+  const entries: [string, HandlerEntry<TState, TAction, TContext>][] = [];
+
+  const typeSet = new Set<string>();
+  for (const key of (registry as unknown as { entries: Map<string, unknown> }).entries.keys()) {
+    typeSet.add(key);
+  }
+
+  for (const type of typeSet) {
+    const entry = registry.getEntry(type as TAction["type"]);
+    if (entry) {
+      entries.push([type, entry as unknown as HandlerEntry<TState, TAction, TContext>]);
+    }
+  }
+
+  return buildRegistriesFromEntries(entries);
 }
