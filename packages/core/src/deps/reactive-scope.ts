@@ -214,7 +214,7 @@ export function createScope(): ReactiveScope {
           (e.flags & ~(RF.RecursedCheck | ExtraRF.Evaluating)) | RF.Watching;
         purgeDeps(e);
       }
-    } else if (e.deps !== undefined) {
+    } else {
       e.flags = RF.Watching;
     }
   }
@@ -399,7 +399,7 @@ export function createScope(): ReactiveScope {
   }
 
   function disposeEffectNode(e: EffectInternal): void {
-    if (!e.flags) {
+    if (!e.flags || e.flags & ExtraRF.Disposed) {
       return;
     }
     if (e.parent) {
@@ -408,7 +408,7 @@ export function createScope(): ReactiveScope {
         e.parent.children.splice(idx, 1);
       }
     }
-    e.flags = RF.None;
+    e.flags = ExtraRF.Disposed;
     if (e.cleanup) {
       try {
         e.cleanup();
