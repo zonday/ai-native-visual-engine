@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import { moveNodeEntry } from "../src/runtime/handlers/move-node.js";
@@ -11,6 +10,7 @@ import { updatePropsEntry } from "../src/runtime/handlers/update-props.js";
 import { updateRuntimeEntry } from "../src/runtime/handlers/update-runtime.js";
 import { updateSelectionEntry } from "../src/runtime/handlers/update-selection.js";
 import { updateStyleEntry } from "../src/runtime/handlers/update-style.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { AbsoluteLayout, SceneGraph } from "../src/types.js";
 import { baseNode, makeScene } from "./helpers.js";
 

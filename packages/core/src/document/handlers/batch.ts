@@ -1,7 +1,5 @@
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { BatchDocumentActions, DocumentAction } from "../register-handlers.js";
-import { DocumentActionSchema } from "../register-handlers.js";
 import type { DocumentDispatchResult } from "../document-command-bus.js";
 import type {
   DocumentHandler,
@@ -11,6 +9,11 @@ import type {
   InverseRegistry,
 } from "../handler-registry.js";
 import { computeInverseAction } from "../handler-registry.js";
+import type {
+  BatchDocumentActions,
+  DocumentAction,
+} from "../register-handlers.js";
+import { DocumentActionSchema } from "../register-handlers.js";
 
 const MAX_BATCH_DEPTH = 50;
 

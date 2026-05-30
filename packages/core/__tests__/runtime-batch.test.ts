@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
 import {
   batchInverse,
@@ -9,6 +8,7 @@ import {
 } from "../src/runtime/handlers/batch.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import { removeNodeEntry } from "../src/runtime/handlers/remove-node.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { SceneGraph } from "../src/types.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
