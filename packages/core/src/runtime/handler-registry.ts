@@ -1,12 +1,13 @@
 import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type {
   HandlerEntry,
-  HandlerRegistry,
+  HandlerRegistry as EngineHandlerRegistry,
 } from "../engine/handler-registry.js";
+import type { ActionRegistry, HandlerMap } from "../engine/action-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 
-export type { RuntimeContext };
+export type { RuntimeContext, ActionRegistry, HandlerMap };
 
 export type RuntimeHandler<TAction extends RuntimeAction = RuntimeAction> =
   Handler<SceneGraph, TAction, RuntimeContext>;
@@ -17,15 +18,12 @@ export type RuntimeHandlerEntry = HandlerEntry<
   RuntimeContext
 >;
 
-export type RuntimeHandlerRegistry = HandlerRegistry<
+export type RuntimeHandlerRegistry = EngineHandlerRegistry<
   SceneGraph,
   RuntimeAction,
   RuntimeContext
 >;
 
-// Return type is the wider RuntimeAction (not TAction) because inverse
-// computers often produce a different action type than they consume
-// (e.g., create-node inverse returns remove-node).
 export type InverseComputer<TAction extends RuntimeAction = RuntimeAction> = (
   sceneBefore: SceneGraph,
   action: TAction,
@@ -50,3 +48,11 @@ export function computeInverseAction(
   if (!computer) return undefined;
   return computer(sceneBefore, action, context);
 }
+
+export type RuntimeEntryFor<K extends RuntimeAction["type"]> =
+  HandlerMap<RuntimeAction, SceneGraph, RuntimeContext>[K];
+
+export const STANDARD_ACTION_META = {
+  undoable: true,
+  mergeable: false,
+} as const;
