@@ -227,12 +227,7 @@ describe("batch inverse", () => {
     };
 
     expect(() =>
-      computeInverseAction(
-        inverseRegistry,
-        docWithTwoPages,
-        action,
-        context,
-      ),
+      computeInverseAction(inverseRegistry, docWithTwoPages, action, context),
     ).toThrow("Batch inverse must be computed by the transaction manager");
   });
 });

@@ -11,9 +11,9 @@ import {
   createComputedStateEngine,
   createConstraintMiddleware,
   createConstraintRegistry,
-  createDocumentRegistry,
   createDocumentBatchHandler,
   createDocumentCommandBus,
+  createDocumentRegistry,
   createInteractionEngine,
   createRuntimeCommandBus,
   createRuntimeRegistry,
@@ -38,7 +38,11 @@ export interface EditorEngines {
   selectorRegistry: ReturnType<typeof createSelectorRegistry>;
   interactionEngine: ReturnType<typeof createInteractionEngine>;
   constraintRegistry: ReturnType<typeof createConstraintRegistry>;
-  runtimeRegistries: ActionRegistry<RuntimeAction, SceneGraph, import("@ai-native/core").RuntimeContext>;
+  runtimeRegistries: ActionRegistry<
+    RuntimeAction,
+    SceneGraph,
+    import("@ai-native/core").RuntimeContext
+  >;
   runtimeTm: ReturnType<typeof createRuntimeTransactionManager>;
   transactionFlagRef: React.MutableRefObject<
     ReturnType<typeof createTransactionFlag>
@@ -88,7 +92,8 @@ export function useEditorEngines(
   const transactionFlagRef = useRef(createTransactionFlag());
 
   const runtimeTm = useMemo(() => {
-    const { handlerRegistry, inverseRegistry } = splitRegistry(runtimeRegistries);
+    const { handlerRegistry, inverseRegistry } =
+      splitRegistry(runtimeRegistries);
     return createRuntimeTransactionManager(
       handlerRegistry as never,
       inverseRegistry as never,
