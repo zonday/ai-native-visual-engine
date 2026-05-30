@@ -139,6 +139,7 @@ Refer to the following documents for details:
 - `bootstrap-and-lifecycle.md`
 - `renderer-contract.md`
 - `testing-and-fixtures.md`
+- `action-registration.md`
 - `persistence-and-serialization.md`
 - `error-handling.md`
 - `theme-and-tokens.md`
