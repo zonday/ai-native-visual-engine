@@ -13,11 +13,7 @@ import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {
   it("dispatches a valid action and returns ok with updated scene", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
@@ -35,11 +31,7 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
@@ -56,11 +48,7 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns handler error code when RuntimeHandlerError is thrown", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
@@ -103,11 +91,7 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(
       runtimeReg,
       [undefined as unknown as RuntimeMiddleware],
@@ -127,11 +111,7 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified scene", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     let middlewareCalled = false;
     const trackingMiddleware: RuntimeMiddleware = (_action, _scene, next) => {
       middlewareCalled = true;
@@ -156,11 +136,7 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("getScene returns the current scene", () => {
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: emptyScene,
-      error: { code: "scene.handler-error", message: "should not be called" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });

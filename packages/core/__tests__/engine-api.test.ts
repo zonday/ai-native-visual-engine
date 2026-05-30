@@ -34,11 +34,7 @@ describe("createEngineAPI", () => {
         },
       });
 
-    const runtimeReg = createRuntimeRegistry(() => ({
-      ok: false,
-      scene,
-      error: { code: "fail", message: "noop" },
-    }));
+    const runtimeReg = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(runtimeReg, [], scene, {
       now: Date.now,
     });

@@ -14,9 +14,7 @@ import { updateRuntimeEntry } from "./handlers/update-runtime.js";
 import { updateSelectionEntry } from "./handlers/update-selection.js";
 import { updateStyleEntry } from "./handlers/update-style.js";
 
-export function createRuntimeRegistry(
-  _batchDispatch: (action: RuntimeAction) => DispatchResult,
-): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
+export function createRuntimeRegistry(): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
   const registry = new ActionRegistry<
     RuntimeAction,
     SceneGraph,

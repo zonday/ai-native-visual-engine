@@ -10,9 +10,7 @@ import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
-const docReg = createDocumentRegistry(
-  () => ({ ok: true, document: makeDoc() }) as never,
-);
+const docReg = createDocumentRegistry();
 const { inverseRegistry: defaultInverseRegistry } = splitRegistry(docReg);
 
 const defaultContext: DocumentRuntimeContext = { now: Date.now };
