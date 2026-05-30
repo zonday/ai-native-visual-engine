@@ -515,4 +515,97 @@ describe("createScope", () => {
       expect(evalCount).toBe(1);
     });
   });
+
+  describe("signal edge cases", () => {
+    it("setting to same value is no-op (no notification)", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => { s(); fn(); });
+      fn.mockClear();
+      s(0);
+      expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("computed edge cases", () => {
+    it("diamond dependency propagates correctly", () => {
+      const { signal, computed } = createScope();
+      const x = signal(0);
+      const b = computed(() => x() + 1);
+      const c = computed(() => x() + 2);
+      const d = computed(() => b() + c());
+      expect(d()).toBe(3);
+      x(1);
+      expect(d()).toBe(5);
+    });
+
+    it("throws during evaluation propagates to caller", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      const c = computed(() => {
+        if (s() > 0) throw new Error("computed boom");
+        return s();
+      });
+      expect(c()).toBe(0);
+      s(1);
+      expect(() => c()).toThrow("computed boom");
+    });
+
+    it("constant computed (no deps) caches", () => {
+      const { computed } = createScope();
+      let evalCount = 0;
+      const c = computed(() => { evalCount++; return 42; });
+      expect(c()).toBe(42);
+      expect(evalCount).toBe(1);
+      expect(c()).toBe(42);
+      expect(evalCount).toBe(1);
+    });
+  });
+
+  describe("effect edge cases", () => {
+    it("effect with no deps runs once then never again", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => { fn(); });
+      fn.mockClear();
+      s(1);
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("cleanup returning non-function is ignored", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => {
+        s();
+        fn();
+        return 123 as unknown as () => void;
+      });
+      fn.mockClear();
+      s(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("batch edge cases", () => {
+    it("nested batch works correctly", () => {
+      const { signal, computed, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      let evalCount = 0;
+      const c = computed(() => { evalCount++; return s() * 2; });
+      c();
+      evalCount = 0;
+      startBatch();
+      s(1);
+      startBatch();
+      s(2);
+      endBatch();
+      expect(evalCount).toBe(0);
+      endBatch();
+      c();
+      expect(evalCount).toBe(1);
+    });
+  });
 });
