@@ -44,6 +44,37 @@ export interface HandlerEntry<TState, TAction, TContext extends RuntimeContext> 
   validate: Validator<TState, TAction, TContext>;
   meta: ActionMeta;
 }
+
+The `state` parameter of every handler, inverse, and validator is typed `Readonly<TState>` to prevent direct mutation at the type level:
+
+```ts
+// engine/types.ts
+export type Handler<TState, TAction, TContext> = (
+  state: Readonly<TState>,
+  action: TAction,
+  context: TContext,
+) => TState;
+
+export type InverseComputer<TState, TAction, TContext> = (
+  stateBefore: Readonly<TState>,
+  action: TAction,
+  context: TContext,
+) => TAction | undefined;
+
+export type Validator<TState, TAction, TContext> = (
+  state: Readonly<TState>,
+  action: TAction,
+  context: TContext,
+) => ValidationResult;
+```
+
+`Readonly<TState>` is a shallow constraint — it prevents property reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). The shallow constraint catches the most common mutation pattern at compile time. Deep immutability would require runtime enforcement (e.g. `Object.freeze` or Immer `freeze`) and is reserved for a future optimization pass.
+
+For batch inverse computation, the return type is generalized to allow both single actions and batch containers:
+
+```ts
+export type InverseAction<TAction extends { type: string }> =
+  TAction | BatchAction<TAction>;
 ```
 
 Each action type has exactly one module file that exports its `HandlerEntry`.
@@ -502,22 +533,22 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
   steps: BatchStep<TAction, TState>[],
   registry: ActionRegistry<TAction, TState, TContext>,
   context: TContext,
-): TAction | undefined {
-  const inverses: TAction[] = [];
+): InverseAction<TAction> | undefined {
+  const inverses: InverseAction<TAction>[] = [];
 
   // Process actions in reverse order
   for (let i = steps.length - 1; i >= 0; i--) {
     const { action, stateBefore } = steps[i];
-    const inverse = registry.getInverse(action.type as TAction["type"]);
-    if (inverse) {
-      const result = inverse(stateBefore, action as TAction, context);
+    const inv = registry.getInverse(action.type as TAction["type"]);
+    if (inv) {
+      const result: InverseAction<TAction> | undefined = inv(stateBefore, action as TAction, context);
       if (result) inverses.push(result);
     }
   }
 
   if (inverses.length === 0) return undefined;
   if (inverses.length === 1) return inverses[0];
-  return { type: "batch-actions", actions: inverses } as TAction;
+  return { type: "batch-actions", actions: inverses } satisfies BatchAction<TAction>;
 }
 ```
 
@@ -544,7 +575,11 @@ function validateBatch<TAction extends { type: string }, TState, TContext extend
       const result = validate(current, child as TAction, context);
       if (!result.ok) return result;
     }
-    // Advance state for next validation — this is a dry run
+    // Advance state for next validation — this is a dry run.
+    // The handler MUST be pure (no mutation of `current`). The `Readonly<TState>`
+    // constraint on the handler's first parameter catches direct reassignment
+    // at compile time. If the handler violates purity, the original `state`
+    // object is NOT affected because every handler returns a new object.
     const handler = registry.getHandler(child.type as TAction["type"]);
     if (handler) {
       current = handler(current, child as TAction, context);
@@ -584,6 +619,39 @@ handlers/
 
 This keeps the dependency graph acyclic at the handler layer and allows any handler to be tested in isolation.
 
+### 11.1 Biome Enforcement
+
+The project's `biome.json` enforces this restriction automatically for all files under `packages/core/src/*/handlers/`:
+
+```json
+{
+  "overrides": [
+    {
+      "includes": ["packages/core/src/runtime/handlers/**", "packages/core/src/document/handlers/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [{
+                  "group": ["./**"],
+                  "message": "Handlers must not import from other handler files. Extract shared logic to a separate utility module outside the handlers/ directory."
+                }]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+The pattern `"./**"` matches any relative import that begins with `./` — all same-directory imports. Since `handlers/` contains only handler files, this effectively blocks all handler-to-handler imports while allowing cross-directory imports (e.g. `"../../engine/error"`, `"../types"`, `"../actions"`).
+
+A pre-commit hook or CI step runs `pnpm exec biome check --staged` to catch violations before they reach the repository.
+
 ---
 
 ## 12. Future Considerations
@@ -608,11 +676,14 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 |---------|-----------|---------|
 | Co-location | `HandlerEntry` in one file | Handler + inverse + validate lifecycle bound |
 | Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
+| Readonly guard | `Readonly<TState>` on handler params | Compile-time mutation prevention |
+| Typed batch inverse | `InverseAction<TAction>` return type | No `as TAction` cast on batch container |
 | Batch in union | `BatchAction<TAction>` | No `as unknown`, self-recursive |
 | Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
-| No handler replay | Per-child `stateBefore` recorded during execution | Inverse computation never re-executes handlers |
-| Progressive validation | `validate(state, action, ctx)` | Semantic checks possible (existence, cycles) |
+| No handler replay | Per-child `stateBefore` recorded during execution | Never re-executes handlers for inverse |
+| Progressive validation | `validate(state, action, ctx)` | Semantic checks (existence, cycles, constraints) |
 | Unified error model | Handler never throws business errors | Predictable error handling at every layer |
-| Handler purity | Enforced by contract | Safe double-execution for validation + inverse |
+| Handler purity | `Readonly<TState>` enforced by contract | Safe double-execution for validation + inverse |
+| Acyclic graph | biome `noRestrictedImports` with `"./**"` | Blocks handler→handler imports at lint time |
 | Closed-world | Explicit design decision | Sound exhaustiveness, predictable engine ABI |
