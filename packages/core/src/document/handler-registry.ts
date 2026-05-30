@@ -1,10 +1,15 @@
+import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type {
   HandlerEntry,
   HandlerRegistry,
 } from "../engine/handler-registry.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
-import type { DocumentRuntimeContext } from "./handler.js";
+
+export interface DocumentRuntimeContext extends RuntimeContext {}
+
+export type DocumentHandler<TAction extends DocumentAction = DocumentAction> =
+  Handler<VisualDocument, TAction, DocumentRuntimeContext>;
 
 export type DocumentHandlerEntry = HandlerEntry<
   VisualDocument,

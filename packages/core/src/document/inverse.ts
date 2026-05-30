@@ -41,12 +41,6 @@ import {
   updatePageRouteInverse,
 } from "./handlers/update-page-route.js";
 
-export type { InverseComputer, InverseRegistry } from "./handler-registry.js";
-export {
-  computeInverseAction,
-  createInverseRegistry,
-} from "./handler-registry.js";
-
 export function createDefaultDocumentRegistries(
   batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
 ): {

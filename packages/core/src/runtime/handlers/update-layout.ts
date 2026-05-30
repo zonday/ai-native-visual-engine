@@ -1,8 +1,7 @@
 import { HandlerError } from "../../engine/error.js";
 import type { UpdateLayoutAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 function validateLayout(layout: Record<string, unknown>, nodeId: string): void {

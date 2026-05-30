@@ -2,8 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { MoveNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 
 function isDescendantOf(
   nodeId: string,

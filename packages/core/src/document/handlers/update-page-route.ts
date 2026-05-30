@@ -1,7 +1,6 @@
 import { HandlerError } from "../../engine/error.js";
 import type { UpdatePageRouteAction } from "../actions.js";
-import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
 
 export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (

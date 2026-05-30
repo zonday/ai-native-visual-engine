@@ -1,7 +1,6 @@
 import { HandlerError } from "../../engine/error.js";
 import type { UpdateSelectionAction } from "../actions.js";
-import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 
 export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   scene,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   moveNodeHandler,
   moveNodeInverse,
@@ -78,12 +78,12 @@ describe("moveNodeHandler", () => {
     };
     expect(() =>
       moveNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing");
+      expect((e as HandlerError).code).toBe("scene.node-not-found");
+      expect((e as HandlerError).context.nodeId).toBe("missing");
     }
   });
 
@@ -95,12 +95,12 @@ describe("moveNodeHandler", () => {
     };
     expect(() =>
       moveNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.invalid-parent");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing-parent");
+      expect((e as HandlerError).code).toBe("scene.invalid-parent");
+      expect((e as HandlerError).context.nodeId).toBe("missing-parent");
     }
   });
 
@@ -112,11 +112,11 @@ describe("moveNodeHandler", () => {
     };
     expect(() =>
       moveNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.cycle-detected");
+      expect((e as HandlerError).code).toBe("scene.cycle-detected");
     }
   });
 
@@ -128,11 +128,11 @@ describe("moveNodeHandler", () => {
     };
     expect(() =>
       moveNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       moveNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.cycle-detected");
+      expect((e as HandlerError).code).toBe("scene.cycle-detected");
     }
   });
 });

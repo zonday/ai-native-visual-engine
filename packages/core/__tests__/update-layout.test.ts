@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   updateLayoutHandler,
   updateLayoutInverse,
@@ -58,12 +58,12 @@ describe("updateLayoutHandler", () => {
     };
     expect(() =>
       updateLayoutHandler(sceneWithNode, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       updateLayoutHandler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing");
+      expect((e as HandlerError).code).toBe("scene.node-not-found");
+      expect((e as HandlerError).context.nodeId).toBe("missing");
     }
   });
 });
