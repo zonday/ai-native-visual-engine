@@ -435,18 +435,9 @@ describe("createScope", () => {
 
       const parentStop = effect(() => {
         s();
-        effect(() => {
-          s();
-          fn1();
-        });
-        effect(() => {
-          s();
-          fn2();
-        });
-        effect(() => {
-          s();
-          fn3();
-        });
+        effect(() => { s(); fn1(); });
+        effect(() => { s(); fn2(); });
+        effect(() => { s(); fn3(); });
       });
 
       fn1.mockClear();
