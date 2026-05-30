@@ -35,3 +35,9 @@ export const renamePageInverse: InverseComputer<RenamePageAction> = (
     name: page.name,
   };
 };
+
+export const renamePageMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Rename Page",
+} as const;

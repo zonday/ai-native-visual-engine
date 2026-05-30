@@ -153,3 +153,9 @@ export function createBatchInverse(
     );
   };
 }
+
+export const batchMeta = {
+  undoable: true,
+  mergeable: true,
+  devtoolsLabel: "Batch",
+} as const;

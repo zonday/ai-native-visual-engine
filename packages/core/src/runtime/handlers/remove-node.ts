@@ -89,3 +89,9 @@ export const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
   }
   return { type: "batch-actions", actions: createActions };
 };
+
+export const removeNodeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Remove Node",
+} as const;

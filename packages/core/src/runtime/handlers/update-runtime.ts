@@ -36,3 +36,9 @@ export const updateRuntimeInverse: InverseComputer<UpdateRuntimeAction> = (
     runtime: { ...(node.runtime ?? {}) },
   };
 };
+
+export const updateRuntimeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Runtime",
+} as const;

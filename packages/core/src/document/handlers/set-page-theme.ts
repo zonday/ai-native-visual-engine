@@ -46,3 +46,9 @@ export const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (
     themeId: page.themeId,
   };
 };
+
+export const setPageThemeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Set Page Theme",
+} as const;

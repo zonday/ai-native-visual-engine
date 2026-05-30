@@ -36,3 +36,9 @@ export const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
     props: { ...(node.props ?? {}) },
   };
 };
+
+export const updatePropsMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Props",
+} as const;

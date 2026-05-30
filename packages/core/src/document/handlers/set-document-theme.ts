@@ -26,3 +26,9 @@ export const setDocumentThemeInverse: InverseComputer<
     themeId: documentBefore.activeThemeId,
   };
 };
+
+export const setDocumentThemeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Set Document Theme",
+} as const;

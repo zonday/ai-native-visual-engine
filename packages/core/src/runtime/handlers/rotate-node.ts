@@ -76,3 +76,9 @@ export const rotateNodeInverse: InverseComputer<RotateNodeAction> = (
     rotation: previousRotation ?? 0,
   };
 };
+
+export const rotateNodeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Rotate Node",
+} as const;

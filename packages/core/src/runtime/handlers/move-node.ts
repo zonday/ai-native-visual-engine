@@ -119,3 +119,9 @@ export const moveNodeInverse: InverseComputer<MoveNodeAction> = (
     index: oldIndex,
   };
 };
+
+export const moveNodeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Move Node",
+} as const;

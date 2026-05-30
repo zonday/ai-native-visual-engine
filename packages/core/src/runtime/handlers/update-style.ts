@@ -36,3 +36,9 @@ export const updateStyleInverse: InverseComputer<UpdateStyleAction> = (
     style: node.style ?? {},
   };
 };
+
+export const updateStyleMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Style",
+} as const;

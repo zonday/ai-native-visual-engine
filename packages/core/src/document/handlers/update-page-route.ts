@@ -56,3 +56,9 @@ export const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
     route: page.route ?? "",
   };
 };
+
+export const updatePageRouteMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Page Route",
+} as const;

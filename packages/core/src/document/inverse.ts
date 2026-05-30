@@ -11,34 +11,42 @@ import {
   batchInverse,
   createBatchHandler,
   createBatchInverse,
+  batchMeta,
 } from "./handlers/batch.js";
 import {
   createPageHandler,
   createPageInverse,
+  createPageMeta,
 } from "./handlers/create-page.js";
 import {
   removePageHandler,
   removePageInverse,
+  removePageMeta,
 } from "./handlers/remove-page.js";
 import {
   renamePageHandler,
   renamePageInverse,
+  renamePageMeta,
 } from "./handlers/rename-page.js";
 import {
   reorderPageHandler,
   reorderPageInverse,
+  reorderPageMeta,
 } from "./handlers/reorder-page.js";
 import {
   setDocumentThemeHandler,
   setDocumentThemeInverse,
+  setDocumentThemeMeta,
 } from "./handlers/set-document-theme.js";
 import {
   setPageThemeHandler,
   setPageThemeInverse,
+  setPageThemeMeta,
 } from "./handlers/set-page-theme.js";
 import {
   updatePageRouteHandler,
   updatePageRouteInverse,
+  updatePageRouteMeta,
 } from "./handlers/update-page-route.js";
 
 export function createDefaultDocumentRegistries(
@@ -58,7 +66,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: createPageHandler as DocumentHandlerEntry["handler"],
         inverse: createPageInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: createPageMeta,
       },
     ],
     [
@@ -66,7 +74,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: renamePageHandler as DocumentHandlerEntry["handler"],
         inverse: renamePageInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: renamePageMeta,
       },
     ],
     [
@@ -74,7 +82,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: removePageHandler as DocumentHandlerEntry["handler"],
         inverse: removePageInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: removePageMeta,
       },
     ],
     [
@@ -82,7 +90,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: reorderPageHandler as DocumentHandlerEntry["handler"],
         inverse: reorderPageInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: reorderPageMeta,
       },
     ],
     [
@@ -90,7 +98,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: updatePageRouteHandler as DocumentHandlerEntry["handler"],
         inverse: updatePageRouteInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updatePageRouteMeta,
       },
     ],
     [
@@ -98,7 +106,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: setDocumentThemeHandler as DocumentHandlerEntry["handler"],
         inverse: setDocumentThemeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: setDocumentThemeMeta,
       },
     ],
     [
@@ -106,7 +114,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: setPageThemeHandler as DocumentHandlerEntry["handler"],
         inverse: setPageThemeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: setPageThemeMeta,
       },
     ],
     [
@@ -116,7 +124,7 @@ export function createDefaultDocumentRegistries(
           batchDispatch,
         ) as DocumentHandlerEntry["handler"],
         inverse: batchInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: batchMeta,
       },
     ],
   ];

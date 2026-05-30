@@ -43,3 +43,9 @@ export const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
     nodeIds: sceneBefore.selection?.nodeIds ?? [],
   };
 };
+
+export const updateSelectionMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Selection",
+} as const;
