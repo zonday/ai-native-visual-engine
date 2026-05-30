@@ -5,7 +5,7 @@ import type {
   InverseComputer,
   Validator,
 } from "./handler-registry.js";
-import { buildRegistriesFromEntries } from "./handler-registry.js";
+import { buildRegistriesFromEntries, type HandlerRegistry } from "./handler-registry.js";
 
 export interface ActionMeta {
   undoable: boolean;
@@ -49,50 +49,24 @@ export class ActionRegistry<
     this.entries.set(type, entry);
   }
 
-  getHandler<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["handler"] | undefined {
-    return (
-      this.entries.get(type) as
-        | HandlerMap<TAction, TState, TContext>[K]
-        | undefined
-    )?.handler;
+  getHandler(type: TAction["type"]): Handler<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.["handler"] as Handler<TState, TAction, TContext> | undefined;
   }
 
-  getInverse<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["inverse"] | undefined {
-    return (
-      this.entries.get(type) as
-        | HandlerMap<TAction, TState, TContext>[K]
-        | undefined
-    )?.inverse;
+  getInverse(type: TAction["type"]): InverseComputer<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.["inverse"] as InverseComputer<TState, TAction, TContext> | undefined;
   }
 
-  getValidator<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["validate"] | undefined {
-    return (
-      this.entries.get(type) as
-        | HandlerMap<TAction, TState, TContext>[K]
-        | undefined
-    )?.validate;
+  getValidator(type: TAction["type"]): Validator<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.["validate"] as Validator<TState, TAction, TContext> | undefined;
   }
 
-  getMeta<K extends TAction["type"]>(type: K): ActionMeta | undefined {
-    return (
-      this.entries.get(type) as
-        | HandlerMap<TAction, TState, TContext>[K]
-        | undefined
-    )?.meta;
+  getMeta(type: TAction["type"]): ActionMeta | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.["meta"] as ActionMeta | undefined;
   }
 
-  getEntry<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K] | undefined {
-    return this.entries.get(type) as
-      | HandlerMap<TAction, TState, TContext>[K]
-      | undefined;
+  getEntry(type: TAction["type"]): unknown {
+    return this.entries.get(type);
   }
 
   has(type: TAction["type"]): boolean {

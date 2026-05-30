@@ -5,7 +5,6 @@ import type { HistoryState } from "../src/engine/history.js";
 type DocumentHistoryState = HistoryState<DocumentAction>;
 
 import { createDocumentRegistry } from "../src/document/register-handlers.js";
-import { splitRegistry } from "../src/engine/action-registry.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
@@ -19,7 +18,6 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -28,7 +26,7 @@ describe("createUndoHistoryMiddleware", () => {
         history = s;
       },
       () => "actor-from-getter",
-      handlerRegistry,
+      reg,
       () => ({ now: Date.now, actorId: "actor-from-context" }),
     );
 
@@ -63,7 +61,6 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -72,7 +69,7 @@ describe("createUndoHistoryMiddleware", () => {
         history = s;
       },
       () => "test-actor",
-      handlerRegistry,
+      reg,
       () => ({ now: Date.now }),
     );
 
@@ -102,7 +99,6 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -111,7 +107,7 @@ describe("createUndoHistoryMiddleware", () => {
         history = s;
       },
       () => "test-actor",
-      handlerRegistry,
+      reg,
       () => ({ now: Date.now }),
     );
 
@@ -139,7 +135,6 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -148,7 +143,7 @@ describe("createUndoHistoryMiddleware", () => {
         history = s;
       },
       () => undefined,
-      handlerRegistry,
+      reg,
       () => ({ now: Date.now, actorId: "actor-from-context" }),
     );
 

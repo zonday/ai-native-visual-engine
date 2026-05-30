@@ -1,12 +1,8 @@
 import { TransactionManager } from "../engine/transaction-manager.js";
+import type { ActionRegistry } from "../engine/action-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
-import type {
-  InverseRegistry,
-  RuntimeContext,
-  RuntimeHandlerRegistry,
-} from "./handler-registry.js";
-import { computeInverseAction } from "./handler-registry.js";
+import type { RuntimeContext } from "./handler-registry.js";
 
 export type RuntimeTransactionManager = TransactionManager<
   SceneGraph,
@@ -15,17 +11,9 @@ export type RuntimeTransactionManager = TransactionManager<
 >;
 
 export function createRuntimeTransactionManager(
-  handlerRegistry: RuntimeHandlerRegistry,
-  inverseRegistry: InverseRegistry,
+  registry: ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>,
 ): RuntimeTransactionManager {
-  return new TransactionManager({
-    handlerRegistry,
-    computeInverseAction: (
-      stateBefore: SceneGraph,
-      action: RuntimeAction,
-      context: RuntimeContext,
-    ) => computeInverseAction(inverseRegistry, stateBefore, action, context),
-  });
+  return new TransactionManager({ registry });
 }
 
 export type { ActiveTransaction } from "../engine/transaction-manager.js";

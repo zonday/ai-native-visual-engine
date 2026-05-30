@@ -1,6 +1,6 @@
 import type { Middleware } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
-import type { HandlerRegistry } from "./handler-registry.js";
+import type { ActionRegistry } from "./action-registry.js";
 import type { HistoryEntry, HistoryState } from "./history.js";
 import { pushUndo } from "./history.js";
 
@@ -12,7 +12,7 @@ export function createUndoHistoryMiddleware<
   getHistory: () => HistoryState<TAction>,
   setHistory: (state: HistoryState<TAction>) => void,
   getActorId: () => string | undefined,
-  registry: HandlerRegistry<TState, TAction, TContext>,
+  registry: ActionRegistry<TAction, TState, TContext>,
   getContext: () => TContext,
   shouldExcludeFromUndo?: () => boolean,
   isInTransaction?: () => boolean,
@@ -21,8 +21,7 @@ export function createUndoHistoryMiddleware<
     const result = next();
 
     if (result.ok && !shouldExcludeFromUndo?.() && !isInTransaction?.()) {
-      const entry = registry.get(action.type);
-      const inverseComputer = entry?.inverse;
+      const inverseComputer = registry.getInverse(action.type as TAction["type"]);
       if (inverseComputer) {
         const context = getContext();
         const inverseAction = inverseComputer(stateBefore, action, context);

@@ -1,6 +1,6 @@
 import type { Middleware } from "../command-bus.js";
 import type { RuntimeContext } from "../handler.js";
-import type { HandlerRegistry } from "../handler-registry.js";
+import type { ActionRegistry } from "../action-registry.js";
 import type { HistoryState } from "../history.js";
 import { pushUndoTransaction } from "../history.js";
 import type { TransactionFlag } from "../transaction-flag.js";
@@ -14,7 +14,7 @@ export interface TransactionMiddlewareConfig<
 > {
   transactionManager: TransactionManager<TState, TAction, TContext>;
   transactionFlag: TransactionFlag;
-  handlerRegistry: HandlerRegistry<TState, TAction, TContext>;
+  registry: ActionRegistry<TAction, TState, TContext>;
   getContext: () => TContext;
   getActorId?: () => string | undefined;
   getHistory: () => HistoryState<TAction>;

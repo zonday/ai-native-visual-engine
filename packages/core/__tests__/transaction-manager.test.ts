@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { DispatchResult } from "../src/engine/command-bus.js";
 import type { RuntimeContext } from "../src/engine/handler.js";
-import type { HandlerRegistry } from "../src/engine/handler-registry.js";
 import { TransactionManager } from "../src/engine/transaction-manager.js";
 
 interface TestAction {
@@ -15,41 +15,24 @@ interface TestState {
   version: number;
 }
 
-function makeHandlerRegistry(
+function makeActionRegistry(
   entries: [string, (state: TestState, action: TestAction) => TestState][],
   inverses?: [
     string,
     (state: TestState, action: TestAction) => TestAction | undefined,
   ][],
-): HandlerRegistry<TestState, TestAction, RuntimeContext> {
+): ActionRegistry<TestAction, TestState, RuntimeContext> {
   const inverseMap = new Map(inverses ?? []);
-  const map = new Map<
-    string,
-    {
-      handler: (
-        state: TestState,
-        action: TestAction,
-        _ctx: RuntimeContext,
-      ) => TestState;
-      inverse?: (
-        state: TestState,
-        action: TestAction,
-        _ctx: RuntimeContext,
-      ) => TestAction | undefined;
-    }
-  >();
+  const registry = new ActionRegistry<TestAction, TestState, RuntimeContext>();
   for (const [type, handler] of entries) {
     const inv = inverseMap.get(type);
-    map.set(type, {
+    registry.register(type, {
       handler,
       inverse: inv ? (state, action, _ctx) => inv(state, action) : undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
     });
   }
-  return map as unknown as HandlerRegistry<
-    TestState,
-    TestAction,
-    RuntimeContext
-  >;
+  return registry;
 }
 
 const testContext: RuntimeContext = { now: () => Date.now() };
@@ -58,7 +41,7 @@ function emptyState(): TestState {
   return { nodes: {}, version: 0 };
 }
 
-const defaultHandlerRegistry = makeHandlerRegistry(
+const defaultRegistry = makeActionRegistry(
   [
     [
       "set-value",
@@ -131,13 +114,7 @@ const defaultHandlerRegistry = makeHandlerRegistry(
 );
 
 function createDefaultTM() {
-  return new TransactionManager({
-    handlerRegistry: defaultHandlerRegistry,
-    computeInverseAction: (stateBefore, action, context) => {
-      const entry = defaultHandlerRegistry.get(action.type);
-      return entry?.inverse?.(stateBefore, action, context);
-    },
-  });
+  return new TransactionManager({ registry: defaultRegistry });
 }
 
 describe("TransactionManager", () => {
@@ -164,10 +141,7 @@ describe("TransactionManager", () => {
       const _tm = createDefaultTM();
       const depthLimit = 1;
       const tmWithLimit = new TransactionManager(
-        {
-          handlerRegistry: defaultHandlerRegistry,
-          computeInverseAction: () => undefined,
-        },
+        { registry: defaultRegistry },
         depthLimit,
       );
       tmWithLimit.begin("user", emptyState(), testContext);
@@ -226,8 +200,7 @@ describe("TransactionManager", () => {
 
     it("runs validation when validate config is provided", () => {
       const tm = new TransactionManager({
-        handlerRegistry: defaultHandlerRegistry,
-        computeInverseAction: () => undefined,
+        registry: defaultRegistry,
         validate: (action) => {
           if (action.type === "set-value" && !action.nodeId) {
             return {
@@ -274,9 +247,8 @@ describe("TransactionManager", () => {
       };
 
       const tm = new TransactionManager({
-        handlerRegistry: defaultHandlerRegistry,
+        registry: defaultRegistry,
         dispatch: dispatchFn,
-        computeInverseAction: () => undefined,
       });
 
       const active = tm.begin("user", emptyState(), testContext);
@@ -300,9 +272,8 @@ describe("TransactionManager", () => {
       });
 
       const tm = new TransactionManager({
-        handlerRegistry: defaultHandlerRegistry,
+        registry: defaultRegistry,
         dispatch: dispatchFn,
-        computeInverseAction: () => undefined,
       });
 
       const active = tm.begin("user", emptyState(), testContext);
@@ -487,9 +458,11 @@ describe("TransactionManager", () => {
 
       let replayed = commitResult.state;
       for (const inv of inverses) {
-        const entry = defaultHandlerRegistry.get((inv as TestAction).type);
-        if (entry) {
-          replayed = entry.handler(replayed, inv as TestAction, testContext);
+        const handler = defaultRegistry.getHandler(
+          (inv as TestAction).type as TestAction["type"],
+        );
+        if (handler) {
+          replayed = handler(replayed, inv as TestAction, testContext);
         }
       }
       expect(replayed.nodes.n1?.value).toBe("");

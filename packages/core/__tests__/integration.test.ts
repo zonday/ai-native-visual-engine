@@ -7,7 +7,6 @@ function nonNull<T>(value: T): NonNullable<T> {
 }
 
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
-import { splitRegistry } from "../src/engine/action-registry.js";
 import { exportDocument } from "../src/import-export.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
@@ -100,16 +99,15 @@ describe("action replay determinism", () => {
       scene: { version: 0, rootId: "root", nodes: {} },
       error: { code: "fail", message: "noop" },
     }));
-    const { handlerRegistry } = splitRegistry(registry);
 
     const bus1 = createRuntimeCommandBus(
-      handlerRegistry,
+      registry,
       [],
       { ...scene, version: 0, nodes: { ...scene.nodes } },
       { now: Date.now },
     );
     const bus2 = createRuntimeCommandBus(
-      handlerRegistry,
+      registry,
       [],
       { ...scene, version: 0, nodes: { ...scene.nodes } },
       { now: Date.now },
@@ -152,16 +150,17 @@ describe("batch actions via command bus", () => {
         scene: current,
         error: { code: "fail", message: "noop" },
       }));
-      const { handlerRegistry: reg } = splitRegistry(runtimeReg);
-      const entry = reg.get(action.type);
-      if (!entry)
+      const handler = runtimeReg.getHandler(
+        action.type as RuntimeAction["type"],
+      );
+      if (!handler)
         return {
           ok: false,
           scene: current,
           error: { code: "unknown", message: "?" },
         };
       try {
-        current = entry.handler(current, action, { now: Date.now });
+        current = handler(current, action, { now: Date.now });
         return { ok: true, scene: current };
       } catch (e) {
         return {
@@ -173,8 +172,7 @@ describe("batch actions via command bus", () => {
     };
 
     const registry2 = createRuntimeRegistry(dispatch);
-    const { handlerRegistry } = splitRegistry(registry2);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], initial, {
+    const bus = createRuntimeCommandBus(registry2, [], initial, {
       now: Date.now,
     });
 

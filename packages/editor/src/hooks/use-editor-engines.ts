@@ -11,9 +11,9 @@ import {
   createComputedStateEngine,
   createConstraintMiddleware,
   createConstraintRegistry,
+  createDocumentRegistry,
   createDocumentBatchHandler,
   createDocumentCommandBus,
-  createDocumentRegistry,
   createInteractionEngine,
   createRuntimeCommandBus,
   createRuntimeRegistry,
@@ -27,7 +27,6 @@ import {
   DEFAULT_LAYOUT_CONSTRAINTS,
   DocumentActionSchema,
   RuntimeActionSchema,
-  splitRegistry,
   validateGraphInvariants,
 } from "@ai-native/core";
 import { createRendererRegistry } from "@ai-native/renderer-react";
@@ -91,27 +90,22 @@ export function useEditorEngines(
 
   const transactionFlagRef = useRef(createTransactionFlag());
 
-  const runtimeTm = useMemo(() => {
-    const { handlerRegistry, inverseRegistry } =
-      splitRegistry(runtimeRegistries);
-    return createRuntimeTransactionManager(
-      handlerRegistry as never,
-      inverseRegistry as never,
-    );
-  }, [runtimeRegistries]);
+  const runtimeTm = useMemo(
+    () => createRuntimeTransactionManager(runtimeRegistries),
+    [runtimeRegistries],
+  );
 
   const schedulerRef = useRef(createScheduler({ mode: "microtask" }));
   const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
 
   const runtimeBus = useMemo(() => {
-    const { handlerRegistry } = splitRegistry(runtimeRegistries);
     const middlewares = [
       createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
       createConstraintMiddleware(constraintRegistry),
       createTransactionMiddleware({
         transactionManager: runtimeTm,
         transactionFlag: transactionFlagRef.current,
-        handlerRegistry,
+        registry: runtimeRegistries,
         getContext: () => ({ now: Date.now, actorId: "editor" }),
         getActorId: () => "editor",
         getHistory: () => historyRef.current as HistoryState<RuntimeAction>,
@@ -135,20 +129,10 @@ export function useEditorEngines(
       }),
     ];
 
-    const bus = createRuntimeCommandBus(handlerRegistry, middlewares, scene, {
+    const bus = createRuntimeCommandBus(runtimeRegistries, middlewares, scene, {
       now: Date.now,
       actorId: "editor",
     });
-
-    const batchEntry = handlerRegistry.get("batch-actions");
-    if (batchEntry) {
-      handlerRegistry.set("batch-actions", {
-        ...batchEntry,
-        handler: createBatchHandler((action) =>
-          bus.dispatch(action),
-        ) as typeof batchEntry.handler,
-      });
-    }
 
     return bus;
   }, [
@@ -162,13 +146,11 @@ export function useEditorEngines(
   ]);
 
   const documentBus = useMemo(() => {
-    const { handlerRegistry } = splitRegistry(
-      createDocumentRegistry(() => ({
-        ok: false,
-        document: doc,
-        error: { code: "nested", message: "nested" },
-      })),
-    );
+    const documentRegistry = createDocumentRegistry(() => ({
+      ok: false,
+      document: doc,
+      error: { code: "nested", message: "nested" },
+    }));
     const middlewares = [
       createValidatorMiddleware<VisualDocument, DocumentAction>(
         DocumentActionSchema,
@@ -180,26 +162,16 @@ export function useEditorEngines(
           syncHistoryState();
         },
         () => "editor",
-        handlerRegistry,
+        documentRegistry,
         () => ({ now: Date.now, actorId: "editor" }),
         () => isUndoingRef.current,
       ),
     ];
 
-    const bus = createDocumentCommandBus(handlerRegistry, middlewares, doc, {
+    const bus = createDocumentCommandBus(documentRegistry, middlewares, doc, {
       now: Date.now,
       actorId: "editor",
     });
-
-    const batchDocEntry = handlerRegistry.get("batch-document-actions");
-    if (batchDocEntry) {
-      handlerRegistry.set("batch-document-actions", {
-        ...batchDocEntry,
-        handler: createDocumentBatchHandler((action) =>
-          bus.dispatch(action),
-        ) as typeof batchDocEntry.handler,
-      });
-    }
 
     return bus;
   }, [doc, syncHistoryState, historyRef, isUndoingRef]);

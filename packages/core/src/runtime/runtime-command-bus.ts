@@ -4,18 +4,16 @@ import {
   extractErrorField,
   wrapCommandBus,
 } from "../engine/command-bus.js";
+import type { ActionRegistry } from "../engine/action-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
-import type {
-  RuntimeContext,
-  RuntimeHandlerRegistry,
-} from "./handler-registry.js";
+import type { RuntimeContext } from "./handler-registry.js";
 
 type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
 
 export function createRuntimeCommandBus(
-  registry: RuntimeHandlerRegistry,
+  registry: ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>,
   middlewares: RuntimeMiddleware[],
   scene: SceneGraph,
   context: RuntimeContext,

@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { HistoryState } from "../src/engine/history.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import type {
-  RuntimeContext,
-  RuntimeHandlerEntry,
-} from "../src/runtime/handler-registry.js";
+import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
+import type { SceneGraph } from "../src/types.js";
 
 type RuntimeHistoryState = HistoryState<RuntimeAction>;
 
@@ -22,27 +21,27 @@ describe("createUndoHistoryMiddleware", () => {
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
-    const handlerRegistry = new Map<string, RuntimeHandlerEntry>([
-      [
-        "create-node",
-        {
-          handler: createNodeEntry.handler as RuntimeHandlerEntry["handler"],
-          inverse: createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        },
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      RuntimeAction,
+      SceneGraph,
+      RuntimeContext
+    >();
+    registry.register("create-node", {
+      handler: createNodeEntry.handler,
+      inverse: createNodeEntry.inverse,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const context: RuntimeContext = { now: () => 12345 };
     const middleware = createUndoHistoryMiddleware(
       getHistory,
       setHistory,
       getActorId,
-      handlerRegistry,
+      registry,
       () => context,
     );
     const bus = createRuntimeCommandBus(
-      handlerRegistry,
+      registry,
       [middleware],
       emptyScene,
       context,
@@ -71,29 +70,29 @@ describe("createUndoHistoryMiddleware", () => {
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
-    const handlerRegistry = new Map<string, RuntimeHandlerEntry>([
-      [
-        "create-node",
-        {
-          handler: () => {
-            throw new Error("fail");
-          },
-          inverse: createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as RuntimeHandlerEntry,
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      RuntimeAction,
+      SceneGraph,
+      RuntimeContext
+    >();
+    registry.register("create-node", {
+      handler: () => {
+        throw new Error("fail");
+      },
+      inverse: createNodeEntry.inverse,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const context: RuntimeContext = { now: () => 12345 };
     const middleware = createUndoHistoryMiddleware(
       getHistory,
       setHistory,
       getActorId,
-      handlerRegistry,
+      registry,
       () => context,
     );
     const bus = createRuntimeCommandBus(
-      handlerRegistry,
+      registry,
       [middleware],
       emptyScene,
       context,
@@ -118,27 +117,27 @@ describe("createUndoHistoryMiddleware", () => {
     const getHistory = () => history;
     const getActorId = () => "test-actor";
 
-    const handlerRegistry = new Map<string, RuntimeHandlerEntry>([
-      [
-        "create-node",
-        {
-          handler: createNodeEntry.handler as RuntimeHandlerEntry["handler"],
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        },
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      RuntimeAction,
+      SceneGraph,
+      RuntimeContext
+    >();
+    registry.register("create-node", {
+      handler: createNodeEntry.handler,
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const context: RuntimeContext = { now: () => 12345 };
     const middleware = createUndoHistoryMiddleware(
       getHistory,
       setHistory,
       getActorId,
-      handlerRegistry,
+      registry,
       () => context,
     );
     const bus = createRuntimeCommandBus(
-      handlerRegistry,
+      registry,
       [middleware],
       emptyScene,
       context,

@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
-import type {
-  DocumentHandlerEntry,
-  DocumentRuntimeContext,
-} from "../src/document/handler-registry.js";
+import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { setPageThemeEntry } from "../src/document/handlers/set-page-theme.js";
 import { updatePageRouteEntry } from "../src/document/handlers/update-page-route.js";
 import { normalizeRoute } from "../src/document/normalize-route.js";
+import { ActionRegistry } from "../src/engine/action-registry.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { HistoryState } from "../src/engine/history.js";
 
@@ -22,21 +20,21 @@ const context: DocumentRuntimeContext = { now: Date.now };
 
 describe("command bus - error response branches", () => {
   it("uses action.type fallback when HandlerError has no actionType", () => {
-    const registry = new Map<string, DocumentHandlerEntry>([
-      [
-        "test-action",
-        {
-          handler: () => {
-            throw new HandlerError(
-              "document.custom-error",
-              "no actionType on this error",
-            );
-          },
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as DocumentHandlerEntry,
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    registry.register("test-action", {
+      handler: () => {
+        throw new HandlerError(
+          "document.custom-error",
+          "no actionType on this error",
+        );
+      },
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const bus = createDocumentCommandBus(registry, [], emptyDoc, context);
     const result = bus.dispatch({
@@ -48,18 +46,18 @@ describe("command bus - error response branches", () => {
   });
 
   it("preserves thrown value in error message when handler throws non-Error", () => {
-    const registry = new Map<string, DocumentHandlerEntry>([
-      [
-        "test-action",
-        {
-          handler: () => {
-            throw "string error";
-          },
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as DocumentHandlerEntry,
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    registry.register("test-action", {
+      handler: () => {
+        throw "string error";
+      },
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const bus = createDocumentCommandBus(registry, [], emptyDoc, context);
     const result = bus.dispatch({
@@ -73,18 +71,18 @@ describe("command bus - error response branches", () => {
 
 describe("history middleware - branch for entry without inverse", () => {
   it("does not push history when action has no inverse computer in registry", () => {
-    const registry = new Map<string, DocumentHandlerEntry>([
-      [
-        "no-inverse-action",
-        {
-          handler: (
-            doc: VisualDocument,
-            _action: DocumentAction,
-            _ctx: DocumentRuntimeContext,
-          ) => doc,
-        } as unknown as DocumentHandlerEntry,
-      ],
-    ]);
+    const registry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    registry.register("no-inverse-action", {
+      handler: (
+        doc: VisualDocument,
+        _action: DocumentAction,
+        _ctx: DocumentRuntimeContext,
+      ) => doc,
+    });
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(

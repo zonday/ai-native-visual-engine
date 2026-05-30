@@ -1,6 +1,6 @@
 import { HandlerError } from "./error.js";
 import type { RuntimeContext } from "./handler.js";
-import type { HandlerRegistry } from "./handler-registry.js";
+import type { ActionRegistry } from "./action-registry.js";
 
 export interface DispatchResult<TState> {
   ok: boolean;
@@ -51,7 +51,7 @@ export function createCommandBus<
   TAction extends { type: string },
   TContext extends RuntimeContext,
 >(
-  registry: HandlerRegistry<TState, TAction, TContext>,
+  registry: ActionRegistry<TAction, TState, TContext>,
   middlewares: Middleware<TState, TAction>[],
   initialState: TState,
   context: TContext,
@@ -59,8 +59,8 @@ export function createCommandBus<
   let currentState = initialState;
   return {
     dispatch(action: TAction): DispatchResult<TState> {
-      const entry = registry.get(action.type);
-      if (!entry) {
+      const handler = registry.getHandler(action.type as TAction["type"]);
+      if (!handler) {
         return {
           ok: false,
           state: currentState,
@@ -72,7 +72,7 @@ export function createCommandBus<
         };
       }
 
-      const handler = entry.handler;
+      const handlerFn = handler;
       let runningState = currentState;
       const chain = [...middlewares];
 
@@ -82,11 +82,11 @@ export function createCommandBus<
             if (isDev) {
               const stateBefore = runningState;
               deepFreeze(runningState);
-              runningState = handler(runningState, action, context);
+              runningState = handlerFn(runningState, action, context);
               detectSameRef(stateBefore, runningState, action);
               deepFreeze(runningState);
             } else {
-              runningState = handler(runningState, action, context);
+              runningState = handlerFn(runningState, action, context);
             }
             return { ok: true, state: runningState };
           } catch (err) {
