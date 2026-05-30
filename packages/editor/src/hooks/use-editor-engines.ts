@@ -94,7 +94,7 @@ export function useEditorEngines(
     [runtimeRegistries],
   );
 
-  const schedulerRef = useRef(createScheduler({ mode: "sync" }));
+  const schedulerRef = useRef(createScheduler({ mode: "microtask" }));
   const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
 
   const runtimeBus = useMemo(() => {

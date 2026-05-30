@@ -1,13 +1,13 @@
 import type { NodeId } from "../types.js";
 
-export type SchedulePhase = "compute" | "render" | "idle";
+export type SchedulePhase = "idle" | "compute" | "render";
 
 export interface ScheduleListener {
-  onBeforeCompute?: (dirtyNodes: NodeId[]) => void;
-  onAfterCompute?: (dirtyNodes: NodeId[]) => void;
-  onBeforeRender?: () => void;
-  onAfterRender?: () => void;
+  onCompute?: (dirtyNodes: NodeId[]) => void;
+  onRender?: () => void;
 }
+
+export type ScheduleMode = "microtask" | "raf" | "immediate";
 
 export interface Scheduler {
   markDirty(nodeIds: NodeId[]): void;
@@ -16,119 +16,182 @@ export interface Scheduler {
   subscribe(listener: ScheduleListener): () => void;
   getPhase(): SchedulePhase;
   getDirtyNodes(): NodeId[];
-  setMode(mode: "sync" | "async"): void;
+  setMode(mode: ScheduleMode): void;
 }
 
-export function createScheduler(options?: {
-  mode?: "sync" | "async";
-}): Scheduler {
-  let mode: "sync" | "async" = options?.mode ?? "sync";
+const MAX_FLUSH_DEPTH = 100;
+
+export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
+  let mode: ScheduleMode = options?.mode ?? "microtask";
   let phase: SchedulePhase = "idle";
-  let locked = false;
-  const dirtySet = new Set<NodeId>();
+  let flushDepth = 0;
+  const currentDirty = new Set<NodeId>();
+  const pendingDirty = new Set<NodeId>();
+  let allDirty = false;
+  let pendingAllDirty = false;
   const listeners: ScheduleListener[] = [];
   let scheduled = false;
-  let flushResolve: (() => void) | null = null;
+  const flushResolvers: (() => void)[] = [];
 
-  function guardNotLocked(): void {
-    if (locked) {
-      throw new Error("Cannot mutate during scheduler compute or render phase");
+  function drainPending(): void {
+    if (pendingAllDirty) {
+      allDirty = true;
+      pendingAllDirty = false;
+      currentDirty.clear();
+    }
+    if (pendingDirty.size > 0) {
+      for (const id of pendingDirty) {
+        currentDirty.add(id);
+      }
+      pendingDirty.clear();
     }
   }
 
-  function notifyBeforeCompute(): NodeId[] {
-    const nodes = Array.from(dirtySet);
-    if (nodes.length === 0) return nodes;
-    for (const listener of listeners) {
-      listener.onBeforeCompute?.(nodes);
+  function notifyCompute(): void {
+    if (allDirty) {
+      for (const listener of listeners) {
+        try {
+          listener.onCompute?.([]);
+        } catch {
+          // Isolate listener failures so one crash does not
+          // corrupt the scheduler or silence other listeners
+        }
+      }
+    } else if (currentDirty.size > 0) {
+      const nodes = Array.from(currentDirty);
+      for (const listener of listeners) {
+        try {
+          listener.onCompute?.(nodes);
+        } catch {
+          // Isolate listener failures
+        }
+      }
     }
-    return nodes;
   }
 
-  function notifyAfterCompute(nodes: NodeId[]): void {
-    if (nodes.length === 0) return;
+  function notifyRender(): void {
     for (const listener of listeners) {
-      listener.onAfterCompute?.(nodes);
+      try {
+        listener.onRender?.();
+      } catch {
+        // Isolate listener failures
+      }
     }
   }
 
-  function notifyBeforeRender(): void {
-    for (const listener of listeners) {
-      listener.onBeforeRender?.();
+  function resolveAllFlushPromises(): void {
+    if (flushResolvers.length > 0) {
+      const resolvers = flushResolvers.splice(0);
+      for (const resolve of resolvers) {
+        resolve();
+      }
     }
   }
 
-  function notifyAfterRender(): void {
-    for (const listener of listeners) {
-      listener.onAfterRender?.();
+  function scheduleNext(): void {
+    if (pendingDirty.size > 0 || pendingAllDirty) {
+      scheduleMicrotask();
     }
   }
 
   function runCycle(): void {
-    if (dirtySet.size === 0) {
+    drainPending();
+
+    if (currentDirty.size === 0 && !allDirty) {
       phase = "idle";
+      flushDepth = 0;
+      resolveAllFlushPromises();
       return;
     }
 
-    locked = true;
-    phase = "compute";
-    const nodes = notifyBeforeCompute();
-    // Compute phase: subscribers invalidate their caches here
-    notifyAfterCompute(nodes);
+    let aborted = false;
 
-    phase = "render";
-    notifyBeforeRender();
-    // Render phase: subscribers produce output here
-    dirtySet.clear();
-    phase = "idle";
-    notifyAfterRender();
-    locked = false;
+    try {
+      flushDepth++;
+
+      if (flushDepth > MAX_FLUSH_DEPTH) {
+        flushDepth = 0;
+        aborted = true;
+        throw new Error(
+          "Maximum scheduler flush depth exceeded: possible infinite update loop",
+        );
+      }
+
+      phase = "compute";
+      notifyCompute();
+
+      phase = "render";
+      currentDirty.clear();
+      allDirty = false;
+      notifyRender();
+    } finally {
+      phase = "idle";
+      currentDirty.clear();
+      allDirty = false;
+      scheduled = false;
+      resolveAllFlushPromises();
+      if (!aborted) {
+        scheduleNext();
+      }
+      flushDepth = 0;
+    }
   }
 
   function scheduleMicrotask(): void {
+    if (mode === "immediate") {
+      runCycle();
+      return;
+    }
     if (scheduled) return;
     scheduled = true;
 
-    if (mode === "sync") {
+    if (mode === "microtask") {
       Promise.resolve().then(() => {
         scheduled = false;
         runCycle();
-        if (flushResolve) {
-          flushResolve();
-          flushResolve = null;
-        }
       });
     } else {
       requestAnimationFrame(() => {
         scheduled = false;
         runCycle();
-        if (flushResolve) {
-          flushResolve();
-          flushResolve = null;
-        }
       });
     }
   }
 
   const scheduler: Scheduler = {
     markDirty(nodeIds: NodeId[]): void {
-      guardNotLocked();
+      const target = phase !== "idle" ? pendingDirty : currentDirty;
       for (const id of nodeIds) {
-        dirtySet.add(id);
+        target.add(id);
       }
-      scheduleMicrotask();
+      if (phase === "idle") {
+        scheduleMicrotask();
+      }
     },
 
     markAllDirty(): void {
-      guardNotLocked();
-      dirtySet.clear();
-      scheduleMicrotask();
+      if (phase !== "idle") {
+        pendingAllDirty = true;
+      } else {
+        allDirty = true;
+        currentDirty.clear();
+      }
+      if (phase === "idle") {
+        scheduleMicrotask();
+      }
     },
 
     flush(): Promise<void> {
-      if (dirtySet.size === 0) return Promise.resolve();
+      const empty =
+        currentDirty.size === 0 &&
+        !allDirty &&
+        pendingDirty.size === 0 &&
+        !pendingAllDirty;
+      if (empty && phase === "idle") {
+        return Promise.resolve();
+      }
       return new Promise((resolve) => {
-        flushResolve = resolve;
+        flushResolvers.push(resolve);
       });
     },
 
@@ -145,10 +208,14 @@ export function createScheduler(options?: {
     },
 
     getDirtyNodes(): NodeId[] {
-      return Array.from(dirtySet);
+      const union = new Set(currentDirty);
+      for (const id of pendingDirty) {
+        union.add(id);
+      }
+      return Array.from(union);
     },
 
-    setMode(newMode: "sync" | "async"): void {
+    setMode(newMode: ScheduleMode): void {
       mode = newMode;
     },
   };

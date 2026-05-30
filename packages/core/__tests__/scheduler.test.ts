@@ -368,9 +368,6 @@ describe("Scheduler", () => {
         onCompute: () => {
           count++;
         },
-        onRender: () => {
-          count;
-        },
       });
       s.markDirty(["y"]);
       expect(count).toBe(1);
