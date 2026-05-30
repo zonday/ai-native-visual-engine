@@ -110,6 +110,7 @@ Every node in the graph shares a common shape:
 ```ts
 interface ReactiveNode {
   flags: number           // Mutable | Dirty | Watching | Pending | RecursedCheck | Recursed
+                          // + ExtraRF: Disposed | Evaluating | HasChildEffect (legacy)
   subs?: Link             // linked list of dependents
   subsTail?: Link
   deps?: Link             // linked list of dependencies
@@ -143,10 +144,14 @@ interface ComputedInternal extends ReactiveNode {
 
 Trigger runtime side effects. Examples: render invalidation, overlay updates, hit-test refresh.
 
+Effects are **sink nodes** — nothing can subscribe to an effect. Owning relationships are tracked separately via the `children` array (owner tree), NOT via the reactive graph's `subs` chain.
+
 ```ts
 interface EffectInternal extends ReactiveNode {
   fn: () => void | (() => void)
   cleanup: (() => void) | undefined
+  children: EffectInternal[]    // owned child effects
+  parent: EffectInternal | undefined
 }
 ```
 
@@ -273,13 +278,23 @@ renderEffect
 
 ### 5.4 Cycles
 
-Dependency cycles are **forbidden**. If a computed reads itself (transitively), `alien-signals` detects the cycle via recursion depth and produces undefined behavior.
+Dependency cycles are **forbidden** and throw an error at runtime. When a computed reads itself (transitively), an explicit `ExtraRF.Evaluating` flag check catches the reentrant call before the getter is invoked:
 
 ```ts
-// INVALID: A -> B -> C -> A
+function updateComputed(c): boolean {
+  if (c.flags & ExtraRF.Evaluating)
+    throw new Error("Cycle detected")
+  c.flags = RF.Mutable | ExtraRF.Evaluating
+  // ... evaluate getter, then clear Evaluating
+}
 ```
 
-Callers must ensure acyclic graphs.
+```ts
+// INVALID: throws "Cycle detected"
+const a = computed(() => b())
+const b = computed(() => a())
+a()
+```
 
 ---
 
@@ -573,8 +588,8 @@ render effect triggers
 |-----------|-----------|
 | No stale reads | Dirty computeds re-evaluate before returning |
 | Deterministic order | Topological order via propagate chain |
-| No glitches | Signal writes during getter are queued, not applied |
-| No cycles | Cycle detection via recursion guard |
+| No glitches | Two-phase propagation: signal writes mark dependents Pending (push); recomputation on read (pull). Diamond graphs receive consistent final values |
+| No cycles | Cycle detection via `ExtraRF.Evaluating` flag (throws on read) |
 | Scope isolation | Each scope has independent graph |
 | No hidden mutable derived state | Computed values never written back to SceneGraph |
 | Stable dependency registration | Link-based edges persist across evaluations until explicitly purged |
@@ -621,6 +636,10 @@ Recommended debugging capabilities:
 - Persisted dependency graph
 - Automatic `effect` cleanup (caller disposes)
 - Weak reference edges
+
+### Note on effect cleanup
+
+`effect()` returns a dispose function. Dispose is automatic for child effects when the parent is disposed (owner tree walks `children[]` recursively). Top-level effects must be disposed manually.
 
 ---
 
