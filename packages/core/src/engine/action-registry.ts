@@ -1,9 +1,8 @@
 import type { Handler, RuntimeContext } from "./handler.js";
 import type {
-  InverseComputer,
-  InverseAction,
   BatchAction,
   HandlerEntry,
+  InverseComputer,
   Validator,
 } from "./handler-registry.js";
 
@@ -105,7 +104,11 @@ export class ActionRegistry<
   createBatchEntry(): HandlerEntry<TState, BatchAction<TAction>, TContext> {
     const self = this;
     return {
-      handler(state: TState, action: BatchAction<TAction>, context: TContext): TState {
+      handler(
+        state: TState,
+        action: BatchAction<TAction>,
+        context: TContext,
+      ): TState {
         let current = state;
         for (const child of action.actions) {
           const t = (child as TAction).type as TAction["type"];
@@ -119,8 +122,14 @@ export class ActionRegistry<
         }
         return current;
       },
-      inverse(_stateBefore: TState, _action: BatchAction<TAction>, _context: TContext) {
-        throw new Error("Batch inverse must be computed by the transaction manager");
+      inverse(
+        _stateBefore: TState,
+        _action: BatchAction<TAction>,
+        _context: TContext,
+      ) {
+        throw new Error(
+          "Batch inverse must be computed by the transaction manager",
+        );
       },
       meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
     };
