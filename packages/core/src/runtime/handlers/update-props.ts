@@ -12,7 +12,7 @@ const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   const node = expectNode(scene, action.nodeId, "update-props");
 
   return produce(scene, (draft) => {
-    draft.nodes[action.nodeId]!.props = {
+    (draft.nodes[action.nodeId] as SceneNode).props = {
       ...node.props,
       ...stripDangerousKeys(action.props),
     };
