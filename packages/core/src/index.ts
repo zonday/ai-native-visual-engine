@@ -27,6 +27,18 @@ export { DocumentActionSchema } from "./document/actions.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export { createDefaultDocumentRegistries } from "./document/register-handlers.js";
+// ── Engine ──
+export {
+  type ActionMeta,
+  ActionRegistry,
+  type HandlerMap,
+  splitRegistry,
+} from "./engine/action-registry.js";
+export type {
+  BatchAction,
+  HandlerEntry,
+  InverseComputer,
+} from "./engine/handler-registry.js";
 // ── History ──
 export {
   createHistoryState,
@@ -42,9 +54,6 @@ export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
 // ── Immer Patch Routing ──
 export { routeImmerPatches } from "./immer-patch-router.js";
-// ── Engine ──
-export { ActionRegistry, splitRegistry, type HandlerMap, type ActionMeta } from "./engine/action-registry.js";
-export type { InverseComputer, HandlerEntry, BatchAction } from "./engine/handler-registry.js";
 // ── Interaction ──
 export {
   createInteractionEngine,

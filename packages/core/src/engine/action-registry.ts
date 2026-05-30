@@ -151,14 +151,19 @@ export function splitRegistry<
   const entries: [string, HandlerEntry<TState, TAction, TContext>][] = [];
 
   const typeSet = new Set<string>();
-  for (const key of (registry as unknown as { entries: Map<string, unknown> }).entries.keys()) {
+  for (const key of (
+    registry as unknown as { entries: Map<string, unknown> }
+  ).entries.keys()) {
     typeSet.add(key);
   }
 
   for (const type of typeSet) {
     const entry = registry.getEntry(type as TAction["type"]);
     if (entry) {
-      entries.push([type, entry as unknown as HandlerEntry<TState, TAction, TContext>]);
+      entries.push([
+        type,
+        entry as unknown as HandlerEntry<TState, TAction, TContext>,
+      ]);
     }
   }
 
