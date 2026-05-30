@@ -1,5 +1,11 @@
 import type { Handler, RuntimeContext } from "./handler.js";
-import type { InverseComputer } from "./handler-registry.js";
+import type {
+  InverseComputer,
+  InverseAction,
+  BatchAction,
+  HandlerEntry,
+  Validator,
+} from "./handler-registry.js";
 
 export interface ActionMeta {
   undoable: boolean;
@@ -7,12 +13,6 @@ export interface ActionMeta {
   historyGroup?: string;
   devtoolsLabel?: string;
 }
-
-export type Validator<TState, TAction, TContext> = (
-  state: Readonly<TState>,
-  action: TAction,
-  context: TContext,
-) => { ok: boolean; error?: { code: string; message: string } };
 
 /**
  * HandlerMap is a record type indexed by action type discriminator.
@@ -56,7 +56,9 @@ export class ActionRegistry<
     type: K,
   ): HandlerMap<TAction, TState, TContext>[K]["handler"] | undefined {
     return (
-      this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined
+      this.entries.get(type) as
+        | HandlerMap<TAction, TState, TContext>[K]
+        | undefined
     )?.handler;
   }
 
@@ -64,7 +66,9 @@ export class ActionRegistry<
     type: K,
   ): HandlerMap<TAction, TState, TContext>[K]["inverse"] | undefined {
     return (
-      this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined
+      this.entries.get(type) as
+        | HandlerMap<TAction, TState, TContext>[K]
+        | undefined
     )?.inverse;
   }
 
@@ -72,23 +76,53 @@ export class ActionRegistry<
     type: K,
   ): HandlerMap<TAction, TState, TContext>[K]["validate"] | undefined {
     return (
-      this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined
+      this.entries.get(type) as
+        | HandlerMap<TAction, TState, TContext>[K]
+        | undefined
     )?.validate;
   }
 
   getMeta<K extends TAction["type"]>(type: K): ActionMeta | undefined {
     return (
-      this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined
+      this.entries.get(type) as
+        | HandlerMap<TAction, TState, TContext>[K]
+        | undefined
     )?.meta;
   }
 
   getEntry<K extends TAction["type"]>(
     type: K,
   ): HandlerMap<TAction, TState, TContext>[K] | undefined {
-    return this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined;
+    return this.entries.get(type) as
+      | HandlerMap<TAction, TState, TContext>[K]
+      | undefined;
   }
 
   has(type: TAction["type"]): boolean {
     return this.entries.has(type);
+  }
+
+  createBatchEntry(): HandlerEntry<TState, BatchAction<TAction>, TContext> {
+    const self = this;
+    return {
+      handler(state: TState, action: BatchAction<TAction>, context: TContext): TState {
+        let current = state;
+        for (const child of action.actions) {
+          const t = (child as TAction).type as TAction["type"];
+          const childHandler = self.getHandler(t);
+          if (!childHandler) {
+            throw new Error(
+              `Batch child action "${(child as TAction).type}" has no registered handler`,
+            );
+          }
+          current = childHandler(current, child as never, context);
+        }
+        return current;
+      },
+      inverse(_stateBefore: TState, _action: BatchAction<TAction>, _context: TContext) {
+        throw new Error("Batch inverse must be computed by the transaction manager");
+      },
+      meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
+    };
   }
 }

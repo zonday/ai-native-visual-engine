@@ -31,6 +31,7 @@ describe("createUndoHistoryMiddleware", () => {
         {
           handler: createNodeHandler as RuntimeHandlerEntry["handler"],
           inverse: createNodeInverse as RuntimeHandlerEntry["inverse"],
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         },
       ],
     ]);
@@ -81,6 +82,7 @@ describe("createUndoHistoryMiddleware", () => {
             throw new Error("fail");
           },
           inverse: createNodeInverse as RuntimeHandlerEntry["inverse"],
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as RuntimeHandlerEntry,
       ],
     ]);
@@ -125,6 +127,7 @@ describe("createUndoHistoryMiddleware", () => {
         {
           handler: createNodeHandler as RuntimeHandlerEntry["handler"],
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         },
       ],
     ]);

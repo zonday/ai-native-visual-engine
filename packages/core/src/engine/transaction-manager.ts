@@ -26,7 +26,7 @@ function generateTxId(source: TransactionSource): string {
 
 export interface TransactionManagerConfig<
   TState,
-  TAction,
+  TAction extends { type: string },
   TContext extends RuntimeContext,
 > {
   handlerRegistry: HandlerRegistry<TState, TAction, TContext>;

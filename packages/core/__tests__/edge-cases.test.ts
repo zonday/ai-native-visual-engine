@@ -33,6 +33,7 @@ describe("command bus - error response branches", () => {
             );
           },
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as DocumentHandlerEntry,
       ],
     ]);
@@ -55,6 +56,7 @@ describe("command bus - error response branches", () => {
             throw "string error";
           },
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as DocumentHandlerEntry,
       ],
     ]);

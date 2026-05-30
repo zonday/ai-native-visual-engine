@@ -84,6 +84,7 @@ describe("createRuntimeCommandBus", () => {
             throw new Error("Kaboom!");
           },
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as RuntimeHandlerEntry,
       ],
     ]);

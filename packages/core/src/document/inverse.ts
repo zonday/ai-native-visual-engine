@@ -58,6 +58,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: createPageHandler as DocumentHandlerEntry["handler"],
         inverse: createPageInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -65,6 +66,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: renamePageHandler as DocumentHandlerEntry["handler"],
         inverse: renamePageInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -72,6 +74,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: removePageHandler as DocumentHandlerEntry["handler"],
         inverse: removePageInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -79,6 +82,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: reorderPageHandler as DocumentHandlerEntry["handler"],
         inverse: reorderPageInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -86,6 +90,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: updatePageRouteHandler as DocumentHandlerEntry["handler"],
         inverse: updatePageRouteInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -93,6 +98,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: setDocumentThemeHandler as DocumentHandlerEntry["handler"],
         inverse: setDocumentThemeInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -100,6 +106,7 @@ export function createDefaultDocumentRegistries(
       {
         handler: setPageThemeHandler as DocumentHandlerEntry["handler"],
         inverse: setPageThemeInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
     [
@@ -109,6 +116,7 @@ export function createDefaultDocumentRegistries(
           batchDispatch,
         ) as DocumentHandlerEntry["handler"],
         inverse: batchInverse as InverseComputer,
+        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
       },
     ],
   ];
