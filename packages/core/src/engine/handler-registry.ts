@@ -9,10 +9,6 @@ export interface BatchAction<
   actions: TAction[];
 }
 
-export type InverseAction<TAction extends { type: string }> =
-  | TAction
-  | BatchAction<TAction>;
-
 export type InverseComputer<
   TState,
   TAction extends { type: string },
