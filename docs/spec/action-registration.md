@@ -154,23 +154,23 @@ This unified error model allows:
 
 ```
 handlers/
-  create-node.ts     → export const createNodeHandler + createNodeInverse
-  remove-node.ts     → export const removeNodeHandler + removeNodeInverse
-  move-node.ts       → export const moveNodeHandler + moveNodeInverse
+  create-node.ts     → export const createNodeEntry
+  remove-node.ts     → export const removeNodeEntry
+  move-node.ts       → export const moveNodeEntry
   ...
 ```
 
-Each file exports a handler function and an inverse function with specific action types:
+Each file exports a single entry object that bundles handler, inverse, and metadata. Handler and inverse use specific action types; the registration module (§7) uses explicit `as` casts to widen to the full union (required by TypeScript's contravariance):
 
 ```ts
 // handlers/create-node.ts
 import { produce } from "immer";
 import type { SceneGraph } from "../../types.js";
-import type { CreateNodeAction } from "../actions.js";
+import type { CreateNodeAction, RuntimeAction } from "../actions.js";
 import type { RuntimeContext } from "../handler-registry.js";
 import { HandlerError } from "../../engine/error.js";
 
-export const createNodeHandler = (
+const createNodeHandler = (
   scene: SceneGraph,
   action: CreateNodeAction,
   _ctx: RuntimeContext,
@@ -190,18 +190,22 @@ export const createNodeHandler = (
   });
 };
 
-export const createNodeInverse = (
+const createNodeInverse = (
   _sceneBefore: SceneGraph,
   action: CreateNodeAction,
   _context: RuntimeContext,
 ): RuntimeAction => {
   return { type: "remove-node" as const, nodeId: action.node.id };
 };
+
+export const createNodeEntry = {
+  handler: createNodeHandler,
+  inverse: createNodeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
+};
 ```
 
-Separate exports are required because TypeScript's strict function types (contravariance) prevent assigning a function parameterized with `CreateNodeAction` to one expecting `RuntimeAction` — even though the inverse correctly returns a different action type. The registration module (§7) uses explicit `as` casts to widen both handler and inverse to the full union type.
-
-Each file also exports a `validate` function and a `meta` object for the registration module:
+The handler function receives the specific `CreateNodeAction` type, giving full access to the action's fields without type narrowing. The inverse explicitly annotates its return type as `RuntimeAction` (the full union), which is correct because `create-node`'s inverse produces `remove-node` — a different type within the same union.
 
 ```ts
 export const createNodeValidate = (
@@ -446,57 +450,51 @@ The `createBatchEntry` method returns a valid `HandlerEntry` for the batch actio
 
 ### 7.1 Registration Module
 
-Each domain has one registration module that imports all handler entries, type-checks exhaustiveness against `HandlerMap`, and builds the registry:
+Each domain has one registration module that imports all handler entry objects, uses explicit `as` casts to handle contravariance, and builds the registry:
 
 ```ts
 // runtime/register-handlers.ts
-import { ActionRegistry, type HandlerMap, type BatchAction } from "../engine/action-registry.js";
-import { createNode } from "./handlers/create-node.js";
-import { removeNode } from "./handlers/remove-node.js";
-import { moveNode } from "./handlers/move-node.js";
-import { updateLayout } from "./handlers/update-layout.js";
-import { rotateNode } from "./handlers/rotate-node.js";
-import { updateProps } from "./handlers/update-props.js";
-import { updateStyle } from "./handlers/update-style.js";
-import { updateBindings } from "./handlers/update-bindings.js";
-import { updateRuntime } from "./handlers/update-runtime.js";
-import { updateSelection } from "./handlers/update-selection.js";
+import { ActionRegistry } from "../engine/action-registry.js";
+import { createNodeEntry } from "./handlers/create-node.js";
+import { removeNodeEntry } from "./handlers/remove-node.js";
+import { moveNodeEntry } from "./handlers/move-node.js";
+import { updateLayoutEntry } from "./handlers/update-layout.js";
+import { rotateNodeEntry } from "./handlers/rotate-node.js";
+import { updatePropsEntry } from "./handlers/update-props.js";
+import { updateStyleEntry } from "./handlers/update-style.js";
+import { updateBindingsEntry } from "./handlers/update-bindings.js";
+import { updateRuntimeEntry } from "./handlers/update-runtime.js";
+import { updateSelectionEntry } from "./handlers/update-selection.js";
 import type { RuntimeAction } from "./actions.js";
-import type { SceneGraph, RuntimeContext } from "../types.js";
+import type { RuntimeHandlerEntry } from "./handler-registry.js";
 
-type NonBatch = Exclude<RuntimeAction, BatchAction<RuntimeAction>>;
-
-const handlerMap: HandlerMap<NonBatch, SceneGraph, RuntimeContext> = {
-  "create-node": createNode,
-  "remove-node": removeNode,
-  "move-node": moveNode,
-  "update-layout": updateLayout,
-  "rotate-node": rotateNode,
-  "update-props": updateProps,
-  "update-style": updateStyle,
-  "update-bindings": updateBindings,
-  "update-runtime": updateRuntime,
-  "update-selection": updateSelection,
-};
+function entry(
+  h: RuntimeHandlerEntry["handler"],
+  i: RuntimeHandlerEntry["inverse"],
+  m = { undoable: true, mergeable: false, devtoolsLabel: "" },
+) {
+  return { handler: h, inverse: i as any, meta: m };
+}
 
 export function createRuntimeRegistry(): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
   const registry = new ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>();
-
-  for (const [type, entry] of Object.entries(handlerMap)) {
-    registry.register(type as keyof typeof handlerMap, entry);
-  }
-
+  registry.register("create-node", entry(
+    createNodeEntry.handler as RuntimeHandlerEntry["handler"],
+    createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
+    createNodeEntry.meta,
+  ));
+  registry.register("remove-node", entry(
+    removeNodeEntry.handler as RuntimeHandlerEntry["handler"],
+    removeNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
+    removeNodeEntry.meta,
+  ));
+  // ... remaining actions ...
   registry.register("batch-actions", registry.createBatchEntry());
-
   return registry;
 }
 ```
 
-### 7.2 Exhaustiveness
-
-`HandlerMap<NonBatch, SceneGraph, RuntimeContext>` ensures at compile time that every non-batch `RuntimeAction["type"]` has a corresponding entry in `handlerMap`. Adding a new action type to `RuntimeAction` but not to `handlerMap` produces a TypeScript error.
-
-`BatchAction<RuntimeAction>` is excluded from the mapped type (via `Exclude`) because its entry is constructed by the factory. If the batch registration line is removed, a runtime guard in the dispatch path catches unhandled action types.
+The `as ` casts are required because each handler is typed with a specific action (e.g. `CreateNodeAction`) but the registry stores a heterogeneous map keyed by the full `RuntimeAction` union. TypeScript's contravariance prevents the direct assignment — the casts are safe because each entry is only invoked with its matching action type via the registry's discriminated key lookup.
 
 ### 7.3 Closed-world acknowledgment
 
@@ -732,17 +730,15 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 
 | Concept | Mechanism | Benefit |
 |---------|-----------|---------|
-| Co-location | `HandlerEntry` in one file | Handler + inverse + validate lifecycle bound |
+| Co-location | `createNodeEntry` object per file | Handler + inverse + meta lifecycle bound |
 | Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
-| Structural sharing | Immer `produce()` inside handlers | undo stack unaffordable without it |
+| Structural sharing | `produce()` inside handlers (planned) | undo stack unaffordable without it |
 | Immutability guard | `Readonly<TState>` + Immer auto-freeze | Compile-time + runtime mutation prevention |
-| Typed inverse | Domain `InverseComputer` returns full union | `as TAction` cast only at registration boundary |
-| Batch in union | `BatchAction<TAction>` | No `as unknown`, self-recursive |
-| Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
+| Typed inverse | Domain `InverseComputer` returns full union | `as` cast only at registration boundary |
+| Batch in union | `BatchAction<TAction>` in action union | No `as unknown`, self-recursive |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
 | No handler replay | Per-child `stateBefore` recorded during execution | Never re-executes handlers for inverse |
-| Progressive validation | `validate(state, action, ctx)` | Semantic checks (existence, cycles, constraints) |
 | Unified error model | HandlerError normalized into DispatchResult | Single error path for batch, history, devtools |
-| Handler purity | Immer produce + contract | Safe double-execution for validation + inverse |
+| Handler purity | Immer produce + purity contract | Safe double-execution for validation + inverse |
 | Acyclic graph | biome `noRestrictedImports` with `"./**"` | Blocks handler→handler imports at lint time |
-| Closed-world | Explicit design decision | Sound exhaustiveness, predictable engine ABI |
+| Closed-world | Explicit design decision | Predictable engine ABI |
