@@ -76,10 +76,7 @@ export function useEditorEngines(
     return reg;
   }, []);
 
-  const runtimeRegistries = useMemo(
-    () => createRuntimeRegistry(),
-    [],
-  );
+  const runtimeRegistries = useMemo(() => createRuntimeRegistry(), []);
 
   const transactionFlagRef = useRef(createTransactionFlag());
 
