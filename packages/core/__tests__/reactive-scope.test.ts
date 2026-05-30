@@ -679,19 +679,29 @@ describe("createScope", () => {
     });
   });
 
-  describe("update callback: signal path", () => {
-    it("checkDirty calls updateSignal for dirty signal deps", () => {
+  describe("computed Pending path (same-value dep)", () => {
+    it("Pending computed with unchanged dep returns cached value", () => {
       const { signal, computed } = createScope();
       const s = signal(0);
-      let evalCount = 0;
-      const c = computed(() => {
-        evalCount++;
-        return s() * 2;
+      let isEvenCount = 0;
+
+      const isEven = computed(() => {
+        isEvenCount++;
+        return s() % 2 === 0;
       });
-      c();
+
+      const parity = computed(() => isEven() ? "even" : "odd");
+
+      parity();
+      expect(isEvenCount).toBe(1);
+
+      s(2);
+      expect(parity()).toBe("even");
+      expect(isEvenCount).toBe(2);
+
       s(1);
-      c();
-      expect(evalCount).toBe(2);
+      expect(parity()).toBe("odd");
+      expect(isEvenCount).toBe(3);
     });
   });
 });
