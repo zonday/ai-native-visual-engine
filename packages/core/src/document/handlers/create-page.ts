@@ -63,3 +63,9 @@ export const createPageInverse: InverseComputer<CreatePageAction> = (
     pageId: action.page.id,
   };
 };
+
+export const createPageMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Create Page",
+} as const;

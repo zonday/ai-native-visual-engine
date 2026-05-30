@@ -44,3 +44,9 @@ export const removePageInverse: InverseComputer<RemovePageAction> = (
     scene,
   };
 };
+
+export const removePageMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Remove Page",
+} as const;

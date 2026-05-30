@@ -35,3 +35,9 @@ export const updateBindingsInverse: InverseComputer<UpdateBindingsAction> = (
     bindings: node.bindings ?? [],
   };
 };
+
+export const updateBindingsMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Bindings",
+} as const;

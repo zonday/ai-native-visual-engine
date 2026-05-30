@@ -90,3 +90,9 @@ export const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
     layout: node.layout ?? {},
   };
 };
+
+export const updateLayoutMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Update Layout",
+} as const;

@@ -44,3 +44,9 @@ export const reorderPageInverse: InverseComputer<ReorderPageAction> = (
     index: idx,
   };
 };
+
+export const reorderPageMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Reorder Page",
+} as const;

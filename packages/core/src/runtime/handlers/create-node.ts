@@ -68,3 +68,9 @@ export const createNodeInverse: InverseComputer<CreateNodeAction> = (
     nodeId: action.node.id,
   };
 };
+
+export const createNodeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Create Node",
+} as const;

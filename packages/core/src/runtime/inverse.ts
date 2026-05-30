@@ -11,43 +11,57 @@ import {
   batchInverse,
   createBatchHandler,
   createBatchInverse,
+  batchMeta,
 } from "./handlers/batch.js";
 import {
   createNodeHandler,
   createNodeInverse,
+  createNodeMeta,
 } from "./handlers/create-node.js";
-import { moveNodeHandler, moveNodeInverse } from "./handlers/move-node.js";
+import {
+  moveNodeHandler,
+  moveNodeInverse,
+  moveNodeMeta,
+} from "./handlers/move-node.js";
 import {
   removeNodeHandler,
   removeNodeInverse,
+  removeNodeMeta,
 } from "./handlers/remove-node.js";
 import {
   rotateNodeHandler,
   rotateNodeInverse,
+  rotateNodeMeta,
 } from "./handlers/rotate-node.js";
 import {
   updateBindingsHandler,
   updateBindingsInverse,
+  updateBindingsMeta,
 } from "./handlers/update-bindings.js";
 import {
   updateLayoutHandler,
   updateLayoutInverse,
+  updateLayoutMeta,
 } from "./handlers/update-layout.js";
 import {
   updatePropsHandler,
   updatePropsInverse,
+  updatePropsMeta,
 } from "./handlers/update-props.js";
 import {
   updateRuntimeHandler,
   updateRuntimeInverse,
+  updateRuntimeMeta,
 } from "./handlers/update-runtime.js";
 import {
   updateSelectionHandler,
   updateSelectionInverse,
+  updateSelectionMeta,
 } from "./handlers/update-selection.js";
 import {
   updateStyleHandler,
   updateStyleInverse,
+  updateStyleMeta,
 } from "./handlers/update-style.js";
 
 export function createDefaultRuntimeRegistries(
@@ -62,7 +76,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: createNodeHandler as RuntimeHandlerEntry["handler"],
         inverse: createNodeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: createNodeMeta,
       },
     ],
     [
@@ -70,7 +84,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: removeNodeHandler as RuntimeHandlerEntry["handler"],
         inverse: removeNodeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: removeNodeMeta,
       },
     ],
     [
@@ -78,7 +92,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: moveNodeHandler as RuntimeHandlerEntry["handler"],
         inverse: moveNodeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: moveNodeMeta,
       },
     ],
     [
@@ -86,7 +100,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updateLayoutHandler as RuntimeHandlerEntry["handler"],
         inverse: updateLayoutInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updateLayoutMeta,
       },
     ],
     [
@@ -94,7 +108,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: rotateNodeHandler as RuntimeHandlerEntry["handler"],
         inverse: rotateNodeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: rotateNodeMeta,
       },
     ],
     [
@@ -102,7 +116,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updatePropsHandler as RuntimeHandlerEntry["handler"],
         inverse: updatePropsInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updatePropsMeta,
       },
     ],
     [
@@ -110,7 +124,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updateStyleHandler as RuntimeHandlerEntry["handler"],
         inverse: updateStyleInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updateStyleMeta,
       },
     ],
     [
@@ -118,7 +132,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updateBindingsHandler as RuntimeHandlerEntry["handler"],
         inverse: updateBindingsInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updateBindingsMeta,
       },
     ],
     [
@@ -126,7 +140,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updateRuntimeHandler as RuntimeHandlerEntry["handler"],
         inverse: updateRuntimeInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updateRuntimeMeta,
       },
     ],
     [
@@ -134,7 +148,7 @@ export function createDefaultRuntimeRegistries(
       {
         handler: updateSelectionHandler as RuntimeHandlerEntry["handler"],
         inverse: updateSelectionInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: updateSelectionMeta,
       },
     ],
     [
@@ -144,7 +158,7 @@ export function createDefaultRuntimeRegistries(
           _batchDispatch,
         ) as RuntimeHandlerEntry["handler"],
         inverse: batchInverse as InverseComputer,
-        meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+        meta: batchMeta,
       },
     ],
   ];
