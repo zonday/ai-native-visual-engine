@@ -26,7 +26,10 @@
       }
     },
     {
-      "includes": ["packages/core/src/runtime/handlers/**", "packages/core/src/document/handlers/**"],
+      "includes": [
+        "packages/core/src/runtime/handlers/**",
+        "packages/core/src/document/handlers/**"
+      ],
       "linter": {
         "rules": {
           "style": {
