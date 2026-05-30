@@ -29,7 +29,6 @@ enum RF {
 }
 
 enum ExtraRF {
-  HasChildEffect = 64,
   Disposed = 128,
   Evaluating = 256,
 }
@@ -82,11 +81,6 @@ export function createScope(): ReactiveScope {
   //    subscriber runs first. This is not a FIFO guarantee; cross-signal
   //    notification order is non-deterministic. Reactive systems conventionally
   //    do not order effects. No correctness impact.
-  //
-  // 4. Owner tree and dependency graph are conflated — effect nodes appear
-  //    in the reactive graph as dependencies of their parent. This works for
-  //    linear dispose but breaks under async effects, suspense, or render
-  //    phases. Future: separate owner tree from dependency graph (see Solid).
   // ─────────────────────────────────────────────────────────────────────────
   const { link, unlink, propagate, checkDirty, shallowPropagate } =
     createReactiveSystem({
@@ -163,17 +157,6 @@ export function createScope(): ReactiveScope {
         "[reactive-scope] Cycle detected in computed dependency graph",
       );
     }
-    if (c.flags & ExtraRF.HasChildEffect) {
-      let link = c.depsTail;
-      while (link !== undefined) {
-        const prev: Link | undefined = link.prevDep;
-        const dep = link.dep;
-        if (!("getter" in dep) && !("currentValue" in dep)) {
-          unlink(link, c);
-        }
-        link = prev;
-      }
-    }
     c.depsTail = undefined;
     c.flags = RF.Mutable | ExtraRF.Evaluating;
     const prevSub = activeSub;
@@ -217,10 +200,7 @@ export function createScope(): ReactiveScope {
           console.warn("[reactive-scope] effect cleanup error:", err);
         }
       }
-      e.flags =
-        ExtraRF.Evaluating |
-        RF.RecursedCheck |
-        (flags & ExtraRF.HasChildEffect);
+      e.flags = ExtraRF.Evaluating | RF.RecursedCheck;
       const prevSub = activeSub;
       activeSub = e;
       try {
@@ -235,7 +215,7 @@ export function createScope(): ReactiveScope {
         purgeDeps(e);
       }
     } else if (e.deps !== undefined) {
-      e.flags = RF.Watching | (flags & ExtraRF.HasChildEffect);
+      e.flags = RF.Watching;
     }
   }
 
@@ -277,6 +257,8 @@ export function createScope(): ReactiveScope {
   interface EffectInternal extends ReactiveNode {
     fn: () => unknown;
     cleanup: (() => void) | undefined;
+    children: EffectInternal[];
+    parent: EffectInternal | undefined;
   }
 
   function signal<T>(initialValue: T): Signal<T> {
@@ -383,6 +365,7 @@ export function createScope(): ReactiveScope {
     const e: EffectInternal = {
       fn,
       cleanup: undefined,
+      children: [],
       subs: undefined,
       subsTail: undefined,
       deps: undefined,
@@ -394,8 +377,9 @@ export function createScope(): ReactiveScope {
     activeSub = e;
 
     if (prevSub !== undefined) {
-      link(e, prevSub, 0);
-      prevSub.flags |= ExtraRF.HasChildEffect;
+      const parent = prevSub as EffectInternal;
+      parent.children.push(e);
+      e.parent = parent;
     }
 
     try {
@@ -418,6 +402,12 @@ export function createScope(): ReactiveScope {
     if (!e.flags) {
       return;
     }
+    if (e.parent) {
+      const idx = e.parent.children.indexOf(e);
+      if (idx !== -1) {
+        e.parent.children.splice(idx, 1);
+      }
+    }
     e.flags = RF.None;
     if (e.cleanup) {
       try {
@@ -427,35 +417,20 @@ export function createScope(): ReactiveScope {
       }
       e.cleanup = undefined;
     }
+    for (const child of e.children) {
+      disposeEffectNode(child);
+    }
+    e.children = [];
     let cur: Link | undefined = e.depsTail;
     while (cur !== undefined) {
       const prev = cur.prevDep;
-      if ("fn" in cur.dep) {
-        const parent = cur.dep;
-        let hasOtherChild = false;
-        let sl = parent.subs;
-        while (sl !== undefined) {
-          if (sl.sub !== e && sl.sub.flags && "fn" in sl.sub) {
-            hasOtherChild = true;
-            break;
-          }
-          sl = sl.nextSub;
-        }
-        if (!hasOtherChild) {
-          parent.flags &= ~ExtraRF.HasChildEffect;
-        }
-      }
       unlink(cur, e);
       cur = prev;
     }
     cur = e.subs;
     while (cur !== undefined) {
       const next = cur.nextSub;
-      if ("fn" in cur.sub) {
-        disposeEffectNode(cur.sub as EffectInternal);
-      } else {
-        unlink(cur);
-      }
+      unlink(cur);
       cur = next;
     }
   }
