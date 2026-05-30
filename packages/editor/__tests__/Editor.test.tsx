@@ -22,7 +22,7 @@ const mockEngine = {
   getVisibleBounds: () => ({ x: 0, y: 0, width: 100, height: 100 }),
   getCenter: () => ({ x: 50, y: 50 }),
   getEdge: () => 0,
-  getLocalTransform: () => ({ x: 0, y: 0, rotation: 0 }),
+  getLocalTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
   invalidate: () => {},
   invalidateAll: () => {},
 } as ComputedStateEngine;

@@ -41,6 +41,38 @@ function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
 
 describe("ComputedStateEngine", () => {
   describe("getWorldTransform", () => {
+    it("composes rotation correctly", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a;
+      if (!a?.layout) throw new Error("a or layout missing");
+      // Parent "a" rotated 90°, child "a1" at (10, 20) relative
+      a.layout.rotation = 90;
+      const sel = createSelectorRegistry(scene);
+      const eng = createComputedStateEngine(sel);
+      // a1: parent rotates (10, 20) → (-20, 10), then adds parent at (100, 50)
+      // Expected: x = 100 + (-20) = 80, y = 50 + 10 = 60
+      const tx = eng.getWorldTransform("a1");
+      expect(tx.x).toBeCloseTo(80);
+      expect(tx.y).toBeCloseTo(60);
+      expect(tx.rotation).toBe(90);
+    });
+
+    it("propagates scale through hierarchy", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a;
+      if (!a?.layout) throw new Error("a or layout missing");
+      (a.layout as Record<string, unknown>).scaleX = 2;
+      (a.layout as Record<string, unknown>).scaleY = 3;
+      const sel = createSelectorRegistry(scene);
+      const eng = createComputedStateEngine(sel);
+      const tx = eng.getWorldTransform("a1");
+      // "a" scales (10, 20) by (2, 3) → (20, 60), adds parent (100, 50)
+      expect(tx.x).toBe(120);
+      expect(tx.y).toBe(110);
+      expect(tx.scaleX).toBe(2);
+      expect(tx.scaleY).toBe(3);
+    });
+
     it("returns identity for root", () => {
       const sel = createSelectorRegistry(makeScene());
       const eng = createComputedStateEngine(sel);
@@ -164,6 +196,56 @@ describe("ComputedStateEngine", () => {
     });
   });
 
+  describe("getLocalTransform", () => {
+    it("returns WorldTransform with scale defaults for absolute node", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const eng = createComputedStateEngine(sel);
+      const tx = eng.getLocalTransform("a");
+      expect(tx.x).toBe(100);
+      expect(tx.y).toBe(50);
+      expect(tx.rotation).toBe(0);
+      expect(tx.scaleX).toBe(1);
+      expect(tx.scaleY).toBe(1);
+    });
+
+    it("returns identity for non-absolute node", () => {
+      const scene = makeScene();
+      if (scene.nodes.a) delete scene.nodes.a.layout;
+      const sel = createSelectorRegistry(scene);
+      const eng = createComputedStateEngine(sel);
+      const tx = eng.getLocalTransform("a");
+      expect(tx.x).toBe(0);
+      expect(tx.y).toBe(0);
+      expect(tx.rotation).toBe(0);
+      expect(tx.scaleX).toBe(1);
+      expect(tx.scaleY).toBe(1);
+    });
+
+    it("reads scale from layout when present", () => {
+      const scene = makeScene();
+      const a = scene.nodes.a;
+      if (!a?.layout) throw new Error("a or layout missing");
+      (a.layout as Record<string, unknown>).scaleX = 2;
+      (a.layout as Record<string, unknown>).scaleY = 3;
+      const sel = createSelectorRegistry(scene);
+      const eng = createComputedStateEngine(sel);
+      const tx = eng.getLocalTransform("a");
+      expect(tx.scaleX).toBe(2);
+      expect(tx.scaleY).toBe(3);
+    });
+
+    it("returns identity for missing node", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const eng = createComputedStateEngine(sel);
+      const tx = eng.getLocalTransform("nonexistent");
+      expect(tx.x).toBe(0);
+      expect(tx.y).toBe(0);
+      expect(tx.rotation).toBe(0);
+      expect(tx.scaleX).toBe(1);
+      expect(tx.scaleY).toBe(1);
+    });
+  });
+
   describe("getCenter", () => {
     it("returns center of node bounds", () => {
       const sel = createSelectorRegistry(makeScene());
@@ -186,7 +268,7 @@ describe("ComputedStateEngine", () => {
   });
 
   describe("cache invalidation", () => {
-    it("invalidate clears only the targeted node's cache", () => {
+    it("invalidate cascades to descendants", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
@@ -195,15 +277,14 @@ describe("ComputedStateEngine", () => {
       eng.getWorldTransform("a1");
       // Mutate node a's layout
       (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
-      // Invalidate only "a" — deletes its cache entries
+      // Invalidate "a" — cascades to descendant "a1"
       eng.invalidate("a");
       // "a" recomputes from fresh scene data
       const afterA = eng.getWorldTransform("a");
       expect(afterA.x).toBe(200);
-      // "a" was invalidated — its cache cleared, new computed reads fresh layout (x=200)
-      // "a1" cache NOT cleared — a1's computed still in engine's scope, returns cached 110
+      // "a1" cache was also cleared as descendant — reads world through new parent
       const afterA1 = eng.getWorldTransform("a1");
-      expect(afterA1.x).toBe(110);
+      expect(afterA1.x).toBe(210);
     });
 
     it("invalidateAll clears all caches for full recompute", () => {
@@ -219,18 +300,50 @@ describe("ComputedStateEngine", () => {
       expect(after.x).toBe(210);
     });
 
-    it("selector invalidates engine through scene version change (clearIfStale)", () => {
+    it("invalidateAll on engine cascades to selector registry and recalculates", () => {
       const scene = makeScene();
       const sel = createSelectorRegistry(scene);
       const eng = createComputedStateEngine(sel);
       eng.getWorldTransform("a1");
-      // Mutate AND bump scene version
       (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
-      scene.version = 1;
-      sel.invalidateAll();
+      // Engine's invalidateAll also calls selectors.invalidateAll
       eng.invalidateAll();
       const after = eng.getWorldTransform("a1");
       expect(after.x).toBe(210);
+    });
+
+    it("invalidate on missing nodeId does not throw", () => {
+      const sel = createSelectorRegistry(makeScene());
+      const eng = createComputedStateEngine(sel);
+      expect(() => eng.invalidate("nonexistent")).not.toThrow();
+      // Existing nodes still work after invalidating a nonexistent one
+      eng.getWorldTransform("a");
+      expect(() => eng.invalidate("nonexistent")).not.toThrow();
+      const tx = eng.getWorldTransform("a");
+      expect(tx.x).toBe(100);
+    });
+
+    it("onBeforeDispose clears engine caches when selector registry syncs", () => {
+      const oldScene = makeScene();
+      const sel = createSelectorRegistry(oldScene);
+      const eng = createComputedStateEngine(sel);
+
+      // Warm caches with old scene data
+      const before = eng.getWorldTransform("a1");
+      expect(before.x).toBe(110);
+
+      // Create a new scene with changed layout
+      const newScene = makeScene();
+      const aLayout = newScene.nodes.a?.layout as Record<string, unknown>;
+      aLayout.x = 300;
+      newScene.version = 1;
+
+      // Sync triggers onBeforeDispose → clearAll(), then replaces scene
+      sel.sync(newScene);
+
+      // After sync, engine reads from new scene — fresh computed refs
+      const after = eng.getWorldTransform("a1");
+      expect(after.x).toBe(310);
     });
   });
 });
