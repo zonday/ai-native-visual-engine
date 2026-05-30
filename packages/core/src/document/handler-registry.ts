@@ -1,12 +1,15 @@
 import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type {
   HandlerEntry,
-  HandlerRegistry,
+  HandlerRegistry as EngineHandlerRegistry,
 } from "../engine/handler-registry.js";
+import type { ActionRegistry, HandlerMap } from "../engine/action-registry.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 
 export interface DocumentRuntimeContext extends RuntimeContext {}
+
+export type { RuntimeContext, ActionRegistry, HandlerMap };
 
 export type DocumentHandler<TAction extends DocumentAction = DocumentAction> =
   Handler<VisualDocument, TAction, DocumentRuntimeContext>;
@@ -17,7 +20,7 @@ export type DocumentHandlerEntry = HandlerEntry<
   DocumentRuntimeContext
 >;
 
-export type DocumentHandlerRegistry = HandlerRegistry<
+export type DocumentHandlerRegistry = EngineHandlerRegistry<
   VisualDocument,
   DocumentAction,
   DocumentRuntimeContext
@@ -50,3 +53,11 @@ export function computeInverseAction(
   if (!computer) return undefined;
   return computer(documentBefore, action, context);
 }
+
+export type DocumentEntryFor<K extends DocumentAction["type"]> =
+  HandlerMap<DocumentAction, VisualDocument, DocumentRuntimeContext>[K];
+
+export const STANDARD_ACTION_META = {
+  undoable: true,
+  mergeable: false,
+} as const;

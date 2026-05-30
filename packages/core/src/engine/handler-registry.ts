@@ -29,8 +29,6 @@ export function computeInverseAction<TState, TAction extends { type: string }>(
 ): TAction | undefined {
   const computer = registry.get(action.type);
   if (!computer) return undefined;
-  // Registry stores InverseComputer<unknown, TAction, ...> for heterogeneous
-  // storage; the cast assumes the caller provided the correct state type.
   return computer(stateBefore, action, context) as TAction | undefined;
 }
 
@@ -63,9 +61,6 @@ export function buildRegistriesFromEntries<
     string,
     HandlerEntry<TState, TAction, TContext>
   >(entries);
-  // Type assertion: the inverse computers at runtime match the wider signature
-  // needed by InverseRegistry — the cast is safe because we only .get() and
-  // invoke the stored functions, which are already the real (narrower) types.
   const inverseRegistry = createInverseRegistry(
     Object.fromEntries(
       entries.map(([key, entry]) => [key, entry.inverse]),
