@@ -1,4 +1,4 @@
-import type { RuntimeAction } from "../runtime/actions.js";
+import type { RuntimeAction } from "../runtime/register-handlers.js";
 import type { SceneGraph, SceneNode, VisualDocument } from "../types.js";
 
 export type ConstraintType = "structural" | "layout" | "semantic" | "theme";

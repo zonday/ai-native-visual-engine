@@ -1,6 +1,6 @@
 import { createEmptyScene, generateId } from "../../bootstrap.js";
-import type { DocumentAction } from "../../document/actions.js";
-import type { RuntimeAction } from "../../runtime/actions.js";
+import type { DocumentAction } from "../../document/register-handlers.js";
+import type { RuntimeAction } from "../../runtime/register-handlers.js";
 import { createStage } from "../diagnostics.js";
 import type {
   CompilerContext,

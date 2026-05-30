@@ -1,5 +1,5 @@
-import { DocumentActionSchema } from "../../document/actions.js";
-import { RuntimeActionSchema } from "../../runtime/actions.js";
+import { DocumentActionSchema } from "../../document/register-handlers.js";
+import { RuntimeActionSchema } from "../../runtime/register-handlers.js";
 import { createDiagnosticFactory, formatZodIssues } from "../diagnostics.js";
 import type {
   CompilerContext,

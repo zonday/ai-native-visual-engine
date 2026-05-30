@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import type { DocumentAction } from "../src/document/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import {
   CURRENT_SERIALIZATION_VERSION,
   serializeDocument,

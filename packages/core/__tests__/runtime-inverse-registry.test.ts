@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type {
   InverseComputer,
   RuntimeContext,

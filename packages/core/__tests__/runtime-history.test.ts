@@ -5,7 +5,7 @@ import {
   redoAction,
   undoAction,
 } from "../src/engine/history.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 
 const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
 const pushRuntimeUndo = pushUndo<RuntimeAction>;

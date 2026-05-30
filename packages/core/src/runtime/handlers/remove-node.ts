@@ -2,7 +2,7 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
-import type { RuntimeAction } from "../actions.js";
+import type { RuntimeAction } from "../register-handlers.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,

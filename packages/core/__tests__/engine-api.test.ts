@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createHistoryState } from "../src/engine/history.js";
 import { createEngineAPI } from "../src/engine-api.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 
 const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
 

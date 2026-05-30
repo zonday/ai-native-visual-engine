@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
 import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";

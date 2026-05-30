@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { HistoryState } from "../src/engine/history.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import type { SceneGraph } from "../src/types.js";

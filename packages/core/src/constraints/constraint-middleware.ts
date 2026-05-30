@@ -1,5 +1,5 @@
 import type { Middleware } from "../engine/command-bus.js";
-import type { RuntimeAction } from "../runtime/actions.js";
+import type { RuntimeAction } from "../runtime/register-handlers.js";
 import type { SceneGraph } from "../types.js";
 import type { ConstraintRegistry } from "./constraint-registry.js";
 import type { ConstraintInput } from "./constraint-types.js";

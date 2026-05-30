@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/actions.js";
-import { DocumentActionSchema } from "../src/document/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
+import { DocumentActionSchema } from "../src/document/register-handlers.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import { createValidatorMiddleware } from "../src/engine/middleware/validator.js";
 import type { VisualDocument } from "../src/types.js";

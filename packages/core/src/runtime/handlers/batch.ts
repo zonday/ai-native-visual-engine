@@ -1,8 +1,8 @@
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph } from "../../types.js";
-import type { BatchActions, RuntimeAction } from "../actions.js";
-import { RuntimeActionSchema } from "../actions.js";
-import type { DispatchResult } from "../command-bus.js";
+import type { BatchActions, RuntimeAction } from "../register-handlers.js";
+import { RuntimeActionSchema } from "../register-handlers.js";
+import type { DispatchResult } from "../runtime-command-bus.js";
 import type {
   InverseComputer,
   InverseRegistry,

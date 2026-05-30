@@ -1,8 +1,8 @@
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { BatchDocumentActions, DocumentAction } from "../actions.js";
-import { DocumentActionSchema } from "../actions.js";
-import type { DocumentDispatchResult } from "../command-bus.js";
+import type { BatchDocumentActions, DocumentAction } from "../register-handlers.js";
+import { DocumentActionSchema } from "../register-handlers.js";
+import type { DocumentDispatchResult } from "../document-command-bus.js";
 import type {
   DocumentHandler,
   DocumentHandlerRegistry,
