@@ -393,4 +393,60 @@ describe("createScope", () => {
       expect(grandchildFn).not.toHaveBeenCalled();
     });
   });
+
+  describe("unwatched callback", () => {
+    it("cleanup runs exactly once during dispose (unwatched after deps cleared does not double-fire)", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const cleanup = vi.fn();
+
+      const eStop = effect(() => {
+        s();
+        return cleanup;
+      });
+
+      eStop();
+      expect(cleanup).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("propagate during computed getter", () => {
+    it("does not leak Pending after updateComputed", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      let callCount = 0;
+
+      const c = computed(() => {
+        callCount++;
+        return s() * 2;
+      });
+
+      expect(c()).toBe(0);
+      expect(callCount).toBe(1);
+      s(1);
+      expect(c()).toBe(2);
+      expect(callCount).toBe(2);
+      expect(c()).toBe(2);
+      expect(callCount).toBe(2);
+    });
+  });
+
+  describe("isFlushing with nested batch", () => {
+    it("reentrant flush guard does not block manual flush after batch", () => {
+      const { signal, effect, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+
+      effect(() => {
+        s();
+        fn();
+      });
+
+      fn.mockClear();
+      startBatch();
+      s(1);
+      endBatch();
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
 });
