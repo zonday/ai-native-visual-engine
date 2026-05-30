@@ -65,7 +65,7 @@ const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
       ...((draft.nodes[action.parentId] as SceneNode).children ?? []),
     ];
     parentChildren.splice(index, 0, node.id);
-    (draft.nodes[action.parentId] as SceneNode).children = parentChildren;
+    (draft.nodes[action.parentId] as any).children = parentChildren;
     draft.nodes[node.id] = node;
     draft.version += 1;
   });

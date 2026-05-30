@@ -97,8 +97,8 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
       ...((draft.nodes[action.parentId] as SceneNode).children ?? []),
     ];
     newParentChildren.splice(index, 0, action.nodeId);
-    (draft.nodes[action.parentId] as SceneNode).children = newParentChildren;
-    (draft.nodes[action.nodeId] as SceneNode).parentId = action.parentId;
+    (draft.nodes[action.parentId] as any).children = newParentChildren;
+    (draft.nodes[action.nodeId] as any).parentId = action.parentId;
     draft.version += 1;
   });
 };
