@@ -31,6 +31,7 @@ enum RF {
 enum ExtraRF {
   HasChildEffect = 64,
   Disposed = 128,
+  Evaluating = 256,
 }
 
 export type Signal<T> = {
@@ -72,7 +73,7 @@ export function createScope(): ReactiveScope {
   //
   // 2. alien-signals checkDirty() — no visited-node tracking.
   //    A computed cycle A→B→A where both are Pending could loop infinitely.
-  //    Blocked at runtime by the Watching-guard in oper() — no cycle ever
+  //    Blocked at runtime by the Evaluating-guard in oper() — no cycle ever
   //    reaches checkDirty with valid deps. Do NOT remove that guard without
   //    adding visited-node tracking to checkDirty.
   //
@@ -82,13 +83,7 @@ export function createScope(): ReactiveScope {
   //    notification order is non-deterministic. Reactive systems conventionally
   //    do not order effects. No correctness impact.
   //
-  // 4. RF.Watching flag is overloaded — it serves as queue marker, tracking
-  //    state, and cycle guard simultaneously. A dedicated Evaluating flag
-  //    would prevent false-positive cycle detection. Requires co-ordinated
-  //    changes with alien-signals propagate() which checks `flags & 2`.
-  //    Deferred: architecture-level refactor, not a hotfix.
-  //
-  // 5. Owner tree and dependency graph are conflated — effect nodes appear
+  // 4. Owner tree and dependency graph are conflated — effect nodes appear
   //    in the reactive graph as dependencies of their parent. This works for
   //    linear dispose but breaks under async effects, suspense, or render
   //    phases. Future: separate owner tree from dependency graph (see Solid).
@@ -163,7 +158,7 @@ export function createScope(): ReactiveScope {
   }
 
   function updateComputed(c: ComputedInternal): boolean {
-    if (c.flags & RF.Watching) {
+    if (c.flags & ExtraRF.Evaluating) {
       throw new Error(
         "[reactive-scope] Cycle detected in computed dependency graph",
       );
@@ -180,7 +175,7 @@ export function createScope(): ReactiveScope {
       }
     }
     c.depsTail = undefined;
-    c.flags = RF.Mutable | RF.Watching;
+    c.flags = RF.Mutable | ExtraRF.Evaluating;
     const prevSub = activeSub;
     activeSub = c;
     try {
@@ -190,7 +185,7 @@ export function createScope(): ReactiveScope {
       return oldValue !== c.value;
     } finally {
       activeSub = prevSub;
-      c.flags &= ~RF.Watching;
+      c.flags = (c.flags & ~ExtraRF.Evaluating) | RF.Mutable;
       purgeDeps(c);
     }
   }
@@ -222,7 +217,10 @@ export function createScope(): ReactiveScope {
           console.warn("[reactive-scope] effect cleanup error:", err);
         }
       }
-      e.flags = RF.Watching | RF.RecursedCheck;
+      e.flags =
+        ExtraRF.Evaluating |
+        RF.RecursedCheck |
+        (flags & ExtraRF.HasChildEffect);
       const prevSub = activeSub;
       activeSub = e;
       try {
@@ -232,7 +230,8 @@ export function createScope(): ReactiveScope {
       } finally {
         --runDepth;
         activeSub = prevSub;
-        e.flags &= ~RF.RecursedCheck;
+        e.flags =
+          (e.flags & ~(RF.RecursedCheck | ExtraRF.Evaluating)) | RF.Watching;
         purgeDeps(e);
       }
     } else if (e.deps !== undefined) {
@@ -334,7 +333,7 @@ export function createScope(): ReactiveScope {
       if (flags & ExtraRF.Disposed) {
         throw new Error("[reactive-scope] Cannot read disposed computed");
       }
-      if (flags & RF.Watching) {
+      if (flags & ExtraRF.Evaluating) {
         throw new Error("[reactive-scope] Cycle detected in computed");
       }
       if (flags & RF.Dirty) {
@@ -405,7 +404,7 @@ export function createScope(): ReactiveScope {
     } finally {
       --runDepth;
       activeSub = prevSub;
-      e.flags &= ~RF.RecursedCheck;
+      e.flags = (e.flags & ~RF.RecursedCheck) | RF.Watching;
     }
 
     const dispose = (): void => {
