@@ -704,4 +704,87 @@ describe("createScope", () => {
       expect(isEvenCount).toBe(3);
     });
   });
+
+  describe("advanced: effect self-destruction", () => {
+    it("effect can dispose itself during re-eval without corruption", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      let stop!: () => void;
+      let triggerCount = 0;
+      stop = effect(() => {
+        s();
+        triggerCount++;
+        if (s() > 0) {
+          stop();
+        }
+      });
+      expect(triggerCount).toBe(1);
+      expect(() => s(1)).not.toThrow();
+    });
+  });
+
+  describe("advanced: computed exception recovery", () => {
+    it("computed recovers after throwing during eval", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      const c = computed(() => {
+        if (s() > 0) throw new Error("boom");
+        return s();
+      });
+      expect(c()).toBe(0);
+      s(1);
+      expect(() => c()).toThrow("boom");
+      s(0);
+      expect(c()).toBe(0);
+    });
+  });
+
+  describe("advanced: batch exception recovery", () => {
+    it("batchDepth resets after exception in batch", () => {
+      const { signal, effect, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => { s(); fn(); });
+      fn.mockClear();
+
+      startBatch();
+      s(1);
+      endBatch();
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it("flush works after exception during batch endBatch", () => {
+      const { signal, effect, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      effect(() => { s(); fn(); });
+
+      fn.mockClear();
+      startBatch();
+      s(1);
+      endBatch();
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("advanced: diamond graph glitch-free", () => {
+    it("diamond B->D->C does not double-fire D", () => {
+      const { signal, effect } = createScope();
+      const x = signal(0);
+      const dCalls: number[] = [];
+
+      effect(() => {
+        x();
+      });
+
+      effect(() => {
+        x();
+        dCalls.push(1);
+      });
+
+      dCalls.length = 0;
+      x(1);
+      expect(dCalls).toEqual([1]);
+    });
+  });
 });
