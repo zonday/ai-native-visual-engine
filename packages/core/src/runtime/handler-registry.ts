@@ -1,13 +1,13 @@
+import type { ActionRegistry, HandlerMap } from "../engine/action-registry.js";
 import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type {
-  HandlerEntry,
   HandlerRegistry as EngineHandlerRegistry,
+  HandlerEntry,
 } from "../engine/handler-registry.js";
-import type { ActionRegistry, HandlerMap } from "../engine/action-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 
-export type { RuntimeContext, ActionRegistry, HandlerMap };
+export type { ActionRegistry, HandlerMap, RuntimeContext };
 
 export type RuntimeHandler<TAction extends RuntimeAction = RuntimeAction> =
   Handler<SceneGraph, TAction, RuntimeContext>;
@@ -49,8 +49,11 @@ export function computeInverseAction(
   return computer(sceneBefore, action, context);
 }
 
-export type RuntimeEntryFor<K extends RuntimeAction["type"]> =
-  HandlerMap<RuntimeAction, SceneGraph, RuntimeContext>[K];
+export type RuntimeEntryFor<K extends RuntimeAction["type"]> = HandlerMap<
+  RuntimeAction,
+  SceneGraph,
+  RuntimeContext
+>[K];
 
 export const STANDARD_ACTION_META = {
   undoable: true,
