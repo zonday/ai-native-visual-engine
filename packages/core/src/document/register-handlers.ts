@@ -1,21 +1,35 @@
 import { z } from "zod/v4";
 import { ActionRegistry } from "../engine/action-registry.js";
-import { CreatePageActionSchema } from "./handlers/create-page.js";
-import { createPageEntry } from "./handlers/create-page.js";
-import { RemovePageActionSchema } from "./handlers/remove-page.js";
-import { removePageEntry } from "./handlers/remove-page.js";
-import { RenamePageActionSchema } from "./handlers/rename-page.js";
-import { renamePageEntry } from "./handlers/rename-page.js";
-import { ReorderPageActionSchema } from "./handlers/reorder-page.js";
-import { reorderPageEntry } from "./handlers/reorder-page.js";
-import { SetDocumentThemeActionSchema } from "./handlers/set-document-theme.js";
-import { setDocumentThemeEntry } from "./handlers/set-document-theme.js";
-import { SetPageThemeActionSchema } from "./handlers/set-page-theme.js";
-import { setPageThemeEntry } from "./handlers/set-page-theme.js";
-import { UpdatePageRouteActionSchema } from "./handlers/update-page-route.js";
-import { updatePageRouteEntry } from "./handlers/update-page-route.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentRuntimeContext } from "./handler-registry.js";
+import {
+  CreatePageActionSchema,
+  createPageEntry,
+} from "./handlers/create-page.js";
+import {
+  RemovePageActionSchema,
+  removePageEntry,
+} from "./handlers/remove-page.js";
+import {
+  RenamePageActionSchema,
+  renamePageEntry,
+} from "./handlers/rename-page.js";
+import {
+  ReorderPageActionSchema,
+  reorderPageEntry,
+} from "./handlers/reorder-page.js";
+import {
+  SetDocumentThemeActionSchema,
+  setDocumentThemeEntry,
+} from "./handlers/set-document-theme.js";
+import {
+  SetPageThemeActionSchema,
+  setPageThemeEntry,
+} from "./handlers/set-page-theme.js";
+import {
+  UpdatePageRouteActionSchema,
+  updatePageRouteEntry,
+} from "./handlers/update-page-route.js";
 
 export const BatchDocumentActionsSchema = z.object({
   type: z.literal("batch-document-actions"),

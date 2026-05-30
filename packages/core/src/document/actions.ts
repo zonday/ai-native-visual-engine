@@ -1,9 +1,9 @@
+export type {
+  BatchDocumentActions,
+  DocumentAction,
+} from "./register-handlers.js";
 export {
-  DocumentActionSchema,
   BatchDocumentActionsSchema,
   createDocumentRegistry,
-} from "./register-handlers.js";
-export type {
-  DocumentAction,
-  BatchDocumentActions,
+  DocumentActionSchema,
 } from "./register-handlers.js";
