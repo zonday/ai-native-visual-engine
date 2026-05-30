@@ -49,8 +49,12 @@ const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   const normalized = normalizeRotation(action.rotation);
 
   return produce(scene, (draft) => {
-    ((draft.nodes[action.nodeId] as SceneNode).layout as Record<string, unknown>).rotation =
-      normalized;
+    (
+      (draft.nodes[action.nodeId] as SceneNode).layout as Record<
+        string,
+        unknown
+      >
+    ).rotation = normalized;
     draft.version += 1;
   });
 };

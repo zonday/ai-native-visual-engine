@@ -52,9 +52,9 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
 
     const parent = node.parentId ? draft.nodes[node.parentId] : undefined;
     if (parent && node.parentId) {
-      (draft.nodes[node.parentId] as SceneNode).children = (parent.children ?? []).filter(
-        (id) => id !== action.nodeId,
-      );
+      (draft.nodes[node.parentId] as SceneNode).children = (
+        parent.children ?? []
+      ).filter((id) => id !== action.nodeId);
     }
 
     draft.version += 1;
