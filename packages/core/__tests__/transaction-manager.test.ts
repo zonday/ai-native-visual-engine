@@ -28,7 +28,7 @@ function makeActionRegistry(
     const inv = inverseMap.get(type);
     registry.register(type, {
       handler,
-      inverse: inv ? (state, action, _ctx) => inv(state, action) : undefined,
+      inverse: inv ? (state: TestState, action: TestAction, _ctx: RuntimeContext) => inv(state, action) : undefined,
       meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
     });
   }
