@@ -364,6 +364,37 @@ describe("createScope", () => {
       }
       expect(fn).not.toHaveBeenCalled();
     });
+
+    it("Watching restored on remaining effects after sibling throws", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const survivor = vi.fn();
+
+      effect(() => {
+        s();
+      });
+
+      const bombsAway = effect(() => {
+        s();
+        if (s() > 0) throw new Error("boom");
+      });
+      bombsAway();
+
+      effect(() => {
+        s();
+        survivor();
+      });
+
+      survivor.mockClear();
+      try {
+        s(1);
+      } catch {
+        // expected
+      }
+      survivor.mockClear();
+      s(2);
+      expect(survivor).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("owner tree", () => {
@@ -521,7 +552,10 @@ describe("createScope", () => {
       const { signal, effect } = createScope();
       const s = signal(0);
       const fn = vi.fn();
-      effect(() => { s(); fn(); });
+      effect(() => {
+        s();
+        fn();
+      });
       fn.mockClear();
       s(0);
       expect(fn).not.toHaveBeenCalled();
@@ -555,7 +589,10 @@ describe("createScope", () => {
     it("constant computed (no deps) caches", () => {
       const { computed } = createScope();
       let evalCount = 0;
-      const c = computed(() => { evalCount++; return 42; });
+      const c = computed(() => {
+        evalCount++;
+        return 42;
+      });
       expect(c()).toBe(42);
       expect(evalCount).toBe(1);
       expect(c()).toBe(42);
@@ -568,7 +605,9 @@ describe("createScope", () => {
       const { signal, effect } = createScope();
       const s = signal(0);
       const fn = vi.fn();
-      effect(() => { fn(); });
+      effect(() => {
+        fn();
+      });
       fn.mockClear();
       s(1);
       expect(fn).not.toHaveBeenCalled();
@@ -594,7 +633,10 @@ describe("createScope", () => {
       const { signal, computed, startBatch, endBatch } = createScope();
       const s = signal(0);
       let evalCount = 0;
-      const c = computed(() => { evalCount++; return s() * 2; });
+      const c = computed(() => {
+        evalCount++;
+        return s() * 2;
+      });
       c();
       evalCount = 0;
       startBatch();
@@ -606,6 +648,48 @@ describe("createScope", () => {
       endBatch();
       c();
       expect(evalCount).toBe(1);
+    });
+  });
+
+  describe("flush reentrancy guard (isFlushing)", () => {
+    it("effect setting signal during flush hits reentry guard", () => {
+      const { signal, effect } = createScope();
+      const a = signal(0);
+      const b = signal(0);
+      const order: number[] = [];
+
+      effect(() => {
+        a();
+        if (a() > 0) {
+          b(1);
+        }
+        order.push("e1");
+      });
+
+      effect(() => {
+        b();
+        order.push("e2");
+      });
+
+      order.length = 0;
+      a(1);
+      expect(order).toEqual(["e1", "e2"]);
+    });
+  });
+
+  describe("update callback: signal path", () => {
+    it("checkDirty calls updateSignal for dirty signal deps", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      let evalCount = 0;
+      const c = computed(() => {
+        evalCount++;
+        return s() * 2;
+      });
+      c();
+      s(1);
+      c();
+      expect(evalCount).toBe(2);
     });
   });
 });

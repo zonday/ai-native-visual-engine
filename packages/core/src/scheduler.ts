@@ -31,7 +31,19 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
   let pendingAllDirty = false;
   const listeners: ScheduleListener[] = [];
   let scheduled = false;
-  const flushResolvers: (() => void)[] = [];
+  const flushHandlers: {
+    resolve: () => void;
+    reject: (e: unknown) => void;
+  }[] = [];
+
+  function rejectAllFlushPromises(error: Error): void {
+    if (flushHandlers.length > 0) {
+      const handlers = flushHandlers.splice(0);
+      for (const h of handlers) {
+        h.reject(error);
+      }
+    }
+  }
 
   function drainPending(): void {
     if (pendingAllDirty) {
@@ -48,8 +60,9 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
   }
 
   function notifyCompute(): void {
+    const snapshot = [...listeners];
     if (allDirty) {
-      for (const listener of listeners) {
+      for (const listener of snapshot) {
         try {
           listener.onCompute?.([]);
         } catch {
@@ -59,7 +72,7 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       }
     } else if (currentDirty.size > 0) {
       const nodes = Array.from(currentDirty);
-      for (const listener of listeners) {
+      for (const listener of snapshot) {
         try {
           listener.onCompute?.(nodes);
         } catch {
@@ -70,7 +83,8 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
   }
 
   function notifyRender(): void {
-    for (const listener of listeners) {
+    const snapshot = [...listeners];
+    for (const listener of snapshot) {
       try {
         listener.onRender?.();
       } catch {
@@ -80,10 +94,10 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
   }
 
   function resolveAllFlushPromises(): void {
-    if (flushResolvers.length > 0) {
-      const resolvers = flushResolvers.splice(0);
-      for (const resolve of resolvers) {
-        resolve();
+    if (flushHandlers.length > 0) {
+      const handlers = flushHandlers.splice(0);
+      for (const h of handlers) {
+        h.resolve();
       }
     }
   }
@@ -129,8 +143,16 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       currentDirty.clear();
       allDirty = false;
       scheduled = false;
-      resolveAllFlushPromises();
-      if (!aborted) {
+      if (aborted) {
+        pendingDirty.clear();
+        pendingAllDirty = false;
+        rejectAllFlushPromises(
+          new Error(
+            "Maximum scheduler flush depth exceeded: possible infinite update loop",
+          ),
+        );
+      } else {
+        resolveAllFlushPromises();
         scheduleNext();
       }
       flushDepth = 0;
@@ -181,18 +203,23 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       }
     },
 
-    flush(): Promise<void> {
-      const empty =
-        currentDirty.size === 0 &&
-        !allDirty &&
-        pendingDirty.size === 0 &&
-        !pendingAllDirty;
-      if (empty && phase === "idle") {
-        return Promise.resolve();
+    async flush(): Promise<void> {
+      let depth = 0;
+      while (depth < MAX_FLUSH_DEPTH) {
+        const empty =
+          currentDirty.size === 0 &&
+          !allDirty &&
+          pendingDirty.size === 0 &&
+          !pendingAllDirty;
+        if (empty && phase === "idle") return;
+        depth++;
+        await new Promise((resolve, reject) => {
+          flushHandlers.push({ resolve, reject });
+        });
       }
-      return new Promise((resolve) => {
-        flushResolvers.push(resolve);
-      });
+      throw new Error(
+        "Maximum scheduler flush depth exceeded: possible infinite update loop",
+      );
     },
 
     subscribe(listener: ScheduleListener): () => void {
