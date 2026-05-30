@@ -153,7 +153,7 @@ describe("createDocumentCommandBus", () => {
     mutatingRegistry.register("test-action", {
       handler: (doc: VisualDocument) => {
         (doc.pages as Array<unknown>).push({ id: "p99" });
-        return doc as import("../src/types.js").VisualDocument;
+        return doc as VisualDocument;
       },
       inverse: () => undefined,
       meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
@@ -182,7 +182,7 @@ describe("createDocumentCommandBus", () => {
       DocumentRuntimeContext
     >();
     sameRefRegistry.register("test-action", {
-      handler: (doc: VisualDocument) => doc as import("../src/types.js").VisualDocument,
+      handler: (doc: VisualDocument) => doc as VisualDocument,
       inverse: () => undefined,
       meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
     });
