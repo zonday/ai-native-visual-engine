@@ -8,7 +8,7 @@ function normalizeRotation(degrees: number): number {
   return normalized;
 }
 
-export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
+const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   scene,
   action,
   ctx,
@@ -59,7 +59,7 @@ export const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   };
 };
 
-export const rotateNodeInverse: InverseComputer<RotateNodeAction> = (
+const rotateNodeInverse: InverseComputer<RotateNodeAction> = (
   sceneBefore,
   action,
   _context,
@@ -77,8 +77,8 @@ export const rotateNodeInverse: InverseComputer<RotateNodeAction> = (
   };
 };
 
-export const rotateNodeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Rotate Node",
-} as const;
+export const rotateNodeEntry = {
+  handler: rotateNodeHandler,
+  inverse: rotateNodeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Rotate Node" },
+};

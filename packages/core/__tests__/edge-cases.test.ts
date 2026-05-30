@@ -6,8 +6,8 @@ import type {
   DocumentRuntimeContext,
 } from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
-import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
-import { updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
+import { setPageThemeEntry } from "../src/document/handlers/set-page-theme.js";
+import { updatePageRouteEntry } from "../src/document/handlers/update-page-route.js";
 import { normalizeRoute } from "../src/document/normalize-route.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { HistoryState } from "../src/engine/history.js";
@@ -273,7 +273,7 @@ describe("normalizeRoute edge cases", () => {
   });
 });
 
-describe("setPageThemeHandler - branch coverage", () => {
+describe("setPageThemeEntry.handler - branch coverage", () => {
   it("updates theme on matching page and leaves others unchanged", () => {
     const doc: VisualDocument = {
       ...emptyDoc,
@@ -285,7 +285,7 @@ describe("setPageThemeHandler - branch coverage", () => {
       scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
-    const result = setPageThemeHandler(
+    const result = setPageThemeEntry.handler(
       doc,
       { type: "set-page-theme", pageId: "p1", themeId: "t1" },
       { now: Date.now },
@@ -295,7 +295,7 @@ describe("setPageThemeHandler - branch coverage", () => {
   });
 });
 
-describe("updatePageRouteHandler - map callback branches", () => {
+describe("updatePageRouteEntry.handler - map callback branches", () => {
   it("updates route on matching page and leaves others unchanged", () => {
     const doc: VisualDocument = {
       ...emptyDoc,
@@ -306,7 +306,7 @@ describe("updatePageRouteHandler - map callback branches", () => {
       scenes: { s1: emptyPersistedScene, s2: emptyPersistedScene },
     };
 
-    const result = updatePageRouteHandler(
+    const result = updatePageRouteEntry.handler(
       doc,
       { type: "update-page-route", pageId: "p1", route: "/new" },
       { now: Date.now },

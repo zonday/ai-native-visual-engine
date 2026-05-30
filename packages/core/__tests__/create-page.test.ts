@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { createPageHandler } from "../src/document/handlers/create-page.js";
+import { createPageEntry } from "../src/document/handlers/create-page.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
-describe("createPageHandler", () => {
+describe("createPageEntry.handler", () => {
   it("adds a new page and scene to the document", () => {
     const action = {
       type: "create-page" as const,
       page: { id: "p1", name: "Page 1", sceneId: "s1" },
       scene: emptyPersistedScene,
     };
-    const result = createPageHandler(emptyDoc, action, { now: Date.now });
+    const result = createPageEntry.handler(emptyDoc, action, { now: Date.now });
     expect(result.pages).toHaveLength(1);
     expect(result.pages[0]?.name).toBe("Page 1");
     expect(result.scenes.s1).toBe(emptyPersistedScene);
@@ -28,7 +28,7 @@ describe("createPageHandler", () => {
       page: { id: "p2", name: "Page 2", sceneId: "s2" },
       scene: { ...emptyPersistedScene, version: 1 },
     };
-    const result = createPageHandler(doc, action, { now: Date.now });
+    const result = createPageEntry.handler(doc, action, { now: Date.now });
     expect(result.pages).toHaveLength(2);
     expect(result.scenes.s2?.version).toBe(1);
   });
@@ -45,10 +45,10 @@ describe("createPageHandler", () => {
       scene: emptyPersistedScene,
     };
     expect(() =>
-      createPageHandler(docWithPage, action, { now: Date.now }),
+      createPageEntry.handler(docWithPage, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      createPageHandler(docWithPage, action, { now: Date.now });
+      createPageEntry.handler(docWithPage, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.duplicate-page-id");
     }
@@ -65,11 +65,11 @@ describe("createPageHandler", () => {
       page: { id: "p2", name: "Dup Scene", sceneId: "s1" },
       scene: emptyPersistedScene,
     };
-    expect(() => createPageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      createPageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      createPageHandler(doc, action, { now: Date.now });
+      createPageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.duplicate-scene-id");
     }
@@ -91,10 +91,10 @@ describe("createPageHandler", () => {
       },
     };
     expect(() =>
-      createPageHandler(docWithRoute, action, { now: Date.now }),
+      createPageEntry.handler(docWithRoute, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      createPageHandler(docWithRoute, action, { now: Date.now });
+      createPageEntry.handler(docWithRoute, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.duplicate-route");
     }
@@ -106,7 +106,7 @@ describe("createPageHandler", () => {
       page: { id: "p1", name: "Page 1", sceneId: "s1", route: "Dashboard" },
       scene: emptyPersistedScene,
     };
-    const result = createPageHandler(emptyDoc, action, { now: Date.now });
+    const result = createPageEntry.handler(emptyDoc, action, { now: Date.now });
     expect(result.pages[0]?.route).toBe("/dashboard");
   });
 });

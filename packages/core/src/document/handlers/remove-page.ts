@@ -2,7 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { RemovePageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
-export const removePageHandler: DocumentHandler<RemovePageAction> = (
+const removePageHandler: DocumentHandler<RemovePageAction> = (
   document,
   action,
   _ctx,
@@ -23,7 +23,7 @@ export const removePageHandler: DocumentHandler<RemovePageAction> = (
   return { ...document, pages, scenes };
 };
 
-export const removePageInverse: InverseComputer<RemovePageAction> = (
+const removePageInverse: InverseComputer<RemovePageAction> = (
   documentBefore,
   action,
   _context,
@@ -45,8 +45,8 @@ export const removePageInverse: InverseComputer<RemovePageAction> = (
   };
 };
 
-export const removePageMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Remove Page",
-} as const;
+export const removePageEntry = {
+  handler: removePageHandler,
+  inverse: removePageInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Remove Page" },
+};

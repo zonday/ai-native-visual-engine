@@ -2,7 +2,7 @@ import type { UpdateBindingsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 
-export const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
+const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   scene,
   action,
   _ctx,
@@ -21,7 +21,7 @@ export const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   };
 };
 
-export const updateBindingsInverse: InverseComputer<UpdateBindingsAction> = (
+const updateBindingsInverse: InverseComputer<UpdateBindingsAction> = (
   sceneBefore,
   action,
   _context,
@@ -36,8 +36,8 @@ export const updateBindingsInverse: InverseComputer<UpdateBindingsAction> = (
   };
 };
 
-export const updateBindingsMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Bindings",
-} as const;
+export const updateBindingsEntry = {
+  handler: updateBindingsHandler,
+  inverse: updateBindingsInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Bindings" },
+};

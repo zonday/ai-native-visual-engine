@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  updateLayoutHandler,
-  updateLayoutInverse,
-} from "../src/runtime/handlers/update-layout.js";
+import { updateLayoutEntry } from "../src/runtime/handlers/update-layout.js";
 import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -17,14 +14,14 @@ const sceneWithNode: SceneGraph = makeScene({
   },
 });
 
-describe("updateLayoutHandler", () => {
+describe("updateLayoutEntry.handler", () => {
   it("merges layout fields onto existing layout", () => {
     const action = {
       type: "update-layout" as const,
       nodeId: "a",
       layout: { x: 50, y: 50 },
     };
-    const result = updateLayoutHandler(sceneWithNode, action, {
+    const result = updateLayoutEntry.handler(sceneWithNode, action, {
       now: Date.now,
     });
     expect(result.nodes.a?.layout).toEqual({
@@ -46,7 +43,7 @@ describe("updateLayoutHandler", () => {
       nodeId: "a",
       layout: { x: 10, y: 20 },
     };
-    const result = updateLayoutHandler(scene, action, { now: Date.now });
+    const result = updateLayoutEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.a?.layout).toEqual({ x: 10, y: 20 });
   });
 
@@ -57,10 +54,10 @@ describe("updateLayoutHandler", () => {
       layout: { x: 0 },
     };
     expect(() =>
-      updateLayoutHandler(sceneWithNode, action, { now: Date.now }),
+      updateLayoutEntry.handler(sceneWithNode, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updateLayoutHandler(sceneWithNode, action, { now: Date.now });
+      updateLayoutEntry.handler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
       expect((e as HandlerError).context.nodeId).toBe("missing");
@@ -68,14 +65,14 @@ describe("updateLayoutHandler", () => {
   });
 });
 
-describe("updateLayoutInverse", () => {
+describe("updateLayoutEntry.inverse", () => {
   it("produces an update-layout inverse with the original layout", () => {
     const action = {
       type: "update-layout" as const,
       nodeId: "a",
       layout: { x: 50 },
     };
-    const inverse = updateLayoutInverse(sceneWithNode, action, {
+    const inverse = updateLayoutEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toEqual({
@@ -91,7 +88,7 @@ describe("updateLayoutInverse", () => {
       nodeId: "missing",
       layout: { x: 0 },
     };
-    const inverse = updateLayoutInverse(sceneWithNode, action, {
+    const inverse = updateLayoutEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toBeUndefined();

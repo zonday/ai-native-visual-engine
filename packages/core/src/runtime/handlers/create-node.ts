@@ -4,7 +4,7 @@ import type { CreateNodeAction } from "../actions.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
-export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
+const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   scene,
   action,
   _ctx,
@@ -58,7 +58,7 @@ export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   return { ...scene, nodes, version: scene.version + 1 };
 };
 
-export const createNodeInverse: InverseComputer<CreateNodeAction> = (
+const createNodeInverse: InverseComputer<CreateNodeAction> = (
   _sceneBefore,
   action,
   _context,
@@ -69,8 +69,8 @@ export const createNodeInverse: InverseComputer<CreateNodeAction> = (
   };
 };
 
-export const createNodeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Create Node",
-} as const;
+export const createNodeEntry = {
+  handler: createNodeHandler,
+  inverse: createNodeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
+};

@@ -1,20 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  createNodeHandler,
-  createNodeInverse,
-} from "../src/runtime/handlers/create-node.js";
+import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import type { SceneGraph } from "../src/types.js";
 import { baseNode, emptyScene, makeScene } from "./helpers.js";
 
-describe("createNodeHandler", () => {
+describe("createNodeEntry.handler", () => {
   it("creates a node and appends it to parent children when index is omitted", () => {
     const action = {
       type: "create-node" as const,
       node: baseNode("child-1"),
       parentId: "root",
     };
-    const result = createNodeHandler(emptyScene, action, {
+    const result = createNodeEntry.handler(emptyScene, action, {
       now: Date.now,
       actorId: "test",
     });
@@ -36,7 +33,7 @@ describe("createNodeHandler", () => {
       parentId: "root",
       index: 1,
     };
-    const result = createNodeHandler(scene, action, { now: Date.now });
+    const result = createNodeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.root?.children).toEqual(["a", "c", "b"]);
   });
 
@@ -51,7 +48,7 @@ describe("createNodeHandler", () => {
       parentId: "root",
       index: 99,
     };
-    const result = createNodeHandler(scene, action, { now: Date.now });
+    const result = createNodeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.root?.children).toEqual(["a", "b"]);
   });
 
@@ -62,10 +59,10 @@ describe("createNodeHandler", () => {
       parentId: "missing-parent",
     };
     expect(() =>
-      createNodeHandler(emptyScene, action, { now: Date.now }),
+      createNodeEntry.handler(emptyScene, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      createNodeHandler(emptyScene, action, { now: Date.now });
+      createNodeEntry.handler(emptyScene, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.invalid-parent");
       expect((e as HandlerError).context.nodeId).toBe("missing-parent");
@@ -79,10 +76,10 @@ describe("createNodeHandler", () => {
       parentId: "root",
     };
     expect(() =>
-      createNodeHandler(emptyScene, action, { now: Date.now }),
+      createNodeEntry.handler(emptyScene, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      createNodeHandler(emptyScene, action, { now: Date.now });
+      createNodeEntry.handler(emptyScene, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.duplicate-node-id");
       expect((e as HandlerError).context.nodeId).toBe("root");
@@ -90,14 +87,16 @@ describe("createNodeHandler", () => {
   });
 });
 
-describe("createNodeInverse", () => {
+describe("createNodeEntry.inverse", () => {
   it("produces a remove-node inverse action for the created node", () => {
     const action = {
       type: "create-node" as const,
       node: baseNode("child-1"),
       parentId: "root",
     };
-    const inverse = createNodeInverse(emptyScene, action, { now: Date.now });
+    const inverse = createNodeEntry.inverse(emptyScene, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "remove-node",
       nodeId: "child-1",

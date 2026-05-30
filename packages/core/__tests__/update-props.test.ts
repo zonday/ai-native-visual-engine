@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  updatePropsHandler,
-  updatePropsInverse,
-} from "../src/runtime/handlers/update-props.js";
+import { updatePropsEntry } from "../src/runtime/handlers/update-props.js";
 import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -17,14 +14,16 @@ const sceneWithNode: SceneGraph = makeScene({
   },
 });
 
-describe("updatePropsHandler", () => {
+describe("updatePropsEntry.handler", () => {
   it("shallow-merges props onto existing node props", () => {
     const action = {
       type: "update-props" as const,
       nodeId: "a",
       props: { label: "World" },
     };
-    const result = updatePropsHandler(sceneWithNode, action, { now: Date.now });
+    const result = updatePropsEntry.handler(sceneWithNode, action, {
+      now: Date.now,
+    });
     expect(result.nodes.a?.props).toEqual({ label: "World", count: 1 });
     expect(result.version).toBe(1);
   });
@@ -44,7 +43,7 @@ describe("updatePropsHandler", () => {
       nodeId: "a",
       props: { x: 10, z: 30 },
     };
-    const result = updatePropsHandler(scene, action, { now: Date.now });
+    const result = updatePropsEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.a?.props).toEqual({ x: 10, y: 2, z: 30 });
   });
 
@@ -58,7 +57,7 @@ describe("updatePropsHandler", () => {
       nodeId: "a",
       props: { label: "Hello" },
     };
-    const result = updatePropsHandler(scene, action, { now: Date.now });
+    const result = updatePropsEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.a?.props).toEqual({ label: "Hello" });
   });
 
@@ -69,10 +68,10 @@ describe("updatePropsHandler", () => {
       props: { label: "Hello" },
     };
     expect(() =>
-      updatePropsHandler(sceneWithNode, action, { now: Date.now }),
+      updatePropsEntry.handler(sceneWithNode, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updatePropsHandler(sceneWithNode, action, { now: Date.now });
+      updatePropsEntry.handler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
       expect((e as HandlerError).context.nodeId).toBe("missing");
@@ -80,14 +79,14 @@ describe("updatePropsHandler", () => {
   });
 });
 
-describe("updatePropsInverse", () => {
+describe("updatePropsEntry.inverse", () => {
   it("produces an update-props inverse that captures the full prior props state", () => {
     const action = {
       type: "update-props" as const,
       nodeId: "a",
       props: { label: "World" },
     };
-    const inverse = updatePropsInverse(sceneWithNode, action, {
+    const inverse = updatePropsEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toEqual({
@@ -103,7 +102,7 @@ describe("updatePropsInverse", () => {
       nodeId: "missing",
       props: { label: "Hello" },
     };
-    const inverse = updatePropsInverse(sceneWithNode, action, {
+    const inverse = updatePropsEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toBeUndefined();

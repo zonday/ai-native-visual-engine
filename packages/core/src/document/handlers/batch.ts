@@ -154,8 +154,8 @@ export function createBatchInverse(
   };
 }
 
-export const batchMeta = {
-  undoable: true,
-  mergeable: true,
-  devtoolsLabel: "Batch",
-} as const;
+export const batchEntry = {
+  handler: createBatchHandler,
+  inverse: batchInverse,
+  meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
+};

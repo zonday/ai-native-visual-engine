@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  updateBindingsHandler,
-  updateBindingsInverse,
-} from "../src/runtime/handlers/update-bindings.js";
+import { updateBindingsEntry } from "../src/runtime/handlers/update-bindings.js";
 import type { Binding, SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -15,14 +12,14 @@ const sceneWithNode: SceneGraph = makeScene({
   a: { id: "a", type: "container", parentId: "root", bindings: [binding1] },
 });
 
-describe("updateBindingsHandler", () => {
+describe("updateBindingsEntry.handler", () => {
   it("replaces all bindings on the target node", () => {
     const action = {
       type: "update-bindings" as const,
       nodeId: "a",
       bindings: [binding2],
     };
-    const result = updateBindingsHandler(sceneWithNode, action, {
+    const result = updateBindingsEntry.handler(sceneWithNode, action, {
       now: Date.now,
     });
     expect(result.nodes.a?.bindings).toEqual([binding2]);
@@ -39,7 +36,9 @@ describe("updateBindingsHandler", () => {
       nodeId: "a",
       bindings: [binding1],
     };
-    const result = updateBindingsHandler(scene, action, { now: Date.now });
+    const result = updateBindingsEntry.handler(scene, action, {
+      now: Date.now,
+    });
     expect(result.nodes.a?.bindings).toEqual([binding1]);
   });
 
@@ -50,10 +49,10 @@ describe("updateBindingsHandler", () => {
       bindings: [],
     };
     expect(() =>
-      updateBindingsHandler(sceneWithNode, action, { now: Date.now }),
+      updateBindingsEntry.handler(sceneWithNode, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updateBindingsHandler(sceneWithNode, action, { now: Date.now });
+      updateBindingsEntry.handler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
       expect((e as HandlerError).context.nodeId).toBe("missing");
@@ -61,14 +60,14 @@ describe("updateBindingsHandler", () => {
   });
 });
 
-describe("updateBindingsInverse", () => {
+describe("updateBindingsEntry.inverse", () => {
   it("produces an update-bindings inverse with the original bindings", () => {
     const action = {
       type: "update-bindings" as const,
       nodeId: "a",
       bindings: [binding2],
     };
-    const inverse = updateBindingsInverse(sceneWithNode, action, {
+    const inverse = updateBindingsEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toEqual({
@@ -84,7 +83,7 @@ describe("updateBindingsInverse", () => {
       nodeId: "missing",
       bindings: [],
     };
-    const inverse = updateBindingsInverse(sceneWithNode, action, {
+    const inverse = updateBindingsEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toBeUndefined();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { removePageHandler } from "../src/document/handlers/remove-page.js";
+import { removePageEntry } from "../src/document/handlers/remove-page.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene } from "./helpers.js";
@@ -17,10 +17,10 @@ const doc: VisualDocument = {
   },
 };
 
-describe("removePageHandler", () => {
+describe("removePageEntry.handler", () => {
   it("removes the page and its scene", () => {
     const action = { type: "remove-page" as const, pageId: "p1" };
-    const result = removePageHandler(doc, action, { now: Date.now });
+    const result = removePageEntry.handler(doc, action, { now: Date.now });
     expect(result.pages).toHaveLength(1);
     expect(result.pages[0]?.id).toBe("p2");
     expect(result.scenes).not.toHaveProperty("s1");
@@ -29,11 +29,11 @@ describe("removePageHandler", () => {
 
   it("rejects when page not found", () => {
     const action = { type: "remove-page" as const, pageId: "missing" };
-    expect(() => removePageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      removePageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      removePageHandler(doc, action, { now: Date.now });
+      removePageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.page-not-found");
     }

@@ -26,7 +26,7 @@ function collectDescendants(
   return result;
 }
 
-export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
+const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   scene,
   action,
   _ctx,
@@ -59,7 +59,7 @@ export const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   return { ...scene, nodes, version: scene.version + 1 };
 };
 
-export const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
+const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
   sceneBefore,
   action,
   _context,
@@ -90,8 +90,8 @@ export const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
   return { type: "batch-actions", actions: createActions };
 };
 
-export const removeNodeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Remove Node",
-} as const;
+export const removeNodeEntry = {
+  handler: removeNodeHandler,
+  inverse: removeNodeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Remove Node" },
+};

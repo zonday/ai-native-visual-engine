@@ -6,10 +6,7 @@ import type {
   RuntimeContext,
   RuntimeHandlerEntry,
 } from "../src/runtime/handler-registry.js";
-import {
-  createNodeHandler,
-  createNodeInverse,
-} from "../src/runtime/handlers/create-node.js";
+import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 
 type RuntimeHistoryState = HistoryState<RuntimeAction>;
 
@@ -29,8 +26,8 @@ describe("createUndoHistoryMiddleware", () => {
       [
         "create-node",
         {
-          handler: createNodeHandler as RuntimeHandlerEntry["handler"],
-          inverse: createNodeInverse as RuntimeHandlerEntry["inverse"],
+          handler: createNodeEntry.handler as RuntimeHandlerEntry["handler"],
+          inverse: createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
           meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         },
       ],
@@ -81,7 +78,7 @@ describe("createUndoHistoryMiddleware", () => {
           handler: () => {
             throw new Error("fail");
           },
-          inverse: createNodeInverse as RuntimeHandlerEntry["inverse"],
+          inverse: createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
           meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as RuntimeHandlerEntry,
       ],
@@ -125,7 +122,7 @@ describe("createUndoHistoryMiddleware", () => {
       [
         "create-node",
         {
-          handler: createNodeHandler as RuntimeHandlerEntry["handler"],
+          handler: createNodeEntry.handler as RuntimeHandlerEntry["handler"],
           inverse: () => undefined,
           meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         },

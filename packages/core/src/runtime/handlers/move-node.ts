@@ -21,7 +21,7 @@ function isDescendantOf(
   return false;
 }
 
-export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
+const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   scene,
   action,
   _ctx,
@@ -99,7 +99,7 @@ export const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   return { ...scene, nodes, version: scene.version + 1 };
 };
 
-export const moveNodeInverse: InverseComputer<MoveNodeAction> = (
+const moveNodeInverse: InverseComputer<MoveNodeAction> = (
   sceneBefore,
   action,
   _context,
@@ -120,8 +120,8 @@ export const moveNodeInverse: InverseComputer<MoveNodeAction> = (
   };
 };
 
-export const moveNodeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Move Node",
-} as const;
+export const moveNodeEntry = {
+  handler: moveNodeHandler,
+  inverse: moveNodeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Move Node" },
+};

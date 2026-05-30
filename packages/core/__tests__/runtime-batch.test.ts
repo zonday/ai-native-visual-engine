@@ -7,8 +7,8 @@ import {
   computeBatchInverse,
   createBatchHandler,
 } from "../src/runtime/handlers/batch.js";
-import { createNodeHandler } from "../src/runtime/handlers/create-node.js";
-import { removeNodeHandler } from "../src/runtime/handlers/remove-node.js";
+import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
+import { removeNodeEntry } from "../src/runtime/handlers/remove-node.js";
 import type { SceneGraph } from "../src/types.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
@@ -17,14 +17,14 @@ function makeDispatch(initialScene: SceneGraph) {
   return (action: RuntimeAction): DispatchResult => {
     try {
       if (action.type === "create-node") {
-        const newScene = createNodeHandler(currentScene, action, {
+        const newScene = createNodeEntry.handler(currentScene, action, {
           now: Date.now,
         });
         currentScene = newScene;
         return { ok: true, scene: newScene };
       }
       if (action.type === "remove-node") {
-        const newScene = removeNodeHandler(currentScene, action, {
+        const newScene = removeNodeEntry.handler(currentScene, action, {
           now: Date.now,
         });
         currentScene = newScene;

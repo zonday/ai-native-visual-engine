@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  moveNodeHandler,
-  moveNodeInverse,
-} from "../src/runtime/handlers/move-node.js";
+import { moveNodeEntry } from "../src/runtime/handlers/move-node.js";
 import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -14,14 +11,16 @@ const sceneWithTree: SceneGraph = makeScene({
   b: { id: "b", type: "container", parentId: "root" },
 });
 
-describe("moveNodeHandler", () => {
+describe("moveNodeEntry.handler", () => {
   it("moves a node from one parent to another and appends when index is omitted", () => {
     const action = {
       type: "move-node" as const,
       nodeId: "a1",
       parentId: "b",
     };
-    const result = moveNodeHandler(sceneWithTree, action, { now: Date.now });
+    const result = moveNodeEntry.handler(sceneWithTree, action, {
+      now: Date.now,
+    });
     expect(result.nodes.a1?.parentId).toBe("b");
     expect(result.nodes.a?.children).toEqual([]);
     expect(result.nodes.b?.children).toEqual(["a1"]);
@@ -48,7 +47,7 @@ describe("moveNodeHandler", () => {
       parentId: "b",
       index: 0,
     };
-    const result = moveNodeHandler(scene, action, { now: Date.now });
+    const result = moveNodeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.b?.children).toEqual(["a1", "b1"]);
     expect(result.nodes.a?.children).toEqual(["a2"]);
   });
@@ -66,7 +65,7 @@ describe("moveNodeHandler", () => {
       parentId: "root",
       index: 2,
     };
-    const result = moveNodeHandler(scene, action, { now: Date.now });
+    const result = moveNodeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.root?.children).toEqual(["b", "c", "a"]);
   });
 
@@ -77,10 +76,10 @@ describe("moveNodeHandler", () => {
       parentId: "root",
     };
     expect(() =>
-      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      moveNodeHandler(sceneWithTree, action, { now: Date.now });
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
       expect((e as HandlerError).context.nodeId).toBe("missing");
@@ -94,10 +93,10 @@ describe("moveNodeHandler", () => {
       parentId: "missing-parent",
     };
     expect(() =>
-      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      moveNodeHandler(sceneWithTree, action, { now: Date.now });
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.invalid-parent");
       expect((e as HandlerError).context.nodeId).toBe("missing-parent");
@@ -111,10 +110,10 @@ describe("moveNodeHandler", () => {
       parentId: "a",
     };
     expect(() =>
-      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      moveNodeHandler(sceneWithTree, action, { now: Date.now });
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.cycle-detected");
     }
@@ -127,24 +126,26 @@ describe("moveNodeHandler", () => {
       parentId: "a1",
     };
     expect(() =>
-      moveNodeHandler(sceneWithTree, action, { now: Date.now }),
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      moveNodeHandler(sceneWithTree, action, { now: Date.now });
+      moveNodeEntry.handler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.cycle-detected");
     }
   });
 });
 
-describe("moveNodeInverse", () => {
+describe("moveNodeEntry.inverse", () => {
   it("produces a move-node inverse that restores the original parent and index", () => {
     const action = {
       type: "move-node" as const,
       nodeId: "a1",
       parentId: "b",
     };
-    const inverse = moveNodeInverse(sceneWithTree, action, { now: Date.now });
+    const inverse = moveNodeEntry.inverse(sceneWithTree, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "move-node",
       nodeId: "a1",
@@ -159,7 +160,9 @@ describe("moveNodeInverse", () => {
       nodeId: "missing",
       parentId: "root",
     };
-    const inverse = moveNodeInverse(sceneWithTree, action, { now: Date.now });
+    const inverse = moveNodeEntry.inverse(sceneWithTree, action, {
+      now: Date.now,
+    });
     expect(inverse).toBeUndefined();
   });
 });
