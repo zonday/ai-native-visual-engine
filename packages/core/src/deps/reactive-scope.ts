@@ -128,16 +128,9 @@ export function createScope(): ReactiveScope {
           }
         } else if ("currentValue" in node) {
           // signal — nothing to clean up
-        } else if ("fn" in node) {
-          const e = node as EffectInternal;
-          if (e.cleanup) {
-            try {
-              e.cleanup();
-            } catch {
-              /* isolate cleanup error */
-            }
-          }
         }
+        // "fn" (effect) branch intentionally removed: effects are sink
+        // nodes — they never have subscribers under owner tree separation.
       },
     });
 
@@ -234,8 +227,7 @@ export function createScope(): ReactiveScope {
         const effectNode = queued[notifyIndex] as ReactiveNode;
         queued[notifyIndex++] = undefined;
         if (effectNode.flags) {
-          effectNode.flags =
-            (effectNode.flags & ~RF.Pending) | RF.Watching;
+          effectNode.flags = (effectNode.flags & ~RF.Pending) | RF.Watching;
         }
       }
       notifyIndex = 0;
@@ -425,13 +417,9 @@ export function createScope(): ReactiveScope {
       unlink(cur, e);
       cur = prev;
     }
-    cur = e.subs;
-    while (cur !== undefined) {
-      const next = cur.nextSub;
-      unlink(cur);
-      cur = next;
-    }
   }
+  // e.subs loop intentionally removed: effects are sink nodes, they
+  // never have reactive subscribers under owner tree separation.
 
   let batchDepth = 0;
 
