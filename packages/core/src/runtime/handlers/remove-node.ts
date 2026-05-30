@@ -45,6 +45,15 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
 ) => {
   const node = expectNode(scene, action.nodeId, "remove-node");
 
+  if (node.locked) {
+    throw new HandlerError(
+      "scene.locked",
+      `Node "${action.nodeId}" is locked and cannot be removed`,
+      "remove-node",
+      { nodeId: action.nodeId },
+    );
+  }
+
   if (action.nodeId === scene.rootId) {
     throw new HandlerError(
       "scene.root-mutation",

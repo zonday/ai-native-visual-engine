@@ -1,17 +1,12 @@
+import type { ActionRegistry } from "./engine/action-registry.js";
 import type { HistoryState } from "./engine/history.js";
 import { redoAction, undoAction } from "./engine/history.js";
 import type { ActiveTransaction } from "./engine/transaction-manager.js";
-import type {
-  TransactionResult,
-  TransactionSource,
-} from "./engine/transaction-types.js";
+import { TransactionManager } from "./engine/transaction-manager.js";
+import type { TransactionSource } from "./engine/transaction-types.js";
 import type { RuntimeContext } from "./runtime/handler-registry.js";
 import type { RuntimeAction } from "./runtime/register-handlers.js";
-import type {
-  CommandBus,
-  DispatchResult,
-} from "./runtime/runtime-command-bus.js";
-import type { RuntimeTransactionManager } from "./runtime/transaction.js";
+import type { CommandBus } from "./runtime/runtime-command-bus.js";
 import type {
   Binding,
   Layout,
@@ -21,18 +16,157 @@ import type {
   SceneNode,
 } from "./types.js";
 
+// ── Unified Result Type ──
+
+export interface CommandResult {
+  ok: boolean;
+  error?: {
+    code: string;
+    message: string;
+    actionType?: string;
+    nodeId?: string;
+  };
+}
+
+// ── Query Service ──
+
+export interface NodeQuery {
+  get(nodeId: NodeId): Readonly<SceneNode> | undefined;
+  getParent(nodeId: NodeId): Readonly<SceneNode> | undefined;
+  getChildren(nodeId: NodeId): ReadonlyArray<Readonly<SceneNode>>;
+  getProps(nodeId: NodeId): Readonly<Record<string, unknown>>;
+  getLayout(nodeId: NodeId): Readonly<Layout> | undefined;
+  getBindings(nodeId: NodeId): readonly Binding[];
+  getStyle(nodeId: NodeId): Readonly<Record<string, unknown>>;
+  isVisible(nodeId: NodeId): boolean;
+  isLocked(nodeId: NodeId): boolean;
+  exists(nodeId: NodeId): boolean;
+}
+
+export interface SceneQuery {
+  getRoot(): Readonly<SceneNode>;
+  getActivePageId(): PageId;
+  getSceneVersion(): number;
+  getAllNodes(): ReadonlyArray<Readonly<SceneNode>>;
+  findNodes(
+    predicate: (node: Readonly<SceneNode>) => boolean,
+  ): ReadonlyArray<Readonly<SceneNode>>;
+  findNodeByType(type: string): ReadonlyArray<Readonly<SceneNode>>;
+}
+
+export interface SelectionQuery {
+  getSelection(): readonly NodeId[];
+  isSelected(nodeId: NodeId): boolean;
+}
+
+export interface QueryService {
+  node: NodeQuery;
+  scene: SceneQuery;
+  selection: SelectionQuery;
+}
+
+// ── Command Service ──
+
+export interface CommandService {
+  dispatch(action: RuntimeAction): CommandResult;
+}
+
+// ── History Service ──
+
+export interface HistoryService {
+  canUndo(): boolean;
+  canRedo(): boolean;
+  undo(): CommandResult;
+  redo(): CommandResult;
+  getUndoStackSize(): number;
+  getRedoStackSize(): number;
+}
+
+// ── Transaction Service ──
+
 type RuntimeActiveTransaction = ActiveTransaction<
   SceneGraph,
   RuntimeAction,
   RuntimeContext
 >;
 
-function getNodeId(action: RuntimeAction): string {
-  if ("nodeId" in action && typeof action.nodeId === "string") {
-    return action.nodeId;
-  }
-  return "";
+export interface TransactionService {
+  begin(
+    source: TransactionSource,
+    metadata?: Record<string, unknown>,
+  ): RuntimeActiveTransaction;
+  applyAction(
+    active: RuntimeActiveTransaction,
+    action: RuntimeAction,
+  ): CommandResult;
+  commit(active: RuntimeActiveTransaction): CommandResult;
+  rollback(active: RuntimeActiveTransaction): void;
+  getActive(): RuntimeActiveTransaction | undefined;
 }
+
+// ── State Service ──
+
+export interface StateService {
+  setState(nodeId: NodeId, state: string): CommandResult;
+  clearState(nodeId: NodeId, state: string): CommandResult;
+  setExclusive(nodeId: NodeId, state: string, group: string): CommandResult;
+  getActiveStates(nodeId: NodeId): readonly string[];
+}
+
+// ── Event Bus ──
+
+export interface EventBus {
+  subscribeToScene(callback: (scene: SceneGraph) => void): () => void;
+  subscribeToSelection(callback: (nodeIds: NodeId[]) => void): () => void;
+}
+
+// ── SelectorAPI (stub — see selector-system.md) ──
+
+export interface SelectorAPI {
+  getNode(nodeId: NodeId): SceneNode | undefined;
+  getChildren(nodeId: NodeId): SceneNode[];
+  getParent(nodeId: NodeId): SceneNode | undefined;
+  getRoot(): SceneNode;
+  getAncestors(nodeId: NodeId): SceneNode[];
+  getDescendants(nodeId: NodeId): SceneNode[];
+  getVisibleNodes(): SceneNode[];
+}
+
+// ── ComputedStateAPI (stub — see computed-state-engine.md) ──
+
+export interface ComputedStateAPI {
+  getWorldTransform(nodeId: NodeId): { x: number; y: number; rotation: number };
+  getComputedBounds(nodeId: NodeId): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  getVisibleBounds(nodeId: NodeId): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
+  getCenter(nodeId: NodeId): { x: number; y: number };
+}
+
+// ── Engine Facade ──
+
+export interface EngineFacade {
+  query: QueryService;
+  command: CommandService;
+  history: HistoryService;
+  transaction: TransactionService;
+  states: StateService;
+  events: EventBus;
+  /** @todo implement — currently undefined */
+  selector?: SelectorAPI;
+  /** @todo implement — currently undefined */
+  computed?: ComputedStateAPI;
+}
+
+// ── Helpers ──
 
 function getNodeRuntime(node: SceneNode): Record<string, unknown> {
   const rt = node.runtime;
@@ -48,119 +182,48 @@ function getRuntimeActiveStates(node: SceneNode): string[] {
   return Array.isArray(states) ? [...(states as string[])] : [];
 }
 
-export interface NodeAPI {
-  get(nodeId: NodeId): SceneNode | undefined;
-  getParent(nodeId: NodeId): SceneNode | undefined;
-  getChildren(nodeId: NodeId): SceneNode[];
-  getProps(nodeId: NodeId): Record<string, unknown>;
-  getLayout(nodeId: NodeId): Layout | undefined;
-  getBindings(nodeId: NodeId): Binding[];
-  getStyle(nodeId: NodeId): Record<string, unknown>;
-  isVisible(nodeId: NodeId): boolean;
-  isLocked(nodeId: NodeId): boolean;
-  exists(nodeId: NodeId): boolean;
-}
-
-export interface SceneAPI {
-  getRoot(): SceneNode;
-  getActivePageId(): PageId;
-  getSceneVersion(): number;
-  getAllNodes(): SceneNode[];
-  findNodes(predicate: (node: SceneNode) => boolean): SceneNode[];
-  findNodeByType(type: string): SceneNode[];
-}
-
-export interface SelectionAPI {
-  getSelection(): NodeId[];
-  isSelected(nodeId: NodeId): boolean;
-  select(nodeIds: NodeId[]): void;
-  addToSelection(nodeIds: NodeId[]): void;
-  removeFromSelection(nodeIds: NodeId[]): void;
-  clearSelection(): void;
-  selectAll(): void;
-  selectParent(nodeId: NodeId): void;
-  selectChildren(nodeId: NodeId): void;
-}
-
-export interface HistoryAPI {
-  canUndo(): boolean;
-  canRedo(): boolean;
-  undo(): void;
-  redo(): void;
-  getUndoStackSize(): number;
-  getRedoStackSize(): number;
-}
-
-export interface DispatchAPI {
-  createNode(node: SceneNode, parentId: NodeId, index?: number): DispatchResult;
-  removeNode(nodeId: NodeId): DispatchResult;
-  moveNode(nodeId: NodeId, parentId: NodeId, index?: number): DispatchResult;
-  updateLayout(nodeId: NodeId, layout: Record<string, unknown>): DispatchResult;
-  rotateNode(nodeId: NodeId, rotation: number): DispatchResult;
-  updateProps(nodeId: NodeId, props: Record<string, unknown>): DispatchResult;
-  updateStyle(nodeId: NodeId, style: Record<string, unknown>): DispatchResult;
-  updateBindings(nodeId: NodeId, bindings: Binding[]): DispatchResult;
-  updateRuntime(
-    nodeId: NodeId,
-    runtime: Record<string, unknown>,
-  ): DispatchResult;
-  batch(actions: RuntimeAction[]): DispatchResult;
-}
-
-export interface StateAPI {
-  setState(nodeId: NodeId, state: string): void;
-  clearState(nodeId: NodeId, state: string): void;
-  setExclusive(nodeId: NodeId, state: string, group: string): void;
-  getActiveStates(nodeId: NodeId): string[];
-}
-
-export interface TransactionAPI {
-  begin(
-    source: TransactionSource,
-    metadata?: Record<string, unknown>,
-  ): RuntimeActiveTransaction;
-  applyAction(
-    active: RuntimeActiveTransaction,
-    action: RuntimeAction,
-  ): DispatchResult;
-  commit(active: RuntimeActiveTransaction): TransactionResult<SceneGraph>;
-  rollback(active: RuntimeActiveTransaction): SceneGraph;
-  getActive(): RuntimeActiveTransaction | undefined;
-}
-
-export interface EngineAPI {
-  node: NodeAPI;
-  scene: SceneAPI;
-  selection: SelectionAPI;
-  history: HistoryAPI;
-  dispatch: DispatchAPI;
-  states: StateAPI;
-  transaction: TransactionAPI;
-  subscribeToNode(
-    nodeId: NodeId,
-    callback: (node: SceneNode) => void,
-  ): () => void;
-  subscribeToScene(callback: (scene: SceneGraph) => void): () => void;
-  subscribeToSelection(callback: (nodeIds: NodeId[]) => void): () => void;
-}
-
-type Subscriber<T> = (data: T) => void;
-
 function getAllNodes(scene: SceneGraph): SceneNode[] {
   return Object.values(scene.nodes);
 }
 
-export function createEngineAPI(
+// ── Factory ──
+
+export function createEngineFacade(
   getScene: () => SceneGraph,
-  pageId: PageId,
+  getPageId: () => PageId,
   commandBus: CommandBus,
   getHistory: () => HistoryState<RuntimeAction>,
-  transactionManager?: RuntimeTransactionManager,
-): EngineAPI {
-  const subscribers = new Map<string, Set<Subscriber<unknown>>>();
+  setHistory?: (state: HistoryState<RuntimeAction>) => void,
+  registry?: ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>,
+): EngineFacade {
+  // ── TransactionManager: uses commandBus for dispatch so state stays in sync ──
+
+  const transactionManager = registry
+    ? new TransactionManager<SceneGraph, RuntimeAction, RuntimeContext>({
+        registry,
+        dispatch: (action) => {
+          const result = commandBus.dispatch(action);
+          return {
+            ok: result.ok,
+            state: result.scene,
+            error: result.error
+              ? {
+                  code: result.error.code,
+                  message: result.error.message,
+                  actionType: result.error.actionType,
+                }
+              : undefined,
+          };
+        },
+      })
+    : undefined;
+  // ── EventBus: single notification hub ──
+
+  type Subscriber = (data: unknown) => void;
+  const subscribers = new Map<string, Set<Subscriber>>();
   const notifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  function notify(key: string, data: unknown) {
+  function scheduleNotification(key: string, data: unknown) {
     const existing = notifyTimers.get(key);
     if (existing) clearTimeout(existing);
     notifyTimers.set(
@@ -174,116 +237,82 @@ export function createEngineAPI(
     );
   }
 
-  function dispatchAndNotify(action: RuntimeAction): DispatchResult {
-    const scene = getScene();
+  const events: EventBus = {
+    subscribeToScene(callback) {
+      const key = "scene";
+      if (!subscribers.has(key)) subscribers.set(key, new Set());
+      subscribers.get(key)?.add(callback as Subscriber);
+      return () => subscribers.get(key)?.delete(callback as Subscriber);
+    },
+    subscribeToSelection(callback) {
+      const key = "selection";
+      if (!subscribers.has(key)) subscribers.set(key, new Set());
+      subscribers.get(key)?.add(callback as Subscriber);
+      return () => subscribers.get(key)?.delete(callback as Subscriber);
+    },
+  };
 
-    if (
-      action.type === "create-node" &&
-      action.parentId &&
-      !scene.nodes[action.parentId]
-    ) {
-      return {
-        ok: false,
-        scene,
-        error: {
-          code: "scene.invalid-parent",
-          message: `Parent "${action.parentId}" not found`,
-          actionType: "create-node",
-          nodeId: action.parentId,
-        },
-      };
-    }
-    if (
-      (action.type === "remove-node" || action.type === "move-node") &&
-      "nodeId" in action
-    ) {
-      const nodeId = getNodeId(action);
-      const node = scene.nodes[nodeId];
-      if (!node) {
-        return {
-          ok: false,
-          scene,
-          error: {
-            code: "scene.node-not-found",
-            message: `Node "${action.nodeId}" not found`,
-            actionType: action.type,
-            nodeId: getNodeId(action),
-          },
-        };
-      }
-      if (action.type === "remove-node" && node.locked) {
-        return {
-          ok: false,
-          scene,
-          error: {
-            code: "scene.locked",
-            message: `Node "${action.nodeId}" is locked`,
-            actionType: "remove-node",
-            nodeId: getNodeId(action),
-          },
-        };
-      }
-    }
-    if (
-      action.type === "update-layout" ||
-      action.type === "rotate-node" ||
-      action.type === "update-props" ||
-      action.type === "update-style" ||
-      action.type === "update-bindings" ||
-      action.type === "update-runtime"
-    ) {
-      if ("nodeId" in action && !scene.nodes[getNodeId(action)]) {
-        return {
-          ok: false,
-          scene,
-          error: {
-            code: "scene.node-not-found",
-            message: `Node "${action.nodeId}" not found`,
-            actionType: action.type,
-            nodeId: getNodeId(action),
-          },
-        };
-      }
-    }
+  // ── Single dispatch+notify pathway ──
+  // No validation — handlers and middleware own that responsibility.
 
+  function doDispatch(action: RuntimeAction): CommandResult {
     const result = commandBus.dispatch(action);
     if (result.ok) {
-      notify("scene", getScene());
-      notify("selection", getScene().selection?.nodeIds ?? []);
+      scheduleNotification("scene", getScene());
+      scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
     }
-    return result;
+    return {
+      ok: result.ok,
+      error: result.error
+        ? {
+            code: result.error.code,
+            message: result.error.message,
+            actionType: result.error.actionType,
+            nodeId: result.error.nodeId,
+          }
+        : undefined,
+    };
   }
 
-  const nodeAPI: NodeAPI = {
+  // ── QueryService ──
+
+  const nodeQuery: NodeQuery = {
     get(nodeId) {
-      return getScene().nodes[nodeId];
+      return getScene().nodes[nodeId] as Readonly<SceneNode> | undefined;
     },
     getParent(nodeId) {
       const node = getScene().nodes[nodeId];
-      return node?.parentId ? getScene().nodes[node.parentId] : undefined;
+      return node?.parentId
+        ? (getScene().nodes[node.parentId] as Readonly<SceneNode> | undefined)
+        : undefined;
     },
     getChildren(nodeId) {
       const node = getScene().nodes[nodeId];
       return (
         (node?.children
           ?.map((id) => getScene().nodes[id])
-          .filter(Boolean) as SceneNode[]) ?? []
+          .filter(Boolean) as ReadonlyArray<Readonly<SceneNode>>) ?? []
       );
     },
     getProps(nodeId) {
-      return getScene().nodes[nodeId]?.props ?? {};
+      return (getScene().nodes[nodeId]?.props ?? {}) as Readonly<
+        Record<string, unknown>
+      >;
     },
     getLayout(nodeId) {
-      return getScene().nodes[nodeId]?.layout as Layout | undefined;
+      return getScene().nodes[nodeId]?.layout as Readonly<Layout> | undefined;
     },
     getBindings(nodeId) {
-      return getScene().nodes[nodeId]?.bindings ?? [];
+      return (getScene().nodes[nodeId]?.bindings ?? []) as readonly Binding[];
     },
     getStyle(nodeId) {
-      return getScene().nodes[nodeId]?.style ?? {};
+      return (getScene().nodes[nodeId]?.style ?? {}) as Readonly<
+        Record<string, unknown>
+      >;
     },
     isVisible(nodeId) {
-      return getScene().nodes[nodeId]?.visible !== false;
+      const node = getScene().nodes[nodeId];
+      return node !== undefined && node.visible !== false;
     },
     isLocked(nodeId) {
       return getScene().nodes[nodeId]?.locked === true;
@@ -293,80 +322,64 @@ export function createEngineAPI(
     },
   };
 
-  const sceneAPI: SceneAPI = {
+  const sceneQuery: SceneQuery = {
     getRoot() {
       const root = getScene().nodes[getScene().rootId];
       if (!root) throw new Error(`Root node "${getScene().rootId}" not found`);
-      return root;
+      return root as Readonly<SceneNode>;
     },
     getActivePageId() {
-      return pageId;
+      return getPageId();
     },
     getSceneVersion() {
       return getScene().version;
     },
     getAllNodes() {
-      return getAllNodes(getScene());
+      return getAllNodes(getScene()) as ReadonlyArray<Readonly<SceneNode>>;
     },
     findNodes(predicate) {
-      return getAllNodes(getScene()).filter(predicate);
+      return getAllNodes(getScene()).filter(predicate) as ReadonlyArray<
+        Readonly<SceneNode>
+      >;
     },
     findNodeByType(type) {
-      return getAllNodes(getScene()).filter((n) => n.type === type);
+      return getAllNodes(getScene()).filter(
+        (n) => n.type === type,
+      ) as ReadonlyArray<Readonly<SceneNode>>;
     },
   };
 
-  const selectionAPI: SelectionAPI = {
+  const selectionQuery: SelectionQuery = {
     getSelection() {
-      return getScene().selection?.nodeIds ?? [];
+      return (getScene().selection?.nodeIds ?? []) as readonly NodeId[];
     },
     isSelected(nodeId) {
       return getScene().selection?.nodeIds.includes(nodeId) === true;
     },
-    select(nodeIds) {
-      const unique = [...new Set(nodeIds)];
-      dispatchAndNotify({ type: "update-selection", nodeIds: unique });
-    },
-    addToSelection(nodeIds) {
-      const current = getScene().selection?.nodeIds ?? [];
-      const unique = [...new Set([...current, ...nodeIds])];
-      dispatchAndNotify({ type: "update-selection", nodeIds: unique });
-    },
-    removeFromSelection(nodeIds) {
-      const current = getScene().selection?.nodeIds ?? [];
-      const set = new Set(nodeIds);
-      dispatchAndNotify({
-        type: "update-selection",
-        nodeIds: current.filter((id) => !set.has(id)),
-      });
-    },
-    clearSelection() {
-      dispatchAndNotify({ type: "update-selection", nodeIds: [] });
-    },
-    selectAll() {
-      const all = getAllNodes(getScene()).filter(
-        (n) => n.id !== getScene().rootId,
-      );
-      dispatchAndNotify({
-        type: "update-selection",
-        nodeIds: all.map((n) => n.id),
-      });
-    },
-    selectParent(nodeId) {
-      const parent = nodeAPI.getParent(nodeId);
-      if (parent)
-        dispatchAndNotify({ type: "update-selection", nodeIds: [parent.id] });
-    },
-    selectChildren(nodeId) {
-      const children = nodeAPI.getChildren(nodeId);
-      dispatchAndNotify({
-        type: "update-selection",
-        nodeIds: children.map((c) => c.id),
-      });
+  };
+
+  const query: QueryService = {
+    node: nodeQuery,
+    scene: sceneQuery,
+    selection: selectionQuery,
+  };
+
+  // ── CommandService: pure dispatch, no validation ──
+
+  const command: CommandService = {
+    dispatch(action) {
+      return doDispatch(action);
     },
   };
 
-  const historyAPI: HistoryAPI = {
+  // ── HistoryService ──
+  //
+  // undo/redo applies setHistory AFTER dispatching through middleware.
+  // During dispatch the middleware pushes undo entries (and clears redo),
+  // but setHistory overwrites with the correct final state.
+  // This avoids both double-push and redo-stack corruption.
+
+  const history: HistoryService = {
     canUndo() {
       return getHistory().undoStack.length > 0;
     },
@@ -374,20 +387,26 @@ export function createEngineAPI(
       return getHistory().redoStack.length > 0;
     },
     undo() {
-      const result = undoAction(getHistory());
-      if (result) {
-        for (const inv of result.inverseActions) {
-          dispatchAndNotify(inv);
-        }
+      const histState = getHistory();
+      const result = undoAction(histState);
+      if (!result) return { ok: false };
+      for (const inv of result.inverseActions) {
+        const r = doDispatch(inv);
+        if (!r.ok) return r;
       }
+      setHistory?.(result.state);
+      return { ok: true };
     },
     redo() {
-      const result = redoAction(getHistory());
-      if (result) {
-        for (const act of result.actions) {
-          dispatchAndNotify(act);
-        }
+      const histState = getHistory();
+      const result = redoAction(histState);
+      if (!result) return { ok: false };
+      for (const act of result.actions) {
+        const r = doDispatch(act);
+        if (!r.ok) return r;
       }
+      setHistory?.(result.state);
+      return { ok: true };
     },
     getUndoStackSize() {
       return getHistory().undoStack.length;
@@ -397,48 +416,28 @@ export function createEngineAPI(
     },
   };
 
-  const dispatchAPI: DispatchAPI = {
-    createNode(node, parentId, index) {
-      return dispatchAndNotify({ type: "create-node", node, parentId, index });
-    },
-    removeNode(nodeId) {
-      return dispatchAndNotify({ type: "remove-node", nodeId });
-    },
-    moveNode(nodeId, parentId, index) {
-      return dispatchAndNotify({ type: "move-node", nodeId, parentId, index });
-    },
-    updateLayout(nodeId, layout) {
-      return dispatchAndNotify({ type: "update-layout", nodeId, layout });
-    },
-    rotateNode(nodeId, rotation) {
-      return dispatchAndNotify({ type: "rotate-node", nodeId, rotation });
-    },
-    updateProps(nodeId, props) {
-      return dispatchAndNotify({ type: "update-props", nodeId, props });
-    },
-    updateStyle(nodeId, style) {
-      return dispatchAndNotify({ type: "update-style", nodeId, style });
-    },
-    updateBindings(nodeId, bindings) {
-      return dispatchAndNotify({ type: "update-bindings", nodeId, bindings });
-    },
-    updateRuntime(nodeId, runtime) {
-      return dispatchAndNotify({ type: "update-runtime", nodeId, runtime });
-    },
-    batch(actions) {
-      return dispatchAndNotify({ type: "batch-actions", actions });
-    },
-  };
+  // ── StateService: encapsulated state machine ──
 
-  const stateAPI: StateAPI = {
+  // O(1) exclusive-group index: groupId → nodeId
+  const exclusiveGroups = new Map<string, string>();
+
+  const states: StateService = {
     setState(nodeId, state) {
       const node = getScene().nodes[nodeId];
-      if (!node) return;
+      if (!node) {
+        return {
+          ok: false,
+          error: {
+            code: "scene.node-not-found",
+            message: `Node "${nodeId}" not found`,
+          },
+        };
+      }
       const active = getRuntimeActiveStates(node);
       const idx = active.indexOf(state);
       if (idx >= 0) active.splice(idx, 1);
       active.push(state);
-      dispatchAndNotify({
+      return doDispatch({
         type: "update-runtime",
         nodeId,
         runtime: { activeStates: active },
@@ -446,27 +445,42 @@ export function createEngineAPI(
     },
     clearState(nodeId, state) {
       const node = getScene().nodes[nodeId];
-      if (!node) return;
+      if (!node) {
+        return {
+          ok: false,
+          error: {
+            code: "scene.node-not-found",
+            message: `Node "${nodeId}" not found`,
+          },
+        };
+      }
       const active = getRuntimeActiveStates(node).filter((s) => s !== state);
-      dispatchAndNotify({
+      return doDispatch({
         type: "update-runtime",
         nodeId,
         runtime: { activeStates: active },
       });
     },
-    setExclusive(nodeId, state, _group) {
-      const all = getAllNodes(getScene());
+    setExclusive(nodeId, state, group) {
       const actions: RuntimeAction[] = [];
-      for (const n of all) {
-        const existing = getRuntimeActiveStates(n);
-        if (n.id !== nodeId && existing?.includes(state)) {
+
+      // O(1): clear previous holder of this group
+      const currentHolderId = exclusiveGroups.get(group);
+      if (currentHolderId && currentHolderId !== nodeId) {
+        const holder = getScene().nodes[currentHolderId];
+        if (holder) {
+          const holderStates = getRuntimeActiveStates(holder).filter(
+            (s) => s !== state,
+          );
           actions.push({
             type: "update-runtime",
-            nodeId: n.id,
-            runtime: { activeStates: existing.filter((s) => s !== state) },
+            nodeId: currentHolderId,
+            runtime: { activeStates: holderStates },
           });
         }
       }
+
+      // Activate state on target node
       const thisNode = getScene().nodes[nodeId];
       if (thisNode) {
         const active = getRuntimeActiveStates(thisNode);
@@ -479,9 +493,12 @@ export function createEngineAPI(
           runtime: { activeStates: active },
         });
       }
-      if (actions.length > 0) {
-        dispatchAndNotify({ type: "batch-actions", actions });
-      }
+
+      // Update index
+      exclusiveGroups.set(group, nodeId);
+
+      if (actions.length === 0) return { ok: true };
+      return doDispatch({ type: "batch-actions", actions });
     },
     getActiveStates(nodeId) {
       const node = getScene().nodes[nodeId];
@@ -490,20 +507,24 @@ export function createEngineAPI(
     },
   };
 
-  const transactionAPI: TransactionAPI = {
+  // ── TransactionService ──
+
+  const transaction: TransactionService = {
     begin(source, metadata) {
       if (!transactionManager) {
         throw new Error("TransactionManager not configured");
       }
       const scene = getScene();
-      const context = { now: Date.now, actorId: "engine-api" };
+      const context: RuntimeContext = {
+        now: Date.now,
+        actorId: "engine-api",
+      };
       return transactionManager.begin(source, scene, context, metadata);
     },
     applyAction(active, action) {
       if (!transactionManager) {
         return {
           ok: false,
-          scene: getScene(),
           error: {
             code: "transaction.not-configured",
             message: "TransactionManager not configured",
@@ -513,12 +534,11 @@ export function createEngineAPI(
       }
       const result = transactionManager.applyAction(active, action);
       if (result.ok) {
-        notify("scene", getScene());
-        notify("selection", getScene().selection?.nodeIds ?? []);
+        scheduleNotification("scene", getScene());
+        scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
       }
       return {
         ok: result.ok,
-        scene: active.currentState,
         error: result.error
           ? {
               code: result.error.code,
@@ -530,15 +550,36 @@ export function createEngineAPI(
     },
     commit(active) {
       if (!transactionManager) {
-        throw new Error("TransactionManager not configured");
+        return {
+          ok: false,
+          error: {
+            code: "transaction.not-configured",
+            message: "TransactionManager not configured",
+          },
+        };
       }
-      return transactionManager.commit(active);
+      const result = transactionManager.commit(active);
+      if (result.ok) {
+        scheduleNotification("scene", getScene());
+        scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
+      }
+      return {
+        ok: result.ok,
+        error: result.error
+          ? {
+              code: result.error.code,
+              message: result.error.message,
+            }
+          : undefined,
+      } satisfies CommandResult;
     },
     rollback(active) {
       if (!transactionManager) {
-        throw new Error("TransactionManager not configured");
+        return;
       }
-      return transactionManager.rollback(active);
+      transactionManager.rollback(active);
+      scheduleNotification("scene", getScene());
+      scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
     },
     getActive() {
       return transactionManager?.getActiveTransaction();
@@ -546,33 +587,11 @@ export function createEngineAPI(
   };
 
   return {
-    node: nodeAPI,
-    scene: sceneAPI,
-    selection: selectionAPI,
-    history: historyAPI,
-    dispatch: dispatchAPI,
-    states: stateAPI,
-    transaction: transactionAPI,
-    subscribeToNode(nodeId, callback) {
-      const key = `node:${nodeId}`;
-      if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)?.add(callback as Subscriber<unknown>);
-      return () =>
-        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
-    },
-    subscribeToScene(callback) {
-      const key = "scene";
-      if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)?.add(callback as Subscriber<unknown>);
-      return () =>
-        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
-    },
-    subscribeToSelection(callback) {
-      const key = "selection";
-      if (!subscribers.has(key)) subscribers.set(key, new Set());
-      subscribers.get(key)?.add(callback as Subscriber<unknown>);
-      return () =>
-        subscribers.get(key)?.delete(callback as Subscriber<unknown>);
-    },
+    query,
+    command,
+    history,
+    transaction,
+    states,
+    events,
   };
 }

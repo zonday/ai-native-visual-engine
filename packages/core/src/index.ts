@@ -53,6 +53,22 @@ export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
+export {
+  type CommandResult,
+  type CommandService,
+  type ComputedStateAPI,
+  createEngineFacade,
+  type EngineFacade,
+  type EventBus,
+  type HistoryService,
+  type NodeQuery,
+  type QueryService,
+  type SceneQuery,
+  type SelectionQuery,
+  type SelectorAPI,
+  type StateService,
+  type TransactionService,
+} from "./engine-api.js";
 // ── Immer Patch Routing ──
 export { routeImmerPatches } from "./immer-patch-router.js";
 // ── Interaction ──
