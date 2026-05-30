@@ -12,7 +12,7 @@ const updateRuntimeHandler: RuntimeHandler<UpdateRuntimeAction> = (
   const node = expectNode(scene, action.nodeId, "update-runtime");
 
   return produce(scene, (draft) => {
-    draft.nodes[action.nodeId].runtime = {
+    draft.nodes[action.nodeId]!.runtime = {
       ...node.runtime,
       ...stripDangerousKeys(action.runtime),
     };

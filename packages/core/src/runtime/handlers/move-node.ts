@@ -67,9 +67,9 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
     rawIndex !== undefined
       ? Math.min(
           Math.max(0, rawIndex),
-          (scene.nodes[action.parentId].children ?? []).length,
+          (scene.nodes[action.parentId]!.children ?? []).length,
         )
-      : (scene.nodes[action.parentId].children ?? []).length;
+      : (scene.nodes[action.parentId]!.children ?? []).length;
 
   return produce(scene, (draft) => {
     if (oldParentId) {
@@ -82,11 +82,11 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
     }
 
     const newParentChildren = [
-      ...(draft.nodes[action.parentId].children ?? []),
+      ...(draft.nodes[action.parentId]!.children ?? []),
     ];
     newParentChildren.splice(index, 0, action.nodeId);
-    draft.nodes[action.parentId].children = newParentChildren;
-    draft.nodes[action.nodeId].parentId = action.parentId;
+    draft.nodes[action.parentId]!.children = newParentChildren;
+    draft.nodes[action.nodeId]!.parentId = action.parentId;
     draft.version += 1;
   });
 };

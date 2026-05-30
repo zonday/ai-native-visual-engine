@@ -52,7 +52,7 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
 
     const parent = node.parentId ? draft.nodes[node.parentId] : undefined;
     if (parent && node.parentId) {
-      draft.nodes[node.parentId].children = (parent.children ?? []).filter(
+      draft.nodes[node.parentId]!.children = (parent.children ?? []).filter(
         (id) => id !== action.nodeId,
       );
     }
