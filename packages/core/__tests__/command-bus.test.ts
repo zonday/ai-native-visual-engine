@@ -113,6 +113,7 @@ describe("createDocumentCommandBus", () => {
             throw new Error("Kaboom!");
           },
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as DocumentHandlerEntry,
       ],
     ]);
@@ -205,6 +206,7 @@ describe("createDocumentCommandBus", () => {
             return doc as import("../src/types.js").VisualDocument;
           },
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as DocumentHandlerEntry,
       ],
     ]);
@@ -232,6 +234,7 @@ describe("createDocumentCommandBus", () => {
         {
           handler: (doc) => doc as import("../src/types.js").VisualDocument,
           inverse: () => undefined,
+          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
         } as DocumentHandlerEntry,
       ],
     ]);

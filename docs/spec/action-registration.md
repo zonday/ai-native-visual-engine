@@ -92,21 +92,14 @@ export type Handler<TState, TAction, TContext> = (
   context: TContext,
 ) => TState;
 
-export type InverseComputer<TState, TAction, TContext> = (
+export type InverseComputer<TState, TAction, TContext extends RuntimeContext> = (
   stateBefore: Readonly<TState>,
   action: TAction,
   context: TContext,
-) => InverseAction<TAction> | undefined;
+) => TAction | undefined;
 ```
 
-The inverse return type is generalized to handle both single actions and batch containers without unsafe casts:
-
-```ts
-export type InverseAction<TAction extends { type: string }> =
-  TAction | BatchAction<TAction>;
-```
-
-`InverseComputer` returns `InverseAction<TAction> | undefined` — the transaction manager and batch inverse computation use this type to preserve the full union without `as TAction` casts on the return value.
+`InverseComputer` returns `TAction | undefined`. Because inverses often produce a different action type than they consume (e.g. `create-node` → `remove-node`), the domain-specific `HandlerEntry` types widen the return type to the full action union. The engine's generic `InverseComputer` is the base type; domain layers override the return type with their wider union.
 
 `Readonly<TState>` is a compile-time hint, not a correctness guarantee — it prevents reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). Runtime enforcement comes from Immer's `autoFreeze` (§2.1), which deep-freezes the returned state in development. Handlers that use `produce()` are automatically safe; handlers that use manual spreads rely on the purity contract.
 
@@ -161,13 +154,13 @@ This unified error model allows:
 
 ```
 handlers/
-  create-node.ts     → export const createNode: HandlerEntry
-  remove-node.ts     → export const removeNode: HandlerEntry
-  move-node.ts       → export const moveNode: HandlerEntry
+  create-node.ts     → export const createNodeHandler + createNodeInverse
+  remove-node.ts     → export const removeNodeHandler + removeNodeInverse
+  move-node.ts       → export const moveNodeHandler + moveNodeInverse
   ...
 ```
 
-Each file exports one named constant using `satisfies`:
+Each file exports a handler function and an inverse function with specific action types:
 
 ```ts
 // handlers/create-node.ts
@@ -177,53 +170,63 @@ import type { CreateNodeAction } from "../actions.js";
 import type { RuntimeContext } from "../handler-registry.js";
 import { HandlerError } from "../../engine/error.js";
 
-export const createNode = {
-  handler(scene: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext): SceneGraph {
-    return produce(scene, (draft) => {
-      if (draft.nodes[action.node.id]) {
-        throw new HandlerError(
-          "scene.duplicate-node-id",
-          `Node ID "${action.node.id}" already exists`,
-          "create-node",
-          { nodeId: action.node.id },
-        );
-      }
-      const parentId = draft.nodes[action.parentId] ? action.parentId : "root";
-      draft.nodes[action.node.id] = { ...action.node, parentId };
-      draft.nodes[parentId].children.push(action.node.id);
-    });
-  },
-
-  inverse(_sceneBefore: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext) {
-    return { type: "remove-node" as const, nodeId: action.node.id };
-  },
-
-  validate(scene: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext) {
-    if (!action.node.id) {
-      return { ok: false, error: { code: "missing-id", message: "Node ID is required" } };
+export const createNodeHandler = (
+  scene: SceneGraph,
+  action: CreateNodeAction,
+  _ctx: RuntimeContext,
+): SceneGraph => {
+  return produce(scene, (draft) => {
+    if (draft.nodes[action.node.id]) {
+      throw new HandlerError(
+        "scene.duplicate-node-id",
+        `Node ID "${action.node.id}" already exists`,
+        "create-node",
+        { nodeId: action.node.id },
+      );
     }
-    if (scene.nodes[action.node.id]) {
-      return { ok: false, error: { code: "duplicate-id", message: `Node "${action.node.id}" already exists` } };
-    }
-    if (action.parentId !== "root" && !scene.nodes[action.parentId]) {
-      return { ok: false, error: { code: "invalid-parent", message: `Parent "${action.parentId}" not found` } };
-    }
-    return { ok: true };
-  },
+    const parentId = draft.nodes[action.parentId] ? action.parentId : "root";
+    draft.nodes[action.node.id] = { ...action.node, parentId };
+    draft.nodes[parentId].children.push(action.node.id);
+  });
+};
 
-  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
-} satisfies HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext>;
+export const createNodeInverse = (
+  _sceneBefore: SceneGraph,
+  action: CreateNodeAction,
+  _context: RuntimeContext,
+): RuntimeAction => {
+  return { type: "remove-node" as const, nodeId: action.node.id };
+};
 ```
 
-Note: throwing `HandlerError` inside Immer's `produce()` is safe. Immer's recipe (the `(draft) => { ... }` callback) intercepts exceptions and re-throws the original error — it does NOT wrap or swallow `HandlerError`. The engine catches the re-thrown `HandlerError` and converts it to `DispatchResult` as normal.
+Separate exports are required because TypeScript's strict function types (contravariance) prevent assigning a function parameterized with `CreateNodeAction` to one expecting `RuntimeAction` — even though the inverse correctly returns a different action type. The registration module (§7) uses explicit `as` casts to widen both handler and inverse to the full union type.
 
-Rules:
+Each file also exports a `validate` function and a `meta` object for the registration module:
 
-1. The export name matches the action type in camelCase (`create-node` → `createNode`).
-2. `satisfies` checks the type without widening, preserving the exact function signature for inference.
-3. Handler, inverse, and validate share the module scope and access the same imports and utilities.
-4. No action-type string literal is repeated in the export — the consumer supplies it at registration time.
-5. `meta` is required. Every action declares `undoable` and `mergeable`.
+```ts
+export const createNodeValidate = (
+  scene: SceneGraph,
+  action: CreateNodeAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!action.node.id) {
+    return { ok: false, error: { code: "missing-id", message: "Node ID is required" } };
+  }
+  if (scene.nodes[action.node.id]) {
+    return { ok: false, error: { code: "duplicate-id", message: `Node "${action.node.id}" already exists` } };
+  }
+  if (action.parentId !== "root" && !scene.nodes[action.parentId]) {
+    return { ok: false, error: { code: "invalid-parent", message: `Parent "${action.parentId}" not found` } };
+  }
+  return { ok: true };
+};
+
+export const createNodeMeta = {
+  undoable: true,
+  mergeable: false,
+  devtoolsLabel: "Create Node",
+};
+```
 
 ---
 
@@ -733,7 +736,7 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 | Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
 | Structural sharing | Immer `produce()` inside handlers | undo stack unaffordable without it |
 | Immutability guard | `Readonly<TState>` + Immer auto-freeze | Compile-time + runtime mutation prevention |
-| Typed inverse | `InverseAction<TAction>` return type | Zero `as TAction` casts in inverse computation |
+| Typed inverse | Domain `InverseComputer` returns full union | `as TAction` cast only at registration boundary |
 | Batch in union | `BatchAction<TAction>` | No `as unknown`, self-recursive |
 | Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
