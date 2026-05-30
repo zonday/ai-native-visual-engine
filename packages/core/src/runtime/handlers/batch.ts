@@ -2,12 +2,9 @@ import { z } from "zod/v4";
 import type { SceneGraph } from "../../types.js";
 import type {
   InverseComputer,
-  InverseRegistry,
   RuntimeContext,
   RuntimeHandler,
-  RuntimeHandlerRegistry,
 } from "../handler-registry.js";
-import { computeInverseAction } from "../handler-registry.js";
 import type { RuntimeAction } from "../register-handlers.js";
 import type { DispatchResult } from "../runtime-command-bus.js";
 
@@ -93,4 +90,3 @@ export const batchInverse: InverseComputer<BatchActions> = (
 ) => {
   return undefined;
 };
-
