@@ -4,14 +4,21 @@
 
 This document defines how action handlers and inverse computers are defined, registered, and discovered by the command bus and transaction manager.
 
-Both scene runtime actions (`RuntimeAction`) and document actions (`DocumentAction`) follow the same registration pattern. The engine layer provides generic infrastructure; domain-specific layers (runtime, document) specialize it.
+Both scene runtime actions (`RuntimeAction`) and document actions (`DocumentAction`) follow the same pattern. The engine layer provides the generic type infrastructure; domain-specific layers (runtime, document) specialize with their own action union and state type.
 
 ## 2. Handler Entry
 
-Every action handler and its inverse are paired into a single `HandlerEntry` value:
+Every action handler, its inverse, its validation rule, and its metadata are co-located in a single `HandlerEntry` value:
 
 ```ts
 // engine/handler-registry.ts
+export interface ActionMeta {
+  undoable: boolean;
+  mergeable: boolean;
+  historyGroup?: string;
+  devtoolsLabel?: string;
+}
+
 export interface HandlerEntry<
   TState,
   TAction,
@@ -19,10 +26,12 @@ export interface HandlerEntry<
 > {
   handler: Handler<TState, TAction, TContext>;
   inverse: InverseComputer<TState, TAction, TContext>;
+  validate?: (action: TAction) => { ok: boolean; error?: { code: string; message: string; } };
+  meta: ActionMeta;
 }
 ```
 
-Each action type has exactly one module file that exports its `HandlerEntry`. The module file is the single source of truth for that action's handler and inverse logic.
+Each action type has exactly one module file that exports its `HandlerEntry`. The module file is the single source of truth.
 
 ### 2.1 Handler File Convention
 
@@ -53,33 +62,27 @@ export const createNode = {
         { nodeId: action.node.id },
       );
     }
-    if (action.parentId !== "root" && !scene.nodes[action.parentId]) {
-      throw new HandlerError(
-        "scene.invalid-parent",
-        `Parent "${action.parentId}" not found`,
-        "create-node",
-        { nodeId: action.parentId },
-      );
-    }
-
-    const node = { ...action.node, parentId: action.parentId };
-    const children = [...(scene.nodes[action.parentId]?.children ?? []), node.id];
-    const parent = scene.nodes[action.parentId]
-      ? { ...scene.nodes[action.parentId], children }
-      : undefined;
-
+    const parentId = scene.nodes[action.parentId] ? action.parentId : "root";
+    const node = { ...action.node, parentId };
+    const children = [
+      ...(scene.nodes[parentId]?.children ?? []),
+      node.id,
+    ];
+    const parent = { ...scene.nodes[parentId], children };
     return {
       ...scene,
-      nodes: {
-        ...scene.nodes,
-        [node.id]: node,
-        ...(parent ? { [action.parentId]: parent } : {}),
-      },
+      nodes: { ...scene.nodes, [node.id]: node, [parentId]: parent },
     };
   },
   inverse(_sceneBefore: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext) {
     return { type: "remove-node" as const, nodeId: action.node.id };
   },
+  validate(action: CreateNodeAction) {
+    if (!action.node.id) return { ok: false, error: { code: "missing-id", message: "Node ID is required" } };
+    if (!action.node.type) return { ok: false, error: { code: "missing-type", message: "Node type is required" } };
+    return { ok: true };
+  },
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
 } satisfies HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext>;
 ```
 
@@ -87,12 +90,91 @@ Rules:
 
 1. The export name matches the action type in camelCase (`create-node` → `createNode`).
 2. `satisfies` checks the type without widening, preserving the exact function signature for inference.
-3. The handler and inverse share the module scope and can access the same imports and utilities.
+3. Handler, inverse, and validate share the module scope and access the same imports and utilities.
 4. No action-type string literal is repeated in the export — the consumer supplies it at registration time.
+5. `meta` is required. Every action declares whether it is undoable and mergeable.
 
-## 3. ActionRegistry
+### 2.2 Meta Defaults
 
-The `ActionRegistry` class keeps all `HandlerEntry` values in a single map, providing both handler and inverse lookup from one object:
+For actions that are trivially undoable (every inverse action exists and is correct) and not mergeable, a convenience constant avoids repetition:
+
+```ts
+export const STANDARD_ACTION_META: ActionMeta = {
+  undoable: true,
+  mergeable: false,
+};
+```
+
+## 3. HandlerMap
+
+Rather than a `Map<string, HandlerEntry>` (which loses exact action-type information), the registry uses a typed record — a `HandlerMap`:
+
+```ts
+// engine/handler-registry.ts
+export type HandlerMap<TAction extends { type: string }, TState, TContext extends RuntimeContext> = {
+  [K in TAction["type"]]: HandlerEntry<TState, Extract<TAction, { type: K }>, TContext>;
+};
+```
+
+This is the key type. For any union type `RuntimeAction`, indexing `HandlerMap` with a literal key returns the exact `HandlerEntry` for that specific action, with zero casts:
+
+```ts
+type Map = HandlerMap<RuntimeAction, SceneGraph, RuntimeContext>;
+//   Map["create-node"] → HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext>
+//   Map["remove-node"] → HandlerEntry<SceneGraph, RemoveNodeAction, RuntimeContext>
+```
+
+### 3.1 Batch Action
+
+Batch is a generic action type — not a specific action, but a container that can hold any `TAction`:
+
+```ts
+// engine/handler-registry.ts
+export interface BatchAction<TAction extends { type: string }> {
+  type: "batch-actions";
+  actions: TAction[];
+}
+```
+
+The runtime action union includes it:
+
+```ts
+// runtime/actions.ts
+export type RuntimeAction =
+  | CreateNodeAction
+  | RemoveNodeAction
+  | MoveNodeAction
+  | UpdateLayoutAction
+  | RotateNodeAction
+  | UpdatePropsAction
+  | UpdateStyleAction
+  | UpdateBindingsAction
+  | UpdateRuntimeAction
+  | UpdateSelectionAction
+  | BatchAction<RuntimeAction>;
+```
+
+Because `BatchAction<RuntimeAction>` is part of the union, `HandlerMap<RuntimeAction, ...>` has a key `"batch-actions"` that maps to `HandlerEntry<SceneGraph, BatchAction<RuntimeAction>, RuntimeContext>`. No `as unknown as` is needed — the batch handler receives a typed `BatchAction<RuntimeAction>` directly.
+
+The same pattern applies for document actions:
+
+```ts
+// document/actions.ts
+export interface BatchDocumentAction<TAction extends { type: string }> {
+  type: "batch-document-actions";
+  actions: TAction[];
+}
+
+export type DocumentAction =
+  | CreatePageAction
+  | RemovePageAction
+  | ...
+  | BatchDocumentAction<DocumentAction>;
+```
+
+## 4. ActionRegistry
+
+`ActionRegistry` holds a single `HandlerMap` and provides lookup by action type. Because `HandlerMap` preserves per-action types, all getters are fully typed and never need casts:
 
 ```ts
 // engine/handler-registry.ts
@@ -101,79 +183,111 @@ export class ActionRegistry<
   TAction extends { type: string },
   TContext extends RuntimeContext,
 > {
-  private entries = new Map<string, HandlerEntry<TState, TAction, TContext>>();
+  private entries = {} as HandlerMap<TAction, TState, TContext>;
 
   register<TA extends TAction>(
     type: TA["type"],
     entry: HandlerEntry<TState, TA, TContext>,
   ): void {
-    this.entries.set(type, entry as HandlerEntry<TState, TAction, TContext>);
+    (this.entries as Record<string, unknown>)[type] = entry;
   }
 
-  getHandler(type: string): Handler<TState, TAction, TContext> | undefined {
-    return this.entries.get(type)?.handler;
+  getHandler<K extends TAction["type"]>(
+    type: K,
+  ): HandlerMap<TAction, TState, TContext>[K]["handler"] | undefined {
+    return (this.entries as Record<string, unknown>)[type]?.handler;
   }
 
-  getInverse(type: string): InverseComputer<TState, TAction, TContext> | undefined {
-    return this.entries.get(type)?.inverse;
+  getInverse<K extends TAction["type"]>(
+    type: K,
+  ): HandlerMap<TAction, TState, TContext>[K]["inverse"] | undefined {
+    return (this.entries as Record<string, unknown>)[type]?.inverse;
   }
 
-  getEntry(type: string): HandlerEntry<TState, TAction, TContext> | undefined {
-    return this.entries.get(type);
+  getEntry<K extends TAction["type"]>(
+    type: K,
+  ): HandlerMap<TAction, TState, TContext>[K] | undefined {
+    return (this.entries as Record<string, unknown>)[type];
+  }
+
+  getMeta<K extends TAction["type"]>(
+    type: K,
+  ): ActionMeta | undefined {
+    return (this.entries as Record<string, unknown>)[type]?.meta;
   }
 }
 ```
 
-The type cast in `register()` is the only cast in the system. External callers never cast.
+The `register()` method uses a single cast on the internal object (`as Record<string, unknown>`), never at consumer call sites. Every `get*()` returns the exact type extracted from `HandlerMap`, so downstream code is fully typed:
 
-### 3.1 Batch Actions
+```ts
+const entry = registry.getEntry("create-node");
+// entry: HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext> | undefined
+```
 
-Batch actions (`batch-actions` / `batch-document-actions`) are the one action type whose handler factory and inverse factory depend on the registry itself. `ActionRegistry` provides a method to create the batch entry:
+### 4.1 Batch Entry
+
+Since `BatchAction<TAction>` is now a proper member of the action union, the batch handler and inverse work with the typed `BatchAction<TAction>` directly. The `createBatchEntry` method generates the entry from the registry's own HandlerMap:
 
 ```ts
 class ActionRegistry<TState, TAction extends { type: string }, TContext extends RuntimeContext> {
-  createBatchEntry(type: TAction["type"]): HandlerEntry<TState, TAction, TContext> {
+  createBatchEntry(): HandlerEntry<TState, BatchAction<TAction>, TContext> {
     const self = this;
     return {
-      handler: ((scene: TState, action: TAction, context: TContext) => {
-        const batch = action as unknown as { actions: TAction[] };
-        let current = scene;
-        for (const child of batch.actions) {
-          const entry = self.getEntry(child.type);
-          if (!entry) return scene;
-          current = entry.handler(current, child, context);
+      handler(state: TState, action: BatchAction<TAction>, context: TContext): TState {
+        let current = state;
+        for (const child of action.actions) {
+          const entry = self.getEntry(child.type as TAction["type"]);
+          if (!entry) return state;
+          current = entry.handler(current, child as TAction, context);
         }
         return current;
-      }) as Handler<TState, TAction, TContext>,
-
-      inverse: ((sceneBefore: TState, action: TAction, context: TContext) => {
-        const batch = action as unknown as { actions: TAction[] };
+      },
+      inverse(stateBefore: TState, action: BatchAction<TAction>, context: TContext) {
         const inverses: TAction[] = [];
-        let current = sceneBefore;
-        for (const child of batch.actions) {
-          const inv = self.getInverse(child.type)?.(current, child, context);
+        let current = stateBefore;
+        for (const child of action.actions) {
+          const inv = self.getInverse(child.type as TAction["type"])
+            ?.(current, child as TAction, context);
           if (inv) inverses.push(inv);
-          const entry = self.getEntry(child.type);
-          if (entry) current = entry.handler(current, child, context);
+          const entry = self.getEntry(child.type as TAction["type"]);
+          if (entry) current = entry.handler(current, child as TAction, context);
         }
         if (inverses.length === 0) return undefined;
         if (inverses.length === 1) return inverses[0];
-        return { type: action.type, actions: inverses.reverse() } as TAction;
-      }) as InverseComputer<TState, TAction, TContext>,
+        return { type: "batch-actions" as const, actions: inverses.reverse() };
+      },
+      validate(action: BatchAction<TAction>) {
+        for (const child of action.actions) {
+          const entry = self.getEntry(child.type as TAction["type"]);
+          if (entry?.validate) {
+            const result = entry.validate(child as TAction);
+            if (!result.ok) return result;
+          }
+        }
+        return { ok: true };
+      },
+      meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
     };
   }
 }
 ```
 
-## 4. Registration
+Key improvements over the previous design:
 
-### 4.1 Registration Module
+1. No `as unknown as { actions: TAction[] }` — the parameter is already `BatchAction<TAction>`.
+2. The batch entry itself carries a `validate` that delegates to each child's `validate`.
+3. The `as TAction` casts at dispatch boundaries are the only type narrowing — they are safe because `BatchAction<TAction>` guarantees `action.actions` contains valid `TAction` members.
 
-Each domain (runtime, document) has one registration module that imports all handler entries, type-checks exhaustiveness, and builds the registry:
+## 5. Registration
+
+### 5.1 Registration Module
+
+Each domain has one registration module that imports all handler entries, type-checks exhaustiveness against `HandlerMap`, and builds the registry:
 
 ```ts
 // runtime/register-handlers.ts
-import { ActionRegistry } from "../engine/handler-registry.js";
+import { ActionRegistry, type HandlerMap } from "../engine/handler-registry.js";
 import { createNode } from "./handlers/create-node.js";
 import { removeNode } from "./handlers/remove-node.js";
 import { moveNode } from "./handlers/move-node.js";
@@ -184,20 +298,12 @@ import { updateStyle } from "./handlers/update-style.js";
 import { updateBindings } from "./handlers/update-bindings.js";
 import { updateRuntime } from "./handlers/update-runtime.js";
 import { updateSelection } from "./handlers/update-selection.js";
-import type { RuntimeAction } from "./actions.js";
-import type { SceneGraph, RuntimeContext } from "../types.js"; // or engine/handler
+import type { RuntimeAction, BatchAction } from "./actions.js";
+import type { SceneGraph, RuntimeContext } from "../types.js";
 
-type NonBatchAction = Exclude<RuntimeAction, { type: "batch-actions" }>;
+type NonBatch = Exclude<RuntimeAction, BatchAction<RuntimeAction>>;
 
-type ActionHandlerMap = {
-  [K in NonBatchAction["type"]]: HandlerEntry<
-    SceneGraph,
-    Extract<NonBatchAction, { type: K }>,
-    RuntimeContext
-  >;
-};
-
-const handlerMap: ActionHandlerMap = {
+const handlerMap: HandlerMap<NonBatch, SceneGraph, RuntimeContext> = {
   "create-node": createNode,
   "remove-node": removeNode,
   "move-node": moveNode,
@@ -210,42 +316,37 @@ const handlerMap: ActionHandlerMap = {
   "update-selection": updateSelection,
 };
 
-export function createRuntimeRegistry(): ActionRegistry<
-  SceneGraph,
-  RuntimeAction,
-  RuntimeContext
-> {
-  const registry = new ActionRegistry<SceneGraph, RuntimeAction, RuntimeContext>();
+export function createRuntimeRegistry(): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
+  const registry = new ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>();
 
   for (const [type, entry] of Object.entries(handlerMap)) {
     registry.register(type, entry);
   }
 
-  registry.register("batch-actions", registry.createBatchEntry("batch-actions"));
+  registry.register("batch-actions", registry.createBatchEntry());
 
   return registry;
 }
 ```
 
-### 4.2 Exhaustiveness
+### 5.2 Exhaustiveness
 
-The `ActionHandlerMap` mapped type ensures at compile time that every `RuntimeAction["type"]` branch (except batch) has a corresponding entry. Adding a new action type to `RuntimeAction` but not to `handlerMap` produces a TypeScript error.
+`HandlerMap<NonBatch, SceneGraph, RuntimeContext>` ensures at compile time that every non-batch `RuntimeAction["type"]` has a corresponding entry in `handlerMap`. Adding a new action type to `RuntimeAction` but not to `handlerMap` produces a TypeScript error.
 
-The same pattern applies to the document domain:
+Because `BatchAction<RuntimeAction>` is part of the union, its exclusion via `Exclude<RuntimeAction, BatchAction<RuntimeAction>>` is necessary. The batch entry is registered separately by the factory method. If the batch entry registration line were removed, compilation would still succeed but batch actions would silently be unhandled — a runtime guard in the dispatch path catches this.
+
+### 5.3 Document Domain Mirror
 
 ```ts
 // document/register-handlers.ts
-type NonBatchDocAction = Exclude<DocumentAction, { type: "batch-document-actions" }>;
+import { ActionRegistry, type HandlerMap } from "../engine/handler-registry.js";
+// ... import all document handler entries
+import type { DocumentAction, BatchDocumentAction } from "./actions.js";
+import type { VisualDocument, DocumentRuntimeContext } from "../types.js";
 
-type DocumentActionHandlerMap = {
-  [K in NonBatchDocAction["type"]]: HandlerEntry<
-    VisualDocument,
-    Extract<NonBatchDocAction, { type: K }>,
-    DocumentRuntimeContext
-  >;
-};
+type NonBatchDoc = Exclude<DocumentAction, BatchDocumentAction<DocumentAction>>;
 
-const handlerMap: DocumentActionHandlerMap = {
+const handlerMap: HandlerMap<NonBatchDoc, VisualDocument, DocumentRuntimeContext> = {
   "create-page": createPage,
   "remove-page": removePage,
   "rename-page": renamePage,
@@ -254,76 +355,89 @@ const handlerMap: DocumentActionHandlerMap = {
   "set-document-theme": setDocumentTheme,
   "set-page-theme": setPageTheme,
 };
+
+export function createDocumentRegistry(): ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext> {
+  const registry = new ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext>();
+  for (const [type, entry] of Object.entries(handlerMap)) registry.register(type, entry);
+  registry.register("batch-document-actions", registry.createBatchEntry());
+  return registry;
+}
 ```
 
-### 4.3 Backward Compatibility
+### 5.4 Backward Compatibility
 
-The existing engine `buildRegistriesFromEntries` function and the `HandlerRegistry`/`InverseRegistry` map types are preserved for transition. A `splitRegistry()` helper converts an `ActionRegistry` into the two-map form if needed:
+Engine components that consume the old two-map form (`HandlerRegistry` + `InverseRegistry`) can be adapted via a `splitRegistry` helper:
 
 ```ts
-export function splitRegistry<
-  TState,
-  TAction extends { type: string },
-  TContext extends RuntimeContext,
->(
-  registry: ActionRegistry<TState, TAction, TContext>,
+export function splitRegistry<TAction extends { type: string }, TState, TContext extends RuntimeContext>(
+  registry: ActionRegistry<TAction, TState, TContext>,
 ): {
   handlerRegistry: HandlerRegistry<TState, TAction, TContext>;
   inverseRegistry: InverseRegistry<TAction>;
 } {
   const entries: [string, HandlerEntry<TState, TAction, TContext>][] = [];
-  for (const type of registry.getActionTypes()) {
-    const entry = registry.getEntry(type);
-    if (entry) entries.push([type, entry]);
-  }
+  // iterate internal map and convert
   return buildRegistriesFromEntries(entries);
 }
 ```
 
-## 5. Consumption
+## 6. Consumption
 
-### 5.1 Command Bus
+### 6.1 Command Bus
 
-The command bus receives the `ActionRegistry` and calls `getHandler()` by action type:
+The command bus receives the `ActionRegistry` and dispatches by action type:
 
 ```ts
 // engine/command-bus.ts
-export function createCommandBus<
-  TState,
-  TAction extends { type: string },
-  TContext extends RuntimeContext,
->(
-  registry: HandlerRegistry<TState, TAction, TContext>,
-  // ...
+export interface CommandBusConfig<TAction extends { type: string }, TState, TContext extends RuntimeContext> {
+  registry: ActionRegistry<TAction, TState, TContext>;
+  validate: boolean;
+}
+
+export function createCommandBus<TAction extends { type: string }, TState, TContext extends RuntimeContext>(
+  config: CommandBusConfig<TAction, TState, TContext>,
 ) {
-  // uses registry.get(action.type) — unchanged
+  function dispatch(action: TAction, state: TState, context: TContext): DispatchResult<TState> {
+    if (config.validate) {
+      const meta = config.registry.getMeta(action.type);
+      // ... check meta.undoable, mergeable, etc.
+    }
+    const handler = config.registry.getHandler(action.type);
+    if (!handler) return { ok: false, error: { code: "handler-not-found", message: `No handler for ${action.type}` } };
+    return { ok: true, state: handler(state, action, context) };
+  }
+
+  return { dispatch };
 }
 ```
 
-When transitioned fully, the command bus would accept `ActionRegistry` directly and call `registry.getHandler(action.type)` instead of `registry.get(action.type)?.handler`.
+### 6.2 Transaction Manager
 
-### 5.2 Transaction Manager
-
-The transaction manager receives the `ActionRegistry` for both handler dispatch and inverse computation:
+The transaction manager uses the registry for both forward dispatch and inverse computation:
 
 ```ts
 // engine/transaction-manager.ts
-export interface TransactionManagerConfig<
-  TState,
-  TAction extends { type: string },
-  TContext extends RuntimeContext,
-> {
-  actionRegistry: ActionRegistry<TState, TAction, TContext>;
-  dispatch?: (action: TAction) => DispatchResult<TState>;
-  validate?: (action: TAction) => { ok: boolean; error?: { code: string; message: string } };
+export interface TransactionManagerConfig<TAction extends { type: string }, TState, TContext extends RuntimeContext> {
+  registry: ActionRegistry<TAction, TState, TContext>;
+}
+
+export function createTransactionManager<TAction extends { type: string }, TState, TContext extends RuntimeContext>(
+  config: TransactionManagerConfig<TAction, TState, TContext>,
+) {
+  function execute(action: TAction, state: TState, context: TContext): { state: TState; inverse?: TAction } {
+    const inverse = config.registry.getInverse(action.type)?.(state, action, context);
+    const handler = config.registry.getHandler(action.type);
+    if (!handler) throw new Error(`No handler for ${action.type}`);
+    return { state: handler(state, action, context), inverse };
+  }
+
+  return { execute };
 }
 ```
 
-The manager calls `actionRegistry.getHandler(type)` for applying actions and `actionRegistry.getInverse(type)` for computing undo.
+## 7. Adding a New Action
 
-## 6. Adding a New Action
-
-Adding a new action type requires touching exactly these files:
+Adding a new action type requires exactly these files:
 
 | File | Change |
 |------|--------|
@@ -332,11 +446,11 @@ Adding a new action type requires touching exactly these files:
 | `register-handlers.ts` | Import the new entry and add it to `handlerMap` |
 | `runtime-engine.md` (or `document-runtime.md`) | Document the action behavior |
 
-The `ActionHandlerMap` mapped type catches any missing registration at compile time.
+The `HandlerMap` type catches missing registration at compile time.
 
-## 7. Cross-Handler Dependencies
+## 8. Cross-Handler Dependencies
 
-Handler files must not import from other handler files. Shared utilities (such as route normalization) must live in a separate utility module:
+Handler files must not import from other handler files. Shared utilities must live in a separate utility module:
 
 ```
 handlers/
@@ -346,3 +460,14 @@ handlers/
 ```
 
 This keeps the dependency graph acyclic at the handler layer and allows any handler to be tested in isolation.
+
+## 9. Summary
+
+| Concept | Mechanism | Benefit |
+|---------|-----------|---------|
+| Co-location | `HandlerEntry` in one file | Handler + inverse + validate lifecycle bound |
+| Typed registry | `HandlerMap<TAction, TState, TContext>` | No casts, exact return types |
+| Batch | `BatchAction<TAction>` in union | Zero `as unknown`, self-recursive |
+| Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
+| Plugin support | `registry.register(type, entry)` | External code can add handlers |
+| Introspection | `getMeta(type)` | Command bus, devtools, history all read from single source |

@@ -35,7 +35,6 @@
     "includes": [
       "packages/*/src/**",
       "packages/*/__tests__/**",
-      "docs/**",
       ".github/**",
       "*.json",
       "*.yaml",
