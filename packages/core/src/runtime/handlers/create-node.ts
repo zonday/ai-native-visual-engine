@@ -1,8 +1,8 @@
 import { produce } from "immer";
-import { HandlerError } from "../../engine/error.js";
 import { z } from "zod/v4";
-import { SceneNodeSchema } from "../../types.js";
+import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
+import { SceneNodeSchema } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
 import type {
   InverseComputer,
