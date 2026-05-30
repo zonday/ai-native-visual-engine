@@ -1,7 +1,8 @@
 import { ActionRegistry } from "../engine/action-registry.js";
+import type { RuntimeContext } from "../engine/handler.js";
+import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";
-import type { InverseRegistry, RuntimeHandlerRegistry } from "./handler-registry.js";
 import { createNodeEntry } from "./handlers/create-node.js";
 import { moveNodeEntry } from "./handlers/move-node.js";
 import { removeNodeEntry } from "./handlers/remove-node.js";
@@ -12,13 +13,15 @@ import { updatePropsEntry } from "./handlers/update-props.js";
 import { updateRuntimeEntry } from "./handlers/update-runtime.js";
 import { updateSelectionEntry } from "./handlers/update-selection.js";
 import { updateStyleEntry } from "./handlers/update-style.js";
-import type { SceneGraph } from "../types.js";
-import type { RuntimeContext } from "../engine/handler.js";
 
 export function createRuntimeRegistry(
   _batchDispatch: (action: RuntimeAction) => DispatchResult,
 ): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
-  const registry = new ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>();
+  const registry = new ActionRegistry<
+    RuntimeAction,
+    SceneGraph,
+    RuntimeContext
+  >();
   registry.register("create-node", createNodeEntry);
   registry.register("remove-node", removeNodeEntry);
   registry.register("move-node", moveNodeEntry);
