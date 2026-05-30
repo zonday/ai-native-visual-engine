@@ -326,7 +326,11 @@ describe("computeInverseAction with registry", () => {
   describe("unknown action type", () => {
     it("returns undefined for unregistered action type", () => {
       const action = { type: "unknown-action" } as unknown as DocumentAction;
-      const inverse = docReg.getInverse(action.type)?.(makeDoc(), action, defaultContext);
+      const inverse = docReg.getInverse(action.type)?.(
+        makeDoc(),
+        action,
+        defaultContext,
+      );
       expect(inverse).toBeUndefined();
     });
   });
