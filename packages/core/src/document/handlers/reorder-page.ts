@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { ReorderPageAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -14,6 +13,7 @@ export const ReorderPageActionSchema = z.object({
   pageId: z.string(),
   index: z.number().int().min(0),
 });
+export type ReorderPageAction = z.infer<typeof ReorderPageActionSchema>;
 
 const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   document,

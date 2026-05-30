@@ -1,7 +1,6 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import type { SceneGraph } from "../../types.js";
-import type { UpdatePropsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -15,6 +14,7 @@ export const UpdatePropsActionSchema = z.object({
   nodeId: z.string(),
   props: z.object({}).passthrough(),
 });
+export type UpdatePropsAction = z.infer<typeof UpdatePropsActionSchema>;
 
 const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   scene,

@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { RemovePageAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -13,6 +12,7 @@ export const RemovePageActionSchema = z.object({
   type: z.literal("remove-page"),
   pageId: z.string(),
 });
+export type RemovePageAction = z.infer<typeof RemovePageActionSchema>;
 
 const removePageHandler: DocumentHandler<RemovePageAction> = (
   document,

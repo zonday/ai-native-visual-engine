@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
-import type { MoveNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -16,6 +15,7 @@ export const MoveNodeActionSchema = z.object({
   parentId: z.string(),
   index: z.number().optional(),
 });
+export type MoveNodeAction = z.infer<typeof MoveNodeActionSchema>;
 
 function isDescendantOf(
   nodeId: string,

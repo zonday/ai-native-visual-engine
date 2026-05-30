@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
-import type { RotateNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -15,6 +14,7 @@ export const RotateNodeActionSchema = z.object({
   nodeId: z.string(),
   rotation: z.number(),
 });
+export type RotateNodeAction = z.infer<typeof RotateNodeActionSchema>;
 
 function normalizeRotation(degrees: number): number {
   const normalized = ((degrees % 360) + 360) % 360;

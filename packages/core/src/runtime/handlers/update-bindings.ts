@@ -1,7 +1,6 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import type { SceneGraph } from "../../types.js";
-import type { UpdateBindingsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -21,6 +20,7 @@ export const UpdateBindingsActionSchema = z.object({
     }),
   ),
 });
+export type UpdateBindingsAction = z.infer<typeof UpdateBindingsActionSchema>;
 
 const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   scene,
