@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { setDocumentThemeHandler } from "../src/document/handlers/set-document-theme.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
 import {
   normalizeRoute,
   updatePageRouteHandler,
 } from "../src/document/handlers/update-page-route.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
 const doc: VisualDocument = {
@@ -54,11 +54,11 @@ describe("setDocumentThemeHandler", () => {
     };
     expect(() =>
       setDocumentThemeHandler(themedDoc, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       setDocumentThemeHandler(themedDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.theme-not-found");
+      expect((e as HandlerError).code).toBe("document.theme-not-found");
     }
   });
 
@@ -106,12 +106,12 @@ describe("setPageThemeHandler", () => {
       themeId: "dark",
     };
     expect(() => setPageThemeHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       setPageThemeHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+      expect((e as HandlerError).code).toBe("document.page-not-found");
     }
   });
 
@@ -123,11 +123,11 @@ describe("setPageThemeHandler", () => {
     };
     expect(() =>
       setPageThemeHandler(themedDoc, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       setPageThemeHandler(themedDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.theme-not-found");
+      expect((e as HandlerError).code).toBe("document.theme-not-found");
     }
   });
 
@@ -185,11 +185,11 @@ describe("updatePageRouteHandler", () => {
     };
     expect(() =>
       updatePageRouteHandler(doc, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       updatePageRouteHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+      expect((e as HandlerError).code).toBe("document.page-not-found");
     }
   });
 
@@ -208,11 +208,11 @@ describe("updatePageRouteHandler", () => {
     };
     expect(() =>
       updatePageRouteHandler(multiDoc, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       updatePageRouteHandler(multiDoc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.duplicate-route");
+      expect((e as HandlerError).code).toBe("document.duplicate-route");
     }
   });
 
@@ -224,11 +224,11 @@ describe("updatePageRouteHandler", () => {
     };
     expect(() =>
       updatePageRouteHandler(doc, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       updatePageRouteHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.invalid-route");
+      expect((e as HandlerError).code).toBe("document.invalid-route");
     }
   });
 });

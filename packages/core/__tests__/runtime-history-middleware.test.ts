@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { HistoryState } from "../src/engine/history.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import type { RuntimeContext } from "../src/runtime/handler.js";
-import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
+import type {
+  RuntimeContext,
+  RuntimeHandlerEntry,
+} from "../src/runtime/handler-registry.js";
 import {
   createNodeHandler,
   createNodeInverse,

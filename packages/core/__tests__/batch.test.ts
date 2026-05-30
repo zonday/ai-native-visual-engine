@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
-import { DocumentHandlerError } from "../src/document/error.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
+import type {
+  DocumentHandlerEntry,
+  DocumentRuntimeContext,
+} from "../src/document/handler-registry.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
@@ -53,10 +55,7 @@ function makeStatefulDispatch(
         ok: false,
         document: currentDoc,
         error: {
-          code:
-            e instanceof DocumentHandlerError
-              ? e.code
-              : "document.handler-error",
+          code: e instanceof HandlerError ? e.code : "document.handler-error",
           message: e instanceof Error ? e.message : "Unknown error",
         },
       };
@@ -157,7 +156,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
 
     expect(handler).toBeDefined();
     expect(() => handler?.(docWithTwoPages, action, context)).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
   });
 

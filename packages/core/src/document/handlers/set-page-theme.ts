@@ -1,7 +1,6 @@
 import { HandlerError } from "../../engine/error.js";
 import type { SetPageThemeAction } from "../actions.js";
-import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
 export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   document,

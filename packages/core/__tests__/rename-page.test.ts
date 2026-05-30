@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { renamePageHandler } from "../src/document/handlers/rename-page.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
 const doc: VisualDocument = {
@@ -45,12 +45,12 @@ describe("renamePageHandler", () => {
       name: "Nope",
     };
     expect(() => renamePageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       renamePageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+      expect((e as HandlerError).code).toBe("document.page-not-found");
     }
   });
 });

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
-import { documentValidatorMiddleware } from "../src/document/middleware/validator.js";
+import { DocumentActionSchema } from "../src/document/actions.js";
+import type { Middleware } from "../src/engine/command-bus.js";
+import { createValidatorMiddleware } from "../src/engine/middleware/validator.js";
+import type { VisualDocument } from "../src/types.js";
 import { emptyDoc } from "./helpers.js";
+
+const documentValidatorMiddleware: Middleware<VisualDocument, DocumentAction> =
+  createValidatorMiddleware(
+    DocumentActionSchema,
+    "validation.action-schema-mismatch",
+  );
 
 describe("documentValidatorMiddleware", () => {
   it("passes valid action through to next", () => {

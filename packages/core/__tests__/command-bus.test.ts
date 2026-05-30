@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
+import type {
+  DocumentHandlerEntry,
+  DocumentRuntimeContext,
+} from "../src/document/handler-registry.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import type { VisualDocument } from "../src/types.js";
