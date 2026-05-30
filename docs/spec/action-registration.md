@@ -18,10 +18,48 @@ Every handler function MUST obey these invariants. Violations produce undefined 
 | Deterministic   | No reliance on `Math.random()`, `Date.now()`, external state |
 | Synchronous     | No `async`, no `Promise`, no callbacks |
 | Side-effect free| No analytics, no logging, no persistence, no event emission |
+| Immutable       | Never mutate the input `state` — produce a new state or use Immer `produce()` |
 
 All side effects (telemetry, persistence, rendering, event dispatch) belong in the engine layer (command bus middleware, transaction hooks) — never inside a handler.
 
 A handler that violates these invariants will cause double-execution bugs during batch inverse computation and incorrect behavior during transaction replay / undo.
+
+### 2.1 Structural sharing via Immer
+
+Handlers SHOULD use Immer's `produce()` instead of manual spreads to enforce immutability and gain structural sharing:
+
+```ts
+import { produce } from "immer";
+
+// ❌ Manual spread — error-prone, no structural sharing
+handler(scene, action, ctx) {
+  return {
+    ...scene,
+    nodes: {
+      ...scene.nodes,
+      [action.node.id]: { ...action.node, parentId: action.parentId },
+    },
+  };
+}
+
+// ✅ Immer produce — automatic structural sharing, auto-freeze, no copy bugs
+handler(scene, action, ctx) {
+  return produce(scene, (draft) => {
+    draft.nodes[action.node.id] = { ...action.node, parentId: action.parentId };
+  });
+}
+```
+
+Using `produce()` provides:
+
+| Benefit | Explanation |
+|---------|-------------|
+| Structural sharing | Unchanged branches share memory references. Without it, each `{ ...scene }` spread copies the entire tree, making undo stacks and batch snapshots unaffordable at scale. |
+| Auto-freeze (dev) | Immer `setAutoFreeze(true)` deep-freezes the result in development. Any external code that tries to mutate the returned state throws immediately. |
+| No copy bugs | Writing to `draft` is mutation-safe — Immer tracks changes internally and produces the minimal immutable output. Shallow copy mistakes (`draft = x` instead of `draft.foo = x`) are caught at compile time. |
+| Patch capture | `produceWithPatches` returns `[nextState, patches, inversePatches]`, enabling a future migration to patch-based undo/redo (§12). |
+
+The handler signature remains `(state, action, context) => TState`. Immer is an implementation detail inside the handler body.
 
 ---
 
@@ -44,8 +82,7 @@ export interface HandlerEntry<TState, TAction, TContext extends RuntimeContext> 
   validate: Validator<TState, TAction, TContext>;
   meta: ActionMeta;
 }
-
-The `state` parameter of every handler, inverse, and validator is typed `Readonly<TState>` to prevent direct mutation at the type level:
+```
 
 ```ts
 // engine/types.ts
@@ -68,14 +105,7 @@ export type Validator<TState, TAction, TContext> = (
 ) => ValidationResult;
 ```
 
-`Readonly<TState>` is a shallow constraint — it prevents property reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). The shallow constraint catches the most common mutation pattern at compile time. Deep immutability would require runtime enforcement (e.g. `Object.freeze` or Immer `freeze`) and is reserved for a future optimization pass.
-
-For batch inverse computation, the return type is generalized to allow both single actions and batch containers:
-
-```ts
-export type InverseAction<TAction extends { type: string }> =
-  TAction | BatchAction<TAction>;
-```
+`Readonly<TState>` is a compile-time hint, not a correctness guarantee — it prevents reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). Runtime enforcement comes from Immer's `autoFreeze` (§2.1), which deep-freezes the returned state in development. Handlers that use `produce()` are automatically safe; handlers that use manual spreads rely on the purity contract.
 
 Each action type has exactly one module file that exports its `HandlerEntry`.
 
@@ -107,9 +137,7 @@ A validator MUST be pure, deterministic, and side-effect free (same contract as 
 
 ### 3.3 Error model
 
-Handlers MUST NOT throw for business-logic errors. The only valid reasons to throw are TypeScript invariant violations (e.g. a handler that genuinely cannot produce a valid return).
-
-All business-logic errors are communicated through the `HandlerResult` return type:
+Handlers communicate business-logic failures by throwing `HandlerError`. The engine catches these and converts them to `DispatchResult`:
 
 ```ts
 export type DispatchResult<TState> =
@@ -117,7 +145,7 @@ export type DispatchResult<TState> =
   | { ok: false; error: { code: string; message: string; actionType: string } };
 ```
 
-The `handler` function returns a new state. The engine calls `handler` inside a try/catch — a thrown `HandlerError` is caught and converted to a `DispatchResult` with `ok: false`. A non-`HandlerError` throw is treated as an invariant violation and propagates uncaught.
+A handler that encounters a recoverable business error (e.g. duplicate ID, missing parent, nonexistent node) throws `HandlerError`. The engine wraps execution in a try/catch — a thrown `HandlerError` is caught and converted to `{ ok: false, ... }`. Any non-`HandlerError` throw is treated as an invariant violation and propagates uncaught.
 
 This unified error model allows:
 - Batch to detect partial failures and roll back atomically
@@ -138,6 +166,7 @@ Each file exports one named constant using `satisfies`:
 
 ```ts
 // handlers/create-node.ts
+import { produce } from "immer";
 import type { SceneGraph } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
 import type { RuntimeContext } from "../handler-registry.js";
@@ -145,22 +174,19 @@ import { HandlerError } from "../../engine/error.js";
 
 export const createNode = {
   handler(scene: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext): SceneGraph {
-    if (scene.nodes[action.node.id]) {
-      throw new HandlerError(
-        "scene.duplicate-node-id",
-        `Node ID "${action.node.id}" already exists`,
-        "create-node",
-        { nodeId: action.node.id },
-      );
-    }
-    const parentId = scene.nodes[action.parentId] ? action.parentId : "root";
-    const node = { ...action.node, parentId };
-    const children = [...(scene.nodes[parentId]?.children ?? []), node.id];
-    const parent = { ...scene.nodes[parentId], children };
-    return {
-      ...scene,
-      nodes: { ...scene.nodes, [node.id]: node, [parentId]: parent },
-    };
+    return produce(scene, (draft) => {
+      if (draft.nodes[action.node.id]) {
+        throw new HandlerError(
+          "scene.duplicate-node-id",
+          `Node ID "${action.node.id}" already exists`,
+          "create-node",
+          { nodeId: action.node.id },
+        );
+      }
+      const parentId = draft.nodes[action.parentId] ? action.parentId : "root";
+      draft.nodes[action.node.id] = { ...action.node, parentId };
+      draft.nodes[parentId].children.push(action.node.id);
+    });
   },
 
   inverse(_sceneBefore: SceneGraph, action: CreateNodeAction, _ctx: RuntimeContext) {
@@ -295,6 +321,9 @@ export class ActionRegistry<
     type: K,
     entry: HandlerMap<TAction, TState, TContext>[K],
   ): void {
+    if (this.entries.has(type)) {
+      throw new Error(`Duplicate handler registration for action type "${type}"`);
+    }
     this.entries.set(type, entry);
   }
 
@@ -328,7 +357,7 @@ export class ActionRegistry<
     return this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined;
   }
 
-  has(type: string): boolean {
+  has(type: TAction["type"]): boolean {
     return this.entries.has(type);
   }
 }
@@ -533,22 +562,31 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
   steps: BatchStep<TAction, TState>[],
   registry: ActionRegistry<TAction, TState, TContext>,
   context: TContext,
-): InverseAction<TAction> | undefined {
-  const inverses: InverseAction<TAction>[] = [];
+): TAction | undefined {
+  const inverses: TAction[] = [];
 
   // Process actions in reverse order
   for (let i = steps.length - 1; i >= 0; i--) {
     const { action, stateBefore } = steps[i];
     const inv = registry.getInverse(action.type as TAction["type"]);
     if (inv) {
-      const result: InverseAction<TAction> | undefined = inv(stateBefore, action as TAction, context);
-      if (result) inverses.push(result);
+      const result = inv(stateBefore, action as TAction, context);
+      if (result) {
+        // Flatten nested batch actions to prevent BatchAction<BatchAction<...>> nesting.
+        // Each child inverse is a TAction, which may itself be a BatchAction<TAction>.
+        // Unwrapping here keeps the undo stack flat.
+        if (result.type === "batch-actions") {
+          inverses.push(...(result as unknown as BatchAction<TAction>).actions);
+        } else {
+          inverses.push(result);
+        }
+      }
     }
   }
 
   if (inverses.length === 0) return undefined;
   if (inverses.length === 1) return inverses[0];
-  return { type: "batch-actions", actions: inverses } satisfies BatchAction<TAction>;
+  return { type: "batch-actions", actions: inverses } as TAction;
 }
 ```
 
@@ -576,10 +614,10 @@ function validateBatch<TAction extends { type: string }, TState, TContext extend
       if (!result.ok) return result;
     }
     // Advance state for next validation — this is a dry run.
-    // The handler MUST be pure (no mutation of `current`). The `Readonly<TState>`
-    // constraint on the handler's first parameter catches direct reassignment
-    // at compile time. If the handler violates purity, the original `state`
-    // object is NOT affected because every handler returns a new object.
+    // Handlers that use Immer `produce()` are safe by construction — `produce`
+    // never mutates the base state. Handlers using manual spreads rely on the
+    // purity contract (§2). `Readonly<TState>` catches reassignment at compile
+    // time but does not prevent nested mutation.
     const handler = registry.getHandler(child.type as TAction["type"]);
     if (handler) {
       current = handler(current, child as TAction, context);
@@ -634,8 +672,8 @@ The project's `biome.json` enforces this restriction automatically for all files
             "noRestrictedImports": {
               "level": "error",
               "options": {
-                "patterns": [{
-                  "group": ["./**"],
+                  "patterns": [{
+                    "group": ["./*.ts", "./*.js", "./*.tsx", "./*.jsx", "./*.mjs", "./*.cjs"],
                   "message": "Handlers must not import from other handler files. Extract shared logic to a separate utility module outside the handlers/ directory."
                 }]
               }
@@ -648,7 +686,7 @@ The project's `biome.json` enforces this restriction automatically for all files
 }
 ```
 
-The pattern `"./**"` matches any relative import that begins with `./` — all same-directory imports. Since `handlers/` contains only handler files, this effectively blocks all handler-to-handler imports while allowing cross-directory imports (e.g. `"../../engine/error"`, `"../types"`, `"../actions"`).
+The patterns match any relative import targeting a source file in the same directory — `.ts`, `.js`, `.tsx`, `.jsx`, `.mjs`, `.cjs`. Since `handlers/` contains only handler files, this effectively blocks all handler-to-handler imports while allowing both cross-directory imports (e.g. `"../../engine/error"`, `"../types"`, `"../actions"`) and side-effect imports (e.g. `"./register-devtools"`) because side-effect imports typically omit the extension and would need a bare specifier, which is not matched by any `./*.ts` pattern.
 
 A pre-commit hook or CI step runs `pnpm exec biome check --staged` to catch violations before they reach the repository.
 
@@ -658,13 +696,14 @@ A pre-commit hook or CI step runs `pnpm exec biome check --staged` to catch viol
 
 These are tracked as architectural debt for later iterations, not blockers for the current design.
 
-| Concern | Future Direction |
-|---------|-----------------|
+| Concern | Status / Future Direction |
+|---------|--------------------------|
 | Action versioning | Add `version` field to action schema; migration layer for persisted undo stacks and network sync |
-| Patch-based history | Replace eager `inverse` with `Immer` patches or CRDT ops for efficient memory and OT/CRDT convergence |
+| Patch-based history | Replace eager `inverse` with Immer patches or CRDT ops for efficient memory and OT/CRDT convergence |
 | Plugin action augmentation | Replace closed union with `RuntimeActionMap` interface augmentation pattern |
 | Inverse type narrowing | `type InverseOf<T>` mapped type for deterministic action→inverse type relationships |
-| Structural sharing | Use immer-style `produce` or arena storage to avoid full-state spreads on large scenes |
+| Validation/execution divergence | Validation dry-run and actual execution are separate passes. If a handler has a bug, the two can diverge. Future direction: unified `prepare → PreparedAction → apply` pipeline (see ProseMirror, Slate transforms) |
+| **Structural sharing** | **Not a future optimization — a scalability prerequisite.** The architecture assumes immutable structural sharing. Current plain-object spreads are sufficient for small scenes, but production-scale scenes require persistent data structures or Immer-style structural sharing. Without it: undo stack explodes, batch snapshots are unaffordable, and validation dry-runs duplicate memory. |
 
 None of these affect the current registration architecture. The `HandlerEntry` / `ActionRegistry` / `HandlerMap` design accommodates all future directions without breaking changes.
 
@@ -676,8 +715,8 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 |---------|-----------|---------|
 | Co-location | `HandlerEntry` in one file | Handler + inverse + validate lifecycle bound |
 | Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
-| Readonly guard | `Readonly<TState>` on handler params | Compile-time mutation prevention |
-| Typed batch inverse | `InverseAction<TAction>` return type | No `as TAction` cast on batch container |
+| Structural sharing | Immer `produce()` inside handlers | undo stack unaffordable without it |
+| Immutability guard | `Readonly<TState>` + Immer auto-freeze | Compile-time + runtime mutation prevention |
 | Batch in union | `BatchAction<TAction>` | No `as unknown`, self-recursive |
 | Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
