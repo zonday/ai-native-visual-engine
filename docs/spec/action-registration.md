@@ -107,6 +107,15 @@ export type Validator<TState, TAction, TContext> = (
 
 `Readonly<TState>` is a compile-time hint, not a correctness guarantee — it prevents reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). Runtime enforcement comes from Immer's `autoFreeze` (§2.1), which deep-freezes the returned state in development. Handlers that use `produce()` are automatically safe; handlers that use manual spreads rely on the purity contract.
 
+The inverse return type is generalized to handle both single actions and batch containers without unsafe casts:
+
+```ts
+export type InverseAction<TAction extends { type: string }> =
+  TAction | BatchAction<TAction>;
+```
+
+`InverseComputer` returns `InverseAction<TAction>` — the transaction manager and batch inverse computation use this type to preserve the full union without `as TAction` casts.
+
 Each action type has exactly one module file that exports its `HandlerEntry`.
 
 ### 3.1 `undoable` and the inverse
@@ -146,6 +155,8 @@ export type DispatchResult<TState> =
 ```
 
 A handler that encounters a recoverable business error (e.g. duplicate ID, missing parent, nonexistent node) throws `HandlerError`. The engine wraps execution in a try/catch — a thrown `HandlerError` is caught and converted to `{ ok: false, ... }`. Any non-`HandlerError` throw is treated as an invariant violation and propagates uncaught.
+
+Handlers NEVER return error values. The `TState` return type is always a valid state. All business errors flow through `HandlerError`.
 
 This unified error model allows:
 - Batch to detect partial failures and roll back atomically
@@ -389,7 +400,11 @@ class ActionRegistry<TAction extends { type: string }, TState, TContext extends 
         let current = state;
         for (const child of action.actions) {
           const childHandler = self.getHandler(child.type as TAction["type"]);
-          if (!childHandler) return state;
+          if (!childHandler) {
+            throw new Error(
+              `Batch child action "${child.type}" has no registered handler`,
+            );
+          }
           current = childHandler(current, child as TAction, context);
         }
         return current;
@@ -540,7 +555,7 @@ Steps:
 
 The entire batch is rolled back to the state before the batch started. Partial application is never observable.
 
-Implementation: the transaction manager takes a snapshot of the state before the batch begins. On failure, it discards the intermediate state and restores the snapshot. The caller receives a single `DispatchResult` with `ok: false` and the error from child 3.
+Implementation: the transaction manager captures an immutable structural reference to the state before the batch begins — this is a shared pointer (O(1)), not a deep clone. With Immer structural sharing (§2.1), the reference remains valid even as intermediate states are produced. On failure, the manager discards the intermediate state and restores the snapshot. The caller receives a single `DispatchResult` with `ok: false` and the error from child 3.
 
 ### 9.2 Inverse computation (no handler re-execution)
 
@@ -562,8 +577,8 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
   steps: BatchStep<TAction, TState>[],
   registry: ActionRegistry<TAction, TState, TContext>,
   context: TContext,
-): TAction | undefined {
-  const inverses: TAction[] = [];
+): InverseAction<TAction> | undefined {
+  const inverses: InverseAction<TAction>[] = [];
 
   // Process actions in reverse order
   for (let i = steps.length - 1; i >= 0; i--) {
@@ -573,10 +588,10 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
       const result = inv(stateBefore, action as TAction, context);
       if (result) {
         // Flatten nested batch actions to prevent BatchAction<BatchAction<...>> nesting.
-        // Each child inverse is a TAction, which may itself be a BatchAction<TAction>.
-        // Unwrapping here keeps the undo stack flat.
+        // `result` is `InverseAction<TAction>` — after narrowing on `type === "batch-actions"`,
+        // TypeScript infers `result` as `BatchAction<TAction>` without a cast.
         if (result.type === "batch-actions") {
-          inverses.push(...(result as unknown as BatchAction<TAction>).actions);
+          inverses.push(...result.actions);
         } else {
           inverses.push(result);
         }
@@ -586,7 +601,7 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
 
   if (inverses.length === 0) return undefined;
   if (inverses.length === 1) return inverses[0];
-  return { type: "batch-actions", actions: inverses } as TAction;
+  return { type: "batch-actions", actions: inverses } satisfies BatchAction<TAction>;
 }
 ```
 
@@ -673,9 +688,9 @@ The project's `biome.json` enforces this restriction automatically for all files
               "level": "error",
               "options": {
                   "patterns": [{
-                    "group": ["./*.ts", "./*.js", "./*.tsx", "./*.jsx", "./*.mjs", "./*.cjs"],
-                  "message": "Handlers must not import from other handler files. Extract shared logic to a separate utility module outside the handlers/ directory."
-                }]
+                    "group": ["./**"],
+                    "message": "Handlers must not import from other handler files. Extract shared logic to a separate utility module outside the handlers/ directory."
+                  }]
               }
             }
           }
@@ -686,7 +701,7 @@ The project's `biome.json` enforces this restriction automatically for all files
 }
 ```
 
-The patterns match any relative import targeting a source file in the same directory — `.ts`, `.js`, `.tsx`, `.jsx`, `.mjs`, `.cjs`. Since `handlers/` contains only handler files, this effectively blocks all handler-to-handler imports while allowing both cross-directory imports (e.g. `"../../engine/error"`, `"../types"`, `"../actions"`) and side-effect imports (e.g. `"./register-devtools"`) because side-effect imports typically omit the extension and would need a bare specifier, which is not matched by any `./*.ts` pattern.
+The pattern `"./**"` matches any relative import that begins with `./` — all same-directory imports. Since `handlers/` contains only handler files, this effectively blocks all handler-to-handler imports while allowing cross-directory imports (e.g. `"../../engine/error"`, `"../types"`, `"../actions"`).
 
 A pre-commit hook or CI step runs `pnpm exec biome check --staged` to catch violations before they reach the repository.
 
@@ -717,12 +732,13 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 | Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
 | Structural sharing | Immer `produce()` inside handlers | undo stack unaffordable without it |
 | Immutability guard | `Readonly<TState>` + Immer auto-freeze | Compile-time + runtime mutation prevention |
+| Typed inverse | `InverseAction<TAction>` return type | Zero `as TAction` casts in inverse computation |
 | Batch in union | `BatchAction<TAction>` | No `as unknown`, self-recursive |
 | Exhaustiveness | `HandlerMap<NonBatch, ...>` on `handlerMap` | Missing registration = compile error |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
 | No handler replay | Per-child `stateBefore` recorded during execution | Never re-executes handlers for inverse |
 | Progressive validation | `validate(state, action, ctx)` | Semantic checks (existence, cycles, constraints) |
-| Unified error model | Handler never throws business errors | Predictable error handling at every layer |
-| Handler purity | `Readonly<TState>` enforced by contract | Safe double-execution for validation + inverse |
+| Unified error model | HandlerError normalized into DispatchResult | Single error path for batch, history, devtools |
+| Handler purity | Immer produce + contract | Safe double-execution for validation + inverse |
 | Acyclic graph | biome `noRestrictedImports` with `"./**"` | Blocks handler→handler imports at lint time |
 | Closed-world | Explicit design decision | Sound exhaustiveness, predictable engine ABI |
