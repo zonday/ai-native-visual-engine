@@ -3,6 +3,8 @@ import { setDocumentThemeHandler } from "../src/document/handlers/set-document-t
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
 import {
   normalizeRoute,
+} from "../src/document/normalize-route.js";
+import {
   updatePageRouteHandler,
 } from "../src/document/handlers/update-page-route.js";
 import { HandlerError } from "../src/engine/error.js";

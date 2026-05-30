@@ -9,6 +9,8 @@ import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
 import {
   normalizeRoute,
+} from "../src/document/normalize-route.js";
+import {
   updatePageRouteHandler,
 } from "../src/document/handlers/update-page-route.js";
 import { HandlerError } from "../src/engine/error.js";
