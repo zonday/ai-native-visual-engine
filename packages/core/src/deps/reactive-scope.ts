@@ -234,7 +234,8 @@ export function createScope(): ReactiveScope {
         const effectNode = queued[notifyIndex] as ReactiveNode;
         queued[notifyIndex++] = undefined;
         if (effectNode.flags) {
-          effectNode.flags |= RF.Watching;
+          effectNode.flags =
+            (effectNode.flags & ~RF.Pending) | RF.Watching;
         }
       }
       notifyIndex = 0;
