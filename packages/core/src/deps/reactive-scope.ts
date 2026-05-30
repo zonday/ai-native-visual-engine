@@ -357,6 +357,7 @@ export function createScope(): ReactiveScope {
       fn,
       cleanup: undefined,
       children: [],
+      parent: undefined,
       subs: undefined,
       subsTail: undefined,
       deps: undefined,
@@ -408,8 +409,8 @@ export function createScope(): ReactiveScope {
       }
       e.cleanup = undefined;
     }
-    while (e.children.length > 0) {
-      disposeEffectNode(e.children[0]);
+    for (const child of e.children.splice(0)) {
+      disposeEffectNode(child);
     }
     let cur: Link | undefined = e.depsTail;
     while (cur !== undefined) {

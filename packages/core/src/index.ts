@@ -41,7 +41,7 @@ export { createTransactionMiddleware } from "./engine/middleware/transaction.js"
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
 // ── Immer Patch Routing ──
-export { produceScene, routeImmerPatches } from "./immer-patch-router.js";
+export { routeImmerPatches } from "./immer-patch-router.js";
 // ── Interaction ──
 export {
   createInteractionEngine,

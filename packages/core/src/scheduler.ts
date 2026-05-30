@@ -1,9 +1,10 @@
-import type { NodeId } from "../types.js";
+import type { NodeId } from "./types.js";
 
 export type SchedulePhase = "idle" | "compute" | "render";
 
 export interface ScheduleListener {
   onCompute?: (dirtyNodes: NodeId[], all?: boolean) => void;
+  onAfterCompute?: () => void;
   onRender?: () => void;
 }
 
@@ -32,7 +33,7 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
   let epoch = 0;
 
   const flushRequests: {
-    resolve: () => void;
+    resolve: (value: unknown) => void;
     reject: (e: unknown) => void;
     epoch: number;
   }[] = [];
@@ -51,10 +52,21 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       const pending = flushRequests.splice(0);
       for (const req of pending) {
         if (req.epoch <= upToEpoch) {
-          req.resolve();
+          req.resolve(undefined);
         } else {
           flushRequests.push(req);
         }
+      }
+    }
+  }
+
+  function notifyAfterCompute(): void {
+    const snapshot = [...listeners];
+    for (const listener of snapshot) {
+      try {
+        listener.onAfterCompute?.();
+      } catch {
+        // Isolate listener failures
       }
     }
   }
@@ -115,6 +127,8 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       } else {
         notifyCompute(Array.from(batch), false);
       }
+
+      notifyAfterCompute();
 
       phase = "render";
       notifyRender();

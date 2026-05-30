@@ -425,6 +425,30 @@ describe("createScope", () => {
       expect(childFn).not.toHaveBeenCalled();
       expect(grandchildFn).not.toHaveBeenCalled();
     });
+
+    it("disposes all siblings — no sibling skipped due to mutation during iteration", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn1 = vi.fn();
+      const fn2 = vi.fn();
+      const fn3 = vi.fn();
+
+      const parentStop = effect(() => {
+        s();
+        effect(() => { s(); fn1(); });
+        effect(() => { s(); fn2(); });
+        effect(() => { s(); fn3(); });
+      });
+
+      fn1.mockClear();
+      fn2.mockClear();
+      fn3.mockClear();
+      parentStop();
+      s(1);
+      expect(fn1).not.toHaveBeenCalled();
+      expect(fn2).not.toHaveBeenCalled();
+      expect(fn3).not.toHaveBeenCalled();
+    });
   });
 
   describe("unwatched callback", () => {
@@ -658,7 +682,7 @@ describe("createScope", () => {
       const { signal, effect } = createScope();
       const a = signal(0);
       const b = signal(0);
-      const order: number[] = [];
+      const order: string[] = [];
 
       effect(() => {
         a();
