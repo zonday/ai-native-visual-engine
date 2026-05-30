@@ -3,7 +3,7 @@ import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
-export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
+const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   scene,
   action,
   _ctx,
@@ -22,7 +22,7 @@ export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   };
 };
 
-export const updateStyleInverse: InverseComputer<UpdateStyleAction> = (
+const updateStyleInverse: InverseComputer<UpdateStyleAction> = (
   sceneBefore,
   action,
   _context,
@@ -37,8 +37,8 @@ export const updateStyleInverse: InverseComputer<UpdateStyleAction> = (
   };
 };
 
-export const updateStyleMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Style",
-} as const;
+export const updateStyleEntry = {
+  handler: updateStyleHandler,
+  inverse: updateStyleInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Style" },
+};

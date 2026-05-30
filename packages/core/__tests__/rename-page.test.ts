@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renamePageHandler } from "../src/document/handlers/rename-page.js";
+import { renamePageEntry } from "../src/document/handlers/rename-page.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
@@ -10,14 +10,14 @@ const doc: VisualDocument = {
   scenes: {},
 };
 
-describe("renamePageHandler", () => {
+describe("renamePageEntry.handler", () => {
   it("renames the page", () => {
     const action = {
       type: "rename-page" as const,
       pageId: "p1",
       name: "Renamed",
     };
-    const result = renamePageHandler(doc, action, { now: Date.now });
+    const result = renamePageEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.name).toBe("Renamed");
   });
 
@@ -34,7 +34,7 @@ describe("renamePageHandler", () => {
       pageId: "p1",
       name: "Renamed",
     };
-    const result = renamePageHandler(multiDoc, action, { now: Date.now });
+    const result = renamePageEntry.handler(multiDoc, action, { now: Date.now });
     expect(result.pages[1]?.name).toBe("Page 2");
   });
 
@@ -44,11 +44,11 @@ describe("renamePageHandler", () => {
       pageId: "missing",
       name: "Nope",
     };
-    expect(() => renamePageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      renamePageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      renamePageHandler(doc, action, { now: Date.now });
+      renamePageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.page-not-found");
     }

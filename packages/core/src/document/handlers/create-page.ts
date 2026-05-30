@@ -4,7 +4,7 @@ import type { CreatePageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
 
-export const createPageHandler: DocumentHandler<CreatePageAction> = (
+const createPageHandler: DocumentHandler<CreatePageAction> = (
   document,
   action,
   _ctx,
@@ -53,7 +53,7 @@ export const createPageHandler: DocumentHandler<CreatePageAction> = (
   return { ...document, pages, scenes };
 };
 
-export const createPageInverse: InverseComputer<CreatePageAction> = (
+const createPageInverse: InverseComputer<CreatePageAction> = (
   _documentBefore,
   action,
   _context,
@@ -64,8 +64,8 @@ export const createPageInverse: InverseComputer<CreatePageAction> = (
   };
 };
 
-export const createPageMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Create Page",
-} as const;
+export const createPageEntry = {
+  handler: createPageHandler,
+  inverse: createPageInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Page" },
+};

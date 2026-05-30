@@ -8,61 +8,20 @@ import type {
   RuntimeHandlerRegistry,
 } from "./handler-registry.js";
 import {
-  batchInverse,
-  batchMeta,
+  batchEntry,
   createBatchHandler,
   createBatchInverse,
 } from "./handlers/batch.js";
-import {
-  createNodeHandler,
-  createNodeInverse,
-  createNodeMeta,
-} from "./handlers/create-node.js";
-import {
-  moveNodeHandler,
-  moveNodeInverse,
-  moveNodeMeta,
-} from "./handlers/move-node.js";
-import {
-  removeNodeHandler,
-  removeNodeInverse,
-  removeNodeMeta,
-} from "./handlers/remove-node.js";
-import {
-  rotateNodeHandler,
-  rotateNodeInverse,
-  rotateNodeMeta,
-} from "./handlers/rotate-node.js";
-import {
-  updateBindingsHandler,
-  updateBindingsInverse,
-  updateBindingsMeta,
-} from "./handlers/update-bindings.js";
-import {
-  updateLayoutHandler,
-  updateLayoutInverse,
-  updateLayoutMeta,
-} from "./handlers/update-layout.js";
-import {
-  updatePropsHandler,
-  updatePropsInverse,
-  updatePropsMeta,
-} from "./handlers/update-props.js";
-import {
-  updateRuntimeHandler,
-  updateRuntimeInverse,
-  updateRuntimeMeta,
-} from "./handlers/update-runtime.js";
-import {
-  updateSelectionHandler,
-  updateSelectionInverse,
-  updateSelectionMeta,
-} from "./handlers/update-selection.js";
-import {
-  updateStyleHandler,
-  updateStyleInverse,
-  updateStyleMeta,
-} from "./handlers/update-style.js";
+import { createNodeEntry } from "./handlers/create-node.js";
+import { moveNodeEntry } from "./handlers/move-node.js";
+import { removeNodeEntry } from "./handlers/remove-node.js";
+import { rotateNodeEntry } from "./handlers/rotate-node.js";
+import { updateBindingsEntry } from "./handlers/update-bindings.js";
+import { updateLayoutEntry } from "./handlers/update-layout.js";
+import { updatePropsEntry } from "./handlers/update-props.js";
+import { updateRuntimeEntry } from "./handlers/update-runtime.js";
+import { updateSelectionEntry } from "./handlers/update-selection.js";
+import { updateStyleEntry } from "./handlers/update-style.js";
 
 export function createDefaultRuntimeRegistries(
   _batchDispatch: (action: RuntimeAction) => DispatchResult,
@@ -71,94 +30,24 @@ export function createDefaultRuntimeRegistries(
   inverseRegistry: InverseRegistry;
 } {
   const entries: [string, RuntimeHandlerEntry][] = [
-    [
-      "create-node",
-      {
-        handler: createNodeHandler as RuntimeHandlerEntry["handler"],
-        inverse: createNodeInverse as InverseComputer,
-        meta: createNodeMeta,
-      },
-    ],
-    [
-      "remove-node",
-      {
-        handler: removeNodeHandler as RuntimeHandlerEntry["handler"],
-        inverse: removeNodeInverse as InverseComputer,
-        meta: removeNodeMeta,
-      },
-    ],
-    [
-      "move-node",
-      {
-        handler: moveNodeHandler as RuntimeHandlerEntry["handler"],
-        inverse: moveNodeInverse as InverseComputer,
-        meta: moveNodeMeta,
-      },
-    ],
-    [
-      "update-layout",
-      {
-        handler: updateLayoutHandler as RuntimeHandlerEntry["handler"],
-        inverse: updateLayoutInverse as InverseComputer,
-        meta: updateLayoutMeta,
-      },
-    ],
-    [
-      "rotate-node",
-      {
-        handler: rotateNodeHandler as RuntimeHandlerEntry["handler"],
-        inverse: rotateNodeInverse as InverseComputer,
-        meta: rotateNodeMeta,
-      },
-    ],
-    [
-      "update-props",
-      {
-        handler: updatePropsHandler as RuntimeHandlerEntry["handler"],
-        inverse: updatePropsInverse as InverseComputer,
-        meta: updatePropsMeta,
-      },
-    ],
-    [
-      "update-style",
-      {
-        handler: updateStyleHandler as RuntimeHandlerEntry["handler"],
-        inverse: updateStyleInverse as InverseComputer,
-        meta: updateStyleMeta,
-      },
-    ],
-    [
-      "update-bindings",
-      {
-        handler: updateBindingsHandler as RuntimeHandlerEntry["handler"],
-        inverse: updateBindingsInverse as InverseComputer,
-        meta: updateBindingsMeta,
-      },
-    ],
-    [
-      "update-runtime",
-      {
-        handler: updateRuntimeHandler as RuntimeHandlerEntry["handler"],
-        inverse: updateRuntimeInverse as InverseComputer,
-        meta: updateRuntimeMeta,
-      },
-    ],
-    [
-      "update-selection",
-      {
-        handler: updateSelectionHandler as RuntimeHandlerEntry["handler"],
-        inverse: updateSelectionInverse as InverseComputer,
-        meta: updateSelectionMeta,
-      },
-    ],
+    ["create-node", createNodeEntry as RuntimeHandlerEntry],
+    ["remove-node", removeNodeEntry as RuntimeHandlerEntry],
+    ["move-node", moveNodeEntry as RuntimeHandlerEntry],
+    ["update-layout", updateLayoutEntry as RuntimeHandlerEntry],
+    ["rotate-node", rotateNodeEntry as RuntimeHandlerEntry],
+    ["update-props", updatePropsEntry as RuntimeHandlerEntry],
+    ["update-style", updateStyleEntry as RuntimeHandlerEntry],
+    ["update-bindings", updateBindingsEntry as RuntimeHandlerEntry],
+    ["update-runtime", updateRuntimeEntry as RuntimeHandlerEntry],
+    ["update-selection", updateSelectionEntry as RuntimeHandlerEntry],
     [
       "batch-actions",
       {
         handler: createBatchHandler(
           _batchDispatch,
         ) as RuntimeHandlerEntry["handler"],
-        inverse: batchInverse as InverseComputer,
-        meta: batchMeta,
+        inverse: batchEntry.inverse as InverseComputer,
+        meta: { ...batchEntry.meta },
       },
     ],
   ];
@@ -173,10 +62,10 @@ export function createDefaultRuntimeRegistries(
 
   // Replace batch inverse with a proper one that has registry access
   const batchInv = createBatchInverse(rtHandlerRegistry, rtInvRegistry);
-  const batchEntry = rtHandlerRegistry.get("batch-actions");
-  if (batchEntry) {
+  const storedBatchEntry = rtHandlerRegistry.get("batch-actions");
+  if (storedBatchEntry) {
     rtHandlerRegistry.set("batch-actions", {
-      ...batchEntry,
+      ...storedBatchEntry,
       inverse: batchInv as InverseComputer,
     });
   }

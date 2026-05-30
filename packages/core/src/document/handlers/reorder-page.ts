@@ -2,7 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { ReorderPageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
-export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
+const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   document,
   action,
   _ctx,
@@ -31,7 +31,7 @@ export const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   return { ...document, pages };
 };
 
-export const reorderPageInverse: InverseComputer<ReorderPageAction> = (
+const reorderPageInverse: InverseComputer<ReorderPageAction> = (
   documentBefore,
   action,
   _context,
@@ -45,8 +45,8 @@ export const reorderPageInverse: InverseComputer<ReorderPageAction> = (
   };
 };
 
-export const reorderPageMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Reorder Page",
-} as const;
+export const reorderPageEntry = {
+  handler: reorderPageHandler,
+  inverse: reorderPageInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Reorder Page" },
+};

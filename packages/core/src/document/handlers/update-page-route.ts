@@ -3,7 +3,7 @@ import type { UpdatePageRouteAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
 
-export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
+const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   document,
   action,
   _ctx,
@@ -43,7 +43,7 @@ export const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   return { ...document, pages };
 };
 
-export const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
+const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
   documentBefore,
   action,
   _context,
@@ -57,8 +57,12 @@ export const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
   };
 };
 
-export const updatePageRouteMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Page Route",
-} as const;
+export const updatePageRouteEntry = {
+  handler: updatePageRouteHandler,
+  inverse: updatePageRouteInverse,
+  meta: {
+    undoable: true,
+    mergeable: false,
+    devtoolsLabel: "Update Page Route",
+  },
+};

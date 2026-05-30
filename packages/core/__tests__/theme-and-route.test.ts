@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { setDocumentThemeHandler } from "../src/document/handlers/set-document-theme.js";
-import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
-import { updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
+import { setDocumentThemeEntry } from "../src/document/handlers/set-document-theme.js";
+import { setPageThemeEntry } from "../src/document/handlers/set-page-theme.js";
+import { updatePageRouteEntry } from "../src/document/handlers/update-page-route.js";
 import { normalizeRoute } from "../src/document/normalize-route.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
@@ -21,13 +21,13 @@ const themedDoc: VisualDocument = {
   ],
 };
 
-describe("setDocumentThemeHandler", () => {
+describe("setDocumentThemeEntry.handler", () => {
   it("sets document theme", () => {
     const action = {
       type: "set-document-theme" as const,
       themeId: "theme-dark",
     };
-    const result = setDocumentThemeHandler(themedDoc, action, {
+    const result = setDocumentThemeEntry.handler(themedDoc, action, {
       now: Date.now,
     });
     expect(result.activeThemeId).toBe("theme-dark");
@@ -39,7 +39,7 @@ describe("setDocumentThemeHandler", () => {
       activeThemeId: "theme-dark",
     };
     const action = { type: "set-document-theme" as const, themeId: undefined };
-    const result = setDocumentThemeHandler(alreadyThemed, action, {
+    const result = setDocumentThemeEntry.handler(alreadyThemed, action, {
       now: Date.now,
     });
     expect(result.activeThemeId).toBeUndefined();
@@ -51,10 +51,10 @@ describe("setDocumentThemeHandler", () => {
       themeId: "nonexistent",
     };
     expect(() =>
-      setDocumentThemeHandler(themedDoc, action, { now: Date.now }),
+      setDocumentThemeEntry.handler(themedDoc, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      setDocumentThemeHandler(themedDoc, action, { now: Date.now });
+      setDocumentThemeEntry.handler(themedDoc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.theme-not-found");
     }
@@ -65,19 +65,23 @@ describe("setDocumentThemeHandler", () => {
       type: "set-document-theme" as const,
       themeId: "any-theme",
     };
-    const result = setDocumentThemeHandler(doc, action, { now: Date.now });
+    const result = setDocumentThemeEntry.handler(doc, action, {
+      now: Date.now,
+    });
     expect(result.activeThemeId).toBe("any-theme");
   });
 });
 
-describe("setPageThemeHandler", () => {
+describe("setPageThemeEntry.handler", () => {
   it("sets page theme override", () => {
     const action = {
       type: "set-page-theme" as const,
       pageId: "p1",
       themeId: "theme-dark",
     };
-    const result = setPageThemeHandler(themedDoc, action, { now: Date.now });
+    const result = setPageThemeEntry.handler(themedDoc, action, {
+      now: Date.now,
+    });
     expect(result.pages[0]?.themeId).toBe("theme-dark");
   });
 
@@ -91,7 +95,7 @@ describe("setPageThemeHandler", () => {
       pageId: "p1",
       themeId: undefined,
     };
-    const result = setPageThemeHandler(alreadyThemed, action, {
+    const result = setPageThemeEntry.handler(alreadyThemed, action, {
       now: Date.now,
     });
     expect(result.pages[0]?.themeId).toBeUndefined();
@@ -103,11 +107,11 @@ describe("setPageThemeHandler", () => {
       pageId: "missing",
       themeId: "dark",
     };
-    expect(() => setPageThemeHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      setPageThemeEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      setPageThemeHandler(doc, action, { now: Date.now });
+      setPageThemeEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.page-not-found");
     }
@@ -120,10 +124,10 @@ describe("setPageThemeHandler", () => {
       themeId: "nonexistent",
     };
     expect(() =>
-      setPageThemeHandler(themedDoc, action, { now: Date.now }),
+      setPageThemeEntry.handler(themedDoc, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      setPageThemeHandler(themedDoc, action, { now: Date.now });
+      setPageThemeEntry.handler(themedDoc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.theme-not-found");
     }
@@ -135,7 +139,7 @@ describe("setPageThemeHandler", () => {
       pageId: "p1",
       themeId: "any-theme",
     };
-    const result = setPageThemeHandler(doc, action, { now: Date.now });
+    const result = setPageThemeEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.themeId).toBe("any-theme");
   });
 });
@@ -154,14 +158,14 @@ describe("normalizeRoute", () => {
   });
 });
 
-describe("updatePageRouteHandler", () => {
+describe("updatePageRouteEntry.handler", () => {
   it("updates page route", () => {
     const action = {
       type: "update-page-route" as const,
       pageId: "p1",
       route: "/dashboard",
     };
-    const result = updatePageRouteHandler(doc, action, { now: Date.now });
+    const result = updatePageRouteEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.route).toBe("/dashboard");
   });
 
@@ -171,7 +175,7 @@ describe("updatePageRouteHandler", () => {
       pageId: "p1",
       route: "DASHBOARD",
     };
-    const result = updatePageRouteHandler(doc, action, { now: Date.now });
+    const result = updatePageRouteEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.route).toBe("/dashboard");
   });
 
@@ -182,10 +186,10 @@ describe("updatePageRouteHandler", () => {
       route: "/settings",
     };
     expect(() =>
-      updatePageRouteHandler(doc, action, { now: Date.now }),
+      updatePageRouteEntry.handler(doc, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updatePageRouteHandler(doc, action, { now: Date.now });
+      updatePageRouteEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.page-not-found");
     }
@@ -205,10 +209,10 @@ describe("updatePageRouteHandler", () => {
       route: "/dashboard",
     };
     expect(() =>
-      updatePageRouteHandler(multiDoc, action, { now: Date.now }),
+      updatePageRouteEntry.handler(multiDoc, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updatePageRouteHandler(multiDoc, action, { now: Date.now });
+      updatePageRouteEntry.handler(multiDoc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.duplicate-route");
     }
@@ -221,10 +225,10 @@ describe("updatePageRouteHandler", () => {
       route: "   ",
     };
     expect(() =>
-      updatePageRouteHandler(doc, action, { now: Date.now }),
+      updatePageRouteEntry.handler(doc, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updatePageRouteHandler(doc, action, { now: Date.now });
+      updatePageRouteEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.invalid-route");
     }

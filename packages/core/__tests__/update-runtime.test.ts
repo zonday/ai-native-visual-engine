@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  updateRuntimeHandler,
-  updateRuntimeInverse,
-} from "../src/runtime/handlers/update-runtime.js";
+import { updateRuntimeEntry } from "../src/runtime/handlers/update-runtime.js";
 import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -17,14 +14,14 @@ const sceneWithNode: SceneGraph = makeScene({
   },
 });
 
-describe("updateRuntimeHandler", () => {
+describe("updateRuntimeEntry.handler", () => {
   it("shallow-merges runtime state onto existing node runtime", () => {
     const action = {
       type: "update-runtime" as const,
       nodeId: "a",
       runtime: { isLoading: false },
     };
-    const result = updateRuntimeHandler(sceneWithNode, action, {
+    const result = updateRuntimeEntry.handler(sceneWithNode, action, {
       now: Date.now,
     });
     expect(result.nodes.a?.runtime).toEqual({ isLoading: false, count: 5 });
@@ -46,7 +43,7 @@ describe("updateRuntimeHandler", () => {
       nodeId: "a",
       runtime: { a: 10, c: 30 },
     };
-    const result = updateRuntimeHandler(scene, action, { now: Date.now });
+    const result = updateRuntimeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.a?.runtime).toEqual({ a: 10, b: 2, c: 30 });
   });
 
@@ -60,7 +57,7 @@ describe("updateRuntimeHandler", () => {
       nodeId: "a",
       runtime: { isLoading: true },
     };
-    const result = updateRuntimeHandler(scene, action, { now: Date.now });
+    const result = updateRuntimeEntry.handler(scene, action, { now: Date.now });
     expect(result.nodes.a?.runtime).toEqual({ isLoading: true });
   });
 
@@ -71,10 +68,10 @@ describe("updateRuntimeHandler", () => {
       runtime: { isLoading: true },
     };
     expect(() =>
-      updateRuntimeHandler(sceneWithNode, action, { now: Date.now }),
+      updateRuntimeEntry.handler(sceneWithNode, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updateRuntimeHandler(sceneWithNode, action, { now: Date.now });
+      updateRuntimeEntry.handler(sceneWithNode, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
       expect((e as HandlerError).context.nodeId).toBe("missing");
@@ -82,14 +79,14 @@ describe("updateRuntimeHandler", () => {
   });
 });
 
-describe("updateRuntimeInverse", () => {
+describe("updateRuntimeEntry.inverse", () => {
   it("produces an update-runtime inverse that captures the full prior runtime state", () => {
     const action = {
       type: "update-runtime" as const,
       nodeId: "a",
       runtime: { isLoading: false },
     };
-    const inverse = updateRuntimeInverse(sceneWithNode, action, {
+    const inverse = updateRuntimeEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toEqual({
@@ -105,7 +102,7 @@ describe("updateRuntimeInverse", () => {
       nodeId: "missing",
       runtime: { isLoading: true },
     };
-    const inverse = updateRuntimeInverse(sceneWithNode, action, {
+    const inverse = updateRuntimeEntry.inverse(sceneWithNode, action, {
       now: Date.now,
     });
     expect(inverse).toBeUndefined();

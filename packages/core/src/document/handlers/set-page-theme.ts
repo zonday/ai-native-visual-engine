@@ -2,7 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { SetPageThemeAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
-export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
+const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   document,
   action,
   _ctx,
@@ -33,7 +33,7 @@ export const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   return { ...document, pages };
 };
 
-export const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (
+const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (
   documentBefore,
   action,
   _context,
@@ -47,8 +47,8 @@ export const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (
   };
 };
 
-export const setPageThemeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Set Page Theme",
-} as const;
+export const setPageThemeEntry = {
+  handler: setPageThemeHandler,
+  inverse: setPageThemeInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Set Page Theme" },
+};

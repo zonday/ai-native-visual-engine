@@ -51,7 +51,7 @@ function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
   }
 }
 
-export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
+const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   scene,
   action,
   _ctx,
@@ -76,7 +76,7 @@ export const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   };
 };
 
-export const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
+const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
   sceneBefore,
   action,
   _context,
@@ -91,8 +91,8 @@ export const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
   };
 };
 
-export const updateLayoutMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Layout",
-} as const;
+export const updateLayoutEntry = {
+  handler: updateLayoutHandler,
+  inverse: updateLayoutInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Layout" },
+};

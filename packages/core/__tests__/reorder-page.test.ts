@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reorderPageHandler } from "../src/document/handlers/reorder-page.js";
+import { reorderPageEntry } from "../src/document/handlers/reorder-page.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
@@ -14,10 +14,10 @@ const doc: VisualDocument = {
   scenes: {},
 };
 
-describe("reorderPageHandler", () => {
+describe("reorderPageEntry.handler", () => {
   it("moves page to new index", () => {
     const action = { type: "reorder-page" as const, pageId: "p1", index: 2 };
-    const result = reorderPageHandler(doc, action, { now: Date.now });
+    const result = reorderPageEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.id).toBe("p2");
     expect(result.pages[1]?.id).toBe("p3");
     expect(result.pages[2]?.id).toBe("p1");
@@ -25,7 +25,7 @@ describe("reorderPageHandler", () => {
 
   it("moves page to index 0", () => {
     const action = { type: "reorder-page" as const, pageId: "p3", index: 0 };
-    const result = reorderPageHandler(doc, action, { now: Date.now });
+    const result = reorderPageEntry.handler(doc, action, { now: Date.now });
     expect(result.pages[0]?.id).toBe("p3");
     expect(result.pages[1]?.id).toBe("p1");
     expect(result.pages[2]?.id).toBe("p2");
@@ -37,11 +37,11 @@ describe("reorderPageHandler", () => {
       pageId: "missing",
       index: 0,
     };
-    expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      reorderPageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      reorderPageHandler(doc, action, { now: Date.now });
+      reorderPageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.page-not-found");
     }
@@ -53,11 +53,11 @@ describe("reorderPageHandler", () => {
       pageId: "p1",
       index: 3,
     };
-    expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      reorderPageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      reorderPageHandler(doc, action, { now: Date.now });
+      reorderPageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.index-out-of-bounds");
     }
@@ -69,11 +69,11 @@ describe("reorderPageHandler", () => {
       pageId: "p1",
       index: -1,
     };
-    expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      HandlerError,
-    );
+    expect(() =>
+      reorderPageEntry.handler(doc, action, { now: Date.now }),
+    ).toThrow(HandlerError);
     try {
-      reorderPageHandler(doc, action, { now: Date.now });
+      reorderPageEntry.handler(doc, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("document.index-out-of-bounds");
     }

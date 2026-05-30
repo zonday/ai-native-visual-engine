@@ -2,7 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { UpdateSelectionAction } from "../actions.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 
-export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
+const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   scene,
   action,
   _ctx,
@@ -33,7 +33,7 @@ export const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   };
 };
 
-export const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
+const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
   sceneBefore,
   _action,
   _context,
@@ -44,8 +44,8 @@ export const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
   };
 };
 
-export const updateSelectionMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Selection",
-} as const;
+export const updateSelectionEntry = {
+  handler: updateSelectionHandler,
+  inverse: updateSelectionInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Selection" },
+};

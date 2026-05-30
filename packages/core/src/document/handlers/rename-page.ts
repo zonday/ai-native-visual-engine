@@ -2,7 +2,7 @@ import { HandlerError } from "../../engine/error.js";
 import type { RenamePageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
-export const renamePageHandler: DocumentHandler<RenamePageAction> = (
+const renamePageHandler: DocumentHandler<RenamePageAction> = (
   document,
   action,
   _ctx,
@@ -22,7 +22,7 @@ export const renamePageHandler: DocumentHandler<RenamePageAction> = (
   return { ...document, pages };
 };
 
-export const renamePageInverse: InverseComputer<RenamePageAction> = (
+const renamePageInverse: InverseComputer<RenamePageAction> = (
   documentBefore,
   action,
   _context,
@@ -36,8 +36,8 @@ export const renamePageInverse: InverseComputer<RenamePageAction> = (
   };
 };
 
-export const renamePageMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Rename Page",
-} as const;
+export const renamePageEntry = {
+  handler: renamePageHandler,
+  inverse: renamePageInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Rename Page" },
+};

@@ -6,46 +6,14 @@ import type {
   DocumentHandlerEntry,
   DocumentRuntimeContext,
 } from "./handler-registry.js";
-import { createBatchHandler } from "./handlers/batch.js";
-import {
-  createPageHandler,
-  createPageInverse,
-} from "./handlers/create-page.js";
-import {
-  removePageHandler,
-  removePageInverse,
-} from "./handlers/remove-page.js";
-import {
-  renamePageHandler,
-  renamePageInverse,
-} from "./handlers/rename-page.js";
-import {
-  reorderPageHandler,
-  reorderPageInverse,
-} from "./handlers/reorder-page.js";
-import {
-  setDocumentThemeHandler,
-  setDocumentThemeInverse,
-} from "./handlers/set-document-theme.js";
-import {
-  setPageThemeHandler,
-  setPageThemeInverse,
-} from "./handlers/set-page-theme.js";
-import {
-  updatePageRouteHandler,
-  updatePageRouteInverse,
-} from "./handlers/update-page-route.js";
-
-function entry(
-  handler: DocumentHandlerEntry["handler"],
-  inverse: DocumentHandlerEntry["inverse"],
-) {
-  return {
-    handler,
-    inverse,
-    meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-  };
-}
+import { batchEntry, createBatchHandler } from "./handlers/batch.js";
+import { createPageEntry } from "./handlers/create-page.js";
+import { removePageEntry } from "./handlers/remove-page.js";
+import { renamePageEntry } from "./handlers/rename-page.js";
+import { reorderPageEntry } from "./handlers/reorder-page.js";
+import { setDocumentThemeEntry } from "./handlers/set-document-theme.js";
+import { setPageThemeEntry } from "./handlers/set-page-theme.js";
+import { updatePageRouteEntry } from "./handlers/update-page-route.js";
 
 export function createDocumentRegistry(
   batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
@@ -56,62 +24,29 @@ export function createDocumentRegistry(
     DocumentRuntimeContext
   >();
 
-  registry.register(
-    "create-page",
-    entry(
-      createPageHandler as DocumentHandlerEntry["handler"],
-      createPageInverse as DocumentHandlerEntry["inverse"],
-    ),
-  );
-  registry.register(
-    "rename-page",
-    entry(
-      renamePageHandler as DocumentHandlerEntry["handler"],
-      renamePageInverse as DocumentHandlerEntry["inverse"],
-    ),
-  );
-  registry.register(
-    "remove-page",
-    entry(
-      removePageHandler as DocumentHandlerEntry["handler"],
-      removePageInverse as DocumentHandlerEntry["inverse"],
-    ),
-  );
-  registry.register(
-    "reorder-page",
-    entry(
-      reorderPageHandler as DocumentHandlerEntry["handler"],
-      reorderPageInverse as DocumentHandlerEntry["inverse"],
-    ),
-  );
+  registry.register("create-page", createPageEntry as DocumentHandlerEntry);
+  registry.register("rename-page", renamePageEntry as DocumentHandlerEntry);
+  registry.register("remove-page", removePageEntry as DocumentHandlerEntry);
+  registry.register("reorder-page", reorderPageEntry as DocumentHandlerEntry);
   registry.register(
     "update-page-route",
-    entry(
-      updatePageRouteHandler as DocumentHandlerEntry["handler"],
-      updatePageRouteInverse as DocumentHandlerEntry["inverse"],
-    ),
+    updatePageRouteEntry as DocumentHandlerEntry,
   );
   registry.register(
     "set-document-theme",
-    entry(
-      setDocumentThemeHandler as DocumentHandlerEntry["handler"],
-      setDocumentThemeInverse as DocumentHandlerEntry["inverse"],
-    ),
+    setDocumentThemeEntry as DocumentHandlerEntry,
   );
   registry.register(
     "set-page-theme",
-    entry(
-      setPageThemeHandler as DocumentHandlerEntry["handler"],
-      setPageThemeInverse as DocumentHandlerEntry["inverse"],
-    ),
+    setPageThemeEntry as DocumentHandlerEntry,
   );
-  registry.register(
-    "batch-document-actions",
-    entry(
-      createBatchHandler(batchDispatch) as DocumentHandlerEntry["handler"],
-      (() => undefined) as DocumentHandlerEntry["inverse"],
-    ),
-  );
+  registry.register("batch-document-actions", {
+    handler: createBatchHandler(
+      batchDispatch,
+    ) as DocumentHandlerEntry["handler"],
+    inverse: batchEntry.inverse as DocumentHandlerEntry["inverse"],
+    meta: { ...batchEntry.meta },
+  });
 
   return registry;
 }

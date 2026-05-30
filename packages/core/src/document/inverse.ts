@@ -8,46 +8,17 @@ import type {
   InverseRegistry,
 } from "./handler-registry.js";
 import {
-  batchInverse,
-  batchMeta,
+  batchEntry,
   createBatchHandler,
   createBatchInverse,
 } from "./handlers/batch.js";
-import {
-  createPageHandler,
-  createPageInverse,
-  createPageMeta,
-} from "./handlers/create-page.js";
-import {
-  removePageHandler,
-  removePageInverse,
-  removePageMeta,
-} from "./handlers/remove-page.js";
-import {
-  renamePageHandler,
-  renamePageInverse,
-  renamePageMeta,
-} from "./handlers/rename-page.js";
-import {
-  reorderPageHandler,
-  reorderPageInverse,
-  reorderPageMeta,
-} from "./handlers/reorder-page.js";
-import {
-  setDocumentThemeHandler,
-  setDocumentThemeInverse,
-  setDocumentThemeMeta,
-} from "./handlers/set-document-theme.js";
-import {
-  setPageThemeHandler,
-  setPageThemeInverse,
-  setPageThemeMeta,
-} from "./handlers/set-page-theme.js";
-import {
-  updatePageRouteHandler,
-  updatePageRouteInverse,
-  updatePageRouteMeta,
-} from "./handlers/update-page-route.js";
+import { createPageEntry } from "./handlers/create-page.js";
+import { removePageEntry } from "./handlers/remove-page.js";
+import { renamePageEntry } from "./handlers/rename-page.js";
+import { reorderPageEntry } from "./handlers/reorder-page.js";
+import { setDocumentThemeEntry } from "./handlers/set-document-theme.js";
+import { setPageThemeEntry } from "./handlers/set-page-theme.js";
+import { updatePageRouteEntry } from "./handlers/update-page-route.js";
 
 export function createDefaultDocumentRegistries(
   batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
@@ -61,70 +32,21 @@ export function createDefaultDocumentRegistries(
   // fully type-safe within their own module; these casts widen to the union type
   // needed for the heterogeneous registry.
   const entries: [string, DocumentHandlerEntry][] = [
-    [
-      "create-page",
-      {
-        handler: createPageHandler as DocumentHandlerEntry["handler"],
-        inverse: createPageInverse as InverseComputer,
-        meta: createPageMeta,
-      },
-    ],
-    [
-      "rename-page",
-      {
-        handler: renamePageHandler as DocumentHandlerEntry["handler"],
-        inverse: renamePageInverse as InverseComputer,
-        meta: renamePageMeta,
-      },
-    ],
-    [
-      "remove-page",
-      {
-        handler: removePageHandler as DocumentHandlerEntry["handler"],
-        inverse: removePageInverse as InverseComputer,
-        meta: removePageMeta,
-      },
-    ],
-    [
-      "reorder-page",
-      {
-        handler: reorderPageHandler as DocumentHandlerEntry["handler"],
-        inverse: reorderPageInverse as InverseComputer,
-        meta: reorderPageMeta,
-      },
-    ],
-    [
-      "update-page-route",
-      {
-        handler: updatePageRouteHandler as DocumentHandlerEntry["handler"],
-        inverse: updatePageRouteInverse as InverseComputer,
-        meta: updatePageRouteMeta,
-      },
-    ],
-    [
-      "set-document-theme",
-      {
-        handler: setDocumentThemeHandler as DocumentHandlerEntry["handler"],
-        inverse: setDocumentThemeInverse as InverseComputer,
-        meta: setDocumentThemeMeta,
-      },
-    ],
-    [
-      "set-page-theme",
-      {
-        handler: setPageThemeHandler as DocumentHandlerEntry["handler"],
-        inverse: setPageThemeInverse as InverseComputer,
-        meta: setPageThemeMeta,
-      },
-    ],
+    ["create-page", createPageEntry as DocumentHandlerEntry],
+    ["rename-page", renamePageEntry as DocumentHandlerEntry],
+    ["remove-page", removePageEntry as DocumentHandlerEntry],
+    ["reorder-page", reorderPageEntry as DocumentHandlerEntry],
+    ["update-page-route", updatePageRouteEntry as DocumentHandlerEntry],
+    ["set-document-theme", setDocumentThemeEntry as DocumentHandlerEntry],
+    ["set-page-theme", setPageThemeEntry as DocumentHandlerEntry],
     [
       "batch-document-actions",
       {
         handler: createBatchHandler(
           batchDispatch,
         ) as DocumentHandlerEntry["handler"],
-        inverse: batchInverse as InverseComputer,
-        meta: batchMeta,
+        inverse: batchEntry.inverse as InverseComputer,
+        meta: { ...batchEntry.meta },
       },
     ],
   ];
@@ -139,10 +61,10 @@ export function createDefaultDocumentRegistries(
 
   // Replace batch inverse with a proper one that has registry access
   const batchInv = createBatchInverse(docHandlerRegistry, docInvRegistry);
-  const batchEntry = docHandlerRegistry.get("batch-document-actions");
-  if (batchEntry) {
+  const storedBatchEntry = docHandlerRegistry.get("batch-document-actions");
+  if (storedBatchEntry) {
     docHandlerRegistry.set("batch-document-actions", {
-      ...batchEntry,
+      ...storedBatchEntry,
       inverse: batchInv as InverseComputer,
     });
   }

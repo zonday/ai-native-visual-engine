@@ -8,8 +8,8 @@ import {
   computeInverseAction,
   createInverseRegistry,
 } from "../src/runtime/handler-registry.js";
-import { createNodeInverse } from "../src/runtime/handlers/create-node.js";
-import { removeNodeInverse } from "../src/runtime/handlers/remove-node.js";
+import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
+import { removeNodeEntry } from "../src/runtime/handlers/remove-node.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
@@ -17,8 +17,8 @@ const context: RuntimeContext = { now: Date.now };
 describe("createInverseRegistry", () => {
   it("creates a registry from a record of inverse computers", () => {
     const registry = createInverseRegistry({
-      "create-node": createNodeInverse as InverseComputer,
-      "remove-node": removeNodeInverse as InverseComputer,
+      "create-node": createNodeEntry.inverse as InverseComputer,
+      "remove-node": removeNodeEntry.inverse as InverseComputer,
     });
     expect(registry.has("create-node")).toBe(true);
     expect(registry.has("remove-node")).toBe(true);
@@ -29,7 +29,7 @@ describe("createInverseRegistry", () => {
 describe("computeInverseAction", () => {
   it("returns the inverse action for a registered action type", () => {
     const registry = createInverseRegistry({
-      "create-node": createNodeInverse as InverseComputer,
+      "create-node": createNodeEntry.inverse as InverseComputer,
     });
     const action: RuntimeAction = {
       type: "create-node",
@@ -56,7 +56,7 @@ describe("computeInverseAction", () => {
 
   it("returns undefined when inverse computer returns undefined", () => {
     const registry = createInverseRegistry({
-      "remove-node": removeNodeInverse as InverseComputer,
+      "remove-node": removeNodeEntry.inverse as InverseComputer,
     });
     const action: RuntimeAction = {
       type: "remove-node",

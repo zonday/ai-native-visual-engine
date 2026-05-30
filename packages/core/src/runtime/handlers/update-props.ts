@@ -3,7 +3,7 @@ import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
-export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
+const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   scene,
   action,
   _ctx,
@@ -22,7 +22,7 @@ export const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   };
 };
 
-export const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
+const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
   sceneBefore,
   action,
   _context,
@@ -37,8 +37,8 @@ export const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
   };
 };
 
-export const updatePropsMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Update Props",
-} as const;
+export const updatePropsEntry = {
+  handler: updatePropsHandler,
+  inverse: updatePropsInverse,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Props" },
+};

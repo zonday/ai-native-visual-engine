@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HandlerError } from "../src/engine/error.js";
-import {
-  updateSelectionHandler,
-  updateSelectionInverse,
-} from "../src/runtime/handlers/update-selection.js";
+import { updateSelectionEntry } from "../src/runtime/handlers/update-selection.js";
 import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
@@ -13,13 +10,13 @@ const sceneWithNodes: SceneGraph = makeScene({
   b: { id: "b", type: "container", parentId: "root" },
 });
 
-describe("updateSelectionHandler", () => {
+describe("updateSelectionEntry.handler", () => {
   it("updates selection with valid nodeIds", () => {
     const action = {
       type: "update-selection" as const,
       nodeIds: ["a", "b"],
     };
-    const result = updateSelectionHandler(sceneWithNodes, action, {
+    const result = updateSelectionEntry.handler(sceneWithNodes, action, {
       now: Date.now,
     });
     expect(result.selection).toEqual({ nodeIds: ["a", "b"] });
@@ -35,7 +32,9 @@ describe("updateSelectionHandler", () => {
       type: "update-selection" as const,
       nodeIds: [],
     };
-    const result = updateSelectionHandler(scene, action, { now: Date.now });
+    const result = updateSelectionEntry.handler(scene, action, {
+      now: Date.now,
+    });
     expect(result.selection).toEqual({ nodeIds: [] });
   });
 
@@ -45,10 +44,10 @@ describe("updateSelectionHandler", () => {
       nodeIds: ["a", "a"],
     };
     expect(() =>
-      updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
+      updateSelectionEntry.handler(sceneWithNodes, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
+      updateSelectionEntry.handler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.duplicate-selection");
     }
@@ -60,17 +59,17 @@ describe("updateSelectionHandler", () => {
       nodeIds: ["a", "missing"],
     };
     expect(() =>
-      updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
+      updateSelectionEntry.handler(sceneWithNodes, action, { now: Date.now }),
     ).toThrow(HandlerError);
     try {
-      updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
+      updateSelectionEntry.handler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
       expect((e as HandlerError).code).toBe("scene.node-not-found");
     }
   });
 });
 
-describe("updateSelectionInverse", () => {
+describe("updateSelectionEntry.inverse", () => {
   it("produces an update-selection inverse with the previous selection", () => {
     const scene: SceneGraph = {
       ...sceneWithNodes,
@@ -80,7 +79,9 @@ describe("updateSelectionInverse", () => {
       type: "update-selection" as const,
       nodeIds: ["b"],
     };
-    const inverse = updateSelectionInverse(scene, action, { now: Date.now });
+    const inverse = updateSelectionEntry.inverse(scene, action, {
+      now: Date.now,
+    });
     expect(inverse).toEqual({
       type: "update-selection",
       nodeIds: ["a"],
@@ -92,7 +93,7 @@ describe("updateSelectionInverse", () => {
       type: "update-selection" as const,
       nodeIds: ["a"],
     };
-    const inverse = updateSelectionInverse(sceneWithNodes, action, {
+    const inverse = updateSelectionEntry.inverse(sceneWithNodes, action, {
       now: Date.now,
     });
     expect(inverse).toEqual({
