@@ -28,6 +28,11 @@ enum RF {
   Pending = 32,
 }
 
+enum ExtraRF {
+  HasChildEffect = 64,
+  Disposed = 128,
+}
+
 export type Signal<T> = {
   (): T;
   (value: T): void;
@@ -47,15 +52,35 @@ export interface ReactiveScope {
 }
 
 export function createScope(): ReactiveScope {
-  const HasChildEffect = 64;
   let cycle = 0;
   let runDepth = 0;
   let notifyIndex = 0;
   let queuedLength = 0;
   let activeSub: ReactiveNode | undefined;
+  let isFlushing = false;
 
   const queued: (ReactiveNode | undefined)[] = [];
 
+  // ── Known gaps ──────────────────────────────────────────────────────────
+  //
+  // 1. alien-signals link() — no full-chain dedup scan.
+  //    If A is read twice non-consecutively in one eval (A()+B()+A()), the
+  //    second read creates a duplicate link. Harmless because purgeDeps
+  //    clears old links before each re-eval and propagate's second pass is
+  //    idempotent (Pending/Dirty already set). Benchmark noise only.
+  //
+  // 2. alien-signals checkDirty() — no visited-node tracking.
+  //    A computed cycle A→B→A where both are Pending could loop infinitely.
+  //    Blocked at runtime by the Watching-guard in oper() — no cycle ever
+  //    reaches checkDirty with valid deps. Do NOT remove that guard without
+  //    adding visited-node tracking to checkDirty.
+  //
+  // 3. Queue order (notify LIFO reversal) — alien-signals design choice.
+  //    Effects are reversed within each notification group so the most-recent
+  //    subscriber runs first. This is not a FIFO guarantee; cross-signal
+  //    notification order is non-deterministic. Reactive systems conventionally
+  //    do not order effects. No correctness impact.
+  // ─────────────────────────────────────────────────────────────────────────
   const { link, unlink, propagate, checkDirty, shallowPropagate } =
     createReactiveSystem({
       update(node: ReactiveNode): boolean {
@@ -126,7 +151,12 @@ export function createScope(): ReactiveScope {
   }
 
   function updateComputed(c: ComputedInternal): boolean {
-    if (c.flags & HasChildEffect) {
+    if (c.flags & RF.Watching) {
+      throw new Error(
+        "[reactive-scope] Cycle detected in computed dependency graph",
+      );
+    }
+    if (c.flags & ExtraRF.HasChildEffect) {
       let link = c.depsTail;
       while (link !== undefined) {
         const prev: Link | undefined = link.prevDep;
@@ -163,11 +193,16 @@ export function createScope(): ReactiveScope {
 
   function runEffect(e: EffectInternal): void {
     const flags = e.flags;
+    if (!flags || flags & ExtraRF.Disposed) {
+      return;
+    }
     const isDirty = flags & RF.Dirty;
     const isPending = flags & RF.Pending;
     const hasDirtyDep =
       isPending && e.deps !== undefined && checkDirty(e.deps, e);
     if (isDirty || hasDirtyDep) {
+      e.depsTail = undefined;
+      purgeDeps(e);
       if (e.cleanup) {
         try {
           e.cleanup();
@@ -175,7 +210,6 @@ export function createScope(): ReactiveScope {
           console.warn("[reactive-scope] effect cleanup error:", err);
         }
       }
-      e.depsTail = undefined;
       e.flags = RF.Watching | RF.RecursedCheck;
       const prevSub = activeSub;
       activeSub = e;
@@ -190,11 +224,15 @@ export function createScope(): ReactiveScope {
         purgeDeps(e);
       }
     } else if (e.deps !== undefined) {
-      e.flags = RF.Watching | (flags & HasChildEffect);
+      e.flags = RF.Watching | (flags & ExtraRF.HasChildEffect);
     }
   }
 
   function flush(): void {
+    if (isFlushing) {
+      return;
+    }
+    isFlushing = true;
     try {
       while (notifyIndex < queuedLength) {
         const effectNode = queued[notifyIndex] as EffectInternal;
@@ -202,10 +240,13 @@ export function createScope(): ReactiveScope {
         runEffect(effectNode);
       }
     } finally {
+      isFlushing = false;
       while (notifyIndex < queuedLength) {
         const effectNode = queued[notifyIndex] as ReactiveNode;
         queued[notifyIndex++] = undefined;
-        effectNode.flags |= RF.Watching;
+        if (effectNode.flags) {
+          effectNode.flags |= RF.Watching;
+        }
       }
       notifyIndex = 0;
       queuedLength = 0;
@@ -278,6 +319,12 @@ export function createScope(): ReactiveScope {
 
     const oper = (): T => {
       const flags = node.flags;
+      if (flags & ExtraRF.Disposed) {
+        throw new Error("[reactive-scope] Cannot read disposed computed");
+      }
+      if (flags & RF.Watching) {
+        throw new Error("[reactive-scope] Cycle detected in computed");
+      }
       if (flags & RF.Dirty) {
         if (updateComputed(node)) {
           const subs = node.subs;
@@ -315,9 +362,13 @@ export function createScope(): ReactiveScope {
         unlink(cur, node);
         cur = prev;
       }
-      node.subs = undefined;
-      node.subsTail = undefined;
-      node.flags = RF.None;
+      cur = node.subs;
+      while (cur !== undefined) {
+        const next = cur.nextSub;
+        unlink(cur);
+        cur = next;
+      }
+      node.flags = ExtraRF.Disposed;
     };
     return oper;
   }
@@ -338,7 +389,7 @@ export function createScope(): ReactiveScope {
 
     if (prevSub !== undefined) {
       link(e, prevSub, 0);
-      prevSub.flags |= HasChildEffect;
+      prevSub.flags |= ExtraRF.HasChildEffect;
     }
 
     try {
@@ -351,24 +402,56 @@ export function createScope(): ReactiveScope {
     }
 
     const dispose = (): void => {
-      e.flags = RF.None;
-      if (e.cleanup) {
-        try {
-          e.cleanup();
-        } catch (err) {
-          console.warn("[reactive-scope] effect cleanup error:", err);
-        }
-        e.cleanup = undefined;
-      }
-      let cur: Link | undefined = e.depsTail;
-      while (cur !== undefined) {
-        const prev = cur.prevDep;
-        unlink(cur, e);
-        cur = prev;
-      }
+      disposeEffectNode(e);
     };
 
     return dispose;
+  }
+
+  function disposeEffectNode(e: EffectInternal): void {
+    if (!e.flags) {
+      return;
+    }
+    e.flags = RF.None;
+    if (e.cleanup) {
+      try {
+        e.cleanup();
+      } catch (err) {
+        console.warn("[reactive-scope] effect cleanup error:", err);
+      }
+      e.cleanup = undefined;
+    }
+    let cur: Link | undefined = e.depsTail;
+    while (cur !== undefined) {
+      const prev = cur.prevDep;
+      if ("fn" in cur.dep) {
+        const parent = cur.dep;
+        let hasOtherChild = false;
+        let sl = parent.subs;
+        while (sl !== undefined) {
+          if (sl.sub !== e && "fn" in sl.sub) {
+            hasOtherChild = true;
+            break;
+          }
+          sl = sl.nextSub;
+        }
+        if (!hasOtherChild) {
+          parent.flags &= ~ExtraRF.HasChildEffect;
+        }
+      }
+      unlink(cur, e);
+      cur = prev;
+    }
+    cur = e.subs;
+    while (cur !== undefined) {
+      const next = cur.nextSub;
+      if ("fn" in cur.sub) {
+        disposeEffectNode(cur.sub as EffectInternal);
+      } else {
+        unlink(cur);
+      }
+      cur = next;
+    }
   }
 
   let batchDepth = 0;
