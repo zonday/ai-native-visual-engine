@@ -9,7 +9,11 @@ import { emptyPersistedScene, makeDoc } from "./helpers.js";
 const context: DocumentRuntimeContext = { now: Date.now };
 
 function applyAction(
-  registry: ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext>,
+  registry: ActionRegistry<
+    DocumentAction,
+    VisualDocument,
+    DocumentRuntimeContext
+  >,
   doc: VisualDocument,
   action: DocumentAction,
 ): VisualDocument {

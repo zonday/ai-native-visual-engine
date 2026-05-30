@@ -28,7 +28,11 @@ const docWithTwoPages: VisualDocument = {
 const context: DocumentRuntimeContext = { now: Date.now };
 
 function makeStatefulDispatch(
-  registry: ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext>,
+  registry: ActionRegistry<
+    DocumentAction,
+    VisualDocument,
+    DocumentRuntimeContext
+  >,
   initialDoc: VisualDocument,
 ) {
   let currentDoc = initialDoc;

@@ -1,13 +1,17 @@
-import type { Handler, RuntimeContext } from "./handler.js";
 import type { ActionMeta } from "./action-registry.js";
+import type { Handler, RuntimeContext } from "./handler.js";
 
-export interface BatchAction<TAction extends { type: string }, TType extends string = "batch-actions"> {
+export interface BatchAction<
+  TAction extends { type: string },
+  TType extends string = "batch-actions",
+> {
   type: TType;
   actions: TAction[];
 }
 
 export type InverseAction<TAction extends { type: string }> =
-  TAction | BatchAction<TAction>;
+  | TAction
+  | BatchAction<TAction>;
 
 export type InverseComputer<
   TState,
