@@ -11,7 +11,7 @@ const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   expectNode(scene, action.nodeId, "update-bindings");
 
   return produce(scene, (draft) => {
-    draft.nodes[action.nodeId].bindings = [...action.bindings];
+    draft.nodes[action.nodeId]!.bindings = [...action.bindings];
     draft.version += 1;
   });
 };
