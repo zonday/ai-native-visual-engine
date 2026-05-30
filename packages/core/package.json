@@ -12,6 +12,7 @@
     }
   },
   "scripts": {
+    "prebuild": "find src -maxdepth 1 -name '*.d.ts' -delete",
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
