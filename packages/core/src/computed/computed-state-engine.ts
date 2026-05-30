@@ -2,6 +2,8 @@ import { createScope } from "../deps/reactive-scope.js";
 import type { SelectorRegistry } from "../selector/selector-registry.js";
 import type { NodeId, SceneNode } from "../types.js";
 
+// ── Public Types ──
+
 export interface WorldTransform {
   x: number;
   y: number;
@@ -25,7 +27,7 @@ export interface ViewportRect {
 }
 
 export interface ComputedStateEngine {
-  getLocalTransform(nodeId: NodeId): { x: number; y: number; rotation: number };
+  getLocalTransform(nodeId: NodeId): WorldTransform;
   getWorldTransform(nodeId: NodeId): WorldTransform;
   getComputedBounds(nodeId: NodeId): ComputedBounds;
   getVisibleBounds(
@@ -37,6 +39,15 @@ export interface ComputedStateEngine {
   invalidate(nodeId: NodeId): void;
   invalidateAll(): void;
 }
+
+// ── Internal Types ──
+
+type ComputedRef<T> = (() => T) & { dispose(): void };
+type Edge = "top" | "bottom" | "left" | "right";
+
+// ── Helpers ──
+
+const DEG_TO_RAD = Math.PI / 180;
 
 function getLayoutValue(
   selectors: SelectorRegistry,
@@ -73,40 +84,73 @@ function getNodeHeight(
   return 100;
 }
 
+function composeWorldTransform(
+  parent: WorldTransform,
+  local: WorldTransform,
+): WorldTransform {
+  const rad = parent.rotation * DEG_TO_RAD;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  // Parent's rotation + scale applied to local offset
+  const rx = local.x * parent.scaleX * cos - local.y * parent.scaleY * sin;
+  const ry = local.x * parent.scaleX * sin + local.y * parent.scaleY * cos;
+
+  return {
+    x: parent.x + rx,
+    y: parent.y + ry,
+    rotation: parent.rotation + local.rotation,
+    scaleX: parent.scaleX * local.scaleX,
+    scaleY: parent.scaleY * local.scaleY,
+  };
+}
+
+// ── Engine ──
+
 export function createComputedStateEngine(
   selectors: SelectorRegistry,
 ): ComputedStateEngine {
   const { computed } = createScope();
-  const worldCache = new Map<NodeId, () => WorldTransform>();
-  const boundsCache = new Map<NodeId, () => ComputedBounds>();
-  const visibleBoundsCache = new Map<string, () => ComputedBounds | null>();
-  const centerCache = new Map<NodeId, () => { x: number; y: number }>();
-  const localCache = new Map<
+  const worldCache = new Map<NodeId, ComputedRef<WorldTransform>>();
+  const boundsCache = new Map<NodeId, ComputedRef<ComputedBounds>>();
+  const visibleBoundsCache = new Map<
     NodeId,
-    () => { x: number; y: number; rotation: number }
+    Map<string, ComputedRef<ComputedBounds | null>>
   >();
+  const centerCache = new Map<NodeId, ComputedRef<{ x: number; y: number }>>();
+  const localCache = new Map<NodeId, ComputedRef<WorldTransform>>();
 
-  let lastVersion = selectors.getVersion();
+  // When the selector registry syncs to a new SceneGraph (page switch, undo,
+  // etc.), all our computed refs point to stale/dead SelectorNodes and must be
+  // disposed before the registry's internal cleanup runs.
+  selectors.onBeforeDispose(() => {
+    clearAll();
+  });
 
-  function clearIfStale(): void {
-    const currentVersion = selectors.getVersion();
-    if (currentVersion === lastVersion) return;
-    lastVersion = currentVersion;
+  function clearAll(): void {
+    for (const c of worldCache.values()) c.dispose();
     worldCache.clear();
+    for (const c of boundsCache.values()) c.dispose();
     boundsCache.clear();
+    for (const inner of visibleBoundsCache.values()) {
+      for (const c of inner.values()) c.dispose();
+    }
     visibleBoundsCache.clear();
+    for (const c of centerCache.values()) c.dispose();
     centerCache.clear();
+    for (const c of localCache.values()) c.dispose();
     localCache.clear();
   }
 
-  function getWorldSpaceLayout(
-    selectors: SelectorRegistry,
+  function disposeEntry<T>(
+    cache: Map<NodeId, ComputedRef<T>>,
     nodeId: NodeId,
-  ): {
-    x: number;
-    y: number;
-    rotation: number;
-  } {
+  ): void {
+    cache.get(nodeId)?.dispose();
+    cache.delete(nodeId);
+  }
+
+  function readLocalTransform(nodeId: NodeId): WorldTransform {
     const layout = selectors.getNodeLayout(nodeId);
     const mode = (layout as { mode?: string } | undefined)?.mode;
     if (mode === "absolute" || mode === "free") {
@@ -114,36 +158,34 @@ export function createComputedStateEngine(
         x: getLayoutValue(selectors, nodeId, "x"),
         y: getLayoutValue(selectors, nodeId, "y"),
         rotation: getLayoutValue(selectors, nodeId, "rotation"),
+        scaleX: getLayoutValue(selectors, nodeId, "scaleX") || 1,
+        scaleY: getLayoutValue(selectors, nodeId, "scaleY") || 1,
       };
     }
-    return { x: 0, y: 0, rotation: 0 };
+    return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+  }
+
+  function toViewportKey(viewport: ViewportRect): string {
+    return `${viewport.x},${viewport.y},${viewport.width},${viewport.height}`;
   }
 
   const engine: ComputedStateEngine = {
-    getLocalTransform(nodeId: NodeId): {
-      x: number;
-      y: number;
-      rotation: number;
-    } {
-      clearIfStale();
+    getLocalTransform(nodeId: NodeId): WorldTransform {
       let c = localCache.get(nodeId);
       if (!c) {
         c = computed(() => {
           const node = selectors.getNode(nodeId);
-          if (!node) return { x: 0, y: 0, rotation: 0 };
-          return {
-            x: getLayoutValue(selectors, nodeId, "x"),
-            y: getLayoutValue(selectors, nodeId, "y"),
-            rotation: getLayoutValue(selectors, nodeId, "rotation"),
-          };
-        });
+          if (!node) {
+            return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+          }
+          return readLocalTransform(nodeId);
+        }) as ComputedRef<WorldTransform>;
         localCache.set(nodeId, c);
       }
       return c();
     },
 
     getWorldTransform(nodeId: NodeId): WorldTransform {
-      clearIfStale();
       let c = worldCache.get(nodeId);
       if (!c) {
         c = computed(() => {
@@ -151,36 +193,20 @@ export function createComputedStateEngine(
           if (!node) {
             return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
           }
-
-          const local = getWorldSpaceLayout(selectors, nodeId);
+          const local = readLocalTransform(nodeId);
           const parent = selectors.getParent(nodeId);
-
           if (!parent) {
-            return {
-              x: local.x,
-              y: local.y,
-              rotation: local.rotation,
-              scaleX: 1,
-              scaleY: 1,
-            };
+            return local;
           }
-
           const parentTx = engine.getWorldTransform(parent.id);
-          return {
-            x: parentTx.x + local.x,
-            y: parentTx.y + local.y,
-            rotation: parentTx.rotation + local.rotation,
-            scaleX: 1,
-            scaleY: 1,
-          };
-        });
+          return composeWorldTransform(parentTx, local);
+        }) as ComputedRef<WorldTransform>;
         worldCache.set(nodeId, c);
       }
       return c();
     },
 
     getComputedBounds(nodeId: NodeId): ComputedBounds {
-      clearIfStale();
       let c = boundsCache.get(nodeId);
       if (!c) {
         c = computed(() => {
@@ -190,7 +216,7 @@ export function createComputedStateEngine(
           const h = getNodeHeight(selectors, node, nodeId);
           const tx = engine.getWorldTransform(nodeId);
           return { x: tx.x, y: tx.y, width: w, height: h };
-        });
+        }) as ComputedRef<ComputedBounds>;
         boundsCache.set(nodeId, c);
       }
       return c();
@@ -198,13 +224,15 @@ export function createComputedStateEngine(
 
     getVisibleBounds(
       nodeId: NodeId,
-      _viewport?: ViewportRect,
+      viewport?: ViewportRect,
     ): ComputedBounds | null {
-      clearIfStale();
-      const key = _viewport
-        ? `${nodeId}:${_viewport.x},${_viewport.y},${_viewport.width},${_viewport.height}`
-        : nodeId;
-      let c = visibleBoundsCache.get(key);
+      const key = viewport ? toViewportKey(viewport) : "";
+      let inner = visibleBoundsCache.get(nodeId);
+      if (!inner) {
+        inner = new Map();
+        visibleBoundsCache.set(nodeId, inner);
+      }
+      let c = inner.get(key);
       if (!c) {
         c = computed(() => {
           const node = selectors.getNode(nodeId);
@@ -212,35 +240,32 @@ export function createComputedStateEngine(
           const bounds = engine.getComputedBounds(nodeId);
           const visible = selectors.getNodeVisibility(nodeId);
           if (visible === false) return null;
-          if (!_viewport) return bounds;
+          if (!viewport) return bounds;
           const inView =
-            bounds.x < _viewport.x + _viewport.width &&
-            bounds.x + bounds.width > _viewport.x &&
-            bounds.y < _viewport.y + _viewport.height &&
-            bounds.y + bounds.height > _viewport.y;
+            bounds.x < viewport.x + viewport.width &&
+            bounds.x + bounds.width > viewport.x &&
+            bounds.y < viewport.y + viewport.height &&
+            bounds.y + bounds.height > viewport.y;
           if (!inView) {
             return { x: bounds.x, y: bounds.y, width: 0, height: 0 };
           }
           return {
-            x: Math.max(bounds.x, _viewport.x),
-            y: Math.max(bounds.y, _viewport.y),
+            x: Math.max(bounds.x, viewport.x),
+            y: Math.max(bounds.y, viewport.y),
             width:
-              Math.min(bounds.x + bounds.width, _viewport.x + _viewport.width) -
-              Math.max(bounds.x, _viewport.x),
+              Math.min(bounds.x + bounds.width, viewport.x + viewport.width) -
+              Math.max(bounds.x, viewport.x),
             height:
-              Math.min(
-                bounds.y + bounds.height,
-                _viewport.y + _viewport.height,
-              ) - Math.max(bounds.y, _viewport.y),
+              Math.min(bounds.y + bounds.height, viewport.y + viewport.height) -
+              Math.max(bounds.y, viewport.y),
           };
-        });
-        visibleBoundsCache.set(key, c);
+        }) as ComputedRef<ComputedBounds | null>;
+        inner.set(key, c);
       }
       return c();
     },
 
     getCenter(nodeId: NodeId): { x: number; y: number } {
-      clearIfStale();
       let c = centerCache.get(nodeId);
       if (!c) {
         c = computed(() => {
@@ -249,41 +274,44 @@ export function createComputedStateEngine(
             x: bounds.x + bounds.width / 2,
             y: bounds.y + bounds.height / 2,
           };
-        });
+        }) as ComputedRef<{ x: number; y: number }>;
         centerCache.set(nodeId, c);
       }
       return c();
     },
 
-    getEdge(nodeId: NodeId, edge: "top" | "bottom" | "left" | "right"): number {
+    getEdge(nodeId: NodeId, edge: Edge): number {
       const bounds = engine.getComputedBounds(nodeId);
-      if (edge === "top") return bounds.y;
-      if (edge === "bottom") return bounds.y + bounds.height;
-      if (edge === "left") return bounds.x;
-      if (edge === "right") return bounds.x + bounds.width;
-      return 0;
+      switch (edge) {
+        case "top":
+          return bounds.y;
+        case "bottom":
+          return bounds.y + bounds.height;
+        case "left":
+          return bounds.x;
+        case "right":
+          return bounds.x + bounds.width;
+      }
     },
 
     invalidate(nodeId: NodeId): void {
-      selectors.applyPatch({
-        type: "set-prop",
-        nodeId,
-        field: "layout",
-      });
-      worldCache.delete(nodeId);
-      boundsCache.delete(nodeId);
-      visibleBoundsCache.delete(nodeId);
-      centerCache.delete(nodeId);
-      localCache.delete(nodeId);
+      selectors.invalidate(nodeId, "layout");
+
+      // Cascade to all descendants — parent transform change invalidates
+      // every child's world transform, bounds, etc.
+      const ids = [nodeId, ...selectors.getDescendants(nodeId)];
+      for (const id of ids) {
+        disposeEntry(worldCache, id);
+        disposeEntry(boundsCache, id);
+        visibleBoundsCache.delete(id);
+        disposeEntry(centerCache, id);
+        disposeEntry(localCache, id);
+      }
     },
 
     invalidateAll(): void {
       selectors.invalidateAll();
-      worldCache.clear();
-      boundsCache.clear();
-      visibleBoundsCache.clear();
-      centerCache.clear();
-      localCache.clear();
+      clearAll();
     },
   };
 
