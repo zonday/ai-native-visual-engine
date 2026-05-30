@@ -1,8 +1,20 @@
 import { produce } from "immer";
+import { z } from "zod/v4";
+import type { SceneGraph } from "../../types.js";
 import type { UpdatePropsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
+
+export const UpdatePropsActionSchema = z.object({
+  type: z.literal("update-props"),
+  nodeId: z.string(),
+  props: z.object({}).passthrough(),
+});
 
 const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
   scene,
@@ -18,6 +30,32 @@ const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
     };
     draft.version += 1;
   });
+};
+
+const updatePropsValidate = (
+  scene: SceneGraph,
+  action: UpdatePropsAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!scene?.nodes) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-scene",
+        message: "Scene is null or missing nodes for action: update-props",
+      },
+    };
+  }
+  if (!scene.nodes[action.nodeId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.node-not-found",
+        message: `Node not found for action: update-props`,
+      },
+    };
+  }
+  return { ok: true };
 };
 
 const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
@@ -38,5 +76,6 @@ const updatePropsInverse: InverseComputer<UpdatePropsAction> = (
 export const updatePropsEntry = {
   handler: updatePropsHandler,
   inverse: updatePropsInverse,
+  validate: updatePropsValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Props" },
 };

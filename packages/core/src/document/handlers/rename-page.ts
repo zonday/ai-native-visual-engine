@@ -1,7 +1,19 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { VisualDocument } from "../../types.js";
 import type { RenamePageAction } from "../actions.js";
-import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandler,
+  DocumentRuntimeContext,
+  InverseComputer,
+} from "../handler-registry.js";
+
+export const RenamePageActionSchema = z.object({
+  type: z.literal("rename-page"),
+  pageId: z.string(),
+  name: z.string(),
+});
 
 const renamePageHandler: DocumentHandler<RenamePageAction> = (
   document,
@@ -23,6 +35,24 @@ const renamePageHandler: DocumentHandler<RenamePageAction> = (
   });
 };
 
+const renamePageValidate = (
+  document: VisualDocument,
+  action: RenamePageAction,
+  _ctx: DocumentRuntimeContext,
+) => {
+  const exists = document.pages.some((p) => p.id === action.pageId);
+  if (!exists) {
+    return {
+      ok: false,
+      error: {
+        code: "document.page-not-found",
+        message: `Page "${action.pageId}" not found`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const renamePageInverse: InverseComputer<RenamePageAction> = (
   documentBefore,
   action,
@@ -40,5 +70,6 @@ const renamePageInverse: InverseComputer<RenamePageAction> = (
 export const renamePageEntry = {
   handler: renamePageHandler,
   inverse: renamePageInverse,
+  validate: renamePageValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Rename Page" },
 };

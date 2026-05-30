@@ -1,9 +1,21 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { SceneGraph } from "../../types.js";
 import type { UpdateLayoutAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
+
+export const UpdateLayoutActionSchema = z.object({
+  type: z.literal("update-layout"),
+  nodeId: z.string(),
+  layout: z.object({}).passthrough(),
+});
 
 function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
   if ("width" in layout) {
@@ -71,6 +83,95 @@ const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   });
 };
 
+function validateLayoutValue(
+  layout: Record<string, unknown>,
+  nodeId: string,
+): {
+  ok: boolean;
+  error?: { code: string; message: string };
+} {
+  if ("width" in layout) {
+    const w = layout.width;
+    if (typeof w !== "number" || !Number.isFinite(w) || w < 0) {
+      return {
+        ok: false,
+        error: {
+          code: "scene.invalid-geometry",
+          message: `Invalid width "${w}" for node "${nodeId}"`,
+        },
+      };
+    }
+  }
+  if ("height" in layout) {
+    const h = layout.height;
+    if (typeof h !== "number" || !Number.isFinite(h) || h < 0) {
+      return {
+        ok: false,
+        error: {
+          code: "scene.invalid-geometry",
+          message: `Invalid height "${h}" for node "${nodeId}"`,
+        },
+      };
+    }
+  }
+  if ("x" in layout) {
+    const x = layout.x;
+    if (typeof x !== "number" || !Number.isFinite(x)) {
+      return {
+        ok: false,
+        error: {
+          code: "scene.invalid-geometry",
+          message: `Invalid x "${x}" for node "${nodeId}"`,
+        },
+      };
+    }
+  }
+  if ("y" in layout) {
+    const y = layout.y;
+    if (typeof y !== "number" || !Number.isFinite(y)) {
+      return {
+        ok: false,
+        error: {
+          code: "scene.invalid-geometry",
+          message: `Invalid y "${y}" for node "${nodeId}"`,
+        },
+      };
+    }
+  }
+  return { ok: true };
+}
+
+const updateLayoutValidate = (
+  scene: SceneGraph,
+  action: UpdateLayoutAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!scene?.nodes) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-scene",
+        message: "Scene is null or missing nodes for action: update-layout",
+      },
+    };
+  }
+  if (!scene.nodes[action.nodeId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.node-not-found",
+        message: `Node not found for action: update-layout`,
+      },
+    };
+  }
+  const node = scene.nodes[action.nodeId];
+  const merged = {
+    ...(node.layout ?? {}),
+    ...action.layout,
+  };
+  return validateLayoutValue(merged, action.nodeId);
+};
+
 const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
   sceneBefore,
   action,
@@ -89,5 +190,6 @@ const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (
 export const updateLayoutEntry = {
   handler: updateLayoutHandler,
   inverse: updateLayoutInverse,
+  validate: updateLayoutValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Layout" },
 };

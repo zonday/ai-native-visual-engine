@@ -1,9 +1,21 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
-import type { Page } from "../../types.js";
+import { z } from "zod/v4";
+import { PageSchema, PersistedSceneGraphSchema } from "../../types.js";
+import type { Page, VisualDocument } from "../../types.js";
 import type { CreatePageAction } from "../actions.js";
-import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandler,
+  DocumentRuntimeContext,
+  InverseComputer,
+} from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
+
+export const CreatePageActionSchema = z.object({
+  type: z.literal("create-page"),
+  page: PageSchema,
+  scene: PersistedSceneGraphSchema,
+});
 
 const createPageHandler: DocumentHandler<CreatePageAction> = (
   document,
@@ -54,6 +66,47 @@ const createPageHandler: DocumentHandler<CreatePageAction> = (
   });
 };
 
+const createPageValidate = (
+  document: VisualDocument,
+  action: CreatePageAction,
+  _ctx: DocumentRuntimeContext,
+) => {
+  const existingPage = document.pages.find((p) => p.id === action.page.id);
+  if (existingPage) {
+    return {
+      ok: false,
+      error: {
+        code: "document.duplicate-page-id",
+        message: `Page ID "${action.page.id}" already exists`,
+      },
+    };
+  }
+  const existingScene = document.scenes[action.page.sceneId];
+  if (existingScene) {
+    return {
+      ok: false,
+      error: {
+        code: "document.duplicate-scene-id",
+        message: `Scene ID "${action.page.sceneId}" already in use`,
+      },
+    };
+  }
+  if (action.page.route) {
+    const canonicalRoute = normalizeRoute(action.page.route);
+    const dup = document.pages.find((p) => p.route === canonicalRoute);
+    if (dup) {
+      return {
+        ok: false,
+        error: {
+          code: "document.duplicate-route",
+          message: `Route "${canonicalRoute}" already assigned to page "${dup.id}"`,
+        },
+      };
+    }
+  }
+  return { ok: true };
+};
+
 const createPageInverse: InverseComputer<CreatePageAction> = (
   _documentBefore,
   action,
@@ -68,5 +121,6 @@ const createPageInverse: InverseComputer<CreatePageAction> = (
 export const createPageEntry = {
   handler: createPageHandler,
   inverse: createPageInverse,
+  validate: createPageValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Page" },
 };

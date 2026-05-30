@@ -1,72 +1,15 @@
 import { z } from "zod/v4";
-import { SceneNodeSchema } from "../types.js";
 
-export const CreateNodeActionSchema = z.object({
-  type: z.literal("create-node"),
-  node: SceneNodeSchema,
-  parentId: z.string(),
-  index: z.number().optional(),
-});
-
-export const RemoveNodeActionSchema = z.object({
-  type: z.literal("remove-node"),
-  nodeId: z.string(),
-});
-
-export const MoveNodeActionSchema = z.object({
-  type: z.literal("move-node"),
-  nodeId: z.string(),
-  parentId: z.string(),
-  index: z.number().optional(),
-});
-
-export const UpdateLayoutActionSchema = z.object({
-  type: z.literal("update-layout"),
-  nodeId: z.string(),
-  layout: z.object({}).passthrough(),
-});
-
-export const RotateNodeActionSchema = z.object({
-  type: z.literal("rotate-node"),
-  nodeId: z.string(),
-  rotation: z.number(),
-});
-
-export const UpdatePropsActionSchema = z.object({
-  type: z.literal("update-props"),
-  nodeId: z.string(),
-  props: z.object({}).passthrough(),
-});
-
-export const UpdateStyleActionSchema = z.object({
-  type: z.literal("update-style"),
-  nodeId: z.string(),
-  style: z.object({}).passthrough(),
-});
-
-export const UpdateBindingsActionSchema = z.object({
-  type: z.literal("update-bindings"),
-  nodeId: z.string(),
-  bindings: z.array(
-    z.object({
-      key: z.string(),
-      source: z.string(),
-      path: z.string().optional(),
-      transform: z.string().optional(),
-    }),
-  ),
-});
-
-export const UpdateRuntimeActionSchema = z.object({
-  type: z.literal("update-runtime"),
-  nodeId: z.string(),
-  runtime: z.object({}).passthrough(),
-});
-
-export const UpdateSelectionActionSchema = z.object({
-  type: z.literal("update-selection"),
-  nodeIds: z.array(z.string()),
-});
+import { CreateNodeActionSchema } from "./handlers/create-node.js";
+import { RemoveNodeActionSchema } from "./handlers/remove-node.js";
+import { MoveNodeActionSchema } from "./handlers/move-node.js";
+import { UpdateLayoutActionSchema } from "./handlers/update-layout.js";
+import { RotateNodeActionSchema } from "./handlers/rotate-node.js";
+import { UpdatePropsActionSchema } from "./handlers/update-props.js";
+import { UpdateStyleActionSchema } from "./handlers/update-style.js";
+import { UpdateBindingsActionSchema } from "./handlers/update-bindings.js";
+import { UpdateRuntimeActionSchema } from "./handlers/update-runtime.js";
+import { UpdateSelectionActionSchema } from "./handlers/update-selection.js";
 
 export const BatchActionsSchema = z.object({
   type: z.literal("batch-actions"),
@@ -76,7 +19,7 @@ export const BatchActionsSchema = z.object({
   actions: z.array(z.any()),
 });
 
-const runtimeActionSchemas = [
+export const RuntimeActionSchema = z.discriminatedUnion("type", [
   CreateNodeActionSchema,
   RemoveNodeActionSchema,
   MoveNodeActionSchema,
@@ -88,10 +31,6 @@ const runtimeActionSchemas = [
   UpdateRuntimeActionSchema,
   UpdateSelectionActionSchema,
   BatchActionsSchema,
-] as const;
-
-export const RuntimeActionSchema = z.discriminatedUnion("type", [
-  ...runtimeActionSchemas,
 ]);
 
 export type CreateNodeAction = z.infer<typeof CreateNodeActionSchema>;

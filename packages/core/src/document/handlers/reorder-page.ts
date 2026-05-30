@@ -1,7 +1,19 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { VisualDocument } from "../../types.js";
 import type { ReorderPageAction } from "../actions.js";
-import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandler,
+  DocumentRuntimeContext,
+  InverseComputer,
+} from "../handler-registry.js";
+
+export const ReorderPageActionSchema = z.object({
+  type: z.literal("reorder-page"),
+  pageId: z.string(),
+  index: z.number().int().min(0),
+});
 
 const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   document,
@@ -31,6 +43,33 @@ const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
   });
 };
 
+const reorderPageValidate = (
+  document: VisualDocument,
+  action: ReorderPageAction,
+  _ctx: DocumentRuntimeContext,
+) => {
+  const idx = document.pages.findIndex((p) => p.id === action.pageId);
+  if (idx === -1) {
+    return {
+      ok: false,
+      error: {
+        code: "document.page-not-found",
+        message: `Page "${action.pageId}" not found`,
+      },
+    };
+  }
+  if (action.index < 0 || action.index >= document.pages.length) {
+    return {
+      ok: false,
+      error: {
+        code: "document.index-out-of-bounds",
+        message: `Index ${action.index} is out of bounds for ${document.pages.length} pages`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const reorderPageInverse: InverseComputer<ReorderPageAction> = (
   documentBefore,
   action,
@@ -48,5 +87,6 @@ const reorderPageInverse: InverseComputer<ReorderPageAction> = (
 export const reorderPageEntry = {
   handler: reorderPageHandler,
   inverse: reorderPageInverse,
+  validate: reorderPageValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Reorder Page" },
 };
