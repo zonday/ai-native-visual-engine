@@ -4,13 +4,14 @@ import type { HistoryState } from "../src/engine/history.js";
 
 type DocumentHistoryState = HistoryState<DocumentAction>;
 
-import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import { createDocumentRegistry } from "../src/document/register-handlers.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes history entry on successful dispatch", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -18,6 +19,7 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -53,7 +55,7 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("does not push history entry when dispatch fails", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -61,6 +63,7 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -90,8 +93,8 @@ describe("createUndoHistoryMiddleware", () => {
     expect(history.undoStack).toHaveLength(0);
   });
 
-  it("does not push history entry when inverse computer returns undefined", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+  it("throws when batch inverse computer encounters batch action", () => {
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -99,6 +102,7 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -121,13 +125,13 @@ describe("createUndoHistoryMiddleware", () => {
       state: emptyDoc,
     });
 
-    const result = middleware(action, emptyDoc, next);
-    expect(result.ok).toBe(true);
-    expect(history.undoStack).toHaveLength(0);
+    expect(() => middleware(action, emptyDoc, next)).toThrow(
+      "Batch inverse must be computed by the transaction manager",
+    );
   });
 
   it("uses actorId from context when getActorId returns undefined", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -135,6 +139,7 @@ describe("createUndoHistoryMiddleware", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(

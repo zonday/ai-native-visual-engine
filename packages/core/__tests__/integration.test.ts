@@ -7,10 +7,11 @@ function nonNull<T>(value: T): NonNullable<T> {
 }
 
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import { exportDocument } from "../src/import-export.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { openDocumentSession } from "../src/session.js";
 import type { DocumentSnapshot } from "../src/types.js";
@@ -94,11 +95,12 @@ describe("action replay determinism", () => {
     const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
     if (!scene) throw new Error("Missing scene fixture");
 
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const registry = createRuntimeRegistry(() => ({
       ok: false,
       scene: { version: 0, rootId: "root", nodes: {} },
       error: { code: "fail", message: "noop" },
     }));
+    const { handlerRegistry } = splitRegistry(registry);
 
     const bus1 = createRuntimeCommandBus(
       handlerRegistry,
@@ -145,11 +147,12 @@ describe("batch actions via command bus", () => {
 
     let current = initial;
     const dispatch = (action: RuntimeAction): DispatchResult => {
-      const { handlerRegistry: reg } = createDefaultRuntimeRegistries(() => ({
+      const runtimeReg = createRuntimeRegistry(() => ({
         ok: false,
         scene: current,
         error: { code: "fail", message: "noop" },
       }));
+      const { handlerRegistry: reg } = splitRegistry(runtimeReg);
       const entry = reg.get(action.type);
       if (!entry)
         return {
@@ -169,7 +172,8 @@ describe("batch actions via command bus", () => {
       }
     };
 
-    const { handlerRegistry } = createDefaultRuntimeRegistries(dispatch);
+    const registry2 = createRuntimeRegistry(dispatch);
+    const { handlerRegistry } = splitRegistry(registry2);
     const bus = createRuntimeCommandBus(handlerRegistry, [], initial, {
       now: Date.now,
     });

@@ -5,7 +5,8 @@ import type {
   DocumentHandlerEntry,
   DocumentRuntimeContext,
 } from "../src/document/handler-registry.js";
-import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import { createDocumentRegistry } from "../src/document/register-handlers.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import type { VisualDocument } from "../src/types.js";
 
@@ -23,7 +24,7 @@ const context: DocumentRuntimeContext = { now: Date.now };
 
 describe("createDocumentCommandBus", () => {
   it("dispatches a valid action and returns ok with updated document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -31,6 +32,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
       handlerRegistry,
       [],
@@ -51,7 +53,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -59,6 +61,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
       handlerRegistry,
       [],
@@ -78,7 +81,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns handler error code when DocumentHandlerError is thrown", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -86,6 +89,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
       handlerRegistry,
       [],
@@ -138,7 +142,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -146,6 +150,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
       handlerRegistry,
       [undefined as unknown as DocumentMiddleware],
@@ -165,7 +170,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -173,6 +178,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     let middlewareCalled = false;
     const trackingMiddleware: DocumentMiddleware = (_action, _doc, next) => {
       middlewareCalled = true;
@@ -254,7 +260,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("getDocument returns the current document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const docReg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -262,6 +268,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
       handlerRegistry,
       [],

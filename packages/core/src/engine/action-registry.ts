@@ -40,10 +40,7 @@ export class ActionRegistry<
 > {
   private entries = new Map<string, unknown>();
 
-  register<K extends TAction["type"]>(
-    type: K,
-    entry: HandlerMap<TAction, TState, TContext>[K],
-  ): void {
+  register(type: TAction["type"], entry: unknown): void {
     if (this.entries.has(type)) {
       throw new Error(
         `Duplicate handler registration for action type "${type}"`,
