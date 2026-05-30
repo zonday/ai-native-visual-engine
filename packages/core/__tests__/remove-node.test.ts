@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   removeNodeHandler,
   removeNodeInverse,
@@ -35,12 +35,12 @@ describe("removeNodeHandler", () => {
     const action = { type: "remove-node" as const, nodeId: "missing" };
     expect(() =>
       removeNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing");
+      expect((e as HandlerError).code).toBe("scene.node-not-found");
+      expect((e as HandlerError).context.nodeId).toBe("missing");
     }
   });
 
@@ -48,12 +48,12 @@ describe("removeNodeHandler", () => {
     const action = { type: "remove-node" as const, nodeId: "root" };
     expect(() =>
       removeNodeHandler(sceneWithTree, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       removeNodeHandler(sceneWithTree, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.root-mutation");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("root");
+      expect((e as HandlerError).code).toBe("scene.root-mutation");
+      expect((e as HandlerError).context.nodeId).toBe("root");
     }
   });
 });

@@ -3,9 +3,10 @@ import type { VisualDocument } from "../../types.js";
 import type { BatchDocumentActions, DocumentAction } from "../actions.js";
 import { DocumentActionSchema } from "../actions.js";
 import type { DocumentDispatchResult } from "../command-bus.js";
-import type { DocumentHandler, DocumentRuntimeContext } from "../handler.js";
 import type {
+  DocumentHandler,
   DocumentHandlerRegistry,
+  DocumentRuntimeContext,
   InverseComputer,
   InverseRegistry,
 } from "../handler-registry.js";

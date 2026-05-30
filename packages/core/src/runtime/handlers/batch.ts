@@ -3,10 +3,11 @@ import type { SceneGraph } from "../../types.js";
 import type { BatchActions, RuntimeAction } from "../actions.js";
 import { RuntimeActionSchema } from "../actions.js";
 import type { DispatchResult } from "../command-bus.js";
-import type { RuntimeContext, RuntimeHandler } from "../handler.js";
 import type {
   InverseComputer,
   InverseRegistry,
+  RuntimeContext,
+  RuntimeHandler,
   RuntimeHandlerRegistry,
 } from "../handler-registry.js";
 import { computeInverseAction } from "../handler-registry.js";

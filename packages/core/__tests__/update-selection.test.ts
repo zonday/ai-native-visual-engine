@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   updateSelectionHandler,
   updateSelectionInverse,
@@ -46,11 +46,11 @@ describe("updateSelectionHandler", () => {
     };
     expect(() =>
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.duplicate-selection");
+      expect((e as HandlerError).code).toBe("scene.duplicate-selection");
     }
   });
 
@@ -61,11 +61,11 @@ describe("updateSelectionHandler", () => {
     };
     expect(() =>
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       updateSelectionHandler(sceneWithNodes, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
+      expect((e as HandlerError).code).toBe("scene.node-not-found");
     }
   });
 });

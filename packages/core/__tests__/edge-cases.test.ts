@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
-import { DocumentHandlerError } from "../src/document/error.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
-import type { DocumentHandlerEntry } from "../src/document/handler-registry.js";
+import type {
+  DocumentHandlerEntry,
+  DocumentRuntimeContext,
+} from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
 import {
   normalizeRoute,
   updatePageRouteHandler,
 } from "../src/document/handlers/update-page-route.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { HistoryState } from "../src/engine/history.js";
 
 type DocumentHistoryState = HistoryState<DocumentAction>;
@@ -21,13 +23,13 @@ import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 const context: DocumentRuntimeContext = { now: Date.now };
 
 describe("command bus - error response branches", () => {
-  it("uses action.type fallback when DocumentHandlerError has no actionType", () => {
+  it("uses action.type fallback when HandlerError has no actionType", () => {
     const registry = new Map<string, DocumentHandlerEntry>([
       [
         "test-action",
         {
           handler: () => {
-            throw new DocumentHandlerError(
+            throw new HandlerError(
               "document.custom-error",
               "no actionType on this error",
             );

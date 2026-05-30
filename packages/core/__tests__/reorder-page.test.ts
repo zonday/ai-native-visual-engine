@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { reorderPageHandler } from "../src/document/handlers/reorder-page.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
 const doc: VisualDocument = {
@@ -38,12 +38,12 @@ describe("reorderPageHandler", () => {
       index: 0,
     };
     expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       reorderPageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+      expect((e as HandlerError).code).toBe("document.page-not-found");
     }
   });
 
@@ -54,14 +54,12 @@ describe("reorderPageHandler", () => {
       index: 3,
     };
     expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       reorderPageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.index-out-of-bounds",
-      );
+      expect((e as HandlerError).code).toBe("document.index-out-of-bounds");
     }
   });
 
@@ -72,14 +70,12 @@ describe("reorderPageHandler", () => {
       index: -1,
     };
     expect(() => reorderPageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       reorderPageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.index-out-of-bounds",
-      );
+      expect((e as HandlerError).code).toBe("document.index-out-of-bounds");
     }
   });
 });

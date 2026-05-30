@@ -7,8 +7,10 @@ import {
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 import type { DocumentDispatchResult } from "./command-bus.js";
-import type { DocumentRuntimeContext } from "./handler.js";
-import type { DocumentHandlerRegistry } from "./handler-registry.js";
+import type {
+  DocumentHandlerRegistry,
+  DocumentRuntimeContext,
+} from "./handler-registry.js";
 
 type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 

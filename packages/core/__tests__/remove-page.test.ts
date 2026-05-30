@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { removePageHandler } from "../src/document/handlers/remove-page.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene } from "./helpers.js";
 
@@ -30,12 +30,12 @@ describe("removePageHandler", () => {
   it("rejects when page not found", () => {
     const action = { type: "remove-page" as const, pageId: "missing" };
     expect(() => removePageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       removePageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.page-not-found");
+      expect((e as HandlerError).code).toBe("document.page-not-found");
     }
   });
 });

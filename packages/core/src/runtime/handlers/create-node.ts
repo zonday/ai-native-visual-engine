@@ -1,8 +1,7 @@
 import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
-import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 export const createNodeHandler: RuntimeHandler<CreateNodeAction> = (

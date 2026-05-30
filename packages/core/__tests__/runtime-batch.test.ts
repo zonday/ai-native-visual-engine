@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { HandlerError } from "../src/engine/error.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { DispatchResult } from "../src/runtime/command-bus.js";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
 import {
   batchInverse,
   computeBatchInverse,
@@ -40,7 +40,7 @@ function makeDispatch(initialScene: SceneGraph) {
         },
       };
     } catch (e) {
-      if (e instanceof RuntimeHandlerError) {
+      if (e instanceof HandlerError) {
         const rawNodeId = e.context.nodeId;
         return {
           ok: false,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   createNodeHandler,
   createNodeInverse,
@@ -63,12 +63,12 @@ describe("createNodeHandler", () => {
     };
     expect(() =>
       createNodeHandler(emptyScene, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.invalid-parent");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing-parent");
+      expect((e as HandlerError).code).toBe("scene.invalid-parent");
+      expect((e as HandlerError).context.nodeId).toBe("missing-parent");
     }
   });
 
@@ -80,12 +80,12 @@ describe("createNodeHandler", () => {
     };
     expect(() =>
       createNodeHandler(emptyScene, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       createNodeHandler(emptyScene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.duplicate-node-id");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("root");
+      expect((e as HandlerError).code).toBe("scene.duplicate-node-id");
+      expect((e as HandlerError).context.nodeId).toBe("root");
     }
   });
 });

@@ -1,10 +1,15 @@
+import type { Handler, RuntimeContext } from "../engine/handler.js";
 import type {
   HandlerEntry,
   HandlerRegistry,
 } from "../engine/handler-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
-import type { RuntimeContext } from "./handler.js";
+
+export type { RuntimeContext };
+
+export type RuntimeHandler<TAction extends RuntimeAction = RuntimeAction> =
+  Handler<SceneGraph, TAction, RuntimeContext>;
 
 export type RuntimeHandlerEntry = HandlerEntry<
   SceneGraph,

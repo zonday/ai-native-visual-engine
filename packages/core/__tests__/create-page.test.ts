@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DocumentHandlerError } from "../src/document/error.js";
 import { createPageHandler } from "../src/document/handlers/create-page.js";
+import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
@@ -46,13 +46,11 @@ describe("createPageHandler", () => {
     };
     expect(() =>
       createPageHandler(docWithPage, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       createPageHandler(docWithPage, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.duplicate-page-id",
-      );
+      expect((e as HandlerError).code).toBe("document.duplicate-page-id");
     }
   });
 
@@ -68,14 +66,12 @@ describe("createPageHandler", () => {
       scene: emptyPersistedScene,
     };
     expect(() => createPageHandler(doc, action, { now: Date.now })).toThrow(
-      DocumentHandlerError,
+      HandlerError,
     );
     try {
       createPageHandler(doc, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe(
-        "document.duplicate-scene-id",
-      );
+      expect((e as HandlerError).code).toBe("document.duplicate-scene-id");
     }
   });
 
@@ -96,11 +92,11 @@ describe("createPageHandler", () => {
     };
     expect(() =>
       createPageHandler(docWithRoute, action, { now: Date.now }),
-    ).toThrow(DocumentHandlerError);
+    ).toThrow(HandlerError);
     try {
       createPageHandler(docWithRoute, action, { now: Date.now });
     } catch (e) {
-      expect((e as DocumentHandlerError).code).toBe("document.duplicate-route");
+      expect((e as HandlerError).code).toBe("document.duplicate-route");
     }
   });
 
