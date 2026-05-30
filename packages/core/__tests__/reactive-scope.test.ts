@@ -690,7 +690,7 @@ describe("createScope", () => {
         return s() % 2 === 0;
       });
 
-      const parity = computed(() => isEven() ? "even" : "odd");
+      const parity = computed(() => (isEven() ? "even" : "odd"));
 
       parity();
       expect(isEvenCount).toBe(1);
@@ -744,7 +744,10 @@ describe("createScope", () => {
       const { signal, effect, startBatch, endBatch } = createScope();
       const s = signal(0);
       const fn = vi.fn();
-      effect(() => { s(); fn(); });
+      effect(() => {
+        s();
+        fn();
+      });
       fn.mockClear();
 
       startBatch();
@@ -757,7 +760,10 @@ describe("createScope", () => {
       const { signal, effect, startBatch, endBatch } = createScope();
       const s = signal(0);
       const fn = vi.fn();
-      effect(() => { s(); fn(); });
+      effect(() => {
+        s();
+        fn();
+      });
 
       fn.mockClear();
       startBatch();

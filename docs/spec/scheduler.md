@@ -29,7 +29,7 @@ export interface Scheduler {
   markDirty(nodeIds: NodeId[]): void
   markAllDirty(): void
 
-  // — Deep flush: resolves when all pending cascading cycles are idle —
+  // — Deep flush: resolves when all cascading cycles are idle —
   flush(): Promise<void>
 
   // — Subscription —
@@ -78,23 +78,21 @@ export interface Scheduler {
 
 ### 4.1 Compute Phase
 
-1. Collect all dirty node IDs from the current dirty set.
+1. At cycle start, the current dirty set is **captured and cleared**, so reentrant `markDirty` calls during this phase are written to a fresh set and processed in the next cycle.
 2. Call `onCompute(dirtyNodes)` — computed state engine invalidates stale caches.
    - When `markAllDirty()` was used, `dirtyNodes` is `[]` (empty), signalling a full invalidation.
-3. Dirty nodes' computed state is lazily recomputed on next read.
-4. If any listener calls `markDirty(...)` during this phase, the new IDs are queued to a **pending** set and processed in the next cycle.
+3. If any listener calls `markDirty(...)` during this phase, the new IDs are written to the fresh current set and processed in the next cycle.
 
 ### 4.2 Render Phase
 
-1. Call `onRender()` — renderer produces output (e.g., commits a frame). The dirty set is cleared before `onRender()` is called, so `getDirtyNodes()` returns `[]` during this phase.
-2. If any listener calls `markDirty(...)` during this phase, the new IDs are queued to the pending set.
+1. Call `onRender()` — renderer produces output (e.g., commits a frame). The dirty set was cleared at the start of the cycle, so `getDirtyNodes()` returns `[]` during this phase.
+2. If any listener calls `markDirty(...)` during this phase, the new IDs are written to the current set and processed in the next cycle.
 
 ### 4.3 Idle
 
 1. Dirty set is empty.
-2. No pending compute or render work.
-3. `flush()` resolves when the system reaches idle (including any cascading cycles from reentrant `markDirty` calls).
-4. If the pending set is non-empty after a flush, a new cycle is automatically scheduled. `flush()` will also wait for that cycle before resolving.
+2. `flush()` resolves when the system reaches idle (including any cascading cycles from reentrant `markDirty` calls).
+3. If the current set is non-empty after a cycle, a new cycle is automatically scheduled.
 
 ## 5. Modes
 
@@ -104,7 +102,7 @@ export interface Scheduler {
 scheduler.setMode("microtask")
 ```
 
-`markDirty` schedules a microtask (via `Promise.resolve().then()`). Mutations within the same synchronous block are batched. Equivalent to the legacy `"sync"` mode — but named for the actual scheduling mechanism.
+`markDirty` schedules a microtask (via `Promise.resolve().then()`). Mutations within the same synchronous block are batched.
 
 ### RAF Mode (browser production)
 
@@ -151,12 +149,13 @@ Default mode is `"microtask"`.
 
 1. `markDirty` is idempotent. Calling with the same `nodeId` twice is a no-op.
 2. `markAllDirty` sets the `allDirty` flag and clears the current dirty set. Subscribers receive an empty `dirtyNodes` array in `onCompute`, signalling a full invalidation.
-3. During the compute or render phase, new `markDirty` calls are deferred to a **pending** set and processed in the next cycle. They MUST NOT throw.
+3. During the compute or render phase, new `markDirty` calls are written to the current set and processed in the next cycle. They MUST NOT throw.
 4. The scheduler must not hold a reference to the scene. It operates on `NodeId[]` only.
 5. Listeners are called synchronously during `flush()`. Listener errors are isolated per listener — a single crash does not corrupt the scheduler or silence other listeners.
-6. Re-entrant cycles are bounded by `MAX_FLUSH_DEPTH` (100). Exceeding this limit throws `Maximum scheduler flush depth exceeded`. This applies both to synchronous recursion (immediate mode) and to `flush()` deep drain. On abort:
-   - The scheduler clears all dirty state (`currentDirty`, `pendingDirty`, `allDirty`, `pendingAllDirty`) and returns to idle.
+6. **Epoch-based flush resolution.** Every cycle increments an internal epoch counter. Flush requests are bound to the epoch at creation time; only requests whose epoch ≤ the current epoch are resolved in each cycle's finally block. This prevents stale or out-of-order resolution in deep-flush loops.
+7. Re-entrant cycles are bounded by `MAX_FLUSH_DEPTH` (100). Exceeding this limit throws `Maximum scheduler flush depth exceeded`. This applies both to synchronous recursion (immediate mode) and to `flush()` deep drain. On abort:
+   - The scheduler clears all dirty state and returns to idle.
    - Any pending `flush()` promises are **rejected** with the depth-limit error.
    - The scheduler is fully reusable after the abort.
-7. `notifyCompute` and `notifyRender` snapshot the listener array before iterating. Adding or removing listeners during a cycle does not affect the current iteration.
-8. `getDirtyNodes()` returns the union of `currentDirty` and `pendingDirty` IDs. When `allDirty` (or `pendingAllDirty`) is true, the semantic "everything is dirty" signal is not reflected in the returned array — callers should check `getPhase()` or use the `onCompute([])` convention instead.
+8. `notifyCompute` and `notifyRender` snapshot the listener array before iterating. Adding or removing listeners during a cycle does not affect the current iteration.
+9. `getDirtyNodes()` returns only the current dirty set (no separate pending set). When `allDirty` is true, `getDirtyNodes()` returns `[]` — callers should use the `onCompute([])` convention for full invalidation detection.

@@ -29,7 +29,7 @@ describe("Scheduler", () => {
       expect(computed).toBe(true);
     });
 
-    it("adds to pending during flush and processes in next cycle", async () => {
+    it("reentrant markDirty is processed in next cycle", async () => {
       const s = createScheduler({ mode: "microtask" });
       const computeLog: string[][] = [];
       s.subscribe({
@@ -405,8 +405,8 @@ describe("Scheduler", () => {
     });
   });
 
-  describe("pendingAllDirty", () => {
-    it("defers pendingAllDirty to next cycle", async () => {
+  describe("markAllDirty during cycle", () => {
+    it("defers allDirty to next cycle", async () => {
       const s = createScheduler({ mode: "microtask" });
       const computeArgs: (string[] | undefined)[] = [];
       s.subscribe({
@@ -482,7 +482,7 @@ describe("Scheduler", () => {
       expect(seen).toEqual([]);
     });
 
-    it("getDirtyNodes includes pending items during a cycle", () => {
+    it("getDirtyNodes shows reentrant marks during a cycle", () => {
       const s = createScheduler({ mode: "immediate" });
       let dirtyDuring: string[] = [];
       s.subscribe({
@@ -494,7 +494,9 @@ describe("Scheduler", () => {
         },
       });
       s.markDirty(["a"]);
-      expect(dirtyDuring.sort()).toEqual(["a", "b"]);
+      // "a" was captured before compute; currentDirty was reset.
+      // "b" is written to the fresh currentDirty for the next cycle.
+      expect(dirtyDuring).toEqual(["b"]);
     });
   });
 });
