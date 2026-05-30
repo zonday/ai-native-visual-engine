@@ -2,6 +2,7 @@ import { z } from "zod/v4";
 import { ActionRegistry } from "../engine/action-registry.js";
 import type { RuntimeContext } from "../engine/handler.js";
 import type { SceneGraph } from "../types.js";
+import { BatchActionsSchema } from "./handlers/batch.js";
 import {
   CreateNodeActionSchema,
   createNodeEntry,
@@ -39,7 +40,6 @@ import {
   UpdateStyleActionSchema,
   updateStyleEntry,
 } from "./handlers/update-style.js";
-import { BatchActionsSchema } from "./handlers/batch.js";
 
 export const RuntimeActionSchema = z.discriminatedUnion("type", [
   CreateNodeActionSchema,

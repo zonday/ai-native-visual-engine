@@ -1,5 +1,4 @@
 import { z } from "zod/v4";
-import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
 import type { DocumentDispatchResult } from "../document-command-bus.js";
 import type {

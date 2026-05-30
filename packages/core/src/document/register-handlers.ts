@@ -2,6 +2,7 @@ import { z } from "zod/v4";
 import { ActionRegistry } from "../engine/action-registry.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentRuntimeContext } from "./handler-registry.js";
+import { BatchDocumentActionsSchema } from "./handlers/batch.js";
 import {
   CreatePageActionSchema,
   createPageEntry,
@@ -30,7 +31,6 @@ import {
   UpdatePageRouteActionSchema,
   updatePageRouteEntry,
 } from "./handlers/update-page-route.js";
-import { BatchDocumentActionsSchema } from "./handlers/batch.js";
 
 export const DocumentActionSchema = z.discriminatedUnion("type", [
   CreatePageActionSchema,
