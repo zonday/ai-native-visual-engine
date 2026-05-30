@@ -189,6 +189,9 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
           flushRequests.push({ resolve, reject, epoch: reqEpoch });
         });
       }
+      // After the loop exits, the consumer's listener may still be re-marking
+      // the same nodes, driving the microtask chain independently. That chain
+      // is the consumer's responsibility, not a scheduler leak.
       throw new Error(
         "Maximum scheduler flush depth exceeded: possible infinite update loop",
       );
