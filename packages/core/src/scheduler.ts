@@ -3,7 +3,7 @@ import type { NodeId } from "../types.js";
 export type SchedulePhase = "idle" | "compute" | "render";
 
 export interface ScheduleListener {
-  onCompute?: (dirtyNodes: NodeId[]) => void;
+  onCompute?: (dirtyNodes: NodeId[], all?: boolean) => void;
   onRender?: () => void;
 }
 
@@ -59,11 +59,11 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
     }
   }
 
-  function notifyCompute(dirtyNodes: NodeId[]): void {
+  function notifyCompute(dirtyNodes: NodeId[], all: boolean): void {
     const snapshot = [...listeners];
     for (const listener of snapshot) {
       try {
-        listener.onCompute?.(dirtyNodes);
+        listener.onCompute?.(dirtyNodes, all);
       } catch {
         // Isolate listener failures so one crash does not
         // corrupt the scheduler or silence other listeners
@@ -111,9 +111,9 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
 
       phase = "compute";
       if (batchAll) {
-        notifyCompute([]);
+        notifyCompute([], true);
       } else {
-        notifyCompute(Array.from(batch));
+        notifyCompute(Array.from(batch), false);
       }
 
       phase = "render";
@@ -182,7 +182,12 @@ export function createScheduler(options?: { mode?: ScheduleMode }): Scheduler {
       let depth = 0;
       while (depth < MAX_FLUSH_DEPTH) {
         const empty = currentDirty.size === 0 && !allDirty;
-        if (empty && phase === "idle") return;
+        // scheduled tracks whether a microtask/raf callback is pending.
+        // Without it, flush would resolve before a re-entrantly scheduled
+        // cycle had a chance to run — making it a weak epoch barrier instead
+        // of a strict quiescence barrier.
+        const pending = mode !== "immediate" && scheduled;
+        if (empty && phase === "idle" && !pending) return;
         depth++;
         const reqEpoch = epoch;
         await new Promise((resolve, reject) => {

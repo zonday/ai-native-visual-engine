@@ -18,7 +18,7 @@ Defines the mutation → compute → render pipeline. The scheduler is the orche
 export type SchedulePhase = "idle" | "compute" | "render"
 
 export interface ScheduleListener {
-  onCompute?: (dirtyNodes: NodeId[]) => void
+  onCompute?: (dirtyNodes: NodeId[], all?: boolean) => void
   onRender?: () => void
 }
 
@@ -79,8 +79,9 @@ export interface Scheduler {
 ### 4.1 Compute Phase
 
 1. At cycle start, the current dirty set is **captured and cleared**, so reentrant `markDirty` calls during this phase are written to a fresh set and processed in the next cycle.
-2. Call `onCompute(dirtyNodes)` — computed state engine invalidates stale caches.
-   - When `markAllDirty()` was used, `dirtyNodes` is `[]` (empty), signalling a full invalidation.
+2. Call `onCompute(dirtyNodes, all?)` — computed state engine invalidates stale caches.
+   - When `markAllDirty()` was used, `all` is `true` and `dirtyNodes` is `[]` (empty).
+   - When specific nodes were marked, `all` is `false` or `undefined`, and `dirtyNodes` contains the invalidated node IDs.
 3. If any listener calls `markDirty(...)` during this phase, the new IDs are written to the fresh current set and processed in the next cycle.
 
 ### 4.2 Render Phase
@@ -158,4 +159,5 @@ Default mode is `"microtask"`.
    - Any pending `flush()` promises are **rejected** with the depth-limit error.
    - The scheduler is fully reusable after the abort.
 8. `notifyCompute` and `notifyRender` snapshot the listener array before iterating. Adding or removing listeners during a cycle does not affect the current iteration.
-9. `getDirtyNodes()` returns only the current dirty set (no separate pending set). When `allDirty` is true, `getDirtyNodes()` returns `[]` — callers should use the `onCompute([])` convention for full invalidation detection.
+9. `getDirtyNodes()` returns only the current dirty set (no separate pending set). When `allDirty` is true, `getDirtyNodes()` returns `[]` — listeners can distinguish partial from full invalidation via the `all` parameter on `onCompute`.
+10. `flush()` is a **strict quiescence barrier**: it only resolves when the scheduler is idle AND no microtask or rAF callback is pending. The internal `scheduled` flag tracks whether a scheduling callback is queued; `flush()` checks it before resolving.
