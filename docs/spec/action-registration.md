@@ -96,16 +96,8 @@ export type InverseComputer<TState, TAction, TContext> = (
   stateBefore: Readonly<TState>,
   action: TAction,
   context: TContext,
-) => TAction | undefined;
-
-export type Validator<TState, TAction, TContext> = (
-  state: Readonly<TState>,
-  action: TAction,
-  context: TContext,
-) => ValidationResult;
+) => InverseAction<TAction> | undefined;
 ```
-
-`Readonly<TState>` is a compile-time hint, not a correctness guarantee — it prevents reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). Runtime enforcement comes from Immer's `autoFreeze` (§2.1), which deep-freezes the returned state in development. Handlers that use `produce()` are automatically safe; handlers that use manual spreads rely on the purity contract.
 
 The inverse return type is generalized to handle both single actions and batch containers without unsafe casts:
 
@@ -114,7 +106,9 @@ export type InverseAction<TAction extends { type: string }> =
   TAction | BatchAction<TAction>;
 ```
 
-`InverseComputer` returns `InverseAction<TAction>` — the transaction manager and batch inverse computation use this type to preserve the full union without `as TAction` casts.
+`InverseComputer` returns `InverseAction<TAction> | undefined` — the transaction manager and batch inverse computation use this type to preserve the full union without `as TAction` casts on the return value.
+
+`Readonly<TState>` is a compile-time hint, not a correctness guarantee — it prevents reassignment (e.g. `state.nodes = {}`) but not nested mutation (e.g. `state.nodes[id].x = 5`). Runtime enforcement comes from Immer's `autoFreeze` (§2.1), which deep-freezes the returned state in development. Handlers that use `produce()` are automatically safe; handlers that use manual spreads rely on the purity contract.
 
 Each action type has exactly one module file that exports its `HandlerEntry`.
 
@@ -126,12 +120,12 @@ The inverse function MUST still exist and be correct — it is used for batch ro
 
 ### 3.2 Validator
 
-Validation receives the full execution context, not just the action payload. This enables semantic validation (node existence, cyclic graphs, constraint checks):
+Validation receives the full execution context, not just the action payload. This enables semantic validation (node existence, cyclic graphs, constraint checks). The type is defined in §3; `state` is `Readonly<TState>`:
 
 ```ts
-// engine/types.ts
+// engine/types.ts (same contract as handler)
 export type Validator<TState, TAction, TContext> = (
-  state: TState,
+  state: Readonly<TState>,
   action: TAction,
   context: TContext,
 ) => ValidationResult;
@@ -220,6 +214,8 @@ export const createNode = {
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
 } satisfies HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext>;
 ```
+
+Note: throwing `HandlerError` inside Immer's `produce()` is safe. Immer's recipe (the `(draft) => { ... }` callback) intercepts exceptions and re-throws the original error — it does NOT wrap or swallow `HandlerError`. The engine catches the re-thrown `HandlerError` and converts it to `DispatchResult` as normal.
 
 Rules:
 
@@ -583,6 +579,11 @@ function computeBatchInverse<TAction extends { type: string }, TState, TContext 
   // Process actions in reverse order
   for (let i = steps.length - 1; i >= 0; i--) {
     const { action, stateBefore } = steps[i];
+    // `action` is iterated from BatchAction<TAction>.actions (TAction[]).
+    // TAction is a discriminated union — TS cannot narrow array elements by
+    // a shared discriminant. The `action.type as TAction["type"]` and
+    // `action as TAction` casts are safe because the batch guarantees every
+    // child is a valid TAction member.
     const inv = registry.getInverse(action.type as TAction["type"]);
     if (inv) {
       const result = inv(stateBefore, action as TAction, context);
