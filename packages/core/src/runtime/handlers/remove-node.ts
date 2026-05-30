@@ -1,9 +1,19 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneNode } from "../../types.js";
+import { z } from "zod/v4";
+import type { SceneGraph, SceneNode } from "../../types.js";
 import type { RemoveNodeAction, RuntimeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
+
+export const RemoveNodeActionSchema = z.object({
+  type: z.literal("remove-node"),
+  nodeId: z.string(),
+});
 
 const MAX_DEPTH = 1000;
 
@@ -61,6 +71,41 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   });
 };
 
+const removeNodeValidate = (
+  scene: SceneGraph,
+  action: RemoveNodeAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!scene?.nodes) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-scene",
+        message: "Scene is null or missing nodes for action: remove-node",
+      },
+    };
+  }
+  if (!scene.nodes[action.nodeId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.node-not-found",
+        message: `Node not found for action: remove-node`,
+      },
+    };
+  }
+  if (action.nodeId === scene.rootId) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.root-mutation",
+        message: "Cannot remove the root node",
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
   sceneBefore,
   action,
@@ -95,5 +140,6 @@ const removeNodeInverse: InverseComputer<RemoveNodeAction> = (
 export const removeNodeEntry = {
   handler: removeNodeHandler,
   inverse: removeNodeInverse,
+  validate: removeNodeValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Remove Node" },
 };

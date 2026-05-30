@@ -1,45 +1,12 @@
 import { z } from "zod/v4";
-import { PageSchema, PersistedSceneGraphSchema } from "../types.js";
 
-export const CreatePageActionSchema = z.object({
-  type: z.literal("create-page"),
-  page: PageSchema,
-  scene: PersistedSceneGraphSchema,
-});
-
-export const RenamePageActionSchema = z.object({
-  type: z.literal("rename-page"),
-  pageId: z.string(),
-  name: z.string(),
-});
-
-export const RemovePageActionSchema = z.object({
-  type: z.literal("remove-page"),
-  pageId: z.string(),
-});
-
-export const ReorderPageActionSchema = z.object({
-  type: z.literal("reorder-page"),
-  pageId: z.string(),
-  index: z.number().int().min(0),
-});
-
-export const UpdatePageRouteActionSchema = z.object({
-  type: z.literal("update-page-route"),
-  pageId: z.string(),
-  route: z.string(),
-});
-
-export const SetDocumentThemeActionSchema = z.object({
-  type: z.literal("set-document-theme"),
-  themeId: z.string().optional(),
-});
-
-export const SetPageThemeActionSchema = z.object({
-  type: z.literal("set-page-theme"),
-  pageId: z.string(),
-  themeId: z.string().optional(),
-});
+import { CreatePageActionSchema } from "./handlers/create-page.js";
+import { RenamePageActionSchema } from "./handlers/rename-page.js";
+import { RemovePageActionSchema } from "./handlers/remove-page.js";
+import { ReorderPageActionSchema } from "./handlers/reorder-page.js";
+import { UpdatePageRouteActionSchema } from "./handlers/update-page-route.js";
+import { SetDocumentThemeActionSchema } from "./handlers/set-document-theme.js";
+import { SetPageThemeActionSchema } from "./handlers/set-page-theme.js";
 
 export const BatchDocumentActionsSchema = z.object({
   type: z.literal("batch-document-actions"),

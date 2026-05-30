@@ -1,9 +1,22 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneNode } from "../../types.js";
+import { z } from "zod/v4";
+import { SceneNodeSchema } from "../../types.js";
+import type { SceneGraph, SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
+
+export const CreateNodeActionSchema = z.object({
+  type: z.literal("create-node"),
+  node: SceneNodeSchema,
+  parentId: z.string(),
+  index: z.number().optional(),
+});
 
 const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   scene,
@@ -58,6 +71,32 @@ const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   });
 };
 
+const createNodeValidate = (
+  scene: SceneGraph,
+  action: CreateNodeAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!scene.nodes[action.parentId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-parent",
+        message: `Parent node "${action.parentId}" not found`,
+      },
+    };
+  }
+  if (scene.nodes[action.node.id]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.duplicate-node-id",
+        message: `Node "${action.node.id}" already exists`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const createNodeInverse: InverseComputer<CreateNodeAction> = (
   _sceneBefore,
   action,
@@ -72,5 +111,6 @@ const createNodeInverse: InverseComputer<CreateNodeAction> = (
 export const createNodeEntry = {
   handler: createNodeHandler,
   inverse: createNodeInverse,
+  validate: createNodeValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
 };

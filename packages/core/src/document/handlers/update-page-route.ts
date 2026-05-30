@@ -1,8 +1,20 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { VisualDocument } from "../../types.js";
 import type { UpdatePageRouteAction } from "../actions.js";
-import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandler,
+  DocumentRuntimeContext,
+  InverseComputer,
+} from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
+
+export const UpdatePageRouteActionSchema = z.object({
+  type: z.literal("update-page-route"),
+  pageId: z.string(),
+  route: z.string(),
+});
 
 const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   document,
@@ -44,6 +56,46 @@ const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   });
 };
 
+const updatePageRouteValidate = (
+  document: VisualDocument,
+  action: UpdatePageRouteAction,
+  _ctx: DocumentRuntimeContext,
+) => {
+  const exists = document.pages.some((p) => p.id === action.pageId);
+  if (!exists) {
+    return {
+      ok: false,
+      error: {
+        code: "document.page-not-found",
+        message: `Page "${action.pageId}" not found`,
+      },
+    };
+  }
+  const normalized = normalizeRoute(action.route);
+  if (!normalized) {
+    return {
+      ok: false,
+      error: {
+        code: "document.invalid-route",
+        message: "Route is empty after normalization",
+      },
+    };
+  }
+  const duplicate = document.pages.find(
+    (p) => p.route === normalized && p.id !== action.pageId,
+  );
+  if (duplicate) {
+    return {
+      ok: false,
+      error: {
+        code: "document.duplicate-route",
+        message: `Route "${normalized}" already assigned to page "${duplicate.id}"`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
   documentBefore,
   action,
@@ -61,6 +113,7 @@ const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
 export const updatePageRouteEntry = {
   handler: updatePageRouteHandler,
   inverse: updatePageRouteInverse,
+  validate: updatePageRouteValidate,
   meta: {
     undoable: true,
     mergeable: false,

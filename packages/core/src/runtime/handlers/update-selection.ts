@@ -1,7 +1,18 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { SceneGraph } from "../../types.js";
 import type { UpdateSelectionAction } from "../actions.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
+
+export const UpdateSelectionActionSchema = z.object({
+  type: z.literal("update-selection"),
+  nodeIds: z.array(z.string()),
+});
 
 const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   scene,
@@ -33,6 +44,35 @@ const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   });
 };
 
+const updateSelectionValidate = (
+  scene: SceneGraph,
+  action: UpdateSelectionAction,
+  _ctx: RuntimeContext,
+) => {
+  const uniqueIds = new Set(action.nodeIds);
+  if (uniqueIds.size !== action.nodeIds.length) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.duplicate-selection",
+        message: "Selection nodeIds must not contain duplicates",
+      },
+    };
+  }
+  for (const nodeId of action.nodeIds) {
+    if (!scene.nodes[nodeId]) {
+      return {
+        ok: false,
+        error: {
+          code: "scene.node-not-found",
+          message: `Node "${nodeId}" not found in scene`,
+        },
+      };
+    }
+  }
+  return { ok: true };
+};
+
 const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
   sceneBefore,
   _action,
@@ -47,5 +87,6 @@ const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (
 export const updateSelectionEntry = {
   handler: updateSelectionHandler,
   inverse: updateSelectionInverse,
+  validate: updateSelectionValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Update Selection" },
 };

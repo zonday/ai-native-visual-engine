@@ -1,7 +1,18 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
+import { z } from "zod/v4";
+import type { VisualDocument } from "../../types.js";
 import type { SetDocumentThemeAction } from "../actions.js";
-import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
+import type {
+  DocumentHandler,
+  DocumentRuntimeContext,
+  InverseComputer,
+} from "../handler-registry.js";
+
+export const SetDocumentThemeActionSchema = z.object({
+  type: z.literal("set-document-theme"),
+  themeId: z.string().optional(),
+});
 
 const setDocumentThemeHandler: DocumentHandler<SetDocumentThemeAction> = (
   document,
@@ -23,6 +34,26 @@ const setDocumentThemeHandler: DocumentHandler<SetDocumentThemeAction> = (
   });
 };
 
+const setDocumentThemeValidate = (
+  document: VisualDocument,
+  action: SetDocumentThemeAction,
+  _ctx: DocumentRuntimeContext,
+) => {
+  if (action.themeId !== undefined && document.themes) {
+    const found = document.themes.some((t) => t.id === action.themeId);
+    if (!found) {
+      return {
+        ok: false,
+        error: {
+          code: "document.theme-not-found",
+          message: `Theme "${action.themeId}" not found in document themes`,
+        },
+      };
+    }
+  }
+  return { ok: true };
+};
+
 const setDocumentThemeInverse: InverseComputer<SetDocumentThemeAction> = (
   documentBefore,
   _action,
@@ -37,6 +68,7 @@ const setDocumentThemeInverse: InverseComputer<SetDocumentThemeAction> = (
 export const setDocumentThemeEntry = {
   handler: setDocumentThemeHandler,
   inverse: setDocumentThemeInverse,
+  validate: setDocumentThemeValidate,
   meta: {
     undoable: true,
     mergeable: false,

@@ -1,9 +1,21 @@
 import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneNode } from "../../types.js";
+import { z } from "zod/v4";
+import type { SceneGraph, SceneNode } from "../../types.js";
 import type { MoveNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
+
+export const MoveNodeActionSchema = z.object({
+  type: z.literal("move-node"),
+  nodeId: z.string(),
+  parentId: z.string(),
+  index: z.number().optional(),
+});
 
 function isDescendantOf(
   nodeId: string,
@@ -91,6 +103,59 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
   });
 };
 
+const moveNodeValidate = (
+  scene: SceneGraph,
+  action: MoveNodeAction,
+  _ctx: RuntimeContext,
+) => {
+  if (!scene?.nodes) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-scene",
+        message: "Scene is null or missing nodes for action: move-node",
+      },
+    };
+  }
+  if (!scene.nodes[action.nodeId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.node-not-found",
+        message: `Node not found for action: move-node`,
+      },
+    };
+  }
+  if (!scene.nodes[action.parentId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-parent",
+        message: `New parent "${action.parentId}" not found`,
+      },
+    };
+  }
+  if (action.nodeId === action.parentId) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.cycle-detected",
+        message: "Cannot move a node into itself",
+      },
+    };
+  }
+  if (isDescendantOf(action.parentId, action.nodeId, scene.nodes)) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.cycle-detected",
+        message: `Moving "${action.nodeId}" into "${action.parentId}" would create a cycle`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
 const moveNodeInverse: InverseComputer<MoveNodeAction> = (
   sceneBefore,
   action,
@@ -115,5 +180,6 @@ const moveNodeInverse: InverseComputer<MoveNodeAction> = (
 export const moveNodeEntry = {
   handler: moveNodeHandler,
   inverse: moveNodeInverse,
+  validate: moveNodeValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Move Node" },
 };
