@@ -1,6 +1,6 @@
 import { createReactiveSystem } from "alien-signals/system";
 
-export interface ReactiveNode {
+interface ReactiveNode {
   deps?: Link;
   depsTail?: Link;
   subs?: Link;
@@ -8,7 +8,7 @@ export interface ReactiveNode {
   flags: number;
 }
 
-export interface Link {
+interface Link {
   version: number;
   dep: ReactiveNode;
   sub: ReactiveNode;
@@ -38,11 +38,9 @@ export type Signal<T> = {
   (value: T): void;
 };
 
-export type Computed<T> = (() => T) & { dispose(): void };
+type Computed<T> = (() => T) & { dispose(): void };
 
-export type Effect = () => void;
-
-export interface ReactiveScope {
+interface ReactiveScope {
   signal<T>(initialValue: T): Signal<T>;
   computed<T>(getter: () => T): Computed<T>;
   effect(fn: () => unknown): () => void;
