@@ -9,10 +9,23 @@
         "noUnusedVariables": "error"
       },
       "style": {
-        "useConst": "error"
+        "useConst": "error",
+        "noNonNullAssertion": "error"
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/*/__tests__/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ],
   "css": {
     "parser": {
       "tailwindDirectives": true
