@@ -1,12 +1,7 @@
-import { ActionRegistry, splitRegistry } from "../engine/action-registry.js";
-import type { VisualDocument } from "../types.js";
+import { ActionRegistry } from "../engine/action-registry.js";
 import type { DocumentAction } from "./actions.js";
 import type { DocumentDispatchResult } from "./command-bus.js";
-import type {
-  DocumentHandlerRegistry,
-  DocumentRuntimeContext,
-  InverseRegistry,
-} from "./handler-registry.js";
+import type { DocumentRuntimeContext } from "./handler-registry.js";
 import { createPageEntry } from "./handlers/create-page.js";
 import { removePageEntry } from "./handlers/remove-page.js";
 import { renamePageEntry } from "./handlers/rename-page.js";
@@ -14,15 +9,12 @@ import { reorderPageEntry } from "./handlers/reorder-page.js";
 import { setDocumentThemeEntry } from "./handlers/set-document-theme.js";
 import { setPageThemeEntry } from "./handlers/set-page-theme.js";
 import { updatePageRouteEntry } from "./handlers/update-page-route.js";
+import type { VisualDocument } from "../types.js";
 
 export function createDocumentRegistry(
   _batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
 ): ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext> {
-  const registry = new ActionRegistry<
-    DocumentAction,
-    VisualDocument,
-    DocumentRuntimeContext
-  >();
+  const registry = new ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext>();
   registry.register("create-page", createPageEntry);
   registry.register("rename-page", renamePageEntry);
   registry.register("remove-page", removePageEntry);
@@ -32,20 +24,4 @@ export function createDocumentRegistry(
   registry.register("set-page-theme", setPageThemeEntry);
   registry.register("batch-document-actions", registry.createBatchEntry());
   return registry;
-}
-
-/** @deprecated Use createDocumentRegistry + ActionRegistry instead */
-export function createDefaultDocumentRegistries(
-  batchDispatch: (action: DocumentAction) => DocumentDispatchResult,
-): {
-  handlerRegistry: DocumentHandlerRegistry;
-  inverseRegistry: InverseRegistry;
-} {
-  const registry = createDocumentRegistry(batchDispatch);
-  const split = splitRegistry(registry);
-  return {
-    handlerRegistry:
-      split.handlerRegistry as unknown as DocumentHandlerRegistry,
-    inverseRegistry: split.inverseRegistry as unknown as InverseRegistry,
-  };
 }

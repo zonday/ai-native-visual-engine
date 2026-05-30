@@ -1,6 +1,6 @@
 import type { DispatchResult } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
-import type { HandlerRegistry } from "./handler-registry.js";
+import type { ActionRegistry } from "./action-registry.js";
 import {
   DEFAULT_NESTED_DEPTH_LIMIT,
   type RuntimeTransaction,
@@ -29,12 +29,7 @@ export interface TransactionManagerConfig<
   TAction extends { type: string },
   TContext extends RuntimeContext,
 > {
-  handlerRegistry: HandlerRegistry<TState, TAction, TContext>;
-  computeInverseAction: (
-    stateBefore: TState,
-    action: TAction,
-    context: TContext,
-  ) => TAction | undefined;
+  registry: ActionRegistry<TAction, TState, TContext>;
   dispatch?: (action: TAction) => DispatchResult<TState>;
   validate?: (action: TAction) => {
     ok: boolean;
@@ -163,8 +158,8 @@ export class TransactionManager<
       }
     }
 
-    const entry = this.config.handlerRegistry.get(action.type);
-    if (!entry) {
+    const handlerFn = this.config.registry.getHandler(action.type as TAction["type"]);
+    if (!handlerFn) {
       return {
         ok: false,
         error: {
@@ -177,7 +172,7 @@ export class TransactionManager<
 
     active.preActionStates.push(active.currentState);
     try {
-      const newState = entry.handler(
+      const newState = handlerFn(
         active.currentState,
         action,
         active.context,
@@ -279,11 +274,9 @@ export class TransactionManager<
     try {
       const stateBefore =
         active.preActionStates[actionIndex] ?? active.preState;
-      return this.config.computeInverseAction(
-        stateBefore,
-        action,
-        active.context,
-      );
+      const inverse = this.config.registry.getInverse(action.type as TAction["type"]);
+      if (!inverse) return undefined;
+      return inverse(stateBefore, action, active.context);
     } catch (err) {
       console.warn("[transaction] inverse computation failed:", err);
       return undefined;

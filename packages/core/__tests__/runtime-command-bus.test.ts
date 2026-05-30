@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { splitRegistry } from "../src/engine/action-registry.js";
+import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
+import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import type { SceneGraph } from "../src/types.js";
@@ -18,8 +18,7 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+    const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
 
@@ -41,8 +40,7 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+    const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
 
@@ -63,8 +61,7 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+    const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
 
@@ -80,20 +77,20 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns handler-error for unknown exceptions thrown from handler", () => {
-    const throwingHandler = new Map<string, RuntimeHandlerEntry>([
-      [
-        "test-action",
-        {
-          handler: () => {
-            throw new Error("Kaboom!");
-          },
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as RuntimeHandlerEntry,
-      ],
-    ]);
+    const throwingRegistry = new ActionRegistry<
+      RuntimeAction,
+      SceneGraph,
+      RuntimeContext
+    >();
+    throwingRegistry.register("test-action", {
+      handler: () => {
+        throw new Error("Kaboom!");
+      },
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
-    const bus = createRuntimeCommandBus(throwingHandler, [], emptyScene, {
+    const bus = createRuntimeCommandBus(throwingRegistry, [], emptyScene, {
       now: Date.now,
     });
 
@@ -111,9 +108,8 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(
-      handlerRegistry,
+      runtimeReg,
       [undefined as unknown as RuntimeMiddleware],
       emptyScene,
       { now: Date.now },
@@ -136,14 +132,13 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
     let middlewareCalled = false;
     const trackingMiddleware: RuntimeMiddleware = (_action, _scene, next) => {
       middlewareCalled = true;
       return next();
     };
     const bus = createRuntimeCommandBus(
-      handlerRegistry,
+      runtimeReg,
       [trackingMiddleware],
       emptyScene,
       { now: Date.now },
@@ -166,8 +161,7 @@ describe("createRuntimeCommandBus", () => {
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
-    const { handlerRegistry } = splitRegistry(runtimeReg);
-    const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
+    const bus = createRuntimeCommandBus(runtimeReg, [], emptyScene, {
       now: Date.now,
     });
 

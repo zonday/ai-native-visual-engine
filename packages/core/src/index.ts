@@ -32,7 +32,6 @@ export {
   type ActionMeta,
   ActionRegistry,
   type HandlerMap,
-  splitRegistry,
 } from "./engine/action-registry.js";
 export type {
   BatchAction,

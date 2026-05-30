@@ -4,18 +4,16 @@ import {
   extractErrorField,
   wrapCommandBus,
 } from "../engine/command-bus.js";
+import type { ActionRegistry } from "../engine/action-registry.js";
 import type { VisualDocument } from "../types.js";
 import type { DocumentAction } from "./actions.js";
 import type { DocumentDispatchResult } from "./command-bus.js";
-import type {
-  DocumentHandlerRegistry,
-  DocumentRuntimeContext,
-} from "./handler-registry.js";
+import type { DocumentRuntimeContext } from "./handler-registry.js";
 
 type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 
 export function createDocumentCommandBus(
-  registry: DocumentHandlerRegistry,
+  registry: ActionRegistry<DocumentAction, VisualDocument, DocumentRuntimeContext>,
   middlewares: DocumentMiddleware[],
   document: VisualDocument,
   context: DocumentRuntimeContext,

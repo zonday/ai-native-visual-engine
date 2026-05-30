@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
-import type {
-  DocumentHandlerEntry,
-  DocumentRuntimeContext,
-} from "../src/document/handler-registry.js";
+import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
 import { createDocumentRegistry } from "../src/document/register-handlers.js";
-import { splitRegistry } from "../src/engine/action-registry.js";
+import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import type { VisualDocument } from "../src/types.js";
 
@@ -32,13 +29,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
-    const bus = createDocumentCommandBus(
-      handlerRegistry,
-      [],
-      emptyDoc,
-      context,
-    );
+    const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const action: DocumentAction = {
       type: "create-page",
@@ -61,13 +52,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
-    const bus = createDocumentCommandBus(
-      handlerRegistry,
-      [],
-      emptyDoc,
-      context,
-    );
+    const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const action = {
       type: "nonexistent",
@@ -89,13 +74,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
-    const bus = createDocumentCommandBus(
-      handlerRegistry,
-      [],
-      docWithPage,
-      context,
-    );
+    const bus = createDocumentCommandBus(docReg, [], docWithPage, context);
 
     const action: DocumentAction = {
       type: "create-page",
@@ -109,21 +88,21 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns handler-error for unknown exceptions thrown from handler", () => {
-    const throwingHandler = new Map<string, DocumentHandlerEntry>([
-      [
-        "create-page",
-        {
-          handler: () => {
-            throw new Error("Kaboom!");
-          },
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as DocumentHandlerEntry,
-      ],
-    ]);
+    const throwingRegistry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    throwingRegistry.register("create-page", {
+      handler: () => {
+        throw new Error("Kaboom!");
+      },
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const bus = createDocumentCommandBus(
-      throwingHandler,
+      throwingRegistry,
       [],
       emptyDoc,
       context,
@@ -150,9 +129,8 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
     const bus = createDocumentCommandBus(
-      handlerRegistry,
+      docReg,
       [undefined as unknown as DocumentMiddleware],
       emptyDoc,
       context,
@@ -178,14 +156,13 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
     let middlewareCalled = false;
     const trackingMiddleware: DocumentMiddleware = (_action, _doc, next) => {
       middlewareCalled = true;
       return next();
     };
     const bus = createDocumentCommandBus(
-      handlerRegistry,
+      docReg,
       [trackingMiddleware],
       emptyDoc,
       context,
@@ -203,22 +180,22 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("catches handler that mutates frozen document and returns handler-error", () => {
-    const mutatingHandler = new Map<string, DocumentHandlerEntry>([
-      [
-        "test-action",
-        {
-          handler: (doc) => {
-            (doc.pages as Array<unknown>).push({ id: "p99" });
-            return doc as import("../src/types.js").VisualDocument;
-          },
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as DocumentHandlerEntry,
-      ],
-    ]);
+    const mutatingRegistry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    mutatingRegistry.register("test-action", {
+      handler: (doc) => {
+        (doc.pages as Array<unknown>).push({ id: "p99" });
+        return doc as import("../src/types.js").VisualDocument;
+      },
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
     const bus = createDocumentCommandBus(
-      mutatingHandler,
+      mutatingRegistry,
       [],
       emptyDoc,
       context,
@@ -234,18 +211,23 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("warns when handler returns same object reference (in-place mutation)", () => {
-    const sameRefHandler = new Map<string, DocumentHandlerEntry>([
-      [
-        "test-action",
-        {
-          handler: (doc) => doc as import("../src/types.js").VisualDocument,
-          inverse: () => undefined,
-          meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
-        } as DocumentHandlerEntry,
-      ],
-    ]);
+    const sameRefRegistry = new ActionRegistry<
+      DocumentAction,
+      VisualDocument,
+      DocumentRuntimeContext
+    >();
+    sameRefRegistry.register("test-action", {
+      handler: (doc) => doc as import("../src/types.js").VisualDocument,
+      inverse: () => undefined,
+      meta: { undoable: true, mergeable: false, devtoolsLabel: "" },
+    });
 
-    const bus = createDocumentCommandBus(sameRefHandler, [], emptyDoc, context);
+    const bus = createDocumentCommandBus(
+      sameRefRegistry,
+      [],
+      emptyDoc,
+      context,
+    );
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const result = bus.dispatch({
@@ -268,13 +250,7 @@ describe("createDocumentCommandBus", () => {
         message: "should not be called",
       },
     }));
-    const { handlerRegistry } = splitRegistry(docReg);
-    const bus = createDocumentCommandBus(
-      handlerRegistry,
-      [],
-      emptyDoc,
-      context,
-    );
+    const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const doc = bus.getDocument();
     expect(doc).toBe(emptyDoc);
