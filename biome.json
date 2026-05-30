@@ -24,16 +24,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["packages/*/package.json"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "noUnusedVariables": "off"
-          }
-        }
-      }
     }
   ],
   "css": {
