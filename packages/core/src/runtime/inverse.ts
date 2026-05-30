@@ -50,12 +50,6 @@ import {
   updateStyleInverse,
 } from "./handlers/update-style.js";
 
-export type { InverseComputer, InverseRegistry } from "./handler-registry.js";
-export {
-  computeInverseAction,
-  createInverseRegistry,
-} from "./handler-registry.js";
-
 export function createDefaultRuntimeRegistries(
   _batchDispatch: (action: RuntimeAction) => DispatchResult,
 ): {

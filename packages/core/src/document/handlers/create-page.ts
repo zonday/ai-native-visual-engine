@@ -1,9 +1,8 @@
 import { HandlerError } from "../../engine/error.js";
 import type { Page } from "../../types.js";
 import type { CreatePageAction } from "../actions.js";
-import type { DocumentHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
 import { normalizeRoute } from "../normalize-route.js";
+import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
 
 export const createPageHandler: DocumentHandler<CreatePageAction> = (
   document,

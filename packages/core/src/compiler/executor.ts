@@ -6,7 +6,7 @@ import { pushUndoTransaction } from "../engine/history.js";
 import type { TransactionFlag } from "../engine/transaction-flag.js";
 import type { TransactionManager } from "../engine/transaction-manager.js";
 import type { RuntimeAction } from "../runtime/actions.js";
-import type { RuntimeContext } from "../runtime/handler.js";
+import type { RuntimeContext } from "../runtime/handler-registry.js";
 import type { SceneGraph } from "../types.js";
 
 type RuntimeHistoryState = HistoryState<RuntimeAction>;

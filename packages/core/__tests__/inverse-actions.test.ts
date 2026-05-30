@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
+import type {
+  DocumentRuntimeContext,
+  InverseRegistry,
+} from "../src/document/handler-registry.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
-import type { InverseRegistry } from "../src/document/inverse.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";

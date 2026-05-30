@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RuntimeHandlerError } from "../src/runtime/error.js";
+import { HandlerError } from "../src/engine/error.js";
 import {
   rotateNodeHandler,
   rotateNodeInverse,
@@ -70,12 +70,12 @@ describe("rotateNodeHandler", () => {
     };
     expect(() =>
       rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now }),
-    ).toThrow(RuntimeHandlerError);
+    ).toThrow(HandlerError);
     try {
       rotateNodeHandler(sceneWithAbsoluteNode, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe("scene.node-not-found");
-      expect((e as RuntimeHandlerError).context.nodeId).toBe("missing");
+      expect((e as HandlerError).code).toBe("scene.node-not-found");
+      expect((e as HandlerError).context.nodeId).toBe("missing");
     }
   });
 
@@ -95,12 +95,12 @@ describe("rotateNodeHandler", () => {
       rotation: 45,
     };
     expect(() => rotateNodeHandler(scene, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
+      HandlerError,
     );
     try {
       rotateNodeHandler(scene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe(
+      expect((e as HandlerError).code).toBe(
         "scene.invalid-layout-for-rotation",
       );
     }
@@ -117,12 +117,12 @@ describe("rotateNodeHandler", () => {
       rotation: 45,
     };
     expect(() => rotateNodeHandler(scene, action, { now: Date.now })).toThrow(
-      RuntimeHandlerError,
+      HandlerError,
     );
     try {
       rotateNodeHandler(scene, action, { now: Date.now });
     } catch (e) {
-      expect((e as RuntimeHandlerError).code).toBe(
+      expect((e as HandlerError).code).toBe(
         "scene.invalid-layout-for-rotation",
       );
     }

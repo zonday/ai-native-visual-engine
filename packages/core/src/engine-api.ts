@@ -7,7 +7,7 @@ import type {
 } from "./engine/transaction-types.js";
 import type { RuntimeAction } from "./runtime/actions.js";
 import type { CommandBus, DispatchResult } from "./runtime/command-bus.js";
-import type { RuntimeContext } from "./runtime/handler.js";
+import type { RuntimeContext } from "./runtime/handler-registry.js";
 import type { RuntimeTransactionManager } from "./runtime/transaction.js";
 import type {
   Binding,

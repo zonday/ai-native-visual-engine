@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { RuntimeAction } from "../src/runtime/actions.js";
-import type { RuntimeContext } from "../src/runtime/handler.js";
-import type { InverseComputer } from "../src/runtime/handler-registry.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+} from "../src/runtime/handler-registry.js";
 import {
   computeInverseAction,
   createInverseRegistry,

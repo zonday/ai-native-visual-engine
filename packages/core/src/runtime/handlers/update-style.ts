@@ -1,7 +1,6 @@
 import type { UpdateStyleAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
-import type { RuntimeHandler } from "../handler.js";
-import type { InverseComputer } from "../handler-registry.js";
+import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
 import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
 export const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (

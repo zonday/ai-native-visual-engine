@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
-import type { DocumentRuntimeContext } from "../src/document/handler.js";
+import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
 import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";
