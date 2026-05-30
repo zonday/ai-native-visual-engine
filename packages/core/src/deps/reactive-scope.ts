@@ -168,7 +168,7 @@ export function createScope(): ReactiveScope {
       return oldValue !== c.value;
     } finally {
       activeSub = prevSub;
-      c.flags = (c.flags & ~ExtraRF.Evaluating) | RF.Mutable;
+      c.flags = (c.flags & ~(ExtraRF.Evaluating | RF.Pending)) | RF.Mutable;
       purgeDeps(c);
     }
   }
