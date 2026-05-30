@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneGraph } from "../../types.js";
+import type { MutableSceneNode, SceneGraph } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -78,7 +78,7 @@ const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   validateLayout(merged, action.nodeId);
 
   return produce(scene, (draft) => {
-    (draft.nodes[action.nodeId] as any).layout = merged;
+    (draft.nodes[action.nodeId] as MutableSceneNode).layout = merged;
     draft.version += 1;
   });
 };

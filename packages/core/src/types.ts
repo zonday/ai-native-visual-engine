@@ -284,6 +284,8 @@ export type PersistedSceneGraph = z.infer<typeof PersistedSceneGraphSchema>;
 export type SelectionState = z.infer<typeof SelectionStateSchema>;
 export type ViewportState = z.infer<typeof ViewportStateSchema>;
 export type SceneNode = DeepReadonly<z.infer<typeof SceneNodeSchema>>;
+/** Mutable version of SceneNode for use inside Immer produce() callbacks. */
+export type MutableSceneNode = z.infer<typeof SceneNodeSchema>;
 export type SceneGraph = z.infer<typeof SceneGraphSchema>;
 
 // ── Deep Readonly Utilities ──

@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
-import type { SceneGraph, SceneNode } from "../../types.js";
+import type { MutableSceneNode, SceneGraph, SceneNode } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -63,7 +63,7 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
 
     const parent = node.parentId ? draft.nodes[node.parentId] : undefined;
     if (parent && node.parentId) {
-      (draft.nodes[node.parentId] as any).children = (
+      (draft.nodes[node.parentId] as MutableSceneNode).children = (
         parent.children ?? []
       ).filter((id) => id !== action.nodeId);
     }
