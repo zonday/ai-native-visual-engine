@@ -240,6 +240,45 @@ describe("createScope", () => {
       c.dispose();
       expect(() => c()).toThrow("Cannot read disposed computed");
     });
+
+    it("first eval via updateComputed handles duplicate dep reads (a()+b()+a())", () => {
+      const { signal, computed } = createScope();
+      const a = signal(0);
+      const b = signal(1);
+      let evalCount = 0;
+      const c = computed(() => {
+        evalCount++;
+        return a() + b() + a();
+      });
+      expect(c()).toBe(1);
+      expect(evalCount).toBe(1);
+      a(2);
+      expect(c()).toBe(5);
+      expect(evalCount).toBe(2);
+    });
+
+    it("first eval via updateComputed purges unreferenced deps on re-eval", () => {
+      const { signal, computed } = createScope();
+      const toggle = signal(true);
+      const a = signal(0);
+      const b = signal(1);
+      let evalCount = 0;
+      const c = computed(() => {
+        evalCount++;
+        return toggle() ? a() : b();
+      });
+      expect(c()).toBe(0);
+      expect(evalCount).toBe(1);
+      a(2);
+      expect(c()).toBe(2);
+      expect(evalCount).toBe(2);
+      toggle(false);
+      expect(c()).toBe(1);
+      expect(evalCount).toBe(3);
+      a(5);
+      expect(c()).toBe(1);
+      expect(evalCount).toBe(3);
+    });
   });
 
   describe("hasChildEffect flag cleanup", () => {
