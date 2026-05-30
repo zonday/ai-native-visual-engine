@@ -39,6 +39,7 @@ export type {
   HandlerEntry,
   InverseComputer,
 } from "./engine/handler-registry.js";
+export type { RuntimeContext } from "./engine/handler.js";
 // ── History ──
 export {
   createHistoryState,
