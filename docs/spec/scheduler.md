@@ -10,25 +10,26 @@ Defines the mutation → compute → render pipeline. The scheduler is the orche
 2. **Batched compute phase**. Multiple mutations within the same microtask are collapsed into a single compute pass.
 3. **Deterministic phase order**. Every scheduled cycle follows: `compute → render → idle`.
 4. **Renderer agnostic**. The scheduler emits events; it does not know React from Canvas.
+5. **Reentrant-safe**. `markDirty` during compute/render is deferred to the next cycle, not thrown.
 
 ## 3. Interface
 
 ```ts
-export type SchedulePhase = 'compute' | 'render' | 'idle'
+export type SchedulePhase = "idle" | "compute" | "render"
 
 export interface ScheduleListener {
-  onBeforeCompute?: (dirtyNodes: NodeId[]) => void
-  onAfterCompute?: (dirtyNodes: NodeId[]) => void
-  onBeforeRender?: () => void
-  onAfterRender?: () => void
+  onCompute?: (dirtyNodes: NodeId[]) => void
+  onRender?: () => void
 }
+
+export type ScheduleMode = "microtask" | "raf" | "immediate"
 
 export interface Scheduler {
   // — Dirty marking (called by transaction commit) —
   markDirty(nodeIds: NodeId[]): void
   markAllDirty(): void
 
-  // — Manual flush (sync mode) —
+  // — Manual flush —
   flush(): Promise<void>
 
   // — Subscription —
@@ -39,7 +40,7 @@ export interface Scheduler {
   getDirtyNodes(): NodeId[]
 
   // — Configuration —
-  setMode(mode: 'sync' | 'async'): void
+  setMode(mode: ScheduleMode): void
 }
 ```
 
@@ -53,23 +54,20 @@ export interface Scheduler {
                        │
                        ▼
          ┌─────────────────────────────┐
-         │     Schedule Microtask       │
-         │   (sync: Promise.then        │
-         │    async: rAF)               │
+         │     Schedule                 │
+         │   (microtask / rAF / sync)   │
          └─────────────┬───────────────┘
                        │
                        ▼
          ┌─────────────────────────────┐
          │     Compute Phase            │
-         │   onBeforeCompute(dirty)     │
-         │   onAfterCompute(dirty)      │
+         │   onCompute(dirtyNodes)      │
          └─────────────┬───────────────┘
                        │
                        ▼
          ┌─────────────────────────────┐
          │     Render Phase             │
-         │   onBeforeRender()           │
-         │   onAfterRender()            │
+         │   onRender()                 │
          └─────────────┬───────────────┘
                        │
                        ▼
@@ -80,39 +78,48 @@ export interface Scheduler {
 
 ### 4.1 Compute Phase
 
-1. Collect all dirty node IDs from the dirty set.
-2. Call `onBeforeCompute(dirtyNodes)` — computed state engine invalidates stale caches.
+1. Collect all dirty node IDs from the current dirty set.
+2. Call `onCompute(dirtyNodes)` — computed state engine invalidates stale caches.
+   - When `markAllDirty()` was used, `dirtyNodes` is `[]` (empty), signalling a full invalidation.
 3. Dirty nodes' computed state is lazily recomputed on next read.
-4. Call `onAfterCompute(dirtyNodes)` — subscribers (e.g., renderer) are notified.
+4. If any listener calls `markDirty(...)` during this phase, the new IDs are queued to a **pending** set and processed in the next cycle.
 
 ### 4.2 Render Phase
 
-1. Call `onBeforeRender()` — renderer prepares for a new frame.
-2. Renderer reads latest scene via selectors and computed state engine.
-3. Call `onAfterRender()` — renderer commits.
+1. Call `onRender()` — renderer produces output (e.g., commits a frame). The dirty set is cleared before `onRender()` is called, so `getDirtyNodes()` returns `[]` during this phase.
+2. If any listener calls `markDirty(...)` during this phase, the new IDs are queued to the pending set.
 
 ### 4.3 Idle
 
 1. Dirty set is empty.
 2. No pending compute or render work.
+3. If the pending set is non-empty after a flush, a new cycle is automatically scheduled.
 
 ## 5. Modes
 
-### Sync Mode (default for testing)
+### Microtask Mode (default)
 
 ```ts
-scheduler.setMode('sync')
+scheduler.setMode("microtask")
 ```
 
-`markDirty` immediately schedules a microtask (via `Promise.resolve().then()`). For synchronous test environments, call `scheduler.flush()` explicitly.
+`markDirty` schedules a microtask (via `Promise.resolve().then()`). Mutations within the same synchronous block are batched. Equivalent to the legacy `"sync"` mode — but named for the actual scheduling mechanism.
 
-### Async Mode (browser production)
+### RAF Mode (browser production)
 
 ```ts
-scheduler.setMode('async')
+scheduler.setMode("raf")
 ```
 
 `markDirty` schedules via `requestAnimationFrame`. Multiple mutations within the same frame are batched.
+
+### Immediate Mode (synchronous testing)
+
+```ts
+scheduler.setMode("immediate")
+```
+
+`markDirty` runs `runCycle()` synchronously. Useful for deterministic testing where no microtask boundary is desired.
 
 ## 6. Integration With TransactionManager
 
@@ -133,14 +140,17 @@ If `affectedNodes` is empty (e.g., `update-selection` only), the scheduler remai
 
 ```ts
 export function createScheduler(options?: {
-  mode?: 'sync' | 'async'
+  mode?: ScheduleMode
 }): Scheduler
 ```
+
+Default mode is `"microtask"`.
 
 ## 8. Rules
 
 1. `markDirty` is idempotent. Calling with the same `nodeId` twice is a no-op.
-2. `markAllDirty` clears the dirty set. Subscribers should treat an empty-but-scheduled cycle as a full invalidation signal.
-3. During the compute phase, new mutations MUST NOT occur. If they do, the scheduler throws.
+2. `markAllDirty` sets the `allDirty` flag and clears the current dirty set. Subscribers receive an empty `dirtyNodes` array in `onCompute`, signalling a full invalidation.
+3. During the compute or render phase, new `markDirty` calls are deferred to a **pending** set and processed in the next cycle. They MUST NOT throw.
 4. The scheduler must not hold a reference to the scene. It operates on `NodeId[]` only.
-5. Listeners are called synchronously during `flush()`.
+5. Listeners are called synchronously during `flush()`. Listener errors are isolated per listener — a single crash does not corrupt the scheduler or silence other listeners.
+6. Re-entrant cycles are bounded by `MAX_FLUSH_DEPTH` (100). Exceeding this limit throws `Maximum scheduler flush depth exceeded`.

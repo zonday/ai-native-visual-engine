@@ -61,7 +61,7 @@ export { createDefaultRuntimeRegistries } from "./runtime/inverse.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export { createRuntimeTransactionManager } from "./runtime/transaction.js";
 // ── Scheduler ──
-export { createScheduler, type Scheduler } from "./scheduler/scheduler.js";
+export { createScheduler, type Scheduler } from "./scheduler.js";
 // ── Selector ──
 export {
   createSelectorRegistry,
