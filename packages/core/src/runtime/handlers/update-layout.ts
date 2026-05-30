@@ -1,7 +1,7 @@
 import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
-import type { MutableSceneNode, SceneGraph } from "../../types.js";
+import type { MutableSceneNode, SceneGraph, SceneNode } from "../../types.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -164,7 +164,7 @@ const updateLayoutValidate = (
       },
     };
   }
-  const node = scene.nodes[action.nodeId] as any;
+  const node = scene.nodes[action.nodeId] as SceneNode;
   const merged = {
     ...(node.layout ?? {}),
     ...action.layout,
