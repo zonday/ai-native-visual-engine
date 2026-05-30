@@ -281,8 +281,8 @@ describe("createScope", () => {
     });
   });
 
-  describe("hasChildEffect flag cleanup", () => {
-    it("child effect dispose does not throw when parent has other deps", () => {
+  describe("effect dispose safety", () => {
+    it("parent dispose does not throw when children exist", () => {
       const { signal, effect } = createScope();
       const s = signal(0);
       const parentStop = effect(() => {
