@@ -65,14 +65,7 @@ function makeStatefulDispatch(
 
 describe("batch handler via createDocumentRegistry", () => {
   it("executes multiple actions in sequence and returns updated document", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
     const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
@@ -92,14 +85,7 @@ describe("batch handler via createDocumentRegistry", () => {
   });
 
   it("rolls back to original document when a child action fails", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
     const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     let callCount = 0;
@@ -135,14 +121,7 @@ describe("batch handler via createDocumentRegistry", () => {
   });
 
   it("passes through child action without schema validation", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
     const { handlerRegistry } = splitRegistry(reg);
     const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
@@ -162,14 +141,7 @@ describe("batch handler via createDocumentRegistry", () => {
   });
 
   it("flattens nested batch actions", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
     const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
@@ -191,14 +163,7 @@ describe("batch handler via createDocumentRegistry", () => {
   });
 
   it("handles empty actions list without error", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
     const { handlerRegistry } = splitRegistry(reg);
     const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
@@ -215,10 +180,7 @@ describe("batch handler via createDocumentRegistry", () => {
 
 describe("batch inverse", () => {
   it("throws when computing batch inverse via registry-level inverse computer", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: true,
-      document: emptyDoc,
-    }));
+    const reg = createDocumentRegistry();
     const { inverseRegistry } = splitRegistry(reg);
 
     const action: DocumentAction = {

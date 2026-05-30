@@ -77,12 +77,7 @@ export function useEditorEngines(
   }, []);
 
   const runtimeRegistries = useMemo(
-    () =>
-      createRuntimeRegistry(() => ({
-        ok: false,
-        scene: { version: 0, rootId: "", nodes: {} },
-        error: { code: "nested", message: "nested" },
-      })),
+    () => createRuntimeRegistry(),
     [],
   );
 
@@ -144,11 +139,7 @@ export function useEditorEngines(
   ]);
 
   const documentBus = useMemo(() => {
-    const documentRegistry = createDocumentRegistry(() => ({
-      ok: false,
-      document: doc,
-      error: { code: "nested", message: "nested" },
-    }));
+    const documentRegistry = createDocumentRegistry();
     const middlewares = [
       createValidatorMiddleware<VisualDocument, DocumentAction>(
         DocumentActionSchema,

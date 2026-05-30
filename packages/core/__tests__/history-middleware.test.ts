@@ -10,14 +10,7 @@ import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
 describe("createUndoHistoryMiddleware", () => {
   it("pushes history entry on successful dispatch", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -53,14 +46,7 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("does not push history entry when dispatch fails", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -91,14 +77,7 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("throws when batch inverse computer encounters batch action", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(
@@ -127,14 +106,7 @@ describe("createUndoHistoryMiddleware", () => {
   });
 
   it("uses actorId from context when getActorId returns undefined", () => {
-    const reg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const reg = createDocumentRegistry();
 
     let history: DocumentHistoryState = { undoStack: [], redoStack: [] };
     const middleware = createUndoHistoryMiddleware(

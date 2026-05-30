@@ -21,14 +21,7 @@ const context: DocumentRuntimeContext = { now: Date.now };
 
 describe("createDocumentCommandBus", () => {
   it("dispatches a valid action and returns ok with updated document", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const action: DocumentAction = {
@@ -44,14 +37,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const action = {
@@ -66,14 +52,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns handler error code when DocumentHandlerError is thrown", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     const bus = createDocumentCommandBus(docReg, [], docWithPage, context);
 
     const action: DocumentAction = {
@@ -121,14 +100,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     const bus = createDocumentCommandBus(
       docReg,
       [undefined as unknown as DocumentMiddleware],
@@ -148,14 +120,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified document", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     let middlewareCalled = false;
     const trackingMiddleware: DocumentMiddleware = (_action, _doc, next) => {
       middlewareCalled = true;
@@ -242,14 +207,7 @@ describe("createDocumentCommandBus", () => {
   });
 
   it("getDocument returns the current document", () => {
-    const docReg = createDocumentRegistry(() => ({
-      ok: false,
-      document: emptyDoc,
-      error: {
-        code: "document.handler-error",
-        message: "should not be called",
-      },
-    }));
+    const docReg = createDocumentRegistry();
     const bus = createDocumentCommandBus(docReg, [], emptyDoc, context);
 
     const doc = bus.getDocument();

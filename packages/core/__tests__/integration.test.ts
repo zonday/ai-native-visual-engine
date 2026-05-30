@@ -8,8 +8,6 @@ function nonNull<T>(value: T): NonNullable<T> {
 
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
 import { exportDocument } from "../src/import-export.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
-import type { DispatchResult } from "../src/runtime/command-bus.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { openDocumentSession } from "../src/session.js";
@@ -94,11 +92,7 @@ describe("action replay determinism", () => {
     const scene = page0 ? doc.scenes[page0.sceneId] : undefined;
     if (!scene) throw new Error("Missing scene fixture");
 
-    const registry = createRuntimeRegistry(() => ({
-      ok: false,
-      scene: { version: 0, rootId: "root", nodes: {} },
-      error: { code: "fail", message: "noop" },
-    }));
+    const registry = createRuntimeRegistry();
 
     const bus1 = createRuntimeCommandBus(
       registry,
@@ -143,35 +137,7 @@ describe("batch actions via command bus", () => {
     if (!scene) throw new Error("Missing scene fixture");
     const initial = { ...scene, version: 0, nodes: { ...scene.nodes } };
 
-    let current = initial;
-    const dispatch = (action: RuntimeAction): DispatchResult => {
-      const runtimeReg = createRuntimeRegistry(() => ({
-        ok: false,
-        scene: current,
-        error: { code: "fail", message: "noop" },
-      }));
-      const handler = runtimeReg.getHandler(
-        action.type as RuntimeAction["type"],
-      );
-      if (!handler)
-        return {
-          ok: false,
-          scene: current,
-          error: { code: "unknown", message: "?" },
-        };
-      try {
-        current = handler(current, action, { now: Date.now });
-        return { ok: true, scene: current };
-      } catch (e) {
-        return {
-          ok: false,
-          scene: current,
-          error: { code: "error", message: (e as Error).message },
-        };
-      }
-    };
-
-    const registry2 = createRuntimeRegistry(dispatch);
+    const registry2 = createRuntimeRegistry();
     const bus = createRuntimeCommandBus(registry2, [], initial, {
       now: Date.now,
     });

@@ -40,7 +40,7 @@ export class ActionRegistry<
 > {
   private entries = new Map<string, unknown>();
 
-  register(type: TAction["type"], entry: unknown): void {
+  register(type: string, entry: unknown): void {
     if (this.entries.has(type)) {
       throw new Error(
         `Duplicate handler registration for action type "${type}"`,
@@ -83,7 +83,7 @@ export class ActionRegistry<
     return this.entries.get(type);
   }
 
-  has(type: TAction["type"]): boolean {
+  has(type: string): boolean {
     return this.entries.has(type);
   }
 
