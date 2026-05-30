@@ -1,5 +1,5 @@
-import { TransactionManager } from "../engine/transaction-manager.js";
 import type { ActionRegistry } from "../engine/action-registry.js";
+import { TransactionManager } from "../engine/transaction-manager.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { RuntimeContext } from "./handler-registry.js";

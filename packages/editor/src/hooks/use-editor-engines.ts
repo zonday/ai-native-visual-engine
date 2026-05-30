@@ -7,13 +7,11 @@ import type {
 } from "@ai-native/core";
 import {
   type ActionRegistry,
-  createBatchHandler,
   createComputedStateEngine,
   createConstraintMiddleware,
   createConstraintRegistry,
-  createDocumentRegistry,
-  createDocumentBatchHandler,
   createDocumentCommandBus,
+  createDocumentRegistry,
   createInteractionEngine,
   createRuntimeCommandBus,
   createRuntimeRegistry,

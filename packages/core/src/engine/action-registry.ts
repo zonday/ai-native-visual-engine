@@ -5,7 +5,7 @@ import type {
   InverseComputer,
   Validator,
 } from "./handler-registry.js";
-import { buildRegistriesFromEntries, type HandlerRegistry } from "./handler-registry.js";
+import { buildRegistriesFromEntries } from "./handler-registry.js";
 
 export interface ActionMeta {
   undoable: boolean;
@@ -49,20 +49,34 @@ export class ActionRegistry<
     this.entries.set(type, entry);
   }
 
-  getHandler(type: TAction["type"]): Handler<TState, TAction, TContext> | undefined {
-    return (this.entries.get(type) as Record<string, unknown>)?.["handler"] as Handler<TState, TAction, TContext> | undefined;
+  getHandler(
+    type: TAction["type"],
+  ): Handler<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.handler as
+      | Handler<TState, TAction, TContext>
+      | undefined;
   }
 
-  getInverse(type: TAction["type"]): InverseComputer<TState, TAction, TContext> | undefined {
-    return (this.entries.get(type) as Record<string, unknown>)?.["inverse"] as InverseComputer<TState, TAction, TContext> | undefined;
+  getInverse(
+    type: TAction["type"],
+  ): InverseComputer<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.inverse as
+      | InverseComputer<TState, TAction, TContext>
+      | undefined;
   }
 
-  getValidator(type: TAction["type"]): Validator<TState, TAction, TContext> | undefined {
-    return (this.entries.get(type) as Record<string, unknown>)?.["validate"] as Validator<TState, TAction, TContext> | undefined;
+  getValidator(
+    type: TAction["type"],
+  ): Validator<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.validate as
+      | Validator<TState, TAction, TContext>
+      | undefined;
   }
 
   getMeta(type: TAction["type"]): ActionMeta | undefined {
-    return (this.entries.get(type) as Record<string, unknown>)?.["meta"] as ActionMeta | undefined;
+    return (this.entries.get(type) as Record<string, unknown>)?.meta as
+      | ActionMeta
+      | undefined;
   }
 
   getEntry(type: TAction["type"]): unknown {

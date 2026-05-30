@@ -1,6 +1,6 @@
+import type { ActionRegistry } from "./action-registry.js";
 import { HandlerError } from "./error.js";
 import type { RuntimeContext } from "./handler.js";
-import type { ActionRegistry } from "./action-registry.js";
 
 export interface DispatchResult<TState> {
   ok: boolean;
