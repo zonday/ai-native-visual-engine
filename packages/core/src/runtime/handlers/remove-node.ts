@@ -2,7 +2,7 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
-import type { RemoveNodeAction, RuntimeAction } from "../actions.js";
+import type { RuntimeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -14,6 +14,7 @@ export const RemoveNodeActionSchema = z.object({
   type: z.literal("remove-node"),
   nodeId: z.string(),
 });
+export type RemoveNodeAction = z.infer<typeof RemoveNodeActionSchema>;
 
 const MAX_DEPTH = 1000;
 

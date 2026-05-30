@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { SetPageThemeAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -14,6 +13,7 @@ export const SetPageThemeActionSchema = z.object({
   pageId: z.string(),
   themeId: z.string().optional(),
 });
+export type SetPageThemeAction = z.infer<typeof SetPageThemeActionSchema>;
 
 const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
   document,

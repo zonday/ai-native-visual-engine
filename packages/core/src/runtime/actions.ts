@@ -13,9 +13,7 @@ import { UpdateStyleActionSchema } from "./handlers/update-style.js";
 
 export const BatchActionsSchema = z.object({
   type: z.literal("batch-actions"),
-  // z.any() is required here because RuntimeActionSchema includes
-  // BatchActionsSchema itself, creating a circular Zod dependency.
-  // Batch actions may contain nested batch actions (e.g. inverse rollup).
+  // z.any() is required because RuntimeActionSchema includes BatchActionsSchema itself.
   actions: z.array(z.any()),
 });
 
@@ -33,15 +31,15 @@ export const RuntimeActionSchema = z.discriminatedUnion("type", [
   BatchActionsSchema,
 ]);
 
-export type CreateNodeAction = z.infer<typeof CreateNodeActionSchema>;
-export type RemoveNodeAction = z.infer<typeof RemoveNodeActionSchema>;
-export type MoveNodeAction = z.infer<typeof MoveNodeActionSchema>;
-export type UpdateLayoutAction = z.infer<typeof UpdateLayoutActionSchema>;
-export type RotateNodeAction = z.infer<typeof RotateNodeActionSchema>;
-export type UpdatePropsAction = z.infer<typeof UpdatePropsActionSchema>;
-export type UpdateStyleAction = z.infer<typeof UpdateStyleActionSchema>;
-export type UpdateBindingsAction = z.infer<typeof UpdateBindingsActionSchema>;
-export type UpdateRuntimeAction = z.infer<typeof UpdateRuntimeActionSchema>;
-export type UpdateSelectionAction = z.infer<typeof UpdateSelectionActionSchema>;
-export type BatchActions = z.infer<typeof BatchActionsSchema>;
+export type { CreateNodeAction } from "./handlers/create-node.js";
+export type { RemoveNodeAction } from "./handlers/remove-node.js";
+export type { MoveNodeAction } from "./handlers/move-node.js";
+export type { UpdateLayoutAction } from "./handlers/update-layout.js";
+export type { RotateNodeAction } from "./handlers/rotate-node.js";
+export type { UpdatePropsAction } from "./handlers/update-props.js";
+export type { UpdateStyleAction } from "./handlers/update-style.js";
+export type { UpdateBindingsAction } from "./handlers/update-bindings.js";
+export type { UpdateRuntimeAction } from "./handlers/update-runtime.js";
+export type { UpdateSelectionAction } from "./handlers/update-selection.js";
+export type { BatchActions } from "./handlers/batch.js";
 export type RuntimeAction = z.infer<typeof RuntimeActionSchema>;

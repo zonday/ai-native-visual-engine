@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph } from "../../types.js";
-import type { UpdateSelectionAction } from "../actions.js";
 import type {
   InverseComputer,
   RuntimeContext,
@@ -13,6 +12,7 @@ export const UpdateSelectionActionSchema = z.object({
   type: z.literal("update-selection"),
   nodeIds: z.array(z.string()),
 });
+export type UpdateSelectionAction = z.infer<typeof UpdateSelectionActionSchema>;
 
 const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
   scene,

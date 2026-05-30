@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { UpdatePageRouteAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -15,6 +14,7 @@ export const UpdatePageRouteActionSchema = z.object({
   pageId: z.string(),
   route: z.string(),
 });
+export type UpdatePageRouteAction = z.infer<typeof UpdatePageRouteActionSchema>;
 
 const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
   document,

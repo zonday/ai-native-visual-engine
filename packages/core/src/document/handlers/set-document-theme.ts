@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { SetDocumentThemeAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -13,6 +12,7 @@ export const SetDocumentThemeActionSchema = z.object({
   type: z.literal("set-document-theme"),
   themeId: z.string().optional(),
 });
+export type SetDocumentThemeAction = z.infer<typeof SetDocumentThemeActionSchema>;
 
 const setDocumentThemeHandler: DocumentHandler<SetDocumentThemeAction> = (
   document,

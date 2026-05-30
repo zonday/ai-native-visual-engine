@@ -3,7 +3,6 @@ import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { Page, VisualDocument } from "../../types.js";
 import { PageSchema, PersistedSceneGraphSchema } from "../../types.js";
-import type { CreatePageAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -16,6 +15,7 @@ export const CreatePageActionSchema = z.object({
   page: PageSchema,
   scene: PersistedSceneGraphSchema,
 });
+export type CreatePageAction = z.infer<typeof CreatePageActionSchema>;
 
 const createPageHandler: DocumentHandler<CreatePageAction> = (
   document,

@@ -3,7 +3,6 @@ import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
 import { SceneNodeSchema } from "../../types.js";
-import type { CreateNodeAction } from "../actions.js";
 import type {
   InverseComputer,
   RuntimeContext,
@@ -17,6 +16,7 @@ export const CreateNodeActionSchema = z.object({
   parentId: z.string(),
   index: z.number().optional(),
 });
+export type CreateNodeAction = z.infer<typeof CreateNodeActionSchema>;
 
 const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
   scene,

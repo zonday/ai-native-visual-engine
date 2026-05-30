@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
-import type { RenamePageAction } from "../actions.js";
 import type {
   DocumentHandler,
   DocumentRuntimeContext,
@@ -14,6 +13,7 @@ export const RenamePageActionSchema = z.object({
   pageId: z.string(),
   name: z.string(),
 });
+export type RenamePageAction = z.infer<typeof RenamePageActionSchema>;
 
 const renamePageHandler: DocumentHandler<RenamePageAction> = (
   document,

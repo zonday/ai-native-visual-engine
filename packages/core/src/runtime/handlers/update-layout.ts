@@ -2,7 +2,6 @@ import { produce } from "immer";
 import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph } from "../../types.js";
-import type { UpdateLayoutAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type {
   InverseComputer,
@@ -16,6 +15,7 @@ export const UpdateLayoutActionSchema = z.object({
   nodeId: z.string(),
   layout: z.object({}).passthrough(),
 });
+export type UpdateLayoutAction = z.infer<typeof UpdateLayoutActionSchema>;
 
 function validateLayout(layout: Record<string, unknown>, nodeId: string): void {
   if ("width" in layout) {
