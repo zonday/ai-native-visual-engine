@@ -366,34 +366,31 @@ describe("createScope", () => {
     });
   });
 
-  describe("multi-child hasChildEffect", () => {
-    it("disposing one child does not affect sibling child", () => {
+  describe("owner tree", () => {
+    it("dispose effects recursively through children array", () => {
       const { signal, effect } = createScope();
       const s = signal(0);
-      const child1Fn = vi.fn();
-      const child2Fn = vi.fn();
-      let child1Stop: (() => void) | undefined;
-      let child2Stop: (() => void) | undefined;
+      const childFn = vi.fn();
+      const grandchildFn = vi.fn();
 
-      effect(() => {
+      const parentStop = effect(() => {
         s();
-        child1Stop = effect(() => {
+        effect(() => {
           s();
-          child1Fn();
-        });
-        child2Stop = effect(() => {
-          s();
-          child2Fn();
+          effect(() => {
+            s();
+            grandchildFn();
+          });
+          childFn();
         });
       });
 
-      child1Fn.mockClear();
-      child2Fn.mockClear();
-      child1Stop?.();
-      child2Stop?.();
+      childFn.mockClear();
+      grandchildFn.mockClear();
+      parentStop();
       s(1);
-      expect(child1Fn).not.toHaveBeenCalled();
-      expect(child2Fn).not.toHaveBeenCalled();
+      expect(childFn).not.toHaveBeenCalled();
+      expect(grandchildFn).not.toHaveBeenCalled();
     });
   });
 });
