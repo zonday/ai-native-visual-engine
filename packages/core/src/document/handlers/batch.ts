@@ -3,12 +3,9 @@ import type { VisualDocument } from "../../types.js";
 import type { DocumentDispatchResult } from "../document-command-bus.js";
 import type {
   DocumentHandler,
-  DocumentHandlerRegistry,
   DocumentRuntimeContext,
   InverseComputer,
-  InverseRegistry,
 } from "../handler-registry.js";
-import { computeInverseAction } from "../handler-registry.js";
 import type { DocumentAction } from "../register-handlers.js";
 
 export const BatchDocumentActionsSchema = z.object({
@@ -96,4 +93,3 @@ export const batchInverse: InverseComputer<BatchDocumentActions> = (
 ) => {
   return undefined;
 };
-
