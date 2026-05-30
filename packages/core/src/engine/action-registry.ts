@@ -87,6 +87,14 @@ export class ActionRegistry<
     return this.entries.has(type);
   }
 
+  getAllKeys(): string[] {
+    return Array.from(this.entries.keys());
+  }
+
+  getAllEntries(): unknown[] {
+    return Array.from(this.entries.values());
+  }
+
   createBatchEntry(): HandlerEntry<TState, BatchAction<TAction>, TContext> {
     const self = this;
     return {
