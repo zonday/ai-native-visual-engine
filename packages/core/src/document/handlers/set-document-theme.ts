@@ -12,7 +12,9 @@ export const SetDocumentThemeActionSchema = z.object({
   type: z.literal("set-document-theme"),
   themeId: z.string().optional(),
 });
-export type SetDocumentThemeAction = z.infer<typeof SetDocumentThemeActionSchema>;
+export type SetDocumentThemeAction = z.infer<
+  typeof SetDocumentThemeActionSchema
+>;
 
 const setDocumentThemeHandler: DocumentHandler<SetDocumentThemeAction> = (
   document,
