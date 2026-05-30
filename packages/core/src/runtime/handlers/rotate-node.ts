@@ -1,6 +1,6 @@
 import { produce } from "immer";
-import { HandlerError } from "../../engine/error.js";
 import { z } from "zod/v4";
+import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph, SceneNode } from "../../types.js";
 import type { RotateNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";

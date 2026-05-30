@@ -1,8 +1,8 @@
 import { produce } from "immer";
-import { HandlerError } from "../../engine/error.js";
 import { z } from "zod/v4";
-import { PageSchema, PersistedSceneGraphSchema } from "../../types.js";
+import { HandlerError } from "../../engine/error.js";
 import type { Page, VisualDocument } from "../../types.js";
+import { PageSchema, PersistedSceneGraphSchema } from "../../types.js";
 import type { CreatePageAction } from "../actions.js";
 import type {
   DocumentHandler,

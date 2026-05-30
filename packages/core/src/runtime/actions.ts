@@ -1,15 +1,15 @@
 import { z } from "zod/v4";
 
 import { CreateNodeActionSchema } from "./handlers/create-node.js";
-import { RemoveNodeActionSchema } from "./handlers/remove-node.js";
 import { MoveNodeActionSchema } from "./handlers/move-node.js";
-import { UpdateLayoutActionSchema } from "./handlers/update-layout.js";
+import { RemoveNodeActionSchema } from "./handlers/remove-node.js";
 import { RotateNodeActionSchema } from "./handlers/rotate-node.js";
-import { UpdatePropsActionSchema } from "./handlers/update-props.js";
-import { UpdateStyleActionSchema } from "./handlers/update-style.js";
 import { UpdateBindingsActionSchema } from "./handlers/update-bindings.js";
+import { UpdateLayoutActionSchema } from "./handlers/update-layout.js";
+import { UpdatePropsActionSchema } from "./handlers/update-props.js";
 import { UpdateRuntimeActionSchema } from "./handlers/update-runtime.js";
 import { UpdateSelectionActionSchema } from "./handlers/update-selection.js";
+import { UpdateStyleActionSchema } from "./handlers/update-style.js";
 
 export const BatchActionsSchema = z.object({
   type: z.literal("batch-actions"),
