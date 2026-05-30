@@ -24,6 +24,29 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "packages/core/src/runtime/handlers/**",
+        "packages/core/src/document/handlers/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["./**"],
+                    "message": "Handlers must not import from other handler files. Extract shared logic to a separate utility module outside the handlers/ directory."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "css": {

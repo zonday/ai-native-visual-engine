@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { setDocumentThemeHandler } from "../src/document/handlers/set-document-theme.js";
 import { setPageThemeHandler } from "../src/document/handlers/set-page-theme.js";
-import {
-  normalizeRoute,
-  updatePageRouteHandler,
-} from "../src/document/handlers/update-page-route.js";
+import { updatePageRouteHandler } from "../src/document/handlers/update-page-route.js";
+import { normalizeRoute } from "../src/document/normalize-route.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { VisualDocument } from "../src/types.js";
 
