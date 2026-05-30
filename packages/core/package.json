@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "alien-signals": "^3.2.1",
+    "immer": "^11.1.8",
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.30",
