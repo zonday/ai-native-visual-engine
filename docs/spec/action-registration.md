@@ -29,25 +29,37 @@ A handler that violates these invariants will cause double-execution bugs during
 Handlers SHOULD use Immer's `produce()` instead of manual spreads to enforce immutability and gain structural sharing:
 
 ```ts
+// runtime/handlers/create-node.ts
 import { produce } from "immer";
+import { HandlerError } from "../../engine/error.js";
+import type { CreateNodeAction } from "../actions.js";
+import type { RuntimeHandler } from "../handler-registry.js";
 
-// ❌ Manual spread — error-prone, no structural sharing
-handler(scene, action, ctx) {
-  return {
-    ...scene,
-    nodes: {
-      ...scene.nodes,
-      [action.node.id]: { ...action.node, parentId: action.parentId },
-    },
-  };
-}
-
-// ✅ Immer produce — automatic structural sharing, auto-freeze, no copy bugs
-handler(scene, action, ctx) {
+const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
+  scene,
+  action,
+  _ctx,
+) => {
+  if (scene.nodes[action.node.id]) {
+    throw new HandlerError(
+      "scene.duplicate-node-id",
+      `Node "${action.node.id}" already exists`,
+      "create-node",
+    );
+  }
   return produce(scene, (draft) => {
     draft.nodes[action.node.id] = { ...action.node, parentId: action.parentId };
+    (draft.nodes[action.parentId]).children.push(action.node.id);
+    draft.version += 1;
   });
-}
+};
+
+export const createNodeEntry = {
+  handler: createNodeHandler,
+  inverse: createNodeInverse,
+  validate: createNodeValidate,
+  meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
+};
 ```
 
 Using `produce()` provides:
@@ -154,83 +166,117 @@ This unified error model allows:
 
 ```
 handlers/
-  create-node.ts     → export const createNodeEntry
-  remove-node.ts     → export const removeNodeEntry
-  move-node.ts       → export const moveNodeEntry
+  create-node.ts     → export const createNodeEntry + CreateNodeActionSchema
+  remove-node.ts     → export const removeNodeEntry + RemoveNodeActionSchema
+  move-node.ts       → export const moveNodeEntry + MoveNodeActionSchema
   ...
 ```
 
-Each file exports a single entry object that bundles handler, inverse, and metadata. Handler and inverse use specific action types; the registration module (§7) uses explicit `as` casts to widen to the full union (required by TypeScript's contravariance):
+Each file exports a Zod action schema and a single entry object that bundles handler, inverse, validate, and metadata. Handler and inverse use specific action types (e.g. `RuntimeHandler<CreateNodeAction>`) — no `as` casts needed in the handler file:
 
 ```ts
 // handlers/create-node.ts
 import { produce } from "immer";
-import type { SceneGraph } from "../../types.js";
-import type { CreateNodeAction, RuntimeAction } from "../actions.js";
-import type { RuntimeContext } from "../handler-registry.js";
+import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
+import type { SceneGraph, SceneNode } from "../../types.js";
+import { SceneNodeSchema } from "../../types.js";
+import type { CreateNodeAction } from "../actions.js";
+import type {
+  InverseComputer,
+  RuntimeContext,
+  RuntimeHandler,
+} from "../handler-registry.js";
+import { stripDangerousKeys } from "../strip-dangerous-keys.js";
 
-const createNodeHandler = (
-  scene: SceneGraph,
-  action: CreateNodeAction,
-  _ctx: RuntimeContext,
-): SceneGraph => {
+export const CreateNodeActionSchema = z.object({
+  type: z.literal("create-node"),
+  node: SceneNodeSchema,
+  parentId: z.string(),
+  index: z.number().optional(),
+});
+
+const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
+  scene,
+  action,
+  _ctx,
+) => {
+  const parent = scene.nodes[action.parentId];
+  if (!parent) {
+    throw new HandlerError(
+      "scene.invalid-parent",
+      `Parent node "${action.parentId}" not found`,
+      "create-node",
+    );
+  }
+
+  if (scene.nodes[action.node.id]) {
+    throw new HandlerError(
+      "scene.duplicate-node-id",
+      `Node "${action.node.id}" already exists`,
+      "create-node",
+    );
+  }
+
+  const sanitizedNode = stripDangerousKeys(
+    action.node as Record<string, unknown>,
+  ) as typeof action.node;
+
+  const node: SceneNode = {
+    ...sanitizedNode,
+    parentId: action.parentId,
+  };
+
   return produce(scene, (draft) => {
-    if (draft.nodes[action.node.id]) {
-      throw new HandlerError(
-        "scene.duplicate-node-id",
-        `Node ID "${action.node.id}" already exists`,
-        "create-node",
-        { nodeId: action.node.id },
-      );
-    }
-    const parentId = draft.nodes[action.parentId] ? action.parentId : "root";
-    draft.nodes[action.node.id] = { ...action.node, parentId };
-    draft.nodes[parentId].children.push(action.node.id);
+    (draft.nodes[action.parentId] as SceneNode).children.push(node.id);
+    draft.nodes[node.id] = node;
+    draft.version += 1;
   });
 };
 
-const createNodeInverse = (
-  _sceneBefore: SceneGraph,
+const createNodeValidate = (
+  scene: SceneGraph,
   action: CreateNodeAction,
-  _context: RuntimeContext,
-): RuntimeAction => {
-  return { type: "remove-node" as const, nodeId: action.node.id };
+  _ctx: RuntimeContext,
+) => {
+  if (!scene.nodes[action.parentId]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.invalid-parent",
+        message: `Parent node "${action.parentId}" not found`,
+      },
+    };
+  }
+  if (scene.nodes[action.node.id]) {
+    return {
+      ok: false,
+      error: {
+        code: "scene.duplicate-node-id",
+        message: `Node "${action.node.id}" already exists`,
+      },
+    };
+  }
+  return { ok: true };
+};
+
+const createNodeInverse: InverseComputer<CreateNodeAction> = (
+  _sceneBefore,
+  action,
+  _context,
+) => {
+  return { type: "remove-node", nodeId: action.node.id };
 };
 
 export const createNodeEntry = {
   handler: createNodeHandler,
   inverse: createNodeInverse,
+  validate: createNodeValidate,
   meta: { undoable: true, mergeable: false, devtoolsLabel: "Create Node" },
 };
 ```
 
-The handler function receives the specific `CreateNodeAction` type, giving full access to the action's fields without type narrowing. The inverse explicitly annotates its return type as `RuntimeAction` (the full union), which is correct because `create-node`'s inverse produces `remove-node` — a different type within the same union.
-
-```ts
-export const createNodeValidate = (
-  scene: SceneGraph,
-  action: CreateNodeAction,
-  _ctx: RuntimeContext,
-) => {
-  if (!action.node.id) {
-    return { ok: false, error: { code: "missing-id", message: "Node ID is required" } };
-  }
-  if (scene.nodes[action.node.id]) {
-    return { ok: false, error: { code: "duplicate-id", message: `Node "${action.node.id}" already exists` } };
-  }
-  if (action.parentId !== "root" && !scene.nodes[action.parentId]) {
-    return { ok: false, error: { code: "invalid-parent", message: `Parent "${action.parentId}" not found` } };
-  }
-  return { ok: true };
-};
-
-export const createNodeMeta = {
-  undoable: true,
-  mergeable: false,
-  devtoolsLabel: "Create Node",
-};
-```
+Each export is minimal: the Zod schema for runtime validation at the boundary and the entry object for the registry. The `as` casts required by TypeScript's contravariance are handled at the registration boundary (§7), not in the handler file.
 
 ---
 
@@ -290,159 +336,143 @@ Because `BatchAction<RuntimeAction>` is part of the union, `HandlerMap` has a ke
 
 ## 5. HandlerMap
 
-A typed record that preserves exact per-action types at the type level:
+A typed record that preserves exact per-action types at the type level. Defined inline (not using the `HandlerEntry` interface) because `inverse` uses the wide action union while `handler` and `validate` use the narrow extracted type:
 
 ```ts
-// engine/types.ts
+// engine/action-registry.ts
 export type HandlerMap<
   TAction extends { type: string },
   TState,
   TContext extends RuntimeContext,
 > = {
-  [K in TAction["type"]]: HandlerEntry<
-    TState,
-    Extract<TAction, { type: K }>,
-    TContext
-  >;
+  [K in TAction["type"]]: {
+    handler: Handler<TState, Extract<TAction, { type: K }>, TContext>;
+    inverse: InverseComputer<TState, TAction, TContext>;
+    validate?: Validator<TState, Extract<TAction, { type: K }>, TContext>;
+    meta: ActionMeta;
+  };
 };
 ```
 
-Indexing with a literal key returns the exact entry type:
+`HandlerMap` is used internally by `ActionRegistry` for indexed type lookups, not as a registration interface. Indexing with a literal key returns the value shape for that action type:
 
 ```ts
 type Map = HandlerMap<RuntimeAction, SceneGraph, RuntimeContext>;
-// Map["create-node"] → HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext>
-// Map["remove-node"] → HandlerEntry<SceneGraph, RemoveNodeAction, RuntimeContext>
+// Map["create-node"] → { handler: Handler<SceneGraph, CreateNodeAction, RuntimeContext>;
+//                        inverse: InverseComputer<SceneGraph, RuntimeAction, RuntimeContext>;
+//                        validate?: Validator<SceneGraph, CreateNodeAction, RuntimeContext>;
+//                        meta: ActionMeta }
 ```
 
 ---
 
 ## 6. ActionRegistry
 
-The registry is the single point of lookup for all action metadata. It holds a `HandlerMap` internally as a `Map` (safe from prototype pollution):
+The registry is the single point of lookup for all action metadata. It holds entries in a `Map<string, unknown>` (safe from prototype pollution). `register()` does not use typed generics — entry values are `unknown` and widened to `Record<string, unknown>` at read time:
 
 ```ts
 // engine/action-registry.ts
 export class ActionRegistry<
-  // TAction is always the full action union — placed first as the primary type.
   TAction extends { type: string },
   TState,
   TContext extends RuntimeContext,
 > {
   private entries = new Map<string, unknown>();
 
-  register<K extends TAction["type"]>(
-    type: K,
-    entry: HandlerMap<TAction, TState, TContext>[K],
-  ): void {
+  register(type: string, entry: unknown): void {
     if (this.entries.has(type)) {
-      throw new Error(`Duplicate handler registration for action type "${type}"`);
+      throw new Error(
+        `Duplicate handler registration for action type "${type}"`,
+      );
     }
     this.entries.set(type, entry);
   }
 
-  getHandler<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["handler"] | undefined {
-    return (this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K])?.handler;
+  getHandler(
+    type: TAction["type"],
+  ): Handler<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.handler as
+      | Handler<TState, TAction, TContext>
+      | undefined;
   }
 
-  getInverse<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["inverse"] | undefined {
-    return (this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K])?.inverse;
+  getInverse(
+    type: TAction["type"],
+  ): InverseComputer<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.inverse as
+      | InverseComputer<TState, TAction, TContext>
+      | undefined;
   }
 
-  getValidator<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K]["validate"] | undefined {
-    return (this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K])?.validate;
+  getValidator(
+    type: TAction["type"],
+  ): Validator<TState, TAction, TContext> | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.validate as
+      | Validator<TState, TAction, TContext>
+      | undefined;
   }
 
-  getMeta<K extends TAction["type"]>(
-    type: K,
-  ): ActionMeta | undefined {
-    return (this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K])?.meta;
+  getMeta(type: TAction["type"]): ActionMeta | undefined {
+    return (this.entries.get(type) as Record<string, unknown>)?.meta as
+      | ActionMeta
+      | undefined;
   }
 
-  getEntry<K extends TAction["type"]>(
-    type: K,
-  ): HandlerMap<TAction, TState, TContext>[K] | undefined {
-    return this.entries.get(type) as HandlerMap<TAction, TState, TContext>[K] | undefined;
+  getEntry(type: TAction["type"]): unknown {
+    return this.entries.get(type);
   }
 
-  has(type: TAction["type"]): boolean {
+  has(type: string): boolean {
     return this.entries.has(type);
   }
 }
 ```
 
-Every `get*()` returns the exact type extracted from `HandlerMap`. Downstream code is fully typed:
-
-```ts
-const entry = registry.getEntry("create-node");
-// entry: HandlerEntry<SceneGraph, CreateNodeAction, RuntimeContext> | undefined
-
-const handler = registry.getHandler("create-node");
-// handler: ((scene: SceneGraph, action: CreateNodeAction, ctx: RuntimeContext) => SceneGraph) | undefined
-```
-
-The single cast (`as HandlerMap<...>[K]`) at each getter boundary is safe because `register()` guarantees the entry maps to the correct key.
+Each getter casts the stored `unknown` to `Record<string, unknown>` first, then accesses the property. `getEntry()` returns `unknown` — callers cast at the call site. The casts are safe because `register()` only accepts `unknown` and every entry is shaped as `{ handler, inverse, validate?, meta }`.
 
 ### 6.1 Batch Entry Factory
 
-Batch is the one action type whose handler and inverse depend on the registry itself. The factory reads the registry's internal entries to dispatch child actions:
+Batch is the one action type whose handler depends on the registry itself. The factory reads entries to dispatch child actions:
 
 ```ts
 class ActionRegistry<TAction extends { type: string }, TState, TContext extends RuntimeContext> {
   createBatchEntry(): HandlerEntry<TState, BatchAction<TAction>, TContext> {
     const self = this;
-
     return {
-      handler(state: TState, action: BatchAction<TAction>, context: TContext): TState {
+      handler(
+        state: TState,
+        action: BatchAction<TAction>,
+        context: TContext,
+      ): TState {
         let current = state;
         for (const child of action.actions) {
-          const childHandler = self.getHandler(child.type as TAction["type"]);
+          const t = (child as TAction).type as TAction["type"];
+          const childHandler = self.getHandler(t);
           if (!childHandler) {
             throw new Error(
-              `Batch child action "${child.type}" has no registered handler`,
+              `Batch child action "${(child as TAction).type}" has no registered handler`,
             );
           }
-          current = childHandler(current, child as TAction, context);
+          current = childHandler(current, child as never, context);
         }
         return current;
       },
-
-      // Inverse is NOT computed here. The transaction manager records
-      // per-child before-states during forward execution and provides
-      // them externally. This avoids double-executing handlers.
-      inverse(_stateBefore: TState, _action: BatchAction<TAction>, _context: TContext) {
-        // Unreachable — the transaction manager uses a specialized batch inverse path.
-        // See §9.2 (Transaction Manager) for the actual batch inverse computation.
-        throw new Error("Batch inverse must be computed by the transaction manager");
+      inverse(
+        _stateBefore: TState,
+        _action: BatchAction<TAction>,
+        _context: TContext,
+      ) {
+        throw new Error(
+          "Batch inverse must be computed by the transaction manager",
+        );
       },
-
-      validate(state: TState, action: BatchAction<TAction>, context: TContext) {
-        let current = state;
-        for (const child of action.actions) {
-          const childValidator = self.getValidator(child.type as TAction["type"]);
-          if (childValidator) {
-            const result = childValidator(current, child as TAction, context);
-            if (!result.ok) return result;
-          }
-          const childHandler = self.getHandler(child.type as TAction["type"]);
-          if (childHandler) current = childHandler(current, child as TAction, context);
-        }
-        return { ok: true };
-      },
-
       meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },
     };
   }
 }
 ```
 
-The `createBatchEntry` method returns a valid `HandlerEntry` for the batch action type. Its `inverse` throws intentionally — see §9.2 for how the transaction manager handles batch inverse computation.
+The cast `(child as TAction).type as TAction["type"]` derives the type key at runtime, and `child as never` widens the child to bypass contravariance in the handler call. The `inverse` throws intentionally — see §9.2 for how the transaction manager handles batch inverse computation. There is no validate function in the batch entry; batch validation is performed by the transaction manager (§9.3).
 
 ---
 
@@ -450,51 +480,51 @@ The `createBatchEntry` method returns a valid `HandlerEntry` for the batch actio
 
 ### 7.1 Registration Module
 
-Each domain has one registration module that imports all handler entry objects, uses explicit `as` casts to handle contravariance, and builds the registry:
+Each domain has one registration module that imports all handler entry objects and registers them directly. No `entry()` wrapper helper is needed — `ActionRegistry.register()` accepts `unknown`, so the contravariance issue is handled at the registry boundary:
 
 ```ts
 // runtime/register-handlers.ts
 import { ActionRegistry } from "../engine/action-registry.js";
+import type { RuntimeContext } from "../engine/handler.js";
+import type { SceneGraph } from "../types.js";
+import type { RuntimeAction } from "./actions.js";
 import { createNodeEntry } from "./handlers/create-node.js";
-import { removeNodeEntry } from "./handlers/remove-node.js";
 import { moveNodeEntry } from "./handlers/move-node.js";
-import { updateLayoutEntry } from "./handlers/update-layout.js";
+import { removeNodeEntry } from "./handlers/remove-node.js";
 import { rotateNodeEntry } from "./handlers/rotate-node.js";
-import { updatePropsEntry } from "./handlers/update-props.js";
-import { updateStyleEntry } from "./handlers/update-style.js";
 import { updateBindingsEntry } from "./handlers/update-bindings.js";
+import { updateLayoutEntry } from "./handlers/update-layout.js";
+import { updatePropsEntry } from "./handlers/update-props.js";
 import { updateRuntimeEntry } from "./handlers/update-runtime.js";
 import { updateSelectionEntry } from "./handlers/update-selection.js";
-import type { RuntimeAction } from "./actions.js";
-import type { RuntimeHandlerEntry } from "./handler-registry.js";
+import { updateStyleEntry } from "./handlers/update-style.js";
 
-function entry(
-  h: RuntimeHandlerEntry["handler"],
-  i: RuntimeHandlerEntry["inverse"],
-  m = { undoable: true, mergeable: false, devtoolsLabel: "" },
-) {
-  return { handler: h, inverse: i as any, meta: m };
-}
-
-export function createRuntimeRegistry(): ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext> {
-  const registry = new ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>();
-  registry.register("create-node", entry(
-    createNodeEntry.handler as RuntimeHandlerEntry["handler"],
-    createNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
-    createNodeEntry.meta,
-  ));
-  registry.register("remove-node", entry(
-    removeNodeEntry.handler as RuntimeHandlerEntry["handler"],
-    removeNodeEntry.inverse as RuntimeHandlerEntry["inverse"],
-    removeNodeEntry.meta,
-  ));
-  // ... remaining actions ...
+export function createRuntimeRegistry(): ActionRegistry<
+  RuntimeAction,
+  SceneGraph,
+  RuntimeContext
+> {
+  const registry = new ActionRegistry<
+    RuntimeAction,
+    SceneGraph,
+    RuntimeContext
+  >();
+  registry.register("create-node", createNodeEntry);
+  registry.register("remove-node", removeNodeEntry);
+  registry.register("move-node", moveNodeEntry);
+  registry.register("update-layout", updateLayoutEntry);
+  registry.register("rotate-node", rotateNodeEntry);
+  registry.register("update-props", updatePropsEntry);
+  registry.register("update-style", updateStyleEntry);
+  registry.register("update-bindings", updateBindingsEntry);
+  registry.register("update-runtime", updateRuntimeEntry);
+  registry.register("update-selection", updateSelectionEntry);
   registry.register("batch-actions", registry.createBatchEntry());
   return registry;
 }
 ```
 
-The `as ` casts are required because each handler is typed with a specific action (e.g. `CreateNodeAction`) but the registry stores a heterogeneous map keyed by the full `RuntimeAction` union. TypeScript's contravariance prevents the direct assignment — the casts are safe because each entry is only invoked with its matching action type via the registry's discriminated key lookup.
+Because `register(type: string, entry: unknown)` erases the type at the boundary, each handler entry is stored as-is without casts. The type safety is preserved because `getHandler` / `getInverse` / `getValidator` internally widen to `Record<string, unknown>` before extracting the property — the `register` side is deliberately untyped.
 
 ### 7.3 Closed-world acknowledgment
 
@@ -518,6 +548,20 @@ The two consumers of the registry have distinct responsibilities.
 
 The command bus does NOT compute inverses or manage history.
 
+```ts
+// engine/command-bus.ts (factory signature)
+export function createCommandBus<
+  TState,
+  TAction extends { type: string },
+  TContext extends RuntimeContext,
+>(
+  registry: ActionRegistry<TAction, TState, TContext>,
+  middlewares: Middleware<TState, TAction>[],
+  initialState: TState,
+  context: TContext,
+): CommandBus<TState, TAction>
+```
+
 ### 8.2 Transaction Manager
 
 | Concern | Responsibility |
@@ -528,6 +572,30 @@ The command bus does NOT compute inverses or manage history.
 | Batch atomicity | Roll back to original state on any child failure |
 
 The transaction manager uses the registry for handler and inverse lookup.
+
+```ts
+// engine/transaction-manager.ts (constructor + config)
+export interface TransactionManagerConfig<
+  TState,
+  TAction extends { type: string },
+  TContext extends RuntimeContext,
+> {
+  registry: ActionRegistry<TAction, TState, TContext>;
+  dispatch?: (action: TAction) => DispatchResult<TState>;
+  validate?: (action: TAction) => { ok: boolean; error?: { code: string; message: string } };
+}
+
+export class TransactionManager<
+  TState,
+  TAction extends { type: string },
+  TContext extends RuntimeContext,
+> {
+  constructor(
+    config: TransactionManagerConfig<TState, TAction, TContext>,
+    depthLimit?: number,
+  );
+}
+```
 
 ### 8.3 Transaction execution invariants
 
@@ -730,11 +798,12 @@ None of these affect the current registration architecture. The `HandlerEntry` /
 
 | Concept | Mechanism | Benefit |
 |---------|-----------|---------|
-| Co-location | `createNodeEntry` object per file | Handler + inverse + meta lifecycle bound |
-| Typed registry | `HandlerMap<TAction, TState, TContext>` | Zero casts, exact return types |
-| Structural sharing | `produce()` inside handlers (planned) | undo stack unaffordable without it |
+| Co-location | `createNodeEntry` object per file | Handler + inverse + validate + meta lifecycle bound |
+| Typed registry | `HandlerMap` inline type per action key | Indexed getters preserve per-action typing |
+| Structural sharing | `produce()` inside handlers | Undo stacks and batch snapshots stay affordable |
 | Immutability guard | `Readonly<TState>` + Immer auto-freeze | Compile-time + runtime mutation prevention |
-| Typed inverse | Domain `InverseComputer` returns full union | `as` cast only at registration boundary |
+| Typed inverse | `HandlerMap` inverse uses wide action union | Inverses produce different action types naturally |
+| Contravariance escape | `register(type: string, entry: unknown)` | No casts at call site, widening inside registry |
 | Batch in union | `BatchAction<TAction>` in action union | No `as unknown`, self-recursive |
 | Atomic batch | Transaction manager records snapshot | No partial application observable |
 | No handler replay | Per-child `stateBefore` recorded during execution | Never re-executes handlers for inverse |
