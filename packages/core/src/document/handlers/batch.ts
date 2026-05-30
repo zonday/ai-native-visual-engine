@@ -1,3 +1,4 @@
+import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { VisualDocument } from "../../types.js";
 import type { DocumentDispatchResult } from "../document-command-bus.js";
@@ -9,11 +10,14 @@ import type {
   InverseRegistry,
 } from "../handler-registry.js";
 import { computeInverseAction } from "../handler-registry.js";
-import type {
-  BatchDocumentActions,
-  DocumentAction,
-} from "../register-handlers.js";
-import { DocumentActionSchema } from "../register-handlers.js";
+import type { DocumentAction } from "../register-handlers.js";
+
+export const BatchDocumentActionsSchema = z.object({
+  type: z.literal("batch-document-actions"),
+  actions: z.array(z.unknown()),
+});
+
+export type BatchDocumentActions = z.infer<typeof BatchDocumentActionsSchema>;
 
 const MAX_BATCH_DEPTH = 50;
 
@@ -25,10 +29,8 @@ function flattenBatchActions(
   const flat: DocumentAction[] = [];
   for (const action of actions) {
     if (action.type === "batch-document-actions") {
-      const batch = action as BatchDocumentActions;
-      flat.push(
-        ...flattenBatchActions(batch.actions as DocumentAction[], depth + 1),
-      );
+      const batch = action as unknown as { actions: DocumentAction[] };
+      flat.push(...flattenBatchActions(batch.actions, depth + 1));
     } else {
       flat.push(action);
     }
@@ -41,19 +43,9 @@ export function createBatchHandler(
 ): DocumentHandler<BatchDocumentActions> {
   return (document, action, _ctx) => {
     const original = document;
-    // Per spec §4.10: nested batch actions are flattened before execution.
     const flat = flattenBatchActions(action.actions as DocumentAction[]);
     let current = document;
     for (const child of flat) {
-      // Validate each child action before dispatch
-      const parsed = DocumentActionSchema.safeParse(child);
-      if (!parsed.success) {
-        throw new HandlerError(
-          "document.batch-invalid-child-action",
-          `Child action validation failed: ${parsed.error.message}`,
-          "batch-document-actions",
-        );
-      }
       const result = dispatch(child);
       if (!result.ok) return original;
       current = result.document;
@@ -65,10 +57,13 @@ export function createBatchHandler(
 export function computeBatchInverse(
   documentBefore: VisualDocument,
   action: BatchDocumentActions,
-  dispatch: (action: DocumentAction) => DocumentDispatchResult,
+  dispatch: (
+    document: VisualDocument,
+    action: DocumentAction,
+  ) => DocumentDispatchResult,
   context: DocumentRuntimeContext,
   inverseOf: (
-    docBefore: VisualDocument,
+    documentBefore: VisualDocument,
     action: DocumentAction,
     ctx: DocumentRuntimeContext,
   ) => DocumentAction | undefined,
@@ -81,7 +76,7 @@ export function computeBatchInverse(
   for (const child of flat) {
     const inv = inverseOf(currentDoc, child, context);
     if (inv) inverses.push(inv);
-    const result = dispatch(child);
+    const result = dispatch(currentDoc, child);
     if (!result.ok) break;
     currentDoc = result.document;
   }
@@ -95,9 +90,6 @@ export function computeBatchInverse(
   };
 }
 
-// Spec §3.2: batch inverse should compose inverse actions in reverse order.
-// This simple stub returns undefined. Use createBatchInverse for a working
-// implementation that has access to the handler and inverse registries.
 export const batchInverse: InverseComputer<BatchDocumentActions> = (
   _documentBefore,
   _action,
@@ -111,13 +103,15 @@ export function createBatchInverse(
   inverseRegistry: InverseRegistry,
 ): InverseComputer<BatchDocumentActions> {
   return (documentBefore, action, context) => {
-    let currentDoc = documentBefore;
-    const dispatch = (childAction: DocumentAction): DocumentDispatchResult => {
+    const dispatch = (
+      docForAction: VisualDocument,
+      childAction: DocumentAction,
+    ): DocumentDispatchResult => {
       const entry = handlerRegistry.get(childAction.type);
       if (!entry) {
         return {
           ok: false,
-          document: currentDoc,
+          document: docForAction,
           error: {
             code: "document.unknown-action-type",
             message: `Unknown action type: ${childAction.type}`,
@@ -126,12 +120,12 @@ export function createBatchInverse(
         };
       }
       try {
-        currentDoc = entry.handler(currentDoc, childAction, context);
-        return { ok: true, document: currentDoc };
+        const next = entry.handler(docForAction, childAction, context);
+        return { ok: true, document: next };
       } catch (err) {
         return {
           ok: false,
-          document: currentDoc,
+          document: docForAction,
           error: {
             code: "document.handler-error",
             message: err instanceof Error ? err.message : String(err),

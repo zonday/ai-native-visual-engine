@@ -39,11 +39,7 @@ import {
   UpdateStyleActionSchema,
   updateStyleEntry,
 } from "./handlers/update-style.js";
-
-export const BatchActionsSchema = z.object({
-  type: z.literal("batch-actions"),
-  actions: z.array(z.any()),
-});
+import { BatchActionsSchema } from "./handlers/batch.js";
 
 export const RuntimeActionSchema = z.discriminatedUnion("type", [
   CreateNodeActionSchema,
