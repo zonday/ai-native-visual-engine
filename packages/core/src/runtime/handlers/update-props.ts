@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import type { UpdatePropsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
@@ -10,16 +11,13 @@ const updatePropsHandler: RuntimeHandler<UpdatePropsAction> = (
 ) => {
   const node = expectNode(scene, action.nodeId, "update-props");
 
-  const updatedNode = {
-    ...node,
-    props: { ...node.props, ...stripDangerousKeys(action.props) },
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    draft.nodes[action.nodeId].props = {
+      ...node.props,
+      ...stripDangerousKeys(action.props),
+    };
+    draft.version += 1;
+  });
 };
 
 const updatePropsInverse: InverseComputer<UpdatePropsAction> = (

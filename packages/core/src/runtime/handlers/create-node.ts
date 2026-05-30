@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { CreateNodeAction } from "../actions.js";
@@ -46,16 +47,13 @@ const createNodeHandler: RuntimeHandler<CreateNodeAction> = (
     parentId: action.parentId,
   };
 
-  const parentChildren = [...(parent.children ?? [])];
-  parentChildren.splice(index, 0, node.id);
-
-  const nodes = {
-    ...scene.nodes,
-    [action.parentId]: { ...parent, children: parentChildren },
-    [node.id]: node,
-  };
-
-  return { ...scene, nodes, version: scene.version + 1 };
+  return produce(scene, (draft) => {
+    const parentChildren = [...(draft.nodes[action.parentId].children ?? [])];
+    parentChildren.splice(index, 0, node.id);
+    draft.nodes[action.parentId].children = parentChildren;
+    draft.nodes[node.id] = node;
+    draft.version += 1;
+  });
 };
 
 const createNodeInverse: InverseComputer<CreateNodeAction> = (

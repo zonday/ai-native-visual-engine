@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { ReorderPageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -24,11 +25,10 @@ const reorderPageHandler: DocumentHandler<ReorderPageAction> = (
       { pageId: action.pageId },
     );
 
-  const pages = [...document.pages];
-  const removed = pages.splice(idx, 1);
-  pages.splice(action.index, 0, ...removed);
-
-  return { ...document, pages };
+  return produce(document, (draft) => {
+    const removed = draft.pages.splice(idx, 1);
+    draft.pages.splice(action.index, 0, ...removed);
+  });
 };
 
 const reorderPageInverse: InverseComputer<ReorderPageAction> = (

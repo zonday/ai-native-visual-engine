@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { SetPageThemeAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -27,10 +28,10 @@ const setPageThemeHandler: DocumentHandler<SetPageThemeAction> = (
       );
   }
 
-  const pages = document.pages.map((p) =>
-    p.id === action.pageId ? { ...p, themeId: action.themeId } : p,
-  );
-  return { ...document, pages };
+  return produce(document, (draft) => {
+    const page = draft.pages.find((p) => p.id === action.pageId);
+    if (page) page.themeId = action.themeId;
+  });
 };
 
 const setPageThemeInverse: InverseComputer<SetPageThemeAction> = (

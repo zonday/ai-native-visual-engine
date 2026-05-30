@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { RemovePageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -16,11 +17,10 @@ const removePageHandler: DocumentHandler<RemovePageAction> = (
       { pageId: action.pageId },
     );
 
-  const pages = document.pages.filter((p) => p.id !== action.pageId);
-  const scenes = { ...document.scenes };
-  delete scenes[page.sceneId];
-
-  return { ...document, pages, scenes };
+  return produce(document, (draft) => {
+    draft.pages = document.pages.filter((p) => p.id !== action.pageId);
+    delete draft.scenes[page.sceneId];
+  });
 };
 
 const removePageInverse: InverseComputer<RemovePageAction> = (

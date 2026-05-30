@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { MoveNodeAction } from "../actions.js";
@@ -56,26 +57,8 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
     );
   }
 
-  const nodes = { ...scene.nodes };
-
   const oldParentId = node.parentId;
-  const oldParent = oldParentId ? nodes[oldParentId] : undefined;
-  if (oldParentId && oldParent) {
-    nodes[oldParentId] = {
-      ...oldParent,
-      children: (oldParent.children ?? []).filter((id) => id !== action.nodeId),
-    };
-  }
 
-  const updatedNewParent = nodes[action.parentId];
-  if (!updatedNewParent) {
-    throw new HandlerError(
-      "scene.parent-lost",
-      `Parent "${action.parentId}" disappeared during move`,
-      "move-node",
-      { nodeId: action.parentId },
-    );
-  }
   const rawIndex =
     action.index !== undefined && Number.isFinite(action.index)
       ? action.index
@@ -84,19 +67,28 @@ const moveNodeHandler: RuntimeHandler<MoveNodeAction> = (
     rawIndex !== undefined
       ? Math.min(
           Math.max(0, rawIndex),
-          (updatedNewParent.children ?? []).length,
+          (scene.nodes[action.parentId].children ?? []).length,
         )
-      : (updatedNewParent.children ?? []).length;
+      : (scene.nodes[action.parentId].children ?? []).length;
 
-  const newParentChildren = [...(updatedNewParent.children ?? [])];
-  newParentChildren.splice(index, 0, action.nodeId);
-  nodes[action.parentId] = {
-    ...updatedNewParent,
-    children: newParentChildren,
-  };
-  nodes[action.nodeId] = { ...node, parentId: action.parentId };
+  return produce(scene, (draft) => {
+    if (oldParentId) {
+      const oldParent = draft.nodes[oldParentId];
+      if (oldParent) {
+        oldParent.children = (oldParent.children ?? []).filter(
+          (id) => id !== action.nodeId,
+        );
+      }
+    }
 
-  return { ...scene, nodes, version: scene.version + 1 };
+    const newParentChildren = [
+      ...(draft.nodes[action.parentId].children ?? []),
+    ];
+    newParentChildren.splice(index, 0, action.nodeId);
+    draft.nodes[action.parentId].children = newParentChildren;
+    draft.nodes[action.nodeId].parentId = action.parentId;
+    draft.version += 1;
+  });
 };
 
 const moveNodeInverse: InverseComputer<MoveNodeAction> = (

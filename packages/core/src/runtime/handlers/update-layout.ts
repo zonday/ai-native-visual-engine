@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { UpdateLayoutAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
@@ -64,16 +65,10 @@ const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   };
   validateLayout(merged, action.nodeId);
 
-  const updatedNode = {
-    ...node,
-    layout: merged,
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    draft.nodes[action.nodeId].layout = merged;
+    draft.version += 1;
+  });
 };
 
 const updateLayoutInverse: InverseComputer<UpdateLayoutAction> = (

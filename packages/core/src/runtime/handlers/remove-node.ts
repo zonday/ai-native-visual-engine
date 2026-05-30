@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneNode } from "../../types.js";
 import type { RemoveNodeAction, RuntimeAction } from "../actions.js";
@@ -43,20 +44,21 @@ const removeNodeHandler: RuntimeHandler<RemoveNodeAction> = (
   }
 
   const descendants = collectDescendants(action.nodeId, scene.nodes);
-  const nodes = { ...scene.nodes };
-  for (const id of descendants) {
-    delete nodes[id];
-  }
 
-  const parent = node.parentId ? nodes[node.parentId] : undefined;
-  if (parent && node.parentId) {
-    nodes[node.parentId] = {
-      ...parent,
-      children: (parent.children ?? []).filter((id) => id !== action.nodeId),
-    };
-  }
+  return produce(scene, (draft) => {
+    for (const id of descendants) {
+      delete draft.nodes[id];
+    }
 
-  return { ...scene, nodes, version: scene.version + 1 };
+    const parent = node.parentId ? draft.nodes[node.parentId] : undefined;
+    if (parent && node.parentId) {
+      draft.nodes[node.parentId].children = (parent.children ?? []).filter(
+        (id) => id !== action.nodeId,
+      );
+    }
+
+    draft.version += 1;
+  });
 };
 
 const removeNodeInverse: InverseComputer<RemoveNodeAction> = (

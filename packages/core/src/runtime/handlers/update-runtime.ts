@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import type { UpdateRuntimeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
@@ -10,16 +11,13 @@ const updateRuntimeHandler: RuntimeHandler<UpdateRuntimeAction> = (
 ) => {
   const node = expectNode(scene, action.nodeId, "update-runtime");
 
-  const updatedNode = {
-    ...node,
-    runtime: { ...node.runtime, ...stripDangerousKeys(action.runtime) },
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    draft.nodes[action.nodeId].runtime = {
+      ...node.runtime,
+      ...stripDangerousKeys(action.runtime),
+    };
+    draft.version += 1;
+  });
 };
 
 const updateRuntimeInverse: InverseComputer<UpdateRuntimeAction> = (

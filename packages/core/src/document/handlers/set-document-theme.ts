@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { SetDocumentThemeAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -17,7 +18,9 @@ const setDocumentThemeHandler: DocumentHandler<SetDocumentThemeAction> = (
       );
   }
 
-  return { ...document, activeThemeId: action.themeId };
+  return produce(document, (draft) => {
+    draft.activeThemeId = action.themeId;
+  });
 };
 
 const setDocumentThemeInverse: InverseComputer<SetDocumentThemeAction> = (

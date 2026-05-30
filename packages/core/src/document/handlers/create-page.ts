@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { Page } from "../../types.js";
 import type { CreatePageAction } from "../actions.js";
@@ -47,10 +48,10 @@ const createPageHandler: DocumentHandler<CreatePageAction> = (
     metadata: action.page.metadata,
   };
 
-  const scenes = { ...document.scenes, [page.sceneId]: action.scene };
-  const pages = [...document.pages, page];
-
-  return { ...document, pages, scenes };
+  return produce(document, (draft) => {
+    draft.scenes[page.sceneId] = action.scene;
+    draft.pages.push(page);
+  });
 };
 
 const createPageInverse: InverseComputer<CreatePageAction> = (
