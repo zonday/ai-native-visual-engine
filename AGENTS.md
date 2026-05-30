@@ -128,6 +128,39 @@ Core invariants enforced at package boundaries:
 3. `editor/` is the only package that may use zustand stores.
 4. `ai/` must not import from `renderer-react/` or `editor/`.
 
+## Development Workflow
+
+### Branch & Worktree Strategy
+
+Choose based on task size:
+
+| Size | Criterion | Method |
+|------|-----------|--------|
+| **Small** | 1-3 files, single package, <30 min, no new deps | Direct branch: `git checkout -b <type>/<desc> main` |
+| **Large** | 4+ files, cross-package, >30 min, or needs `pnpm install` | Worktree: `git worktree add -b <type>/<desc> ../worktrees/<type>-<desc> main` then `cd ../worktrees/<type>-<desc> && pnpm install` |
+
+Branch naming: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/` followed by kebab-case description.
+
+### Per-Task Flow
+
+```
+You request → AI creates GitHub Issue (#N)
+           → create branch (method above)
+           → implement → pnpm build && pnpm test && pnpm exec biome check
+           → gh pr create --base main --title "<type>: <description>" --body "Closes #N"
+           → you review and merge → branch cleanup (worktree prune if used)
+```
+
+### AI Rules
+
+1. Commits follow conventional commits. Author format: `opencode-<model-id> <opencode-<model-id>@finlo.local` (substitute `<model-id>` per system prompt).
+2. MUST NOT push directly to `main`.
+3. MUST NOT force-push.
+4. MUST NOT bypass CI or pre-commit hooks.
+5. MUST create a GitHub Issue before any implementation.
+6. MUST NOT merge PRs — wait for human.
+7. After merging, delete branch: `git branch -d <branch>` (and `git worktree prune` if worktree was used).
+
 ## Commits And PRs
 
 1. Follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`.
