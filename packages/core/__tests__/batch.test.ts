@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/register-handlers.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
 import type {
   DocumentHandlerEntry,
@@ -7,6 +6,7 @@ import type {
 } from "../src/document/handler-registry.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import { createDocumentRegistry } from "../src/document/register-handlers.js";
 import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";

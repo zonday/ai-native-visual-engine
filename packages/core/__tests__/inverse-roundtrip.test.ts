@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/register-handlers.js";
 import type {
   DocumentHandlerEntry,
   DocumentRuntimeContext,
   InverseRegistry,
 } from "../src/document/handler-registry.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import { createDocumentRegistry } from "../src/document/register-handlers.js";
 import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";

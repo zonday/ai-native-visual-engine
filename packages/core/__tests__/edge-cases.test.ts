@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/register-handlers.js";
 import { createDocumentCommandBus } from "../src/document/document-command-bus.js";
 import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
 import { computeBatchInverse } from "../src/document/handlers/batch.js";
 import { setPageThemeEntry } from "../src/document/handlers/set-page-theme.js";
 import { updatePageRouteEntry } from "../src/document/handlers/update-page-route.js";
 import { normalizeRoute } from "../src/document/normalize-route.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import { ActionRegistry } from "../src/engine/action-registry.js";
 import { HandlerError } from "../src/engine/error.js";
 import type { HistoryState } from "../src/engine/history.js";

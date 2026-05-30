@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type {
   InverseComputer,
   RuntimeContext,
@@ -10,6 +9,7 @@ import {
 } from "../src/runtime/handler-registry.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import { removeNodeEntry } from "../src/runtime/handlers/remove-node.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import { baseNode, emptyScene } from "./helpers.js";
 
 const context: RuntimeContext = { now: Date.now };
