@@ -1,3 +1,4 @@
+import { z } from "zod/v4";
 import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph } from "../../types.js";
 import type {
@@ -8,9 +9,15 @@ import type {
   RuntimeHandlerRegistry,
 } from "../handler-registry.js";
 import { computeInverseAction } from "../handler-registry.js";
-import type { BatchActions, RuntimeAction } from "../register-handlers.js";
-import { RuntimeActionSchema } from "../register-handlers.js";
+import type { RuntimeAction } from "../register-handlers.js";
 import type { DispatchResult } from "../runtime-command-bus.js";
+
+export const BatchActionsSchema = z.object({
+  type: z.literal("batch-actions"),
+  actions: z.array(z.any()),
+});
+
+export type BatchActions = z.infer<typeof BatchActionsSchema>;
 
 const MAX_BATCH_DEPTH = 50;
 
@@ -22,10 +29,8 @@ function flattenBatchActions(
   const flat: RuntimeAction[] = [];
   for (const action of actions) {
     if (action.type === "batch-actions") {
-      const batch = action as BatchActions;
-      flat.push(
-        ...flattenBatchActions(batch.actions as RuntimeAction[], depth + 1),
-      );
+      const batch = action as unknown as { actions: RuntimeAction[] };
+      flat.push(...flattenBatchActions(batch.actions, depth + 1));
     } else {
       flat.push(action);
     }
@@ -41,14 +46,6 @@ export function createBatchHandler(
     const flat = flattenBatchActions(action.actions as RuntimeAction[]);
     let current = scene;
     for (const child of flat) {
-      const parsed = RuntimeActionSchema.safeParse(child);
-      if (!parsed.success) {
-        throw new HandlerError(
-          "scene.batch-item-failed",
-          `Child action validation failed: ${parsed.error.message}`,
-          "batch-actions",
-        );
-      }
       const result = dispatch(child);
       if (!result.ok) return original;
       current = result.scene;

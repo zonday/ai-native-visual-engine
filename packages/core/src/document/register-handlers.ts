@@ -30,11 +30,7 @@ import {
   UpdatePageRouteActionSchema,
   updatePageRouteEntry,
 } from "./handlers/update-page-route.js";
-
-export const BatchDocumentActionsSchema = z.object({
-  type: z.literal("batch-document-actions"),
-  actions: z.array(z.unknown()),
-});
+import { BatchDocumentActionsSchema } from "./handlers/batch.js";
 
 export const DocumentActionSchema = z.discriminatedUnion("type", [
   CreatePageActionSchema,
