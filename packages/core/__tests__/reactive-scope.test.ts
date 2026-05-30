@@ -449,4 +449,70 @@ describe("createScope", () => {
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("computed lazy re-evaluation after signal change", () => {
+    it("re-evaluates once on read after signal change", () => {
+      const { signal, computed } = createScope();
+      const x = signal(0);
+      let evalCount = 0;
+
+      const c = computed(() => {
+        evalCount++;
+        return x() * 2;
+      });
+
+      c();
+      expect(evalCount).toBe(1);
+      x(1);
+      expect(evalCount).toBe(1);
+      c();
+      expect(evalCount).toBe(2);
+      c();
+      expect(evalCount).toBe(2);
+    });
+  });
+
+  describe("effect cleanup throws during re-eval", () => {
+    it("does not prevent re-evaluation", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+
+      const stop = effect(() => {
+        s();
+        fn();
+        return () => {
+          throw new Error("cleanup error");
+        };
+      });
+
+      fn.mockClear();
+      s(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+      stop();
+    });
+  });
+
+  describe("computed unwatched", () => {
+    it("computed re-evaluates after last subscriber is disposed", () => {
+      const { signal, computed, effect } = createScope();
+      const s = signal(0);
+      let evalCount = 0;
+
+      const c = computed(() => {
+        evalCount++;
+        return s() * 2;
+      });
+
+      const dispose = effect(() => {
+        c();
+      });
+
+      evalCount = 0;
+      dispose();
+      s(1);
+      c();
+      expect(evalCount).toBe(1);
+    });
+  });
 });
