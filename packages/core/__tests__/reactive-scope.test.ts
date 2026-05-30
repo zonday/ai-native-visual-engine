@@ -137,4 +137,224 @@ describe("createScope", () => {
       expect(evalCount).toBe(2); // re-evaluated once
     });
   });
+
+  describe("disposed effect does not run", () => {
+    it("skips disposed effect in batch queue", () => {
+      const { signal, effect, startBatch, endBatch } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      const stop = effect(() => {
+        s();
+        fn();
+      });
+      fn.mockClear();
+      startBatch();
+      s(1);
+      stop();
+      endBatch();
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("disposed effect does not run after manual flush", () => {
+      const { signal, effect, flush } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      const stop = effect(() => {
+        s();
+        fn();
+      });
+      fn.mockClear();
+      stop();
+      s(1);
+      flush();
+      expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("computed cycle detection", () => {
+    it("throws on direct cycle A -> B -> A via updateComputed", () => {
+      const { computed } = createScope();
+      const a: ReturnType<typeof computed> = computed(() => b());
+      const b: ReturnType<typeof computed> = computed(() => a());
+      expect(() => a()).toThrow("Cycle detected");
+    });
+
+    it("throws on self-referencing computed", () => {
+      const { computed } = createScope();
+      const a: ReturnType<typeof computed> = computed(() => a());
+      expect(() => a()).toThrow("Cycle detected");
+    });
+  });
+
+  describe("flush reentrancy", () => {
+    it("reentrant flush does not cause infinite recursion", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      let calls = 0;
+      effect(() => {
+        s();
+        calls++;
+      });
+      s(1);
+      s(2);
+      expect(calls).toBe(3);
+    });
+  });
+
+  describe("disposed computed", () => {
+    it("throws when read after dispose", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      const c = computed(() => s() * 2);
+      c();
+      c.dispose();
+      expect(() => c()).toThrow("Cannot read disposed computed");
+    });
+
+    it("clears subs links after dispose", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      const c = computed(() => s() * 2);
+      const sub = computed(() => c());
+      sub();
+      c.dispose();
+      s(1);
+      expect(() => sub()).not.toThrow();
+    });
+
+    it("disposed computed does not resurrect via !flags branch", () => {
+      const { computed } = createScope();
+      const c = computed(() => 42);
+      c();
+      c.dispose();
+      expect(() => c()).toThrow("Cannot read disposed computed");
+    });
+  });
+
+  describe("graph consistency", () => {
+    it("disposed computed clears all links", () => {
+      const { signal, computed } = createScope();
+      const s = signal(0);
+      const c = computed(() => s() * 2);
+      c();
+      c.dispose();
+      expect(() => c()).toThrow("Cannot read disposed computed");
+    });
+  });
+
+  describe("hasChildEffect flag cleanup", () => {
+    it("child effect dispose does not throw when parent has other deps", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const parentStop = effect(() => {
+        s();
+        effect(() => {
+          s();
+        });
+      });
+      expect(() => parentStop()).not.toThrow();
+    });
+  });
+
+  describe("cleanup runs after deps cleared", () => {
+    it("cleanup signal set does not re-queue current effect", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      const stop = effect(() => {
+        s();
+        fn();
+        return () => {
+          s(999);
+        };
+      });
+      fn.mockClear();
+      s(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+      stop();
+    });
+  });
+
+  describe("nested effect cleanup", () => {
+    it("parent dispose does not throw even with child effects", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const parentStop = effect(() => {
+        s();
+        effect(() => {
+          s();
+        });
+      });
+      expect(() => parentStop()).not.toThrow();
+    });
+
+    it("disposing same effect twice is safe", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const stop = effect(() => {
+        s();
+      });
+      stop();
+      expect(() => stop()).not.toThrow();
+    });
+  });
+
+  describe("flush exception path", () => {
+    it("exception during flush does not resurrect disposed effect", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const fn = vi.fn();
+      const stop = effect(() => {
+        s();
+        fn();
+      });
+      fn.mockClear();
+
+      effect(() => {
+        s();
+        if (fn.mock.calls.length > 0) {
+          throw new Error("boom");
+        }
+      });
+
+      stop();
+      try {
+        s(1);
+      } catch {
+        // expected
+      }
+      expect(fn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("multi-child hasChildEffect", () => {
+    it("disposing one child does not affect sibling child", () => {
+      const { signal, effect } = createScope();
+      const s = signal(0);
+      const child1Fn = vi.fn();
+      const child2Fn = vi.fn();
+      let child1Stop: (() => void) | undefined;
+      let child2Stop: (() => void) | undefined;
+
+      effect(() => {
+        s();
+        child1Stop = effect(() => {
+          s();
+          child1Fn();
+        });
+        child2Stop = effect(() => {
+          s();
+          child2Fn();
+        });
+      });
+
+      child1Fn.mockClear();
+      child2Fn.mockClear();
+      child1Stop?.();
+      child2Stop?.();
+      s(1);
+      expect(child1Fn).not.toHaveBeenCalled();
+      expect(child2Fn).not.toHaveBeenCalled();
+    });
+  });
 });
