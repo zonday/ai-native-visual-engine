@@ -1,5 +1,4 @@
 import { z } from "zod/v4";
-import { HandlerError } from "../../engine/error.js";
 import type { SceneGraph } from "../../types.js";
 import type {
   InverseComputer,
