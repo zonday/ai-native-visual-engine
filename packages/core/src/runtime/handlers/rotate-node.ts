@@ -94,7 +94,7 @@ const rotateNodeValidate = (
       },
     };
   }
-  const node = scene.nodes[action.nodeId];
+  const node = scene.nodes[action.nodeId] as SceneNode;
   const layout = node.layout as Record<string, unknown> | undefined;
   if (!layout || layout.mode !== "absolute") {
     return {
