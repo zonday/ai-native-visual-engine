@@ -34,12 +34,12 @@ export {
   ActionRegistry,
   type HandlerMap,
 } from "./engine/action-registry.js";
+export type { RuntimeContext } from "./engine/handler.js";
 export type {
   BatchAction,
   HandlerEntry,
   InverseComputer,
 } from "./engine/handler-registry.js";
-export type { RuntimeContext } from "./engine/handler.js";
 // ── History ──
 export {
   createHistoryState,
