@@ -24,12 +24,12 @@ export const DocumentActionSchema = z.discriminatedUnion("type", [
   BatchDocumentActionsSchema,
 ]);
 
+export type { BatchDocumentActions } from "./handlers/batch.js";
 export type { CreatePageAction } from "./handlers/create-page.js";
-export type { RenamePageAction } from "./handlers/rename-page.js";
 export type { RemovePageAction } from "./handlers/remove-page.js";
+export type { RenamePageAction } from "./handlers/rename-page.js";
 export type { ReorderPageAction } from "./handlers/reorder-page.js";
-export type { UpdatePageRouteAction } from "./handlers/update-page-route.js";
 export type { SetDocumentThemeAction } from "./handlers/set-document-theme.js";
 export type { SetPageThemeAction } from "./handlers/set-page-theme.js";
-export type { BatchDocumentActions } from "./handlers/batch.js";
+export type { UpdatePageRouteAction } from "./handlers/update-page-route.js";
 export type DocumentAction = z.infer<typeof DocumentActionSchema>;
