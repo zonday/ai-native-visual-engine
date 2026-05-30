@@ -1,6 +1,6 @@
+import type { ActionRegistry } from "../action-registry.js";
 import type { Middleware } from "../command-bus.js";
 import type { RuntimeContext } from "../handler.js";
-import type { ActionRegistry } from "../action-registry.js";
 import type { HistoryState } from "../history.js";
 import { pushUndoTransaction } from "../history.js";
 import type { TransactionFlag } from "../transaction-flag.js";

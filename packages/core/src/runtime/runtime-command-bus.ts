@@ -1,10 +1,10 @@
+import type { ActionRegistry } from "../engine/action-registry.js";
 import type { Middleware } from "../engine/command-bus.js";
 import {
   createCommandBus,
   extractErrorField,
   wrapCommandBus,
 } from "../engine/command-bus.js";
-import type { ActionRegistry } from "../engine/action-registry.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeAction } from "./actions.js";
 import type { DispatchResult } from "./command-bus.js";

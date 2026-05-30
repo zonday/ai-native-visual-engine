@@ -1,6 +1,6 @@
+import type { ActionRegistry } from "./action-registry.js";
 import type { DispatchResult } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
-import type { ActionRegistry } from "./action-registry.js";
 import {
   DEFAULT_NESTED_DEPTH_LIMIT,
   type RuntimeTransaction,
@@ -158,7 +158,9 @@ export class TransactionManager<
       }
     }
 
-    const handlerFn = this.config.registry.getHandler(action.type as TAction["type"]);
+    const handlerFn = this.config.registry.getHandler(
+      action.type as TAction["type"],
+    );
     if (!handlerFn) {
       return {
         ok: false,
@@ -172,11 +174,7 @@ export class TransactionManager<
 
     active.preActionStates.push(active.currentState);
     try {
-      const newState = handlerFn(
-        active.currentState,
-        action,
-        active.context,
-      );
+      const newState = handlerFn(active.currentState, action, active.context);
       active.currentState = newState;
       active.appliedActions.push(action);
       (active.tx.actions as TAction[]).push(action);
@@ -274,7 +272,9 @@ export class TransactionManager<
     try {
       const stateBefore =
         active.preActionStates[actionIndex] ?? active.preState;
-      const inverse = this.config.registry.getInverse(action.type as TAction["type"]);
+      const inverse = this.config.registry.getInverse(
+        action.type as TAction["type"],
+      );
       if (!inverse) return undefined;
       return inverse(stateBefore, action, active.context);
     } catch (err) {
