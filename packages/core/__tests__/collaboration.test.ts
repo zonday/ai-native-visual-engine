@@ -5,8 +5,8 @@ import type {
 } from "../src/collaboration/types.js";
 
 import { createYjsDocProvider } from "../src/collaboration/yjs-provider.js";
-import type { DocumentAction } from "../src/document/actions.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 
 function sda(
   type: string,

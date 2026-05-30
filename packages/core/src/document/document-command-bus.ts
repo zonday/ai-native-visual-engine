@@ -6,9 +6,14 @@ import {
   wrapCommandBus,
 } from "../engine/command-bus.js";
 import type { VisualDocument } from "../types.js";
-import type { DocumentAction } from "./actions.js";
-import type { DocumentDispatchResult } from "./command-bus.js";
+import type { DocumentAction } from "./register-handlers.js";
 import type { DocumentRuntimeContext } from "./handler-registry.js";
+
+export interface DocumentDispatchResult {
+  ok: boolean;
+  document: VisualDocument;
+  error?: { code: string; message: string; actionType?: string; pageId?: string };
+}
 
 type DocumentMiddleware = Middleware<VisualDocument, DocumentAction>;
 

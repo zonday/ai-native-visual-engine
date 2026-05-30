@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import type { DocumentAction } from "../src/document/actions.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import { InMemoryStorageBackend } from "../src/storage-backend.js";
 import type { DocumentSnapshot } from "../src/types.js";
 

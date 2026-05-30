@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { Middleware } from "../src/engine/command-bus.js";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";

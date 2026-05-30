@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DocumentAction } from "../src/document/actions.js";
+import type { DocumentAction } from "../src/document/register-handlers.js";
 import type { HistoryState } from "../src/engine/history.js";
 
 type DocumentHistoryState = HistoryState<DocumentAction>;

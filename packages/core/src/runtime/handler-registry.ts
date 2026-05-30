@@ -5,7 +5,7 @@ import type {
   HandlerEntry,
 } from "../engine/handler-registry.js";
 import type { SceneGraph } from "../types.js";
-import type { RuntimeAction } from "./actions.js";
+import type { RuntimeAction } from "./register-handlers.js";
 
 export type { ActionRegistry, HandlerMap, RuntimeContext };
 

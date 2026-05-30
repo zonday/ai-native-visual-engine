@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RuntimeAction } from "../src/runtime/actions.js";
+import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 import type { RuntimeContext } from "../src/runtime/handler-registry.js";
 import { createNodeEntry } from "../src/runtime/handlers/create-node.js";
 import { moveNodeEntry } from "../src/runtime/handlers/move-node.js";

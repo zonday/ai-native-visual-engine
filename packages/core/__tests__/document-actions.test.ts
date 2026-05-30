@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DocumentActionSchema } from "../src/document/actions.js";
+import { DocumentActionSchema } from "../src/document/register-handlers.js";
 
 describe("DocumentActionSchema", () => {
   it("validates create-page action", () => {

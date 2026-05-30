@@ -6,9 +6,19 @@ import {
   wrapCommandBus,
 } from "../engine/command-bus.js";
 import type { SceneGraph } from "../types.js";
-import type { RuntimeAction } from "./actions.js";
-import type { DispatchResult } from "./command-bus.js";
+import type { RuntimeAction } from "./register-handlers.js";
 import type { RuntimeContext } from "./handler-registry.js";
+
+export interface DispatchResult {
+  ok: boolean;
+  scene: SceneGraph;
+  error?: { code: string; message: string; actionType?: string; nodeId?: string };
+}
+
+export type CommandBus = {
+  dispatch(action: RuntimeAction): DispatchResult;
+  getScene(): SceneGraph;
+};
 
 type RuntimeMiddleware = Middleware<SceneGraph, RuntimeAction>;
 

@@ -22,8 +22,8 @@ export { createConstraintRegistry } from "./constraints/constraint-registry.js";
 export { validateGraphInvariants } from "./constraints/graph-invariants.js";
 export { DEFAULT_LAYOUT_CONSTRAINTS } from "./constraints/layout-constraints.js";
 // ── Document ──
-export type { DocumentAction } from "./document/actions.js";
-export { DocumentActionSchema } from "./document/actions.js";
+export type { DocumentAction } from "./document/register-handlers.js";
+export { DocumentActionSchema } from "./document/register-handlers.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 export { createDocumentRegistry } from "./document/register-handlers.js";
@@ -65,8 +65,8 @@ export { resolveInstance } from "./prototype.js";
 export type { DocNode } from "./rich-text.js";
 export { extractPlainText } from "./rich-text.js";
 // ── Runtime ──
-export type { RuntimeAction } from "./runtime/actions.js";
-export { RuntimeActionSchema } from "./runtime/actions.js";
+export type { RuntimeAction } from "./runtime/register-handlers.js";
+export { RuntimeActionSchema } from "./runtime/register-handlers.js";
 export { createBatchHandler } from "./runtime/handlers/batch.js";
 export { createRuntimeRegistry } from "./runtime/register-handlers.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
