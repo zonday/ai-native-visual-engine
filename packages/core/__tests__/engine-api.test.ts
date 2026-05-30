@@ -5,7 +5,8 @@ import type { RuntimeAction } from "../src/runtime/actions.js";
 
 const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
 
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
+import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import type { PageId, SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
@@ -34,11 +35,12 @@ describe("createEngineAPI", () => {
         },
       });
 
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene,
       error: { code: "fail", message: "noop" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(handlerRegistry, [], scene, {
       now: Date.now,
     });

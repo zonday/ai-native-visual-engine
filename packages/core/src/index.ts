@@ -26,7 +26,7 @@ export type { DocumentAction } from "./document/actions.js";
 export { DocumentActionSchema } from "./document/actions.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
 export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
-export { createDefaultDocumentRegistries } from "./document/register-handlers.js";
+export { createDocumentRegistry } from "./document/register-handlers.js";
 // ── Engine ──
 export {
   type ActionMeta,
@@ -69,7 +69,7 @@ export { extractPlainText } from "./rich-text.js";
 export type { RuntimeAction } from "./runtime/actions.js";
 export { RuntimeActionSchema } from "./runtime/actions.js";
 export { createBatchHandler } from "./runtime/handlers/batch.js";
-export { createDefaultRuntimeRegistries } from "./runtime/register-handlers.js";
+export { createRuntimeRegistry } from "./runtime/register-handlers.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export { createRuntimeTransactionManager } from "./runtime/transaction.js";
 // ── Scheduler ──

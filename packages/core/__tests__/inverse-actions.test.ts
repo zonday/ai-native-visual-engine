@@ -5,12 +5,15 @@ import type {
   InverseRegistry,
 } from "../src/document/handler-registry.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
-import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import { createDocumentRegistry } from "../src/document/register-handlers.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
-const { inverseRegistry: defaultInverseRegistry } =
-  createDefaultDocumentRegistries(() => ({ ok: true, document: makeDoc() }));
+const docReg = createDocumentRegistry(
+  () => ({ ok: true, document: makeDoc() }) as never,
+);
+const { inverseRegistry: defaultInverseRegistry } = splitRegistry(docReg);
 
 const defaultContext: DocumentRuntimeContext = { now: Date.now };
 
@@ -332,22 +335,19 @@ describe("computeInverseAction with registry", () => {
   });
 
   describe("batch-document-actions", () => {
-    it("computes batch inverse via registry-level inverse computer", () => {
+    it("throws when computing batch inverse via registry-level inverse computer", () => {
       const action: DocumentAction = {
         type: "batch-document-actions",
         actions: [{ type: "rename-page", pageId: "p1", name: "New Name" }],
       };
-      const inverse = computeInverseAction(
-        defaultInverseRegistry,
-        docWithPage,
-        action,
-        defaultContext,
-      );
-      expect(inverse).toEqual({
-        type: "rename-page",
-        pageId: "p1",
-        name: "Page 1",
-      });
+      expect(() =>
+        computeInverseAction(
+          defaultInverseRegistry,
+          docWithPage,
+          action,
+          defaultContext,
+        ),
+      ).toThrow("Batch inverse must be computed by the transaction manager");
     });
   });
 

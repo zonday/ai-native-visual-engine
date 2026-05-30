@@ -6,16 +6,17 @@ import type {
   VisualDocument,
 } from "@ai-native/core";
 import {
+  type ActionRegistry,
   createBatchHandler,
   createComputedStateEngine,
   createConstraintMiddleware,
   createConstraintRegistry,
-  createDefaultDocumentRegistries,
-  createDefaultRuntimeRegistries,
+  createDocumentRegistry,
   createDocumentBatchHandler,
   createDocumentCommandBus,
   createInteractionEngine,
   createRuntimeCommandBus,
+  createRuntimeRegistry,
   createRuntimeTransactionManager,
   createScheduler,
   createSelectorRegistry,
@@ -26,6 +27,7 @@ import {
   DEFAULT_LAYOUT_CONSTRAINTS,
   DocumentActionSchema,
   RuntimeActionSchema,
+  splitRegistry,
   validateGraphInvariants,
 } from "@ai-native/core";
 import { createRendererRegistry } from "@ai-native/renderer-react";
@@ -36,7 +38,7 @@ export interface EditorEngines {
   selectorRegistry: ReturnType<typeof createSelectorRegistry>;
   interactionEngine: ReturnType<typeof createInteractionEngine>;
   constraintRegistry: ReturnType<typeof createConstraintRegistry>;
-  runtimeRegistries: ReturnType<typeof createDefaultRuntimeRegistries>;
+  runtimeRegistries: ActionRegistry<RuntimeAction, SceneGraph, import("@ai-native/core").RuntimeContext>;
   runtimeTm: ReturnType<typeof createRuntimeTransactionManager>;
   transactionFlagRef: React.MutableRefObject<
     ReturnType<typeof createTransactionFlag>
@@ -75,7 +77,7 @@ export function useEditorEngines(
 
   const runtimeRegistries = useMemo(
     () =>
-      createDefaultRuntimeRegistries(() => ({
+      createRuntimeRegistry(() => ({
         ok: false,
         scene: { version: 0, rootId: "", nodes: {} },
         error: { code: "nested", message: "nested" },
@@ -85,20 +87,19 @@ export function useEditorEngines(
 
   const transactionFlagRef = useRef(createTransactionFlag());
 
-  const runtimeTm = useMemo(
-    () =>
-      createRuntimeTransactionManager(
-        runtimeRegistries.handlerRegistry,
-        runtimeRegistries.inverseRegistry,
-      ),
-    [runtimeRegistries],
-  );
+  const runtimeTm = useMemo(() => {
+    const { handlerRegistry, inverseRegistry } = splitRegistry(runtimeRegistries);
+    return createRuntimeTransactionManager(
+      handlerRegistry as never,
+      inverseRegistry as never,
+    );
+  }, [runtimeRegistries]);
 
   const schedulerRef = useRef(createScheduler({ mode: "microtask" }));
   const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
 
   const runtimeBus = useMemo(() => {
-    const { handlerRegistry } = runtimeRegistries;
+    const { handlerRegistry } = splitRegistry(runtimeRegistries);
     const middlewares = [
       createValidatorMiddleware<SceneGraph, RuntimeAction>(RuntimeActionSchema),
       createConstraintMiddleware(constraintRegistry),
@@ -156,11 +157,13 @@ export function useEditorEngines(
   ]);
 
   const documentBus = useMemo(() => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
-      ok: false,
-      document: doc,
-      error: { code: "nested", message: "nested" },
-    }));
+    const { handlerRegistry } = splitRegistry(
+      createDocumentRegistry(() => ({
+        ok: false,
+        document: doc,
+        error: { code: "nested", message: "nested" },
+      })),
+    );
     const middlewares = [
       createValidatorMiddleware<VisualDocument, DocumentAction>(
         DocumentActionSchema,

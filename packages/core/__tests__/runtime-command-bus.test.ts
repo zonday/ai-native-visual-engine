@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import type { Middleware } from "../src/engine/command-bus.js";
 import type { RuntimeAction } from "../src/runtime/actions.js";
 import type { RuntimeHandlerEntry } from "../src/runtime/handler-registry.js";
-import { createDefaultRuntimeRegistries } from "../src/runtime/inverse.js";
+import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import type { SceneGraph } from "../src/types.js";
 
@@ -12,11 +13,12 @@ import { baseNode, emptyScene } from "./helpers.js";
 
 describe("createRuntimeCommandBus", () => {
   it("dispatches a valid action and returns ok with updated scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
       now: Date.now,
     });
@@ -34,11 +36,12 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns unknown-action-type error for unregistered action type", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
       now: Date.now,
     });
@@ -55,11 +58,12 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns handler error code when RuntimeHandlerError is thrown", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
       now: Date.now,
     });
@@ -102,11 +106,12 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("returns middleware-error when middleware chain is broken", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(
       handlerRegistry,
       [undefined as unknown as RuntimeMiddleware],
@@ -126,11 +131,12 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("runs middleware pipeline before handler and passes modified scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     let middlewareCalled = false;
     const trackingMiddleware: RuntimeMiddleware = (_action, _scene, next) => {
       middlewareCalled = true;
@@ -155,11 +161,12 @@ describe("createRuntimeCommandBus", () => {
   });
 
   it("getScene returns the current scene", () => {
-    const { handlerRegistry } = createDefaultRuntimeRegistries(() => ({
+    const runtimeReg = createRuntimeRegistry(() => ({
       ok: false,
       scene: emptyScene,
       error: { code: "scene.handler-error", message: "should not be called" },
     }));
+    const { handlerRegistry } = splitRegistry(runtimeReg);
     const bus = createRuntimeCommandBus(handlerRegistry, [], emptyScene, {
       now: Date.now,
     });

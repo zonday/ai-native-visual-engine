@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { DocumentAction } from "../src/document/actions.js";
 import type { DocumentDispatchResult } from "../src/document/command-bus.js";
-import type { DocumentRuntimeContext } from "../src/document/handler-registry.js";
-import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
+import type {
+  DocumentHandlerEntry,
+  DocumentRuntimeContext,
+  InverseRegistry,
+} from "../src/document/handler-registry.js";
+import { createDocumentRegistry } from "../src/document/register-handlers.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyPersistedScene, makeDoc } from "./helpers.js";
 
 const context: DocumentRuntimeContext = { now: Date.now };
 
 function applyAction(
-  registries: ReturnType<typeof createDefaultDocumentRegistries>,
+  registries: {
+    handlerRegistry: Map<string, DocumentHandlerEntry>;
+    inverseRegistry: InverseRegistry;
+  },
   doc: VisualDocument,
   action: DocumentAction,
 ): VisualDocument {
@@ -20,9 +28,10 @@ function applyAction(
 
 describe("inverse round-trip — action → inverse restores state", () => {
   it("create-page → remove-page (inverse) restores original state", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const doc1 = applyAction(registries, makeDoc(), {
       type: "create-page",
@@ -48,9 +57,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("remove-page → create-page (inverse) restores original state", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/dashboard" }],
@@ -82,9 +92,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("rename-page → rename-page (inverse) restores original name", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1" }],
@@ -118,9 +129,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("reorder-page → reorder-page (inverse) restores original order", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithTwoPages: VisualDocument = makeDoc({
       pages: [
@@ -161,9 +173,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("update-page-route → update-page-route (inverse) restores original route", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithPage: VisualDocument = makeDoc({
       pages: [{ id: "p1", name: "Page 1", sceneId: "s1", route: "/original" }],
@@ -197,9 +210,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("set-document-theme → set-document-theme (inverse) restores original activeThemeId", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithTheme: VisualDocument = makeDoc({
       activeThemeId: "theme-dark",
@@ -235,9 +249,10 @@ describe("inverse round-trip — action → inverse restores state", () => {
   });
 
   it("set-page-theme → set-page-theme (inverse) restores original page themeId", () => {
-    const registries = createDefaultDocumentRegistries(
+    const docReg = createDocumentRegistry(
       () => ({ ok: true, document: makeDoc() }) as DocumentDispatchResult,
     );
+    const registries = splitRegistry(docReg);
 
     const docWithTheme: VisualDocument = makeDoc({
       themes: [

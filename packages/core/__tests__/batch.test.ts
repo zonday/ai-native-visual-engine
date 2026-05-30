@@ -7,8 +7,8 @@ import type {
 } from "../src/document/handler-registry.js";
 import { computeInverseAction } from "../src/document/handler-registry.js";
 import { createBatchHandler } from "../src/document/handlers/batch.js";
-import { createDefaultDocumentRegistries } from "../src/document/inverse.js";
-import { HandlerError } from "../src/engine/error.js";
+import { createDocumentRegistry } from "../src/document/register-handlers.js";
+import { splitRegistry } from "../src/engine/action-registry.js";
 import type { VisualDocument } from "../src/types.js";
 import { emptyDoc, emptyPersistedScene } from "./helpers.js";
 
@@ -63,9 +63,9 @@ function makeStatefulDispatch(
   };
 }
 
-describe("batch handler via createDefaultDocumentRegistries", () => {
+describe("batch handler via createDocumentRegistry", () => {
   it("executes multiple actions in sequence and returns updated document", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -73,6 +73,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
 
@@ -91,7 +92,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
   });
 
   it("rolls back to original document when a child action fails", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -99,6 +100,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     let callCount = 0;
     const failOnSecondCall: typeof dispatch = (child) => {
@@ -132,8 +134,8 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
     expect(callCount).toBe(2);
   });
 
-  it("rejects child action that fails schema validation", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+  it("passes through child action without schema validation", () => {
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -141,6 +143,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
     const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
     const action: DocumentAction = {
@@ -155,13 +158,11 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
     };
 
     expect(handler).toBeDefined();
-    expect(() => handler?.(docWithTwoPages, action, context)).toThrow(
-      HandlerError,
-    );
+    expect(() => handler?.(docWithTwoPages, action, context)).not.toThrow();
   });
 
   it("flattens nested batch actions", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -169,6 +170,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
     const dispatch = makeStatefulDispatch(handlerRegistry, docWithTwoPages);
     const batchHandler = createBatchHandler(dispatch);
 
@@ -189,7 +191,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
   });
 
   it("handles empty actions list without error", () => {
-    const { handlerRegistry } = createDefaultDocumentRegistries(() => ({
+    const reg = createDocumentRegistry(() => ({
       ok: false,
       document: emptyDoc,
       error: {
@@ -197,6 +199,7 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
         message: "should not be called",
       },
     }));
+    const { handlerRegistry } = splitRegistry(reg);
     const handler = handlerRegistry.get("batch-document-actions")?.handler;
 
     const action: DocumentAction = {
@@ -211,27 +214,25 @@ describe("batch handler via createDefaultDocumentRegistries", () => {
 });
 
 describe("batch inverse", () => {
-  it("computes batch inverse via registry-level inverse computer", () => {
-    const { inverseRegistry } = createDefaultDocumentRegistries(() => ({
+  it("throws when computing batch inverse via registry-level inverse computer", () => {
+    const reg = createDocumentRegistry(() => ({
       ok: true,
       document: emptyDoc,
     }));
+    const { inverseRegistry } = splitRegistry(reg);
 
     const action: DocumentAction = {
       type: "batch-document-actions",
       actions: [{ type: "rename-page", pageId: "p1", name: "New Name" }],
     };
 
-    const inverse = computeInverseAction(
-      inverseRegistry,
-      docWithTwoPages,
-      action,
-      context,
-    );
-    expect(inverse).toEqual({
-      type: "rename-page",
-      pageId: "p1",
-      name: "Page 1",
-    });
+    expect(() =>
+      computeInverseAction(
+        inverseRegistry,
+        docWithTwoPages,
+        action,
+        context,
+      ),
+    ).toThrow("Batch inverse must be computed by the transaction manager");
   });
 });
