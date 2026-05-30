@@ -29,7 +29,7 @@ export interface Scheduler {
   markDirty(nodeIds: NodeId[]): void
   markAllDirty(): void
 
-  // — Manual flush —
+  // — Deep flush: resolves when all pending cascading cycles are idle —
   flush(): Promise<void>
 
   // — Subscription —
@@ -93,7 +93,8 @@ export interface Scheduler {
 
 1. Dirty set is empty.
 2. No pending compute or render work.
-3. If the pending set is non-empty after a flush, a new cycle is automatically scheduled.
+3. `flush()` resolves when the system reaches idle (including any cascading cycles from reentrant `markDirty` calls).
+4. If the pending set is non-empty after a flush, a new cycle is automatically scheduled. `flush()` will also wait for that cycle before resolving.
 
 ## 5. Modes
 
@@ -153,4 +154,9 @@ Default mode is `"microtask"`.
 3. During the compute or render phase, new `markDirty` calls are deferred to a **pending** set and processed in the next cycle. They MUST NOT throw.
 4. The scheduler must not hold a reference to the scene. It operates on `NodeId[]` only.
 5. Listeners are called synchronously during `flush()`. Listener errors are isolated per listener — a single crash does not corrupt the scheduler or silence other listeners.
-6. Re-entrant cycles are bounded by `MAX_FLUSH_DEPTH` (100). Exceeding this limit throws `Maximum scheduler flush depth exceeded`.
+6. Re-entrant cycles are bounded by `MAX_FLUSH_DEPTH` (100). Exceeding this limit throws `Maximum scheduler flush depth exceeded`. This applies both to synchronous recursion (immediate mode) and to `flush()` deep drain. On abort:
+   - The scheduler clears all dirty state (`currentDirty`, `pendingDirty`, `allDirty`, `pendingAllDirty`) and returns to idle.
+   - Any pending `flush()` promises are **rejected** with the depth-limit error.
+   - The scheduler is fully reusable after the abort.
+7. `notifyCompute` and `notifyRender` snapshot the listener array before iterating. Adding or removing listeners during a cycle does not affect the current iteration.
+8. `getDirtyNodes()` returns the union of `currentDirty` and `pendingDirty` IDs. When `allDirty` (or `pendingAllDirty`) is true, the semantic "everything is dirty" signal is not reflected in the returned array — callers should check `getPhase()` or use the `onCompute([])` convention instead.

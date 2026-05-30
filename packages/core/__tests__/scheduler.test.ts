@@ -42,7 +42,6 @@ describe("Scheduler", () => {
       });
       s.markDirty(["a"]);
       await s.flush();
-      await s.flush();
       expect(computeLog.length).toBe(2);
       expect(computeLog[0]).toEqual(["a"]);
       expect(computeLog[1]).toEqual(["b"]);
@@ -372,6 +371,130 @@ describe("Scheduler", () => {
       s.markDirty(["y"]);
       expect(count).toBe(1);
       expect(s.getPhase()).toBe("idle");
+    });
+  });
+
+  describe("listener snapshot isolation", () => {
+    it("does not invoke listener added during current cycle", async () => {
+      const s = createScheduler({ mode: "microtask" });
+      const addedDuring: string[] = [];
+      s.subscribe({
+        onCompute: () => {
+          s.subscribe({
+            onCompute: (nodes) => addedDuring.push(...nodes),
+          });
+        },
+      });
+      s.markDirty(["a"]);
+      await s.flush();
+      expect(addedDuring).toEqual([]);
+    });
+
+    it("still invokes listener that unsubscribes itself during current cycle", async () => {
+      const s = createScheduler({ mode: "microtask" });
+      let callCount = 0;
+      const unsub = s.subscribe({
+        onCompute: () => {
+          callCount++;
+          unsub();
+        },
+      });
+      s.markDirty(["a"]);
+      await s.flush();
+      expect(callCount).toBe(1);
+    });
+  });
+
+  describe("pendingAllDirty", () => {
+    it("defers pendingAllDirty to next cycle", async () => {
+      const s = createScheduler({ mode: "microtask" });
+      const computeArgs: (string[] | undefined)[] = [];
+      s.subscribe({
+        onCompute: (nodes) => {
+          computeArgs.push(nodes);
+          if (nodes.includes("a")) {
+            s.markAllDirty();
+          }
+        },
+      });
+      s.markDirty(["a"]);
+      await s.flush();
+      expect(computeArgs.length).toBe(2);
+      expect(computeArgs[0]).toEqual(["a"]);
+      expect(computeArgs[1]).toEqual([]);
+    });
+  });
+
+  describe("raf mode with flush", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) =>
+        setTimeout(cb, 16),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    });
+
+    it("flush() resolves after rAF cycle completes", () => {
+      const s = createScheduler({ mode: "raf" });
+      let computed = false;
+      s.subscribe({
+        onCompute: () => {
+          computed = true;
+        },
+      });
+      s.markDirty(["a"]);
+      const flushPromise = s.flush();
+      vi.advanceTimersByTime(16);
+      return expect(flushPromise)
+        .resolves.toBeUndefined()
+        .then(() => {
+          expect(computed).toBe(true);
+        });
+    });
+  });
+
+  describe("coverage edge cases", () => {
+    it("markDirty with empty array is a no-op", async () => {
+      const s = createScheduler({ mode: "microtask" });
+      let called = false;
+      s.subscribe({
+        onCompute: () => {
+          called = true;
+        },
+      });
+      s.markDirty([]);
+      await s.flush();
+      expect(called).toBe(false);
+    });
+
+    it("markAllDirty discards previously marked specific nodes", async () => {
+      const s = createScheduler({ mode: "microtask" });
+      const seen: string[] = [];
+      s.subscribe({ onCompute: (nodes) => seen.push(...nodes) });
+      s.markDirty(["a"]);
+      s.markAllDirty();
+      await s.flush();
+      // markAllDirty clears currentDirty, so listener gets [] not ["a"]
+      expect(seen).toEqual([]);
+    });
+
+    it("getDirtyNodes includes pending items during a cycle", () => {
+      const s = createScheduler({ mode: "immediate" });
+      let dirtyDuring: string[] = [];
+      s.subscribe({
+        onCompute: (nodes) => {
+          if (nodes.includes("a")) {
+            s.markDirty(["b"]);
+            dirtyDuring = s.getDirtyNodes();
+          }
+        },
+      });
+      s.markDirty(["a"]);
+      expect(dirtyDuring.sort()).toEqual(["a", "b"]);
     });
   });
 });
