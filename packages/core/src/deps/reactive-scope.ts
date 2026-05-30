@@ -64,10 +64,11 @@ export function createScope(): ReactiveScope {
   // ── Known gaps ──────────────────────────────────────────────────────────
   //
   // 1. alien-signals link() — no full-chain dedup scan.
-  //    If A is read twice non-consecutively in one eval (A()+B()+A()), the
-  //    second read creates a duplicate link. Harmless because purgeDeps
-  //    clears old links before each re-eval and propagate's second pass is
-  //    idempotent (Pending/Dirty already set). Benchmark noise only.
+  //    If a node is read twice non-consecutively in one eval (A()+B()+A()),
+  //    the second read creates a duplicate link. This causes unlink asymmetry,
+  //    subs-chain length inflation, propagate overhead, and gradual graph
+  //    entropy growth over many re-evals. Future: add a Set per node or scan
+  //    the dep chain before linking (see alien-signals/system.mjs:18).
   //
   // 2. alien-signals checkDirty() — no visited-node tracking.
   //    A computed cycle A→B→A where both are Pending could loop infinitely.
@@ -80,6 +81,17 @@ export function createScope(): ReactiveScope {
   //    subscriber runs first. This is not a FIFO guarantee; cross-signal
   //    notification order is non-deterministic. Reactive systems conventionally
   //    do not order effects. No correctness impact.
+  //
+  // 4. RF.Watching flag is overloaded — it serves as queue marker, tracking
+  //    state, and cycle guard simultaneously. A dedicated Evaluating flag
+  //    would prevent false-positive cycle detection. Requires co-ordinated
+  //    changes with alien-signals propagate() which checks `flags & 2`.
+  //    Deferred: architecture-level refactor, not a hotfix.
+  //
+  // 5. Owner tree and dependency graph are conflated — effect nodes appear
+  //    in the reactive graph as dependencies of their parent. This works for
+  //    linear dispose but breaks under async effects, suspense, or render
+  //    phases. Future: separate owner tree from dependency graph (see Solid).
   // ─────────────────────────────────────────────────────────────────────────
   const { link, unlink, propagate, checkDirty, shallowPropagate } =
     createReactiveSystem({
@@ -341,14 +353,9 @@ export function createScope(): ReactiveScope {
           node.flags = flags & ~RF.Pending;
         }
       } else if (!flags) {
-        node.flags = RF.Mutable | RF.Watching;
-        const prevSub = activeSub;
-        activeSub = node;
-        try {
-          node.value = node.getter();
-        } finally {
-          activeSub = prevSub;
-          node.flags &= ~RF.Watching;
+        if (updateComputed(node)) {
+          const subs = node.subs;
+          if (subs !== undefined) shallowPropagate(subs);
         }
       }
       const sub = activeSub;
@@ -429,7 +436,7 @@ export function createScope(): ReactiveScope {
         let hasOtherChild = false;
         let sl = parent.subs;
         while (sl !== undefined) {
-          if (sl.sub !== e && "fn" in sl.sub) {
+          if (sl.sub !== e && sl.sub.flags && "fn" in sl.sub) {
             hasOtherChild = true;
             break;
           }
