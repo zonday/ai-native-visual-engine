@@ -53,16 +53,19 @@ describe("Scheduler", () => {
       const s = createScheduler({ mode: "microtask" });
       let computeCalled = false;
       let computeNodes: string[] | undefined;
+      let computeAll = false;
       s.subscribe({
-        onCompute: (nodes) => {
+        onCompute: (_nodes, all) => {
           computeCalled = true;
-          computeNodes = nodes;
+          computeNodes = _nodes;
+          computeAll = all ?? false;
         },
       });
       s.markAllDirty();
       await s.flush();
       expect(computeCalled).toBe(true);
       expect(computeNodes).toEqual([]);
+      expect(computeAll).toBe(true);
     });
 
     it("triggers render even when no specific nodes are dirty", async () => {
@@ -408,20 +411,24 @@ describe("Scheduler", () => {
   describe("markAllDirty during cycle", () => {
     it("defers allDirty to next cycle", async () => {
       const s = createScheduler({ mode: "microtask" });
-      const computeArgs: (string[] | undefined)[] = [];
+      interface LogEntry {
+        nodes: string[];
+        all: boolean;
+      }
+      const computeLog: LogEntry[] = [];
       s.subscribe({
-        onCompute: (nodes) => {
-          computeArgs.push(nodes);
-          if (nodes.includes("a")) {
+        onCompute: (_nodes, all) => {
+          computeLog.push({ nodes: [..._nodes], all: all ?? false });
+          if (_nodes.includes("a")) {
             s.markAllDirty();
           }
         },
       });
       s.markDirty(["a"]);
       await s.flush();
-      expect(computeArgs.length).toBe(2);
-      expect(computeArgs[0]).toEqual(["a"]);
-      expect(computeArgs[1]).toEqual([]);
+      expect(computeLog.length).toBe(2);
+      expect(computeLog[0]).toEqual({ nodes: ["a"], all: false });
+      expect(computeLog[1]).toEqual({ nodes: [], all: true });
     });
   });
 
@@ -473,13 +480,16 @@ describe("Scheduler", () => {
 
     it("markAllDirty discards previously marked specific nodes", async () => {
       const s = createScheduler({ mode: "microtask" });
-      const seen: string[] = [];
-      s.subscribe({ onCompute: (nodes) => seen.push(...nodes) });
+      let seenAll = false;
+      s.subscribe({
+        onCompute: (_nodes, all) => {
+          if (all) seenAll = true;
+        },
+      });
       s.markDirty(["a"]);
       s.markAllDirty();
       await s.flush();
-      // markAllDirty clears currentDirty, so listener gets [] not ["a"]
-      expect(seen).toEqual([]);
+      expect(seenAll).toBe(true);
     });
 
     it("getDirtyNodes shows reentrant marks during a cycle", () => {
