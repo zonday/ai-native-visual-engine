@@ -12,7 +12,7 @@ const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   expectNode(scene, action.nodeId, "update-style");
 
   return produce(scene, (draft) => {
-    draft.nodes[action.nodeId]!.style = {
+    (draft.nodes[action.nodeId] as SceneNode).style = {
       ...stripDangerousKeys(action.style),
     };
     draft.version += 1;

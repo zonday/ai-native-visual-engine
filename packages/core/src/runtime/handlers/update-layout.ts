@@ -66,7 +66,7 @@ const updateLayoutHandler: RuntimeHandler<UpdateLayoutAction> = (
   validateLayout(merged, action.nodeId);
 
   return produce(scene, (draft) => {
-    draft.nodes[action.nodeId]!.layout = merged;
+    (draft.nodes[action.nodeId] as SceneNode).layout = merged;
     draft.version += 1;
   });
 };
