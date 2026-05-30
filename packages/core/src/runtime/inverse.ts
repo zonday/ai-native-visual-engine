@@ -9,9 +9,9 @@ import type {
 } from "./handler-registry.js";
 import {
   batchInverse,
+  batchMeta,
   createBatchHandler,
   createBatchInverse,
-  batchMeta,
 } from "./handlers/batch.js";
 import {
   createNodeHandler,
