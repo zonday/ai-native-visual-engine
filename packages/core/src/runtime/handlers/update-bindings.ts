@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import type { UpdateBindingsAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
@@ -7,18 +8,12 @@ const updateBindingsHandler: RuntimeHandler<UpdateBindingsAction> = (
   action,
   _ctx,
 ) => {
-  const node = expectNode(scene, action.nodeId, "update-bindings");
+  expectNode(scene, action.nodeId, "update-bindings");
 
-  const updatedNode = {
-    ...node,
-    bindings: [...action.bindings],
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    draft.nodes[action.nodeId].bindings = [...action.bindings];
+    draft.version += 1;
+  });
 };
 
 const updateBindingsInverse: InverseComputer<UpdateBindingsAction> = (

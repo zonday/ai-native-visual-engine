@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import type { UpdateStyleAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
@@ -8,18 +9,14 @@ const updateStyleHandler: RuntimeHandler<UpdateStyleAction> = (
   action,
   _ctx,
 ) => {
-  const node = expectNode(scene, action.nodeId, "update-style");
+  expectNode(scene, action.nodeId, "update-style");
 
-  const updatedNode = {
-    ...node,
-    style: { ...stripDangerousKeys(action.style) },
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    draft.nodes[action.nodeId].style = {
+      ...stripDangerousKeys(action.style),
+    };
+    draft.version += 1;
+  });
 };
 
 const updateStyleInverse: InverseComputer<UpdateStyleAction> = (

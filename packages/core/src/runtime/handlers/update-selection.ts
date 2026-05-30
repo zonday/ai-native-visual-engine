@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { UpdateSelectionAction } from "../actions.js";
 import type { InverseComputer, RuntimeHandler } from "../handler-registry.js";
@@ -27,10 +28,9 @@ const updateSelectionHandler: RuntimeHandler<UpdateSelectionAction> = (
     }
   }
 
-  return {
-    ...scene,
-    selection: { nodeIds: [...action.nodeIds] },
-  };
+  return produce(scene, (draft) => {
+    draft.selection = { nodeIds: [...action.nodeIds] };
+  });
 };
 
 const updateSelectionInverse: InverseComputer<UpdateSelectionAction> = (

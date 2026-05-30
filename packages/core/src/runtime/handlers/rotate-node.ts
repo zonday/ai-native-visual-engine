@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { RotateNodeAction } from "../actions.js";
 import { expectNode } from "../expect-node.js";
@@ -47,16 +48,11 @@ const rotateNodeHandler: RuntimeHandler<RotateNodeAction> = (
   }
   const normalized = normalizeRotation(action.rotation);
 
-  const updatedNode = {
-    ...node,
-    layout: { ...layout, rotation: normalized },
-  };
-
-  return {
-    ...scene,
-    nodes: { ...scene.nodes, [action.nodeId]: updatedNode },
-    version: scene.version + 1,
-  };
+  return produce(scene, (draft) => {
+    (draft.nodes[action.nodeId].layout as Record<string, unknown>).rotation =
+      normalized;
+    draft.version += 1;
+  });
 };
 
 const rotateNodeInverse: InverseComputer<RotateNodeAction> = (

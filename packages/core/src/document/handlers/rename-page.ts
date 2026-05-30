@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { RenamePageAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -16,10 +17,10 @@ const renamePageHandler: DocumentHandler<RenamePageAction> = (
       { pageId: action.pageId },
     );
 
-  const pages = document.pages.map((p) =>
-    p.id === action.pageId ? { ...p, name: action.name } : p,
-  );
-  return { ...document, pages };
+  return produce(document, (draft) => {
+    const page = draft.pages.find((p) => p.id === action.pageId);
+    if (page) page.name = action.name;
+  });
 };
 
 const renamePageInverse: InverseComputer<RenamePageAction> = (

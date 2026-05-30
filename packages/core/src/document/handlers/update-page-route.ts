@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { HandlerError } from "../../engine/error.js";
 import type { UpdatePageRouteAction } from "../actions.js";
 import type { DocumentHandler, InverseComputer } from "../handler-registry.js";
@@ -37,10 +38,10 @@ const updatePageRouteHandler: DocumentHandler<UpdatePageRouteAction> = (
       { pageId: action.pageId },
     );
 
-  const pages = document.pages.map((p) =>
-    p.id === action.pageId ? { ...p, route: normalized } : p,
-  );
-  return { ...document, pages };
+  return produce(document, (draft) => {
+    const page = draft.pages.find((p) => p.id === action.pageId);
+    if (page) page.route = normalized;
+  });
 };
 
 const updatePageRouteInverse: InverseComputer<UpdatePageRouteAction> = (
