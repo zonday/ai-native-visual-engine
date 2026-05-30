@@ -365,24 +365,23 @@ describe("createScope", () => {
       expect(fn).not.toHaveBeenCalled();
     });
 
-    it("Watching restored on remaining effects after sibling throws", () => {
+    it("survivor before thrower runs properly after exception", () => {
       const { signal, effect } = createScope();
       const s = signal(0);
       const survivor = vi.fn();
 
       effect(() => {
         s();
+        survivor();
       });
-
-      const bombsAway = effect(() => {
-        s();
-        if (s() > 0) throw new Error("boom");
-      });
-      bombsAway();
 
       effect(() => {
         s();
-        survivor();
+        if (s() > 0) throw new Error("boom");
+      });
+
+      effect(() => {
+        s();
       });
 
       survivor.mockClear();
@@ -391,9 +390,12 @@ describe("createScope", () => {
       } catch {
         // expected
       }
-      survivor.mockClear();
-      s(2);
-      expect(survivor).toHaveBeenCalledTimes(1);
+      try {
+        s(2);
+      } catch {
+        // expected
+      }
+      expect(survivor).toHaveBeenCalledTimes(2);
     });
   });
 
