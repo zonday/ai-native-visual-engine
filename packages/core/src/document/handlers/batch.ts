@@ -97,7 +97,7 @@ export const batchInverse: InverseComputer<BatchDocumentActions> = (
   return undefined;
 };
 
-export function createBatchInverse(
+function createBatchInverse(
   handlerRegistry: DocumentHandlerRegistry,
   inverseRegistry: InverseRegistry,
 ): InverseComputer<BatchDocumentActions> {
@@ -150,7 +150,7 @@ export function createBatchInverse(
   };
 }
 
-export const batchEntry = {
+const batchEntry = {
   handler: createBatchHandler,
   inverse: batchInverse,
   meta: { undoable: true, mergeable: true, devtoolsLabel: "Batch" },

@@ -22,7 +22,6 @@ export { createConstraintRegistry } from "./constraints/constraint-registry.js";
 export { validateGraphInvariants } from "./constraints/graph-invariants.js";
 export { DEFAULT_LAYOUT_CONSTRAINTS } from "./constraints/layout-constraints.js";
 export { createDocumentCommandBus } from "./document/document-command-bus.js";
-export { createBatchHandler as createDocumentBatchHandler } from "./document/handlers/batch.js";
 // ── Document ──
 export type { DocumentAction } from "./document/register-handlers.js";
 export {
@@ -66,7 +65,6 @@ export { resolveInstance } from "./prototype.js";
 // ── Rich text ──
 export type { DocNode } from "./rich-text.js";
 export { extractPlainText } from "./rich-text.js";
-export { createBatchHandler } from "./runtime/handlers/batch.js";
 // ── Runtime ──
 export type { RuntimeAction } from "./runtime/register-handlers.js";
 export {
