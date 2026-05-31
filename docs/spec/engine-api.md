@@ -331,8 +331,7 @@ interface CommandBusLifecycle {
 
 ## 11. SelectorAPI
 
-Unified, memoized read access to `SceneGraph`. See `selector-system.md`
-for the full spec.
+Reactive, memoized read access to `SceneGraph`. Backed by `SelectorRegistry` — a signal-based query layer with field-level dependency tracking. See `selector-system.md` for the full spec.
 
 ```ts
 export interface SelectorAPI {
@@ -348,11 +347,10 @@ export interface SelectorAPI {
 
 Rules:
 
-1. Selectors are memoized by `scene.version`. Repeated calls with the same
-   scene return cached results.
-2. Selectors never mutate state. They return read-only data.
-3. All renderers and plugins should prefer selectors over direct
-   `QueryService` methods for repeated reads during rendering.
+1. Selectors are memoized by `scene.version`. Repeated calls with the same scene return cached results.
+2. Selectors use field-level signal tracking. A `getNodeProps(id)` call only subscribes to the `props` signal of that node — changes to `layout` or `children` do not invalidate.
+3. Selectors never mutate state.
+4. All renderers and plugins should prefer selectors over direct `QueryService` methods for repeated reads during rendering.
 
 ## 12. ComputedStateAPI
 

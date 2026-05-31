@@ -29,17 +29,8 @@ export {
   DocumentActionSchema,
 } from "./document/register-handlers.js";
 // ── Engine ──
-export {
-  type ActionMeta,
-  ActionRegistry,
-  type HandlerMap,
-} from "./engine/action-registry.js";
+export { ActionRegistry } from "./engine/action-registry.js";
 export type { RuntimeContext } from "./engine/handler.js";
-export type {
-  BatchAction,
-  HandlerEntry,
-  InverseComputer,
-} from "./engine/handler-registry.js";
 // ── History ──
 export {
   createHistoryState,
@@ -54,23 +45,9 @@ export { createTransactionMiddleware } from "./engine/middleware/transaction.js"
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
 export {
-  type CommandResult,
-  type CommandService,
-  type ComputedStateAPI,
   createEngineFacade,
   type EngineFacade,
-  type EventBus,
-  type HistoryService,
-  type NodeQuery,
-  type QueryService,
-  type SceneQuery,
-  type SelectionQuery,
-  type SelectorAPI,
-  type StateService,
-  type TransactionService,
 } from "./engine-api.js";
-// ── Immer Patch Routing ──
-export { routeImmerPatches } from "./immer-patch-router.js";
 // ── Interaction ──
 export {
   createInteractionEngine,
@@ -95,8 +72,6 @@ export { createScheduler, type Scheduler } from "./scheduler.js";
 // ── Selector ──
 export {
   createSelectorRegistry,
-  type NodeField,
-  type ScenePatch,
   type SelectorRegistry,
 } from "./selector/selector-registry.js";
 // ── Session ──

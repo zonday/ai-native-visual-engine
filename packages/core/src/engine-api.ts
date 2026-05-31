@@ -1,3 +1,7 @@
+import {
+  type ComputedStateEngine,
+  createComputedStateEngine,
+} from "./computed/computed-state-engine.js";
 import type { ActionRegistry } from "./engine/action-registry.js";
 import type { HistoryState } from "./engine/history.js";
 import { redoAction, undoAction } from "./engine/history.js";
@@ -7,6 +11,10 @@ import type { TransactionSource } from "./engine/transaction-types.js";
 import type { RuntimeContext } from "./runtime/handler-registry.js";
 import type { RuntimeAction } from "./runtime/register-handlers.js";
 import type { CommandBus } from "./runtime/runtime-command-bus.js";
+import {
+  createSelectorRegistry,
+  type SelectorRegistry,
+} from "./selector/selector-registry.js";
 import type {
   Binding,
   Layout,
@@ -15,6 +23,8 @@ import type {
   SceneGraph,
   SceneNode,
 } from "./types.js";
+
+export type { ComputedStateEngine, SelectorRegistry };
 
 // ── Unified Result Type ──
 
@@ -160,10 +170,8 @@ export interface EngineFacade {
   transaction: TransactionService;
   states: StateService;
   events: EventBus;
-  /** @todo implement — currently undefined */
-  selector?: SelectorAPI;
-  /** @todo implement — currently undefined */
-  computed?: ComputedStateAPI;
+  selector: SelectorRegistry;
+  computed: ComputedStateEngine;
 }
 
 // ── Helpers ──
@@ -252,12 +260,18 @@ export function createEngineFacade(
     },
   };
 
+  // ── SelectorRegistry: memoized reactive query layer ──
+
+  const selectors = createSelectorRegistry(getScene());
+  const computed = createComputedStateEngine(selectors);
+
   // ── Single dispatch+notify pathway ──
   // No validation — handlers and middleware own that responsibility.
 
   function doDispatch(action: RuntimeAction): CommandResult {
     const result = commandBus.dispatch(action);
     if (result.ok) {
+      selectors.sync(getScene());
       scheduleNotification("scene", getScene());
       scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
     }
@@ -534,6 +548,7 @@ export function createEngineFacade(
       }
       const result = transactionManager.applyAction(active, action);
       if (result.ok) {
+        selectors.sync(getScene());
         scheduleNotification("scene", getScene());
         scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
       }
@@ -560,6 +575,7 @@ export function createEngineFacade(
       }
       const result = transactionManager.commit(active);
       if (result.ok) {
+        selectors.sync(getScene());
         scheduleNotification("scene", getScene());
         scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
       }
@@ -578,6 +594,7 @@ export function createEngineFacade(
         return;
       }
       transactionManager.rollback(active);
+      selectors.sync(getScene());
       scheduleNotification("scene", getScene());
       scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
     },
@@ -593,5 +610,7 @@ export function createEngineFacade(
     transaction,
     states,
     events,
+    selector: selectors,
+    computed,
   };
 }
