@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createComputedStateEngine } from "../src/computed/computed-state-engine.js";
-import { createSelectorRegistry } from "../src/selector/selector-registry.js";
+import { createComputedStore } from "../src/computed-store.js";
+import { createSceneStore } from "../src/scene-store.js";
 import type { SceneGraph } from "../src/types.js";
 
 function makeScene(custom?: Partial<SceneGraph>): SceneGraph {
@@ -47,8 +47,8 @@ describe("ComputedStateEngine", () => {
       if (!a?.layout) throw new Error("a or layout missing");
       // Parent "a" rotated 90°, child "a1" at (10, 20) relative
       a.layout.rotation = 90;
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       // a1: parent rotates (10, 20) → (-20, 10), then adds parent at (100, 50)
       // Expected: x = 100 + (-20) = 80, y = 50 + 10 = 60
       const tx = eng.getWorldTransform("a1");
@@ -63,8 +63,8 @@ describe("ComputedStateEngine", () => {
       if (!a?.layout) throw new Error("a or layout missing");
       (a.layout as Record<string, unknown>).scaleX = 2;
       (a.layout as Record<string, unknown>).scaleY = 3;
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       const tx = eng.getWorldTransform("a1");
       // "a" scales (10, 20) by (2, 3) → (20, 60), adds parent (100, 50)
       expect(tx.x).toBe(120);
@@ -74,8 +74,8 @@ describe("ComputedStateEngine", () => {
     });
 
     it("returns identity for root", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const tx = eng.getWorldTransform("root");
       expect(tx.x).toBe(0);
       expect(tx.y).toBe(0);
@@ -83,24 +83,24 @@ describe("ComputedStateEngine", () => {
     });
 
     it("returns local position for direct child of root", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const tx = eng.getWorldTransform("a");
       expect(tx.x).toBe(100);
       expect(tx.y).toBe(50);
     });
 
     it("accumulates parent transform for nested node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const tx = eng.getWorldTransform("a1");
       expect(tx.x).toBe(110);
       expect(tx.y).toBe(70);
     });
 
     it("memoizes result for same node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const r1 = eng.getWorldTransform("a1");
       const r2 = eng.getWorldTransform("a1");
       expect(r1).toBe(r2);
@@ -109,8 +109,8 @@ describe("ComputedStateEngine", () => {
 
   describe("getComputedBounds", () => {
     it("returns correct bounds for root child", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const bounds = eng.getComputedBounds("a");
       expect(bounds.x).toBe(100);
       expect(bounds.y).toBe(50);
@@ -119,8 +119,8 @@ describe("ComputedStateEngine", () => {
     });
 
     it("returns accumulated bounds for nested node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const bounds = eng.getComputedBounds("a1");
       expect(bounds.x).toBe(110);
       expect(bounds.y).toBe(70);
@@ -134,8 +134,8 @@ describe("ComputedStateEngine", () => {
       const root = scene.nodes.root;
       if (!root) throw new Error("root missing");
       root.children = ["a", "c"];
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       const bounds = eng.getComputedBounds("c");
       expect(bounds.width).toBeGreaterThan(0);
       expect(bounds.height).toBeGreaterThan(0);
@@ -144,8 +144,8 @@ describe("ComputedStateEngine", () => {
 
   describe("getVisibleBounds", () => {
     it("returns bounds for visible node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const vb = eng.getVisibleBounds("a");
       expect(vb).not.toBeNull();
       expect(vb?.width).toBe(200);
@@ -156,14 +156,14 @@ describe("ComputedStateEngine", () => {
       const a = scene.nodes.a;
       if (!a) throw new Error("a missing");
       a.visible = false;
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       expect(eng.getVisibleBounds("a")).toBeNull();
     });
 
     it("clips to viewport when viewport rect is provided", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       // Node "a" is at (100, 50) with size 200x100
       // Viewport is at (150, 60) with size 100x80
       // Intersection should be (150, 60) with size 100x80 (clipped to viewport)
@@ -181,8 +181,8 @@ describe("ComputedStateEngine", () => {
     });
 
     it("returns zero bounds when node is outside viewport", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       // Node "a" is at (100, 50), viewport is far away
       const vb = eng.getVisibleBounds("a", {
         x: 500,
@@ -198,8 +198,8 @@ describe("ComputedStateEngine", () => {
 
   describe("getLocalTransform", () => {
     it("returns WorldTransform with scale defaults for absolute node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const tx = eng.getLocalTransform("a");
       expect(tx.x).toBe(100);
       expect(tx.y).toBe(50);
@@ -211,8 +211,8 @@ describe("ComputedStateEngine", () => {
     it("returns identity for non-absolute node", () => {
       const scene = makeScene();
       if (scene.nodes.a) delete scene.nodes.a.layout;
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       const tx = eng.getLocalTransform("a");
       expect(tx.x).toBe(0);
       expect(tx.y).toBe(0);
@@ -227,16 +227,16 @@ describe("ComputedStateEngine", () => {
       if (!a?.layout) throw new Error("a or layout missing");
       (a.layout as Record<string, unknown>).scaleX = 2;
       (a.layout as Record<string, unknown>).scaleY = 3;
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       const tx = eng.getLocalTransform("a");
       expect(tx.scaleX).toBe(2);
       expect(tx.scaleY).toBe(3);
     });
 
     it("returns identity for missing node", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const tx = eng.getLocalTransform("nonexistent");
       expect(tx.x).toBe(0);
       expect(tx.y).toBe(0);
@@ -248,8 +248,8 @@ describe("ComputedStateEngine", () => {
 
   describe("getCenter", () => {
     it("returns center of node bounds", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       const center = eng.getCenter("a");
       expect(center.x).toBe(200);
       expect(center.y).toBe(100);
@@ -258,8 +258,8 @@ describe("ComputedStateEngine", () => {
 
   describe("getEdge", () => {
     it("returns correct edge values", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       expect(eng.getEdge("a", "left")).toBe(100);
       expect(eng.getEdge("a", "top")).toBe(50);
       expect(eng.getEdge("a", "right")).toBe(300);
@@ -270,8 +270,8 @@ describe("ComputedStateEngine", () => {
   describe("cache invalidation", () => {
     it("invalidate cascades to descendants", () => {
       const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       // Warm both caches
       eng.getWorldTransform("a");
       eng.getWorldTransform("a1");
@@ -289,8 +289,8 @@ describe("ComputedStateEngine", () => {
 
     it("invalidateAll clears all caches for full recompute", () => {
       const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       eng.getWorldTransform("a1");
       (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       // Full invalidation of both layers
@@ -302,8 +302,8 @@ describe("ComputedStateEngine", () => {
 
     it("invalidateAll on engine cascades to selector registry and recalculates", () => {
       const scene = makeScene();
-      const sel = createSelectorRegistry(scene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(scene);
+      const eng = createComputedStore(sel);
       eng.getWorldTransform("a1");
       (scene.nodes.a?.layout as Record<string, unknown>).x = 200;
       // Engine's invalidateAll also calls selectors.invalidateAll
@@ -313,8 +313,8 @@ describe("ComputedStateEngine", () => {
     });
 
     it("invalidate on missing nodeId does not throw", () => {
-      const sel = createSelectorRegistry(makeScene());
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
       expect(() => eng.invalidate("nonexistent")).not.toThrow();
       // Existing nodes still work after invalidating a nonexistent one
       eng.getWorldTransform("a");
@@ -325,8 +325,8 @@ describe("ComputedStateEngine", () => {
 
     it("onBeforeDispose clears engine caches when selector registry syncs", () => {
       const oldScene = makeScene();
-      const sel = createSelectorRegistry(oldScene);
-      const eng = createComputedStateEngine(sel);
+      const sel = createSceneStore(oldScene);
+      const eng = createComputedStore(sel);
 
       // Warm caches with old scene data
       const before = eng.getWorldTransform("a1");

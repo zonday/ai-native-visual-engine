@@ -1,7 +1,7 @@
 import type { Patch } from "immer";
 import { describe, expect, it, vi } from "vitest";
 import { routeImmerPatches } from "../src/immer-patch-router.js";
-import { createSelectorRegistry } from "../src/selector/selector-registry.js";
+import { createSceneStore } from "../src/scene-store.js";
 
 function makeScene() {
   return {
@@ -17,7 +17,7 @@ function makeScene() {
 
 describe("routeImmerPatches", () => {
   it("routes replace of layout field to set-prop", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       {
@@ -35,7 +35,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes replace of parentId to parent field", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "parentId"], value: "root" },
@@ -49,7 +49,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes replace of children to children field", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "children"], value: ["c"] },
@@ -63,7 +63,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes replace of visible to visible field", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "visible"], value: false },
@@ -77,7 +77,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes replace of props to props field", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       {
@@ -95,7 +95,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes add node to add-node", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       {
@@ -112,7 +112,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes remove node to remove-node", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [{ op: "remove", path: ["nodes", "b"] }];
     routeImmerPatches(patches, sel);
@@ -123,7 +123,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("skips non-node patches (version, rootId, etc)", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["version"], value: 1 },
@@ -135,7 +135,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("skips unknown node fields (style, name, runtime)", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "style"], value: { color: "red" } },
@@ -146,7 +146,7 @@ describe("routeImmerPatches", () => {
   });
 
   it("routes multiple patches in batch order", () => {
-    const sel = createSelectorRegistry(makeScene());
+    const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "layout"], value: { x: 200 } },
@@ -168,7 +168,7 @@ describe("routeImmerPatches", () => {
 
   describe("produceScene + handleSceneUpdate + routeImmerPatches (e2e)", () => {
     it("mutates layout field — selector reads updated value", () => {
-      const sel = createSelectorRegistry(makeScene());
+      const sel = createSceneStore(makeScene());
       expect(sel.getNodeLayout("a")).toBeUndefined();
 
       sel.commitScene((draft) => {
@@ -179,7 +179,7 @@ describe("routeImmerPatches", () => {
     });
 
     it("mutates visible field — getVisibleNodes reflects change", () => {
-      const sel = createSelectorRegistry(makeScene());
+      const sel = createSceneStore(makeScene());
 
       sel.commitScene((draft) => {
         draft.nodes.b!.visible = false;
@@ -190,7 +190,7 @@ describe("routeImmerPatches", () => {
     });
 
     it("adds a new node — getAllNodes count increases", () => {
-      const sel = createSelectorRegistry(makeScene());
+      const sel = createSceneStore(makeScene());
       const before = sel.getAllNodes().length;
 
       sel.commitScene((draft) => {
@@ -205,7 +205,7 @@ describe("routeImmerPatches", () => {
     });
 
     it("removes a node — getAllNodes count decreases", () => {
-      const sel = createSelectorRegistry(makeScene());
+      const sel = createSceneStore(makeScene());
       const before = sel.getAllNodes().length;
 
       sel.commitScene((draft) => {

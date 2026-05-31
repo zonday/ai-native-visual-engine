@@ -1,9 +1,15 @@
 import { type Patch, produceWithPatches } from "immer";
-import { createScope, type Signal } from "../deps/reactive-scope.js";
-import { routeImmerPatches } from "../immer-patch-router.js";
-import type { DeepMutable, NodeId, SceneGraph, SceneNode } from "../types.js";
+import { createScope, type Signal } from "./deps/reactive-scope.js";
+import { routeImmerPatches } from "./immer-patch-router.js";
+import type {
+  Binding,
+  DeepMutable,
+  NodeId,
+  SceneGraph,
+  SceneNode,
+} from "./types.js";
 
-// ── Selector Registry ──
+// ── SceneStore ──
 // Query layer only. Owns:
 //   • Signal maps for fine-grained field dependency tracking
 //   • SelectorNode cache (memoized computed wrappers)
@@ -41,7 +47,8 @@ export type ScenePatch =
   | { type: "add-node"; nodeId: NodeId }
   | { type: "remove-node"; nodeId: NodeId };
 
-export interface SelectorRegistry {
+export interface SceneStore {
+  getScene(): SceneGraph;
   getNode(nodeId: NodeId): SceneNode | undefined;
   getChildren(nodeId: NodeId): SceneNode[];
   getParent(nodeId: NodeId): SceneNode | undefined;
@@ -58,10 +65,15 @@ export interface SelectorRegistry {
   getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
   getNodePropsKey(nodeId: NodeId, key: string): unknown;
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
+  isLocked(nodeId: NodeId): boolean;
+  getBindings(nodeId: NodeId): readonly Binding[];
+  getStyle(nodeId: NodeId): Record<string, unknown>;
+  findNodes(predicate: (node: SceneNode) => boolean): SceneNode[];
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
   applyPatch(patch: ScenePatch): void;
   sync(newScene: SceneGraph): void;
+  setScene(newScene: SceneGraph, changedNodeIds?: readonly NodeId[]): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
   flush(): void;
@@ -88,9 +100,7 @@ type SelectorType =
   | "nodePropsKey"
   | "nodeVisibility";
 
-export function createSelectorRegistry(
-  scene: Readonly<SceneGraph>,
-): SelectorRegistry {
+export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
   const {
     signal,
     computed,
@@ -482,7 +492,10 @@ export function createSelectorRegistry(
     return n;
   }
 
-  const registry: SelectorRegistry = {
+  const registry: SceneStore = {
+    getScene(): SceneGraph {
+      return currentScene;
+    },
     // getNode returns the raw node — no proxy. Callers must explicitly
     // declare field dependencies via trackChildren / trackParent / etc.
     getNode(nodeId: NodeId): SceneNode | undefined {
@@ -680,6 +693,30 @@ export function createSelectorRegistry(
       }).get();
     },
 
+    isLocked(nodeId: NodeId): boolean {
+      return currentScene.nodes[nodeId]?.locked === true;
+    },
+
+    getBindings(nodeId: NodeId): readonly Binding[] {
+      const node = currentScene.nodes[nodeId];
+      return (node?.bindings ?? []) as readonly Binding[];
+    },
+
+    getStyle(nodeId: NodeId): Record<string, unknown> {
+      const node = currentScene.nodes[nodeId];
+      return (node?.style ?? {}) as Record<string, unknown>;
+    },
+
+    findNodes(predicate: (node: SceneNode) => boolean): SceneNode[] {
+      const result: SceneNode[] = [];
+      for (const node of Object.values(currentScene.nodes)) {
+        if (predicate(node)) {
+          result.push(node);
+        }
+      }
+      return result;
+    },
+
     invalidate(nodeId: NodeId, field?: NodeField): void {
       const isStructural = !field || field === "children" || field === "parent";
       if (isStructural) {
@@ -744,6 +781,47 @@ export function createSelectorRegistry(
       treeIndexDirty = false;
       rebuildVisibilityIndex();
       visibilityIndexDirty = false;
+      bumpExistence();
+    },
+
+    setScene(newScene: SceneGraph, changedNodeIds?: readonly NodeId[]): void {
+      const oldScene = currentScene;
+      currentScene = newScene;
+
+      if (changedNodeIds) {
+        // Caller knows which nodes changed — O(changed)
+        for (const id of changedNodeIds) {
+          if (!newScene.nodes[id]) {
+            handlePatch({ type: "remove-node", nodeId: id });
+          } else if (!oldScene.nodes[id]) {
+            handlePatch({ type: "add-node", nodeId: id });
+          } else {
+            bumpSignal(childrenSignals, id);
+            bumpSignal(parentSignals, id);
+            bumpSignal(visibleSignals, id);
+            bumpSignal(layoutSignals, id);
+            bumpSignal(propsSignals, id);
+          }
+        }
+      } else {
+        // No info — iterate all nodes to find changes
+        for (const id of Object.keys(oldScene.nodes)) {
+          if (!newScene.nodes[id])
+            handlePatch({ type: "remove-node", nodeId: id });
+        }
+        for (const id of Object.keys(newScene.nodes)) {
+          if (!oldScene.nodes[id]) {
+            handlePatch({ type: "add-node", nodeId: id });
+          } else if (oldScene.nodes[id] !== newScene.nodes[id]) {
+            bumpSignal(childrenSignals, id);
+            bumpSignal(parentSignals, id);
+            bumpSignal(visibleSignals, id);
+            bumpSignal(layoutSignals, id);
+            bumpSignal(propsSignals, id);
+          }
+        }
+      }
+
       bumpExistence();
     },
 

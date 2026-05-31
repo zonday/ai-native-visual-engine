@@ -134,13 +134,13 @@ export interface NodeRenderContext {
   selected: boolean
   editable: boolean
   mode: 'editor' | 'runtime'
-  engine: EngineAPI
+  engine: EngineFacade
   dataInteraction?: DataInteractionAPI
   stateProps: Record<string, unknown>
 }
 ```
 
-The canonical definition of `EngineAPI`, `DataInteractionAPI`, and `NodeRenderContext` is in `engine-api.md`.
+The canonical definition of `EngineFacade`, `DataInteractionAPI`, and `NodeRenderContext` is in `engine-api.md`.
 
 Rules:
 

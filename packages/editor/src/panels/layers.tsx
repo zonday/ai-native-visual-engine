@@ -1,4 +1,4 @@
-import type { InteractionEngine, SelectorRegistry } from "@ai-native/core";
+import type { InteractionEngine, SceneStore } from "@ai-native/core";
 import {
   DndContext,
   type DragEndEvent,
@@ -16,7 +16,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useInteraction } from "../hooks/use-interaction.js";
 
 export interface LayersProps {
-  selectorRegistry?: SelectorRegistry;
+  selectorRegistry?: SceneStore;
   interactionEngine?: InteractionEngine;
   onRenameNode?: (nodeId: string, name: string) => void;
   onMoveNode?: (nodeId: string, parentId: string, index: number) => void;
@@ -31,7 +31,7 @@ interface FlatItem {
 }
 
 function buildFlattened(
-  registry: SelectorRegistry,
+  registry: SceneStore,
   nodeId: string,
   collapsed: Set<string>,
   depth = 0,

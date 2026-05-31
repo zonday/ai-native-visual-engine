@@ -1,6 +1,6 @@
-import { createScope } from "../deps/reactive-scope.js";
-import type { SelectorRegistry } from "../selector/selector-registry.js";
-import type { NodeId, SceneNode } from "../types.js";
+import { createScope } from "./deps/reactive-scope.js";
+import type { SceneStore } from "./scene-store.js";
+import type { NodeId, SceneNode } from "./types.js";
 
 // ── Public Types ──
 
@@ -26,7 +26,7 @@ export interface ViewportRect {
   height: number;
 }
 
-export interface ComputedStateEngine {
+export interface ComputedStore {
   getLocalTransform(nodeId: NodeId): WorldTransform;
   getWorldTransform(nodeId: NodeId): WorldTransform;
   getComputedBounds(nodeId: NodeId): ComputedBounds;
@@ -50,7 +50,7 @@ type Edge = "top" | "bottom" | "left" | "right";
 const DEG_TO_RAD = Math.PI / 180;
 
 function getLayoutValue(
-  selectors: SelectorRegistry,
+  selectors: SceneStore,
   nodeId: NodeId,
   key: string,
 ): number {
@@ -59,7 +59,7 @@ function getLayoutValue(
 }
 
 function getNodeWidth(
-  selectors: SelectorRegistry,
+  selectors: SceneStore,
   node: SceneNode,
   nodeId: NodeId,
 ): number {
@@ -72,7 +72,7 @@ function getNodeWidth(
 }
 
 function getNodeHeight(
-  selectors: SelectorRegistry,
+  selectors: SceneStore,
   node: SceneNode,
   nodeId: NodeId,
 ): number {
@@ -107,9 +107,7 @@ function composeWorldTransform(
 
 // ── Engine ──
 
-export function createComputedStateEngine(
-  selectors: SelectorRegistry,
-): ComputedStateEngine {
+export function createComputedStore(selectors: SceneStore): ComputedStore {
   const { computed } = createScope();
   const worldCache = new Map<NodeId, ComputedRef<WorldTransform>>();
   const boundsCache = new Map<NodeId, ComputedRef<ComputedBounds>>();
@@ -169,7 +167,7 @@ export function createComputedStateEngine(
     return `${viewport.x},${viewport.y},${viewport.width},${viewport.height}`;
   }
 
-  const engine: ComputedStateEngine = {
+  const engine: ComputedStore = {
     getLocalTransform(nodeId: NodeId): WorldTransform {
       let c = localCache.get(nodeId);
       if (!c) {

@@ -3,7 +3,7 @@ import type {
   InteractionEngine,
   RuntimeAction,
   SceneNode,
-  SelectorRegistry,
+  SceneStore,
   VisualDocument,
 } from "@ai-native/core";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +13,7 @@ import { useEditorStore } from "../store.js";
 
 export interface InspectorProps {
   document: VisualDocument;
-  selectorRegistry?: SelectorRegistry;
+  selectorRegistry?: SceneStore;
   interactionEngine?: InteractionEngine;
   onDispatchRuntime?: (action: RuntimeAction) => void;
   plugins?: ComponentPlugin[];

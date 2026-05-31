@@ -2,123 +2,186 @@
 
 ## 1. Scope
 
-This document defines the public API surface exposed by the engine to plugins, components, and the editor shell. Every method that mutates state goes through the command bus. Every method that reads state is pure.
+This document defines the public API surface exposed by the engine to plugins,
+components, and the editor shell. Every method that mutates state goes through
+the command bus. Every method that reads state is pure.
 
-## 2. API Surface
+## 2. Architecture
 
-The engine exposes these APIs through `NodeRenderContext`:
+The engine exposes capabilities organized by domain:
+
+```
+Engine
+ ├── command        Action dispatch
+ ├── selector       Reactive read access (SceneStore)
+ ├── computed       Derived data (ComputedStore)
+ ├── events         Unified event bus
+ ├── history        Undo/redo
+ └── transaction    Multi-action transactions
+```
+
+Data flow for mutations:
+
+```
+Plugin/Component
+  → engine.command()
+  → CommandBus.middleware[]
+  → Handler (with validation)
+  → engine.selector.setScene()  (sync query layer)
+  → engine.events.emit()        (notify subscribers)
+```
+
+The EventBus is the single notification hub. All downstream consumers
+(scene subscribers, selection subscribers, history, collaboration sync)
+hook into it — services never notify consumers directly.
+
+## 3. Unified Result Type
+
+Every mutation method returns `CommandResult` instead of `void` or a
+bespoke type.
 
 ```ts
-export interface NodeRenderContext {
-  selected: boolean
-  editable: boolean
-  mode: 'editor' | 'runtime'
-  engine: EngineAPI
-  dataInteraction?: DataInteractionAPI
-  stateProps: Record<string, unknown>
+export interface CommandResult {
+  ok: boolean
+  error?: {
+    code: string
+    message: string
+    actionType?: string
+    nodeId?: string
+  }
 }
 ```
 
-All plugins and components access engine capabilities through `context.engine`.
+Rules:
 
-## 3. EngineAPI
+1. `ok === true` means the mutation was applied atomically.
+2. `ok === false` means the scene is unchanged — no partial mutation.
+3. `error.code` is a machine-readable invariant identifier.
+
+## 4. Engine
+
+The top-level composition root. Every plugin accesses engine capabilities
+through the engine on `NodeRenderContext.engine`.
 
 ```ts
-export interface EngineAPI {
-  node: NodeAPI
-  scene: SceneAPI
-  selection: SelectionAPI
-  history: HistoryAPI
-  dispatch: DispatchAPI
-  transaction: TransactionAPI
-  states: StateAPI
-  selector: SelectorAPI
-  computed: ComputedStateAPI
+export interface Engine {
+  command(action: RuntimeAction): CommandResult
+  selector: SceneStore
+  computed: ComputedStore
+  events: EventBus
+  history: HistoryService
+  transaction: TransactionService
 }
 ```
 
-### 3.1 NodeAPI
+Rules:
 
-Read-only access to scene node data.
+1. The engine holds no state — it is a grouping of independent services.
+2. All services are injectable. The engine is assembled in the bootstrap.
+3. The engine does not perform validation, notification, or error translation.
+   These are handled by lower layers (handlers, middleware, EventBus).
+4. `selector` and `computed` are the **only** read interfaces.
+   There is no separate "query" layer. Raw node access and derived
+   computation share a single path.
+
+## 5. SceneStore
+
+Read-optimized cache and reactive query layer over `SceneGraph`. Formerly
+`SelectorRegistry`. Every read method returns a mutable reference to the
+internal `SceneGraph` — consumers must not mutate returned objects.
 
 ```ts
-export interface NodeAPI {
-  get(nodeId: NodeId): SceneNode | undefined
-  getParent(nodeId: NodeId): SceneNode | undefined
+export interface SceneStore {
+  getScene(): SceneGraph
+  getNode(nodeId: NodeId): SceneNode | undefined
   getChildren(nodeId: NodeId): SceneNode[]
-  getProps(nodeId: NodeId): Record<string, unknown>
-  getLayout(nodeId: NodeId): Layout | undefined
-  getBindings(nodeId: NodeId): Binding[]
-  getStyle(nodeId: NodeId): Record<string, unknown>
-  isVisible(nodeId: NodeId): boolean
-  isLocked(nodeId: NodeId): boolean
-  exists(nodeId: NodeId): boolean
-}
-```
-
-Rules:
-
-1. All methods are pure. They return the current in-memory `SceneGraph` state.
-2. `getChildren` returns an empty array for leaf nodes, not `undefined`.
-3. `getProps` returns an empty object for nodes with no props.
-
-### 3.2 SceneAPI
-
-Access to active scene-level state.
-
-```ts
-export interface SceneAPI {
+  getParent(nodeId: NodeId): SceneNode | undefined
   getRoot(): SceneNode
-  getActivePageId(): PageId
-  getSceneVersion(): number
   getAllNodes(): SceneNode[]
+  getAncestors(nodeId: NodeId): SceneNode[]
+  getDescendants(nodeId: NodeId): NodeId[]
+  getSiblings(nodeId: NodeId): SceneNode[]
+  getDepth(nodeId: NodeId): number
+  isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean
+  getVisibleNodes(): SceneNode[]
+  getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined
+  getNodeLayoutKey(nodeId: NodeId, key: string): unknown
+  getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined
+  getNodePropsKey(nodeId: NodeId, key: string): unknown
+  getNodeVisibility(nodeId: NodeId): boolean | undefined
+  isLocked(nodeId: NodeId): boolean
+  getBindings(nodeId: NodeId): readonly Binding[]
+  getStyle(nodeId: NodeId): Record<string, unknown>
   findNodes(predicate: (node: SceneNode) => boolean): SceneNode[]
-  findNodeByType(type: string): SceneNode[]
+  getVersion(): number
 }
 ```
 
 Rules:
 
-1. `getRoot()` always returns the root node — it exists by invariant.
-2. `findNodes` iterates the full node tree. Avoid calling it per-frame in renderers.
-3. `findNodeByType` is a convenience wrapper over `findNodes`.
+1. All methods are pure. They return a view of the current `SceneGraph`.
+2. Node-not-found on any `get*` method returns `undefined` or empty value — never throws.
+3. `getChildren` returns an empty array for leaf nodes, not `undefined`.
+4. `getProps` and `getStyle` return an empty object for nodes with no respective data.
+5. `SceneStore` is also the reactive query layer — field-level signal tracking
+   is available through `autorun()` for React hooks and computed derivation.
+6. React hooks access `SceneStore` via `engine.selector`.
 
-### 3.3 SelectionAPI
+## 6. ComputedStore
 
-Read and update the current selection.
+Derived state computation from scene layout data. Formerly `ComputedStateEngine`.
 
 ```ts
-export interface SelectionAPI {
-  getSelection(): NodeId[]
-  isSelected(nodeId: NodeId): boolean
-  select(nodeIds: NodeId[]): void
-  addToSelection(nodeIds: NodeId[]): void
-  removeFromSelection(nodeIds: NodeId[]): void
-  clearSelection(): void
-  selectAll(): void
-  selectParent(nodeId: NodeId): void
-  selectChildren(nodeId: NodeId): void
+export interface ComputedStore {
+  getLocalTransform(nodeId: NodeId): WorldTransform
+  getWorldTransform(nodeId: NodeId): WorldTransform
+  getComputedBounds(nodeId: NodeId): ComputedBounds
+  getVisibleBounds(nodeId: NodeId): ComputedBounds | null
+  getCenter(nodeId: NodeId): { x: number; y: number }
+  getComputedNode(nodeId: NodeId): ComputedNode | undefined
 }
 ```
 
 Rules:
 
-1. `select` replaces the current selection with the given node IDs.
-2. `addToSelection` appends without removing existing selections.
-3. `selectAll` selects every node in the active scene except the root.
-4. Selection methods dispatch `update-selection` through the command bus.
-5. Selection changes are session-scoped and do not produce durable actions.
+1. Computed state is invalidated through the scheduler after each
+   transaction commit.
+2. Computed state never writes back to `SceneGraph`.
+3. Repeated reads of the same value with no intermediate scene change
+   return cached results.
 
-### 3.4 HistoryAPI
+See `computed-state-engine.md` for the full spec (renamed to `ComputedStore`).
 
-Access the current undo/redo state.
+## 7. Command
+
+Pure dispatch. No validation or notification logic lives here — those are
+delegated to handlers (validation) and EventBus (notification).
 
 ```ts
-export interface HistoryAPI {
+// Accessed as engine.command()
+engine.command(action: RuntimeAction): CommandResult
+```
+
+Rules:
+
+1. `dispatch` dispatches through the CommandBus and returns `CommandResult`.
+2. Validation is performed by the handler's `validate` function and
+   by middleware — the API layer does not duplicate these checks.
+3. On success, the CommandBus emits through middleware. The EventBus
+   reacts to the state change and notifies subscribers.
+4. On failure, the scene is unchanged and the error carries a machine-readable
+   code.
+
+## 8. HistoryService
+
+Undo and redo. Both operations are wrapped in a transaction for atomicity.
+
+```ts
+export interface HistoryService {
   canUndo(): boolean
   canRedo(): boolean
-  undo(): void
-  redo(): void
+  undo(): CommandResult
+  redo(): CommandResult
   getUndoStackSize(): number
   getRedoStackSize(): number
 }
@@ -126,48 +189,32 @@ export interface HistoryAPI {
 
 Rules:
 
-1. `undo` and `redo` are focus-scoped as defined in `history-and-undo-redo.md` §4.2.
-2. Calling `undo` when `canUndo()` is false is a no-op.
-3. `getUndoStackSize` is useful for UI indicators; it is not an API contract.
+1. `undo` pops the top entry from the undo stack and applies all inverse
+   actions inside a single transaction. If any inverse action fails, the
+   transaction is rolled back and the scene is unchanged.
+2. `redo` pops the top entry from the redo stack and replays its actions
+   inside a single transaction, same rollback guarantee.
+3. Calling `undo` when `canUndo()` is false returns `{ ok: false }`.
+4. History entry management (push, checkpoint) is handled by middleware
+   reacting to committed actions, not by the HistoryService itself.
 
-### 3.5 DispatchAPI
+## 9. TransactionService
 
-Dispatch runtime actions through the command bus. Every dispatch internally creates a single-action transaction.
-
-```ts
-export interface DispatchAPI {
-  createNode(node: SceneNode, parentId: NodeId, index?: number): DispatchResult
-  removeNode(nodeId: NodeId): DispatchResult
-  moveNode(nodeId: NodeId, parentId: NodeId, index?: number): DispatchResult
-  updateLayout(nodeId: NodeId, layout: Partial<Layout>): DispatchResult
-  rotateNode(nodeId: NodeId, rotation: number): DispatchResult
-  updateProps(nodeId: NodeId, props: Record<string, unknown>): DispatchResult
-  updateStyle(nodeId: NodeId, style: Record<string, unknown>): DispatchResult
-  updateBindings(nodeId: NodeId, bindings: Binding[]): DispatchResult
-  updateRuntime(nodeId: NodeId, runtime: Record<string, unknown>): DispatchResult
-  batch(actions: RuntimeAction[]): DispatchResult
-}
-```
-
-Rules:
-
-1. Every method dispatches the corresponding `RuntimeAction` through the command bus.
-2. The returned `DispatchResult` indicates success or failure.
-3. On failure, the scene is unchanged; no partial mutation occurs.
-4. `batch` commits all child actions atomically within a single transaction.
-5. These methods accept raw values, not action types — the engine wraps them into the correct action type internally.
-6. Every dispatch is internally wrapped in a `RuntimeTransaction` with `source: 'user'` by default.
-
-### 3.6 TransactionAPI
-
-Access the transaction manager and create custom transactions.
+Create and manage explicit multi-action transactions.
 
 ```ts
-export interface TransactionAPI {
-  begin(source?: TransactionSource, metadata?: Record<string, unknown>): TransactionContext
-  commit(context: TransactionContext): DispatchResult
-  rollback(context: TransactionContext): SceneGraph
-  getActiveTransaction(): TransactionContext | undefined
+export interface TransactionService {
+  begin(
+    source: TransactionSource,
+    metadata?: Record<string, unknown>
+  ): TransactionContext
+  applyAction(
+    context: TransactionContext,
+    action: RuntimeAction
+  ): CommandResult
+  commit(context: TransactionContext): CommandResult
+  rollback(context: TransactionContext): void
+  getActive(): TransactionContext | undefined
 }
 
 export type TransactionSource = 'user' | 'ai' | 'system'
@@ -175,142 +222,120 @@ export type TransactionSource = 'user' | 'ai' | 'system'
 
 Rules:
 
-1. `begin` creates a new transaction context and captures the current pre-state.
-2. `commit` runs the full transaction lifecycle (validate, compute, emit, create inverses, push history).
-3. `rollback` restores the pre-transaction state and discards the transaction.
-4. `getActiveTransaction` returns the currently open transaction if inside a transaction boundary.
-5. When no explicit transaction is open, single-action dispatches create an implicit transaction.
+1. `begin` captures the current pre-state from `SceneStore`.
+2. `applyAction` applies one action within the transaction. The action is
+   validated by the handler before mutation.
+3. `commit` runs the full lifecycle: compute inverse actions, push history
+   entry, notify EventBus.
+4. `rollback` restores the pre-state via `SceneStore.setScene()` and notifies
+   subscribers.
+5. When no explicit transaction is open, single-action dispatches create
+   an implicit transaction.
 
 Usage by the AI compiler:
 
 ```ts
 const tx = engine.transaction.begin('ai', { prompt, confidence: 0.95 })
-engine.dispatch.createNode(header, root)
-engine.dispatch.createNode(image, root)
-engine.dispatch.createNode(title, root)
-engine.dispatch.createNode(description, root)
+engine.command(createNodeAction(header, root))
+engine.command(createNodeAction(image, root))
+engine.command(createNodeAction(title, root))
 const result = engine.transaction.commit(tx)
 if (!result.ok) {
   engine.transaction.rollback(tx)
 }
 ```
 
-### 3.7 StateAPI
+## 10. EventBus
 
-Activate and deactivate named component states.
-
-```ts
-export interface StateAPI {
-  setState(nodeId: NodeId, state: string): void
-  clearState(nodeId: NodeId, state: string): void
-  setExclusive(nodeId: NodeId, state: string, group: string): void
-  getActiveStates(nodeId: NodeId): string[]
-}
-```
-
-See `component-states.md` for the full state model and exclusive group semantics.
-
-Rules:
-
-1. `setState` activates a named state on the target node. If already active, it moves to the end of activation order.
-2. `clearState` deactivates a state. If no states remain, props revert to base `node.props`.
-3. `setExclusive` activates a state and deactivates it on all other nodes in the same group.
-4. `getActiveStates` returns states in activation order.
-
-### 3.8 SelectorAPI
-
-Unified, memoized read access to `SceneGraph`. See `selector-system.md` for full spec.
+Central notification hub with coalescing (setTimeout-based batched delivery).
+Wraps `mitt` (200B event emitter library).
 
 ```ts
-export interface SelectorAPI {
-  getNode(nodeId: NodeId): SceneNode | undefined
-  getChildren(nodeId: NodeId): SceneNode[]
-  getParent(nodeId: NodeId): SceneNode | undefined
-  getRoot(): SceneNode
-  getAncestors(nodeId: NodeId): SceneNode[]
-  getDescendants(nodeId: NodeId): SceneNode[]
-  getVisibleNodes(): SceneNode[]
-}
-```
-
-Rules:
-
-1. Selectors are memoized by `scene.version`. Repeated calls with the same scene return cached results.
-2. `SelectorAPI` replaces direct `scene.nodes[id]` access. All renderers and plugins must use selectors.
-3. Selectors never mutate state. They return read-only data.
-
-### 3.9 ComputedStateAPI
-
-Derived state computation. See `computed-state-engine.md` for full spec.
-
-```ts
-export interface ComputedStateAPI {
-  getWorldTransform(nodeId: NodeId): WorldTransform
-  getComputedBounds(nodeId: NodeId): ComputedBounds
-  getVisibleBounds(nodeId: NodeId): ComputedBounds | null
-  getCenter(nodeId: NodeId): { x: number; y: number }
-}
-```
-
-Rules:
-
-1. Computed state is invalidated through the scheduler after each transaction commit.
-2. Computed state never writes back to `SceneGraph`.
-3. Repeated reads of the same value with no intermediate scene change return cached results.
-
-### 3.10 Subscribing To Scene Changes
-
-Components that need to re-render when scene data changes can subscribe.
-
-```ts
-export interface EngineAPI {
-  subscribeToNode(
-    nodeId: NodeId,
-    callback: (node: SceneNode) => void
+export class EventBus {
+  on<K extends keyof EngineEvents>(
+    type: K,
+    callback: (data: EngineEvents[K]) => void
   ): () => void
+  off<K extends keyof EngineEvents>(
+    type: K,
+    callback: (data: EngineEvents[K]) => void
+  ): void
+  emit<K extends keyof EngineEvents>(
+    type: K,
+    data: EngineEvents[K]
+  ): void
+  dispose(): void
+}
 
-  subscribeToScene(
-    callback: (scene: SceneGraph) => void
-  ): () => void
-
-  subscribeToSelection(
-    callback: (nodeIds: NodeId[]) => void
-  ): () => void
+type EngineEvents = {
+  scene: SceneGraph
+  selection: NodeId[]
 }
 ```
 
 Rules:
 
-1. Each `subscribe` method returns an unsubscribe function.
-2. Callbacks fire after the command bus processes an action and the scene is updated.
-3. Subscriptions are cleaned up when the component unmounts.
-4. Plugins may subscribe within their renderer; the engine handles lifecycle.
+1. `on` returns an unsubscribe function — call it to clean up.
+2. `emit` is async via `setTimeout`. Multiple emits of the same type in
+   the same microtask coalesce into a single notification with the
+   latest data. This prevents intermediate-state React re-renders.
+3. `off` removes a specific handler. No-op if handler was already removed.
+4. `dispose` clears all timers and handlers. Call on engine teardown.
+5. Event types are extensible via `EngineEvents` — add a new key to add
+   a new event channel.
+6. The wildcard handler from mitt is available via `events.on("*", cb)`
+   for debugging.
 
-## 4. Usage In Plugins
+## 11. Removed Interfaces
 
-### 4.1 Querying A Node
+The following interfaces existed in the previous `EngineFacade` design
+and have been removed to eliminate dual-reader ambiguity:
+
+| Removed | Replaced By |
+|---------|-------------|
+| `QueryService` (node, scene, selection) | `SceneStore` via `engine.selector` |
+| `CommandService` | `engine.command()` |
+
+    Selection mutation must go through `engine.command()`.
+4. HistoryService guards `undo`/`redo` internally — if the stack is empty,
+   the call is a no-op (`ok: false`).
+5. Event emissions are coalesced to once per microtask for UI rendering.
+6. All mutation methods return `CommandResult`. No mutation method returns
+   `void`.
+
+Guards that were previously in the Engine API layer and are now removed:
+
+| Removed Guard | Responsible Layer |
+|---|---|
+| `scene.invalid-parent` check | Handler `validate` function |
+| `scene.node-not-found` check | Handler `validate` function |
+| `scene.locked` check | Middleware or handler |
+
+## 13. Usage In Plugins
+
+### 13.1 Querying A Node
 
 ```ts
 export function ChartRenderer(input: RenderNodeInput): RenderedOutput {
   const { node, context } = input
-  const api = context.engine
+  const engine = context.engine
 
-  const props = api.node.getProps(node.id)
-  const bindings = api.node.getBindings(node.id)
-  const parent = api.node.getParent(node.id)
+  const props = engine.selector.getNodeProps(node.id)
+  const bindings = engine.selector.getBindings(node.id)
+  const parent = engine.selector.getParent(node.id)
 
   return <ChartView config={props} bindings={bindings} />
 }
 ```
 
-### 4.2 Dispatching An Action
+### 13.2 Dispatching An Action
 
 ```ts
-// A filter component updates its own props on value change
 function onFilterChange(value: string) {
-  const result = context.engine.dispatch.updateProps(nodeId, {
-    value,
-    active: true,
+  const result = context.engine.command({
+    type: 'update-props',
+    nodeId,
+    props: { value, active: true },
   })
 
   if (!result.ok) {
@@ -319,43 +344,77 @@ function onFilterChange(value: string) {
 }
 ```
 
-### 4.3 Working With Selection
+### 13.3 Working With Selection
 
 ```ts
-// A component that highlights when selected
-const isSelected = context.engine.selection.isSelected(node.id)
+// Read
+const selection = context.engine.selector.getScene().selection?.nodeIds ?? []
+const isSelected = selection.includes(node.id)
 
-// A custom toolbar button that selects all chart nodes
+// Mutate
 function selectAllCharts() {
-  const chartNodes = context.engine.scene.findNodeByType('chart')
-  context.engine.selection.select(chartNodes.map(n => n.id))
+  const charts = context.engine.selector.findNodes(
+    (n) => n.type === 'chart'
+  )
+  context.engine.command({
+    type: 'update-selection',
+    nodeIds: charts.map((n) => n.id),
+  })
 }
 ```
 
-## 5. Guard Rules
+### 13.4 Subscribing To Changes
 
-The Engine API enforces these guards at the API boundary:
+```ts
+const unsub = context.engine.events.on("scene", (scene) => {
+  const target = scene.nodes[nodeId]
+  if (target) updateUI(target)
+})
+```
 
-1. `DispatchAPI` methods validate inputs before constructing the action payload.
-2. Node-not-found on any `NodeAPI` method returns `undefined` without throwing.
-3. `SelectionAPI` deduplicates `nodeIds` before dispatching.
-4. `HistoryAPI` checks `canUndo`/`canRedo` internally; the caller does not need to guard.
-5. Subscriptions are debounced to once per frame for UI rendering at the framework level.
+### 13.5 Working With Transactions
 
-## 6. Security Boundaries
+```ts
+const tx = engine.transaction.begin("user")
+engine.command(action1)
+engine.command(action2)
+const result = engine.transaction.commit(tx)
+if (!result.ok) {
+  engine.transaction.rollback(tx)
+}
+```
 
-Actions that plugins are NOT permitted to call through the Engine API:
+## 14. Domain Design Principle
 
-1. Plugins may not dispatch `update-selection` directly — use `SelectionAPI` instead.
-2. Plugins may not dispatch `remove-node` on a locked node unless the action carries an override flag.
-3. Plugins may not read data from pages other than the active page.
-4. Plugins may not subscribe to document-level changes — only scene-level subscriptions are exposed.
+The engine uses **domain aggregation** rather than **use-case aggregation**:
 
-## 7. Relationship To Other Specs
+- Good: `engine.selector.getNode(id)` — selector belongs to the scene domain
+- Bad: `engine.selector.getNode(id)` — flat, invites God Object
 
-- `domain-model.md`: `SceneNode`, `SceneGraph`, `NodeId`, `PageId`, `Layout`, `Binding`
-- `runtime-engine.md`: `RuntimeAction`, `DispatchResult`, command bus
-- `history-and-undo-redo.md`: undo/redo contracts
-- `plugin-system.md`: `NodeRenderContext`, `Renderer`
-- `domain-model.md`: `SceneNode`, `SceneGraph`, `NodeId`, `PageId`, `Layout`, `Binding`
+This principle constrains the engine's growth. New capabilities are added as
+new domain namespaces:
+
+- `engine.scene.*` — everything scene-related (read, write, derive, subscribe)
+- `engine.history.*` — undo/redo
+- `engine.transaction.*` — multi-action transactions
+- `engine.plugins.*` — (future) plugin lifecycle
+- `engine.clipboard.*` — (future) clipboard operations
+- `engine.state.*` — (future) interaction state management
+
+Each domain is independently testable and can be removed or replaced without
+affecting other domains.
+
+## 15. Relationship To Other Specs
+
+- `domain-model.md`: `SceneNode`, `SceneGraph`, `NodeId`, `PageId`,
+  `Layout`, `Binding`
+- `runtime-engine.md`: `RuntimeAction`, `CommandResult`, command bus
+- `history-and-undo-redo.md`: undo/redo contracts, checkpoint semantics
+- `plugin-system.md`: `NodeRenderContext`, `Engine` on context
+- `component-states.md`: state model, exclusive group semantics
+- `computed-state-engine.md`: `ComputedStore` implementation
+- `action-registration.md`: handler registration, validate/inverse metadata
+- `scheduler.md`: render scheduling after scene changes
+- `renderer-contract.md`: renderer access to scene data via selectors
 - `data-interaction.md`: `DataInteractionAPI`
+- `rich-text.md`: `command.dispatch` for `updateProps`

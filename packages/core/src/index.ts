@@ -12,11 +12,11 @@ export {
 } from "./compiler/types.js";
 // ── Component states ──
 export { resolveStateProps } from "./component-states.js";
-// ── Computed State ──
+// ── Computed Store ──
 export {
-  type ComputedStateEngine,
-  createComputedStateEngine,
-} from "./computed/computed-state-engine.js";
+  type ComputedStore,
+  createComputedStore,
+} from "./computed-store.js";
 export { createConstraintMiddleware } from "./constraints/constraint-middleware.js";
 export { createConstraintRegistry } from "./constraints/constraint-registry.js";
 export { validateGraphInvariants } from "./constraints/graph-invariants.js";
@@ -29,17 +29,8 @@ export {
   DocumentActionSchema,
 } from "./document/register-handlers.js";
 // ── Engine ──
-export {
-  type ActionMeta,
-  ActionRegistry,
-  type HandlerMap,
-} from "./engine/action-registry.js";
+export { ActionRegistry } from "./engine/action-registry.js";
 export type { RuntimeContext } from "./engine/handler.js";
-export type {
-  BatchAction,
-  HandlerEntry,
-  InverseComputer,
-} from "./engine/handler-registry.js";
 // ── History ──
 export {
   createHistoryState,
@@ -53,8 +44,16 @@ export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
 export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
 export { createTransactionFlag } from "./engine/transaction-flag.js";
-// ── Immer Patch Routing ──
-export { routeImmerPatches } from "./immer-patch-router.js";
+export type {
+  CommandResult,
+  HistoryService,
+  TransactionService,
+} from "./engine-api.js";
+export {
+  createEngine,
+  type Engine,
+} from "./engine-api.js";
+export { type EngineEvents, EventBus } from "./event-bus.js";
 // ── Interaction ──
 export {
   createInteractionEngine,
@@ -74,15 +73,13 @@ export {
 } from "./runtime/register-handlers.js";
 export { createRuntimeCommandBus } from "./runtime/runtime-command-bus.js";
 export { createRuntimeTransactionManager } from "./runtime/transaction.js";
+// ── SceneStore ──
+export {
+  createSceneStore,
+  type SceneStore,
+} from "./scene-store.js";
 // ── Scheduler ──
 export { createScheduler, type Scheduler } from "./scheduler.js";
-// ── Selector ──
-export {
-  createSelectorRegistry,
-  type NodeField,
-  type ScenePatch,
-  type SelectorRegistry,
-} from "./selector/selector-registry.js";
 // ── Session ──
 export { openDocumentSession } from "./session.js";
 // ── Core types ──

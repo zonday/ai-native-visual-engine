@@ -178,6 +178,6 @@ Renderer produces output (React/Canvas/DOM)
 Rules:
 
 1. The renderer must not read scene data outside the render phase.
-2. The renderer receives scene data through `RenderContext.scene` but must access node data through `EngineAPI.selector` and `EngineAPI.computed`.
+2. The renderer receives scene data through `RenderContext.scene` but must access node data through `engine.selector` and `engine.computed` (where `engine` is `EngineFacade`).
 3. The renderer subscribes to the scheduler for re-render triggers. Between triggers, it caches the last rendered output.
 4. The scheduler does not know React from Canvas — it emits generic events that the renderer adapter translates into framework-specific updates.

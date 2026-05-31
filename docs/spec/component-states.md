@@ -219,7 +219,7 @@ export interface NodeRenderContext {
   selected: boolean
   editable: boolean
   mode: 'editor' | 'runtime'
-  engine: EngineAPI
+  engine: EngineFacade
   dataInteraction?: DataInteractionAPI
   stateProps: Record<string, unknown>
 }
@@ -231,7 +231,7 @@ Rules:
 2. State props are shallow-merged into `node.props` before passing to the renderer.
 3. The renderer must not write back state props — they are engine-managed.
 4. Interactive states (`hovered`, `pressed`, `focused`) are set by the editor shell's event system.
-5. Persistent states (`selected` for tabs) are set by component logic via the `StateAPI`.
+5. Persistent states (`selected` for tabs) are set by component logic via `engine.states`.
 
 ## 9. Plugin Registration
 
@@ -273,5 +273,5 @@ Key test scenarios:
 - `domain-model.md`: `SceneNode`, `SceneNode.activeStates`, `SceneNode.runtime`
 - `plugin-system.md`: `NodeRenderContext`, `ComponentPlugin`
 - `component-types.md`: per-component props and metadata
-- `engine-api.md`: `StateAPI` surface for plugins
+- `engine-api.md`: `StateService` surface for plugins
 - `editor-interaction.md`: interactive state lifecycle
