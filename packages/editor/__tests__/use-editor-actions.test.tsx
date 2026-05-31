@@ -85,15 +85,36 @@ function createEngines(scene: SceneGraph): EditorEngines {
 function Harness({
   runtimeScene,
   onDocument,
+  mode = "dispatchRuntime",
 }: {
   runtimeScene: SceneGraph;
   onDocument: (doc: VisualDocument) => void;
+  mode?: "dispatchRuntime" | "undo";
 }) {
   const [doc, setDoc] = useState<VisualDocument>(() => createDocument());
   const [scene, setScene] = useState<SceneGraph>(() => createRuntimeScene());
   const dispatchedRef = useRef(false);
   const historyRef = useRef<HistoryState<EditorAction>>({
-    undoStack: [],
+    undoStack:
+      mode === "undo"
+        ? [
+            {
+              action: {
+                type: "update-runtime",
+                nodeId: "a",
+                runtime: { preview: true },
+              } as unknown as EditorAction,
+              inverseActions: [
+                {
+                  type: "update-runtime",
+                  nodeId: "a",
+                  runtime: { preview: true },
+                } as unknown as EditorAction,
+              ],
+              timestamp: Date.now(),
+            },
+          ]
+        : [],
     redoStack: [],
   } as HistoryState<EditorAction>);
   const isUndoingRef = useRef(false);
@@ -113,12 +134,16 @@ function Harness({
   useEffect(() => {
     if (dispatchedRef.current) return;
     dispatchedRef.current = true;
+    if (mode === "undo") {
+      actions.handleUndo();
+      return;
+    }
     actions.dispatchRuntime({
       type: "update-runtime",
       nodeId: "a",
       runtime: { preview: true },
     } as RuntimeAction);
-  }, [actions]);
+  }, [actions, mode]);
 
   useEffect(() => {
     onDocument(doc);
@@ -133,6 +158,34 @@ describe("useEditorActions", () => {
     const onDocument = vi.fn();
 
     render(<Harness runtimeScene={runtimeScene} onDocument={onDocument} />);
+
+    await waitFor(() => {
+      const latest = onDocument.mock.calls.at(-1)?.[0] as
+        | VisualDocument
+        | undefined;
+      const persistedScene = latest?.scenes["scene-1"] as
+        | (VisualDocument["scenes"][string] & Record<string, unknown>)
+        | undefined;
+      expect(persistedScene?.selection).toBeUndefined();
+      expect(persistedScene?.viewport).toBeUndefined();
+      expect(persistedScene?.nodes.a?.layout).toBeUndefined();
+      expect(persistedScene?.nodes.a?.runtime).toEqual({
+        preview: true,
+      });
+    });
+  });
+
+  it("persists undo-applied runtime scenes through the persisted scene converter", async () => {
+    const runtimeScene = createRuntimeScene();
+    const onDocument = vi.fn();
+
+    render(
+      <Harness
+        runtimeScene={runtimeScene}
+        onDocument={onDocument}
+        mode="undo"
+      />,
+    );
 
     await waitFor(() => {
       const latest = onDocument.mock.calls.at(-1)?.[0] as
