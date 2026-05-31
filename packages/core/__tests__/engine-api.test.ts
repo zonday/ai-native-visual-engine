@@ -558,6 +558,21 @@ describe("createEngine", () => {
     );
   });
 
+  it("transaction.applyAction preserves nodeId in errors", () => {
+    const { api } = setup(undefined, { withTx: true });
+    const tx = api.transaction.begin("user");
+
+    const result = api.transaction.applyAction(tx, {
+      type: "move-node",
+      nodeId: "missing",
+      parentId: "root",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.actionType).toBe("move-node");
+    expect(result.error?.nodeId).toBe("missing");
+  });
+
   // setExclusive — now using batch-actions with update-runtime
   it("batch-actions clears previous group holder", () => {
     const { api, bus } = setup();

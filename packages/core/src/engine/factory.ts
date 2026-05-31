@@ -275,6 +275,10 @@ export function createEngine(
               code: result.error.code,
               message: result.error.message,
               actionType: result.error.actionType,
+              nodeId:
+                "nodeId" in result.error
+                  ? (result.error.nodeId as string | undefined)
+                  : undefined,
             }
           : undefined,
       };
