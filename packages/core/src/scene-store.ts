@@ -1,5 +1,9 @@
 import { type Patch, produceWithPatches } from "immer";
-import { routeImmerPatches } from "./engine/immer-patch-router.js";
+import {
+  initImmerPatches,
+  routeImmerPatches,
+} from "./engine/immer-patch-router.js";
+import type { NodeField, ScenePatch } from "./engine/patch-types.js";
 import { createScope, type Signal } from "./reactive-scope.js";
 import type {
   Binding,
@@ -22,8 +26,6 @@ import type {
 // Contract: callers mutate scene data directly, then call
 // invalidate() to notify the registry.
 
-export type NodeField = "visible" | "layout" | "props" | "children" | "parent";
-
 const MAX_CACHED_SELECTORS = 5000;
 
 interface TreeIndexEntry {
@@ -41,14 +43,9 @@ interface SelectorNode<T = unknown> {
   dispose(): void;
 }
 
-export type ScenePatch =
-  | { type: "set-prop"; nodeId: NodeId; field: NodeField; key?: string }
-  | { type: "reparent"; nodeId: NodeId; oldParent?: NodeId; newParent: NodeId }
-  | { type: "add-node"; nodeId: NodeId }
-  | { type: "remove-node"; nodeId: NodeId };
-
 export interface SceneStore {
   getScene(): SceneGraph;
+  hasNode(nodeId: NodeId): boolean;
   getNode(nodeId: NodeId): SceneNode | undefined;
   getChildren(nodeId: NodeId): SceneNode[];
   getParent(nodeId: NodeId): SceneNode | undefined;
@@ -73,7 +70,7 @@ export interface SceneStore {
   invalidateAll(): void;
   applyPatch(patch: ScenePatch): void;
   sync(newScene: SceneGraph): void;
-  setScene(newScene: SceneGraph, changedNodeIds?: readonly NodeId[]): void;
+  setScene(newScene: SceneGraph, patches?: readonly ScenePatch[]): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
   flush(): void;
@@ -114,6 +111,8 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
   const visibleSignals = new Map<NodeId, Signal<number>>();
   const layoutSignals = new Map<NodeId, Signal<number>>();
   const propsSignals = new Map<NodeId, Signal<number>>();
+  const styleSignals = new Map<NodeId, Signal<number>>();
+  const bindingsSignals = new Map<NodeId, Signal<number>>();
   const layoutKeySignals = new Map<string, Signal<number>>();
   const propsKeySignals = new Map<string, Signal<number>>();
   const nodeExistenceSignal = signal(0);
@@ -268,6 +267,14 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
     getSignal(propsSignals, nodeId)();
   }
 
+  function trackStyle(nodeId: NodeId): void {
+    getSignal(styleSignals, nodeId)();
+  }
+
+  function trackBindings(nodeId: NodeId): void {
+    getSignal(bindingsSignals, nodeId)();
+  }
+
   function trackVisibility(nodeId: NodeId): void {
     getSignal(visibleSignals, nodeId)();
   }
@@ -326,7 +333,11 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
               ? visibleSignals
               : field === "layout"
                 ? layoutSignals
-                : propsSignals,
+                : field === "style"
+                  ? styleSignals
+                  : field === "bindings"
+                    ? bindingsSignals
+                    : propsSignals,
         nodeId,
       );
     } else if (patch.type === "reparent") {
@@ -352,6 +363,45 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
       bumpSignal(childrenSignals, patch.nodeId);
       bumpSignal(parentSignals, patch.nodeId);
       bumpExistence();
+    }
+  }
+
+  function syncExistingNode(
+    nodeId: NodeId,
+    oldNode: SceneNode,
+    newNode: SceneNode,
+  ): void {
+    if (oldNode.parentId !== newNode.parentId && newNode.parentId) {
+      handlePatch({
+        type: "reparent",
+        nodeId,
+        oldParent: oldNode.parentId,
+        newParent: newNode.parentId,
+      });
+    }
+
+    if (oldNode.children !== newNode.children) {
+      handlePatch({ type: "set-prop", nodeId, field: "children" });
+    }
+
+    if (oldNode.visible !== newNode.visible) {
+      handlePatch({ type: "set-prop", nodeId, field: "visible" });
+    }
+
+    if (oldNode.layout !== newNode.layout) {
+      handlePatch({ type: "set-prop", nodeId, field: "layout" });
+    }
+
+    if (oldNode.props !== newNode.props) {
+      handlePatch({ type: "set-prop", nodeId, field: "props" });
+    }
+
+    if (oldNode.style !== newNode.style) {
+      handlePatch({ type: "set-prop", nodeId, field: "style" });
+    }
+
+    if (oldNode.bindings !== newNode.bindings) {
+      handlePatch({ type: "set-prop", nodeId, field: "bindings" });
     }
   }
 
@@ -495,6 +545,10 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
   const registry: SceneStore = {
     getScene(): SceneGraph {
       return currentScene;
+    },
+    hasNode(nodeId: NodeId): boolean {
+      nodeExistenceSignal();
+      return currentScene.nodes[nodeId] !== undefined;
     },
     // getNode returns the raw node — no proxy. Callers must explicitly
     // declare field dependencies via trackChildren / trackParent / etc.
@@ -698,11 +752,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
     },
 
     getBindings(nodeId: NodeId): readonly Binding[] {
+      trackBindings(nodeId);
       const node = currentScene.nodes[nodeId];
       return (node?.bindings ?? []) as readonly Binding[];
     },
 
     getStyle(nodeId: NodeId): Record<string, unknown> {
+      trackStyle(nodeId);
       const node = currentScene.nodes[nodeId];
       return (node?.style ?? {}) as Record<string, unknown>;
     },
@@ -731,6 +787,8 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
         bumpSignal(visibleSignals, nodeId);
         bumpSignal(layoutSignals, nodeId);
         bumpSignal(propsSignals, nodeId);
+        bumpSignal(styleSignals, nodeId);
+        bumpSignal(bindingsSignals, nodeId);
         bumpExistence();
         return;
       }
@@ -744,6 +802,10 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
         bumpSignal(layoutSignals, nodeId);
       } else if (field === "props") {
         bumpSignal(propsSignals, nodeId);
+      } else if (field === "style") {
+        bumpSignal(styleSignals, nodeId);
+      } else if (field === "bindings") {
+        bumpSignal(bindingsSignals, nodeId);
       }
     },
 
@@ -776,6 +838,8 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
       visibleSignals.clear();
       layoutSignals.clear();
       propsSignals.clear();
+      styleSignals.clear();
+      bindingsSignals.clear();
       disposeAll();
       rebuildTreeIndex();
       treeIndexDirty = false;
@@ -784,24 +848,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
       bumpExistence();
     },
 
-    setScene(newScene: SceneGraph, changedNodeIds?: readonly NodeId[]): void {
+    setScene(newScene: SceneGraph, patches?: readonly ScenePatch[]): void {
       const oldScene = currentScene;
       currentScene = newScene;
 
-      if (changedNodeIds) {
-        // Caller knows which nodes changed — O(changed)
-        for (const id of changedNodeIds) {
-          if (!newScene.nodes[id]) {
-            handlePatch({ type: "remove-node", nodeId: id });
-          } else if (!oldScene.nodes[id]) {
-            handlePatch({ type: "add-node", nodeId: id });
-          } else {
-            bumpSignal(childrenSignals, id);
-            bumpSignal(parentSignals, id);
-            bumpSignal(visibleSignals, id);
-            bumpSignal(layoutSignals, id);
-            bumpSignal(propsSignals, id);
-          }
+      if (patches) {
+        for (const patch of patches) {
+          handlePatch(patch);
         }
       } else {
         // No info — iterate all nodes to find changes
@@ -810,14 +863,16 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
             handlePatch({ type: "remove-node", nodeId: id });
         }
         for (const id of Object.keys(newScene.nodes)) {
-          if (!oldScene.nodes[id]) {
+          const oldNode = oldScene.nodes[id];
+          const newNode = newScene.nodes[id];
+
+          if (!newNode) {
+            continue;
+          }
+          if (!oldNode) {
             handlePatch({ type: "add-node", nodeId: id });
-          } else if (oldScene.nodes[id] !== newScene.nodes[id]) {
-            bumpSignal(childrenSignals, id);
-            bumpSignal(parentSignals, id);
-            bumpSignal(visibleSignals, id);
-            bumpSignal(layoutSignals, id);
-            bumpSignal(propsSignals, id);
+          } else if (oldNode !== newNode) {
+            syncExistingNode(id, oldNode, newNode);
           }
         }
       }
@@ -862,6 +917,7 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
     },
 
     commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void {
+      initImmerPatches();
       const [next, patches] = produceWithPatches(
         currentScene,
         (draft: DeepMutable<SceneGraph>) => {

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export interface DocNode {
   type: "doc";
@@ -125,13 +125,26 @@ function walkTextNodes(node: unknown, parts: string[], depth: number): void {
 
 export function plainTextToDoc(text: string): DocNode {
   const lines = text.split("\n");
-  const content: BlockNode[] = lines.map((line) => {
-    if (line === "") {
-      return { type: "paragraph" };
+  const content: InlineNode[] = [];
+
+  for (const [index, line] of lines.entries()) {
+    if (index > 0) {
+      content.push({ type: "hardBreak" });
     }
-    return { type: "paragraph", content: [{ type: "text", text: line }] };
-  });
-  return { type: "doc", content };
+    if (line !== "") {
+      content.push({ type: "text", text: line });
+    }
+  }
+
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: content.length > 0 ? content : undefined,
+      },
+    ],
+  };
 }
 
 const textNodeSchema = z.object({

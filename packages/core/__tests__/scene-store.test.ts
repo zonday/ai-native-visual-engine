@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSceneStore } from "../src/scene-store.js";
-import type { SceneGraph, SceneNode } from "../src/types.js";
+import type { Binding, SceneGraph, SceneNode } from "../src/types.js";
 
 function assertNode(n: SceneNode | undefined, id: string): MutableSceneNode {
   if (!n) throw new Error(`Expected node ${id}`);
@@ -981,6 +981,42 @@ describe("SelectorRegistry", () => {
       });
 
       expect(sel.getNodeLayout("a")?.x).toBe(100);
+    });
+
+    it("updates style and bumps signal", () => {
+      const sel = createSceneStore(makeScene());
+      let trackedStyle: Record<string, unknown> = {};
+
+      const stop = sel.autorun(() => {
+        trackedStyle = sel.getStyle("a");
+      });
+
+      expect(trackedStyle).toEqual({});
+
+      sel.commitScene((draft) => {
+        draft.nodes.a!.style = { color: "blue" };
+      });
+
+      expect(trackedStyle).toEqual({ color: "blue" });
+      stop();
+    });
+
+    it("updates bindings and bumps signal", () => {
+      const sel = createSceneStore(makeScene());
+      let trackedBindings: readonly Binding[] = [];
+
+      const stop = sel.autorun(() => {
+        trackedBindings = sel.getBindings("a");
+      });
+
+      expect(trackedBindings).toEqual([]);
+
+      sel.commitScene((draft) => {
+        draft.nodes.a!.bindings = [{ key: "v", source: "dataset:sales" }];
+      });
+
+      expect(trackedBindings).toEqual([{ key: "v", source: "dataset:sales" }]);
+      stop();
     });
 
     it("adds node and bumps existence", () => {

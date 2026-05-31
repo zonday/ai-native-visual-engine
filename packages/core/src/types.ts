@@ -165,12 +165,14 @@ export interface LayoutBase {
 }
 
 // ── Binding ──
-export interface Binding {
-  key: string;
-  source: string;
-  path?: string;
-  transform?: string;
-}
+export const BindingSchema = z.object({
+  key: z.string().min(1),
+  source: z.string().min(1),
+  path: z.string().optional(),
+  transform: z.string().optional(),
+});
+
+export type Binding = z.infer<typeof BindingSchema>;
 
 export interface Style {
   [key: string]: unknown;
@@ -225,16 +227,7 @@ export const SceneNodeSchema = z.object({
   props: z.record(z.string(), z.unknown()).optional(),
   style: z.record(z.string(), z.unknown()).optional(),
   layout: z.record(z.string(), z.unknown()).optional(),
-  bindings: z
-    .array(
-      z.object({
-        key: z.string(),
-        source: z.string(),
-        path: z.string().optional(),
-        transform: z.string().optional(),
-      }),
-    )
-    .optional(),
+  bindings: z.array(BindingSchema).optional(),
   runtime: z.record(z.string(), z.unknown()).optional(),
   visible: z.boolean().optional(),
   locked: z.boolean().optional(),
@@ -242,18 +235,29 @@ export const SceneNodeSchema = z.object({
   activeStates: z.array(z.string()).optional(),
 });
 
-export const PersistedSceneGraphSchema = z.object({
-  version: z.number(),
-  rootId: z.string(),
-  nodes: z.record(z.string(), SceneNodeSchema),
-  metadata: z
-    .object({
-      title: z.string().optional(),
-      createdAt: z.number().optional(),
-      updatedAt: z.number().optional(),
-    })
-    .optional(),
-});
+export const PersistedSceneNodeSchema = SceneNodeSchema.omit({
+  activeStates: true,
+  layout: true,
+})
+  .extend({
+    layout: LayoutSchema.optional(),
+  })
+  .strict();
+
+export const PersistedSceneGraphSchema = z
+  .object({
+    version: z.number(),
+    rootId: z.string(),
+    nodes: z.record(z.string(), PersistedSceneNodeSchema),
+    metadata: z
+      .object({
+        title: z.string().optional(),
+        createdAt: z.number().optional(),
+        updatedAt: z.number().optional(),
+      })
+      .optional(),
+  })
+  .strict();
 
 export const SelectionStateSchema = z.object({
   nodeIds: z.array(z.string()),
@@ -315,7 +319,7 @@ export const PrototypeComponentSchema = z.object({
   baseType: z.string(),
   defaultProps: z.record(z.string(), z.unknown()),
   defaultStyle: z.record(z.string(), z.unknown()),
-  defaultLayout: z.record(z.string(), z.unknown()).optional(),
+  defaultLayout: LayoutSchema.optional(),
 });
 
 export const DocumentMetadataSchema = z.object({

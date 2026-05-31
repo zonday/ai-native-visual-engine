@@ -7,7 +7,7 @@ function nonNull<T>(value: T): NonNullable<T> {
 }
 
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
-import { exportDocument } from "../src/io/import-export.js";
+import { exportDocumentSnapshot } from "../src/io/import-export.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { openDocumentSession } from "../src/session.js";
@@ -47,6 +47,109 @@ describe("fixture files validation", () => {
     } as unknown as DocumentSnapshot);
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  it("rejects persisted activeStates in document snapshots", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: {
+        scenes: Record<
+          string,
+          { rootId: string; nodes: Record<string, Record<string, unknown>> }
+        >;
+      };
+    };
+    const scene = invalidSnapshot.document.scenes[sceneId];
+    if (!scene) throw new Error("Missing scene fixture");
+    const rootNode = scene.nodes[scene.rootId];
+    if (!rootNode) throw new Error("Missing root fixture");
+    scene.nodes[scene.rootId] = {
+      ...rootNode,
+      activeStates: ["hovered"],
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects invalid scene node layout in an otherwise valid snapshot", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: {
+        scenes: Record<
+          string,
+          { rootId: string; nodes: Record<string, Record<string, unknown>> }
+        >;
+      };
+    };
+    const scene = invalidSnapshot.document.scenes[sceneId];
+    if (!scene) throw new Error("Missing scene fixture");
+    scene.nodes[scene.rootId] = {
+      ...scene.nodes[scene.rootId],
+      layout: { mode: "bogus" } as unknown as Record<string, unknown>,
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects invalid prototype defaultLayout in document schema", () => {
+    const invalidDoc = {
+      ...createNewDocument({ title: "Prototype Validation" }),
+      prototypes: [
+        {
+          id: "proto-1",
+          name: "Bad Proto",
+          baseType: "container",
+          defaultProps: {},
+          defaultStyle: {},
+          defaultLayout: { mode: "bogus" },
+        },
+      ],
+    } as unknown;
+
+    const parsed = VisualDocumentSchema.safeParse(invalidDoc);
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects persisted selection in document snapshots", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: { scenes: Record<string, Record<string, unknown>> };
+    };
+    invalidSnapshot.document.scenes[sceneId] = {
+      ...invalidSnapshot.document.scenes[sceneId],
+      selection: { nodeIds: ["root"] },
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects persisted viewport in document snapshots", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: { scenes: Record<string, Record<string, unknown>> };
+    };
+    invalidSnapshot.document.scenes[sceneId] = {
+      ...invalidSnapshot.document.scenes[sceneId],
+      viewport: { x: 10, y: 20, zoom: 2 },
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
   });
 });
 
@@ -163,7 +266,7 @@ describe("batch actions via command bus", () => {
 describe("exportDocument with fixtures", () => {
   it("exports single page without selection overlays", () => {
     const doc = createNewDocument({ title: "Export" });
-    const exported = exportDocument(doc);
+    const exported = exportDocumentSnapshot(doc);
     const parsed = DocumentSnapshotSchema.safeParse(exported);
     expect(parsed.success).toBe(true);
   });
@@ -174,7 +277,9 @@ describe("exportDocument with fixtures", () => {
     doc.scenes["scene-2"] = createEmptyScene();
 
     const exportedId = nonNull(doc.pages[0]).id;
-    const exported = exportDocument(doc, { targetPageIds: [exportedId] });
+    const exported = exportDocumentSnapshot(doc, {
+      targetPageIds: [exportedId],
+    });
     expect(exported.document.pages).toHaveLength(1);
   });
 });

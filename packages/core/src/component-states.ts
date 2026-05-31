@@ -22,10 +22,3 @@ export function resolveStateProps(
   }
   return resolved;
 }
-
-export interface StateAPI {
-  setState(nodeId: string, state: string): void;
-  clearState(nodeId: string, state: string): void;
-  setExclusive(nodeId: string, state: string, group: string): void;
-  getActiveStates(nodeId: string): string[];
-}

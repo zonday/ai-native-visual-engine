@@ -36,6 +36,15 @@ describe("loadDocument", () => {
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
+
+  it("returns diagnostics for invalid snapshot envelope", () => {
+    const result = loadDocument({ foo: "bar" } as unknown as DocumentSnapshot);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toContain(
+      "validation.document-snapshot-mismatch",
+    );
+  });
 });
 
 describe("openDocumentFromSnapshot", () => {

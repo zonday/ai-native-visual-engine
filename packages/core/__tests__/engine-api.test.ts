@@ -239,6 +239,31 @@ describe("createEngine", () => {
     ).toBe(true);
   });
 
+  it("selector descendant queries stay fresh after move-node", () => {
+    const scene = makeScene({
+      root: { id: "root", type: "container", children: ["a", "b"] },
+      a: { id: "a", type: "container", parentId: "root", children: ["a1"] },
+      a1: { id: "a1", type: "text", parentId: "a" },
+      b: { id: "b", type: "container", parentId: "root", children: [] },
+    });
+    const { api } = setup(scene);
+
+    expect(api.selector.isDescendantOf("a1", "a")).toBe(true);
+    expect(api.selector.getDescendants("a")).toEqual(["a1"]);
+
+    const result = api.command({
+      type: "move-node",
+      nodeId: "a1",
+      parentId: "root",
+      index: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(api.selector.isDescendantOf("a1", "a")).toBe(false);
+    expect(api.selector.isDescendantOf("a1", "root")).toBe(true);
+    expect(api.selector.getDescendants("a")).toEqual([]);
+  });
+
   it("command update-style, update-bindings, update-runtime, rotate-node work", () => {
     const { api } = setup();
     expect(
@@ -265,6 +290,38 @@ describe("createEngine", () => {
     expect(
       api.command({ type: "rotate-node", nodeId: "a", rotation: 45 }).ok,
     ).toBe(true);
+  });
+
+  it("selector style reads stay fresh after update-style", () => {
+    const { api } = setup();
+
+    expect(api.selector.getStyle("a")).toEqual({ color: "red" });
+
+    const result = api.command({
+      type: "update-style",
+      nodeId: "a",
+      style: { color: "blue" },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(api.selector.getStyle("a")).toEqual({ color: "blue" });
+  });
+
+  it("selector bindings reads stay fresh after update-bindings", () => {
+    const { api } = setup();
+
+    expect(api.selector.getBindings("a")).toEqual([{ key: "v", source: "s" }]);
+
+    const result = api.command({
+      type: "update-bindings",
+      nodeId: "a",
+      bindings: [{ key: "next", source: "dataset:sales" }],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(api.selector.getBindings("a")).toEqual([
+      { key: "next", source: "dataset:sales" },
+    ]);
   });
 
   // selection mutation through scene.command
@@ -501,6 +558,21 @@ describe("createEngine", () => {
     );
   });
 
+  it("transaction.applyAction preserves nodeId in errors", () => {
+    const { api } = setup(undefined, { withTx: true });
+    const tx = api.transaction.begin("user");
+
+    const result = api.transaction.applyAction(tx, {
+      type: "move-node",
+      nodeId: "missing",
+      parentId: "root",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.actionType).toBe("move-node");
+    expect(result.error?.nodeId).toBe("missing");
+  });
+
   // setExclusive — now using batch-actions with update-runtime
   it("batch-actions clears previous group holder", () => {
     const { api, bus } = setup();
@@ -531,6 +603,34 @@ describe("createEngine", () => {
     const rtB = bus.getScene().nodes.b?.runtime as Record<string, unknown>;
     expect(rtA.activeStates).not.toContain("active");
     expect(rtB.activeStates).toContain("active");
+  });
+
+  it("batch-actions falls back to full sync for structural changes", () => {
+    const scene = makeScene({
+      root: { id: "root", type: "container", children: ["a", "b"] },
+      a: { id: "a", type: "container", parentId: "root", children: ["a1"] },
+      a1: { id: "a1", type: "text", parentId: "a" },
+      b: { id: "b", type: "container", parentId: "root", children: [] },
+    });
+    const { api } = setup(scene);
+
+    expect(api.selector.isDescendantOf("a1", "a")).toBe(true);
+
+    const result = api.command({
+      type: "batch-actions",
+      actions: [
+        {
+          type: "move-node",
+          nodeId: "a1",
+          parentId: "root",
+          index: 1,
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(api.selector.isDescendantOf("a1", "a")).toBe(false);
+    expect(api.selector.getDescendants("a")).toEqual([]);
   });
 
   // EventBus unsubscribe

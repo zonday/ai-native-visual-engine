@@ -5,7 +5,7 @@ import type {
   SceneGraph,
   VisualDocument,
 } from "./types.js";
-import { VisualDocumentSchema } from "./types.js";
+import { DocumentSnapshotSchema, VisualDocumentSchema } from "./types.js";
 
 export class SessionError extends Error {
   readonly code: string;
@@ -60,7 +60,18 @@ export interface DocumentLoadResult {
 export function loadDocument(snapshot: DocumentSnapshot): DocumentLoadResult {
   const diagnostics: string[] = [];
   const damagedPageIds: PageId[] = [];
-  const parsed = VisualDocumentSchema.safeParse(snapshot.document);
+  const parsedSnapshot = DocumentSnapshotSchema.safeParse(snapshot);
+
+  if (!parsedSnapshot.success) {
+    return {
+      ok: false,
+      diagnostics: [
+        `validation.document-snapshot-mismatch: ${parsedSnapshot.error.message}`,
+      ],
+    };
+  }
+
+  const parsed = VisualDocumentSchema.safeParse(parsedSnapshot.data.document);
 
   if (!parsed.success) {
     return {
