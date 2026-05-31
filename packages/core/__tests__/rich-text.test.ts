@@ -120,24 +120,35 @@ describe("plainTextToDoc", () => {
     });
   });
 
-  it("converts multiple lines to multiple paragraphs", () => {
+  it("converts multiple lines to a single paragraph with hard breaks", () => {
     const doc = plainTextToDoc("Line 1\nLine 2\nLine 3");
     expect(doc.type).toBe("doc");
-    expect(doc.content).toHaveLength(3);
+    expect(doc.content).toHaveLength(1);
     expect(doc.content[0]).toEqual({
       type: "paragraph",
-      content: [{ type: "text", text: "Line 1" }],
-    });
-    expect(doc.content[2]).toEqual({
-      type: "paragraph",
-      content: [{ type: "text", text: "Line 3" }],
+      content: [
+        { type: "text", text: "Line 1" },
+        { type: "hardBreak" },
+        { type: "text", text: "Line 2" },
+        { type: "hardBreak" },
+        { type: "text", text: "Line 3" },
+      ],
     });
   });
 
-  it("creates empty paragraphs for blank lines", () => {
+  it("preserves blank lines as consecutive hard breaks", () => {
     const doc = plainTextToDoc("A\n\nB");
-    expect(doc.content).toHaveLength(3);
-    expect(doc.content[1]).toEqual({ type: "paragraph" });
+    expect(doc.content).toEqual([
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "A" },
+          { type: "hardBreak" },
+          { type: "hardBreak" },
+          { type: "text", text: "B" },
+        ],
+      },
+    ]);
   });
 
   it("returns empty doc for empty string", () => {
