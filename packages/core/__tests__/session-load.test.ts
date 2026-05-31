@@ -49,6 +49,54 @@ describe("loadDocument", () => {
       "validation.document-snapshot-mismatch",
     );
   });
+
+  it("returns diagnostics when a persisted scene contains selection", () => {
+    const doc = createNewDocument({ title: "Test" });
+    const sceneId = doc.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Expected fixture page");
+
+    const result = loadDocument({
+      document: {
+        ...doc,
+        scenes: {
+          ...doc.scenes,
+          [sceneId]: {
+            ...doc.scenes[sceneId],
+            selection: { nodeIds: [doc.scenes[sceneId]!.rootId] },
+          },
+        },
+      },
+    } as unknown as DocumentSnapshot);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toContain(
+      "validation.document-snapshot-mismatch",
+    );
+  });
+
+  it("returns diagnostics when a persisted scene contains viewport", () => {
+    const doc = createNewDocument({ title: "Test" });
+    const sceneId = doc.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Expected fixture page");
+
+    const result = loadDocument({
+      document: {
+        ...doc,
+        scenes: {
+          ...doc.scenes,
+          [sceneId]: {
+            ...doc.scenes[sceneId],
+            viewport: { x: 10, y: 20, zoom: 2 },
+          },
+        },
+      },
+    } as unknown as DocumentSnapshot);
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]).toContain(
+      "validation.document-snapshot-mismatch",
+    );
+  });
 });
 
 describe("openDocumentFromSnapshot", () => {
