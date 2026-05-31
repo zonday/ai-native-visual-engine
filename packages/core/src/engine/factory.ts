@@ -9,6 +9,8 @@ import type { NodeId, SceneGraph } from "../types.js";
 import type { ActionRegistry } from "./action-registry.js";
 import type { HistoryState } from "./history.js";
 import { redoAction, undoAction } from "./history.js";
+import { initImmerPatches } from "./immer-patch-router.js";
+import type { ScenePatch } from "./patch-types.js";
 import type { ActiveTransaction, TransactionSource } from "./transaction.js";
 import { TransactionManager } from "./transaction.js";
 
@@ -70,23 +72,59 @@ export interface Engine {
   transaction: TransactionService;
 }
 
-// ── Helpers ──
-
-function collectAffectedNodeIds(action: RuntimeAction): NodeId[] {
-  if ("nodeId" in action && typeof action.nodeId === "string") {
-    return [action.nodeId];
-  }
-  if (action.type === "create-node") {
-    return [action.node.id];
-  }
-  if (action.type === "batch-actions") {
-    const ids: NodeId[] = [];
-    for (const child of action.actions) {
-      ids.push(...collectAffectedNodeIds(child));
+function collectScenePatches(
+  sceneBefore: SceneGraph,
+  action: RuntimeAction,
+): ScenePatch[] | undefined {
+  switch (action.type) {
+    case "create-node":
+      return [
+        { type: "add-node", nodeId: action.node.id },
+        { type: "set-prop", nodeId: action.parentId, field: "children" },
+      ];
+    case "remove-node": {
+      const oldParentId = sceneBefore.nodes[action.nodeId]?.parentId;
+      return [
+        { type: "remove-node", nodeId: action.nodeId },
+        ...(oldParentId
+          ? ([
+              {
+                type: "set-prop",
+                nodeId: oldParentId,
+                field: "children",
+              },
+            ] satisfies ScenePatch[])
+          : []),
+      ];
     }
-    return ids;
+    case "move-node": {
+      const oldParentId = sceneBefore.nodes[action.nodeId]?.parentId;
+      return [
+        {
+          type: "reparent",
+          nodeId: action.nodeId,
+          oldParent: oldParentId,
+          newParent: action.parentId,
+        },
+      ];
+    }
+    case "update-layout":
+    case "rotate-node":
+      return [{ type: "set-prop", nodeId: action.nodeId, field: "layout" }];
+    case "update-props":
+      return [{ type: "set-prop", nodeId: action.nodeId, field: "props" }];
+    case "update-style":
+      return [{ type: "set-prop", nodeId: action.nodeId, field: "style" }];
+    case "update-bindings":
+      return [{ type: "set-prop", nodeId: action.nodeId, field: "bindings" }];
+    case "update-selection":
+    case "update-runtime":
+      return undefined;
+    case "batch-actions":
+      return undefined;
+    default:
+      return undefined;
   }
-  return [];
 }
 
 // ── Factory ──
@@ -98,6 +136,8 @@ export function createEngine(
   setHistory?: (state: HistoryState<RuntimeAction>) => void,
   registry?: ActionRegistry<RuntimeAction, SceneGraph, RuntimeContext>,
 ): Engine {
+  initImmerPatches();
+
   // ── TransactionManager: uses commandBus for dispatch so state stays in sync ──
 
   const transactionManager = registry
@@ -134,9 +174,10 @@ export function createEngine(
   // ── Single dispatch+notify pathway ──
 
   function doDispatch(action: RuntimeAction): CommandResult {
+    const sceneBefore = selectors.getScene();
     const result = commandBus.dispatch(action);
     if (result.ok) {
-      selectors.setScene(getScene(), collectAffectedNodeIds(action));
+      selectors.setScene(getScene(), collectScenePatches(sceneBefore, action));
       notifyScene(getScene());
       notifySelection(getScene().selection?.nodeIds ?? []);
     }
@@ -217,9 +258,13 @@ export function createEngine(
           },
         };
       }
+      const sceneBefore = selectors.getScene();
       const result = transactionManager.applyAction(active, action);
       if (result.ok) {
-        selectors.setScene(getScene(), collectAffectedNodeIds(action));
+        selectors.setScene(
+          getScene(),
+          collectScenePatches(sceneBefore, action),
+        );
         notifyScene(getScene());
         notifySelection(getScene().selection?.nodeIds ?? []);
       }
@@ -246,7 +291,6 @@ export function createEngine(
       }
       const result = transactionManager.commit(active);
       if (result.ok) {
-        selectors.setScene(getScene(), []);
         notifyScene(getScene());
         notifySelection(getScene().selection?.nodeIds ?? []);
       }

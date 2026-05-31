@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import type { Binding } from "../types.js";
 
 export type DataSourceId = string;
 export type DatasetId = string;
@@ -24,15 +25,6 @@ export const DatasetEntrySchema = z.object({
 });
 
 export type Dataset = z.infer<typeof DatasetEntrySchema>;
-
-export const BindingSchema = z.object({
-  key: z.string().min(1),
-  source: z.string().min(1),
-  path: z.string().optional(),
-  transform: z.string().optional(),
-});
-
-export type Binding = z.infer<typeof BindingSchema>;
 
 export interface FilterParam {
   key: string;

@@ -345,5 +345,67 @@ describe("ComputedStateEngine", () => {
       const after = eng.getWorldTransform("a1");
       expect(after.x).toBe(310);
     });
+
+    it("recomputes when a previously missing node is added", () => {
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
+
+      expect(eng.getComputedBounds("c")).toEqual({
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      });
+
+      sel.commitScene((draft) => {
+        draft.nodes.c = {
+          id: "c",
+          type: "text",
+          parentId: "root",
+          layout: {
+            mode: "absolute",
+            x: 20,
+            y: 30,
+            width: 80,
+            height: 25,
+          },
+        };
+        draft.nodes.root!.children = [
+          ...(draft.nodes.root!.children ?? []),
+          "c",
+        ];
+      });
+
+      expect(eng.getComputedBounds("c")).toEqual({
+        x: 20,
+        y: 30,
+        width: 80,
+        height: 25,
+      });
+    });
+
+    it("recomputes when an existing node is removed", () => {
+      const sel = createSceneStore(makeScene());
+      const eng = createComputedStore(sel);
+
+      expect(eng.getComputedBounds("a")).toEqual({
+        x: 100,
+        y: 50,
+        width: 200,
+        height: 100,
+      });
+
+      sel.commitScene((draft) => {
+        delete draft.nodes.a;
+        draft.nodes.root!.children = [];
+      });
+
+      expect(eng.getComputedBounds("a")).toEqual({
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      });
+    });
   });
 });

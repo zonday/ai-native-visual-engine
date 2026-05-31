@@ -14,6 +14,7 @@ import {
   InMemoryDataSourceRegistry,
   type ResolvedBinding,
 } from "../src/data/types.js";
+import { BindingSchema } from "../src/types.js";
 
 function makeDataset(overrides?: Partial<Dataset>): Dataset {
   return {
@@ -211,6 +212,23 @@ describe("resolveBindings", () => {
     );
     expect(results).toHaveLength(1);
     expect(results[0]?.status).toBe("error");
+  });
+});
+
+describe("BindingSchema", () => {
+  it("rejects an empty key", () => {
+    const result = BindingSchema.safeParse({
+      key: "",
+      source: "dataset:sales",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty source", () => {
+    const result = BindingSchema.safeParse({ key: "revenue", source: "" });
+
+    expect(result.success).toBe(false);
   });
 });
 

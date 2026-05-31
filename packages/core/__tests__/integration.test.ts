@@ -48,6 +48,32 @@ describe("fixture files validation", () => {
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
+
+  it("rejects persisted activeStates in document snapshots", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: {
+        scenes: Record<
+          string,
+          { rootId: string; nodes: Record<string, Record<string, unknown>> }
+        >;
+      };
+    };
+    const scene = invalidSnapshot.document.scenes[sceneId];
+    if (!scene) throw new Error("Missing scene fixture");
+    const rootNode = scene.nodes[scene.rootId];
+    if (!rootNode) throw new Error("Missing root fixture");
+    scene.nodes[scene.rootId] = {
+      ...rootNode,
+      activeStates: ["hovered"],
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
+  });
 });
 
 describe("createNewDocument initialization", () => {

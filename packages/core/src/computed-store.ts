@@ -169,9 +169,16 @@ export function createComputedStore(selectors: SceneStore): ComputedStore {
 
   const engine: ComputedStore = {
     getLocalTransform(nodeId: NodeId): WorldTransform {
+      if (!selectors.hasNode(nodeId)) {
+        disposeEntry(localCache, nodeId);
+        return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+      }
       let c = localCache.get(nodeId);
       if (!c) {
         c = computed(() => {
+          if (!selectors.hasNode(nodeId)) {
+            return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+          }
           const node = selectors.getNode(nodeId);
           if (!node) {
             return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
@@ -184,9 +191,16 @@ export function createComputedStore(selectors: SceneStore): ComputedStore {
     },
 
     getWorldTransform(nodeId: NodeId): WorldTransform {
+      if (!selectors.hasNode(nodeId)) {
+        disposeEntry(worldCache, nodeId);
+        return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+      }
       let c = worldCache.get(nodeId);
       if (!c) {
         c = computed(() => {
+          if (!selectors.hasNode(nodeId)) {
+            return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+          }
           const node = selectors.getNode(nodeId);
           if (!node) {
             return { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
@@ -205,9 +219,16 @@ export function createComputedStore(selectors: SceneStore): ComputedStore {
     },
 
     getComputedBounds(nodeId: NodeId): ComputedBounds {
+      if (!selectors.hasNode(nodeId)) {
+        disposeEntry(boundsCache, nodeId);
+        return { x: 0, y: 0, width: 0, height: 0 };
+      }
       let c = boundsCache.get(nodeId);
       if (!c) {
         c = computed(() => {
+          if (!selectors.hasNode(nodeId)) {
+            return { x: 0, y: 0, width: 0, height: 0 };
+          }
           const node = selectors.getNode(nodeId);
           if (!node) return { x: 0, y: 0, width: 0, height: 0 };
           const w = getNodeWidth(selectors, node, nodeId);
@@ -224,6 +245,16 @@ export function createComputedStore(selectors: SceneStore): ComputedStore {
       nodeId: NodeId,
       viewport?: ViewportRect,
     ): ComputedBounds | null {
+      if (!selectors.hasNode(nodeId)) {
+        const existing = visibleBoundsCache.get(nodeId);
+        if (existing) {
+          for (const ref of existing.values()) {
+            ref.dispose();
+          }
+          visibleBoundsCache.delete(nodeId);
+        }
+        return null;
+      }
       const key = viewport ? toViewportKey(viewport) : "";
       let inner = visibleBoundsCache.get(nodeId);
       if (!inner) {
@@ -233,6 +264,7 @@ export function createComputedStore(selectors: SceneStore): ComputedStore {
       let c = inner.get(key);
       if (!c) {
         c = computed(() => {
+          if (!selectors.hasNode(nodeId)) return null;
           const node = selectors.getNode(nodeId);
           if (!node) return null;
           const bounds = engine.getComputedBounds(nodeId);

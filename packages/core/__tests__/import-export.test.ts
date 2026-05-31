@@ -7,15 +7,32 @@ function nonNull<T>(value: T): NonNullable<T> {
 }
 
 describe("importDocument", () => {
-  it("imports a valid VisualDocument", () => {
+  it("imports a valid DocumentSnapshot", () => {
     const doc = createNewDocument({ title: "Imported" });
-    const result = importDocument(doc);
+    const result = importDocument({ document: doc });
     expect(result.ok).toBe(true);
     expect(result.document?.title).toBe("Imported");
   });
 
+  it("round-trips an exported snapshot", () => {
+    const doc = createNewDocument({ title: "Round Trip" });
+    const snapshot = exportDocument(doc);
+
+    const result = importDocument(snapshot);
+
+    expect(result.ok).toBe(true);
+    expect(result.document).toEqual(snapshot.document);
+  });
+
   it("rejects invalid data with diagnostics", () => {
     const result = importDocument({ foo: "bar" });
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  it("rejects malformed snapshot envelopes", () => {
+    const result = importDocument({ document: { foo: "bar" } });
+
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });

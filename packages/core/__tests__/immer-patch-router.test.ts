@@ -134,15 +134,30 @@ describe("routeImmerPatches", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("skips unknown node fields (style, name, runtime)", () => {
+  it("routes supported node fields and skips unknown ones", () => {
     const sel = createSceneStore(makeScene());
     const spy = vi.spyOn(sel, "applyPatch");
     const patches: Patch[] = [
       { op: "replace", path: ["nodes", "a", "style"], value: { color: "red" } },
+      {
+        op: "replace",
+        path: ["nodes", "a", "bindings"],
+        value: [{ key: "v", source: "dataset:sales" }],
+      },
       { op: "replace", path: ["nodes", "a", "name"], value: "new name" },
     ];
     routeImmerPatches(patches, sel);
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenNthCalledWith(1, {
+      type: "set-prop",
+      nodeId: "a",
+      field: "style",
+    });
+    expect(spy).toHaveBeenNthCalledWith(2, {
+      type: "set-prop",
+      nodeId: "a",
+      field: "bindings",
+    });
   });
 
   it("routes multiple patches in batch order", () => {

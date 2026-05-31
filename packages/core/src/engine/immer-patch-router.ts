@@ -1,21 +1,29 @@
 import { enablePatches, type Patch, setAutoFreeze } from "immer";
-import type { NodeField, SceneStore } from "../scene-store.js";
-
-// Enable Immer patches support (required for produceWithPatches)
-enablePatches();
-
-// Enable auto-freeze in dev to catch invalid mutations early
-if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
-  setAutoFreeze(true);
-}
+import type { NodeField, ScenePatch } from "./patch-types.js";
 
 const FIELD_MAP: Record<string, NodeField> = {
+  bindings: "bindings",
+  style: "style",
   layout: "layout",
   props: "props",
   visible: "visible",
   parentId: "parent",
   children: "children",
 };
+
+let patchesInitialized = false;
+
+export function initImmerPatches(): void {
+  if (patchesInitialized) return;
+  patchesInitialized = true;
+  enablePatches();
+  if (
+    typeof process !== "undefined" &&
+    process.env?.NODE_ENV !== "production"
+  ) {
+    setAutoFreeze(true);
+  }
+}
 
 /**
  * Routes Immer patches to applyPatch on the registry.
@@ -27,7 +35,7 @@ const FIELD_MAP: Record<string, NodeField> = {
  */
 export function routeImmerPatches(
   patches: readonly Patch[],
-  registry: SceneStore,
+  registry: { applyPatch(patch: ScenePatch): void },
 ): void {
   for (const patch of patches) {
     const [scope, id, field, ...rest] = patch.path.map(String);
@@ -43,7 +51,7 @@ export function routeImmerPatches(
     } else if (field) {
       const nodeField = FIELD_MAP[field];
       if (nodeField) {
-        const key = rest[0]; // sub-key for path-level tracking (e.g., "x" in ["nodes","a","layout","x"])
+        const key = rest[0];
         registry.applyPatch(
           key && (field === "layout" || field === "props")
             ? { type: "set-prop", nodeId: id, field: nodeField, key }

@@ -1,15 +1,5 @@
 import { generateId } from "./bootstrap.js";
-import type { SceneNode } from "./types.js";
-
-export interface PrototypeComponent {
-  id: string;
-  name: string;
-  description?: string;
-  baseType: string;
-  defaultProps: Record<string, unknown>;
-  defaultStyle: Record<string, unknown>;
-  defaultLayout?: Record<string, unknown>;
-}
+import type { PrototypeComponent, SceneNode } from "./types.js";
 
 export interface ResolvedInstance {
   props: Record<string, unknown>;

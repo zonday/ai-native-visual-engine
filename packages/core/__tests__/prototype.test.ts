@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { PrototypeComponent } from "../src/prototype.js";
 import {
   createNodeFromPrototype,
   createPrototypeFromNode,
   detachInstance,
   resolveInstance,
 } from "../src/prototype.js";
-import type { SceneNode } from "../src/types.js";
+import type { PrototypeComponent, SceneNode } from "../src/types.js";
 
 const proto: PrototypeComponent = {
   id: "proto-1",
@@ -111,13 +110,71 @@ describe("resolveInstance", () => {
 });
 
 describe("createNodeFromPrototype", () => {
-  it("creates node with prototypeId and empty props", () => {
+  it("creates node with prototypeId and default layout", () => {
     const node = createNodeFromPrototype(proto, "root-id");
     expect(node.prototypeId).toBe("proto-1");
     expect(node.type).toBe("metric-value");
     expect(node.parentId).toBe("root-id");
     expect(node.props).toEqual({});
     expect(node.layout).toEqual(proto.defaultLayout);
+  });
+
+  it("preserves an explicit layout override", () => {
+    const node = createNodeFromPrototype(proto, "root-id", {
+      layout: { mode: "absolute", x: 20, y: 30, width: 400, height: 120 },
+    });
+
+    expect(node.layout).toEqual({
+      mode: "absolute",
+      x: 20,
+      y: 30,
+      width: 400,
+      height: 120,
+    });
+  });
+
+  it("preserves its original layout when prototype layout changes later", () => {
+    const node = createNodeFromPrototype(proto, "root-id");
+    const updatedPrototype: PrototypeComponent = {
+      ...proto,
+      defaultLayout: {
+        mode: "absolute",
+        x: 50,
+        y: 60,
+        width: 320,
+        height: 140,
+      },
+    };
+
+    const resolved = resolveInstance(node, updatedPrototype);
+
+    expect(resolved.layout).toEqual(proto.defaultLayout);
+  });
+
+  it("does not inherit later prototype layout changes after a local override", () => {
+    const node = createNodeFromPrototype(proto, "root-id", {
+      layout: { mode: "absolute", x: 5, y: 10, width: 180, height: 90 },
+    });
+    const updatedPrototype: PrototypeComponent = {
+      ...proto,
+      defaultLayout: {
+        mode: "absolute",
+        x: 50,
+        y: 60,
+        width: 320,
+        height: 140,
+      },
+    };
+
+    const resolved = resolveInstance(node, updatedPrototype);
+
+    expect(resolved.layout).toEqual({
+      mode: "absolute",
+      x: 5,
+      y: 10,
+      width: 180,
+      height: 90,
+    });
   });
 });
 
