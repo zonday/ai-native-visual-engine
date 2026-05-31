@@ -20,6 +20,8 @@ function makeScene(): SceneGraph {
         id: "a",
         type: "text",
         parentId: "root",
+        style: { color: "blue" },
+        bindings: [{ key: "value", source: "dataset:sales" }],
         layout: {
           mode: "absolute",
           x: 10,
@@ -148,7 +150,7 @@ describe("toPersistedScene", () => {
           children: undefined,
           name: undefined,
           props: undefined,
-          style: undefined,
+          style: { color: "blue" },
           layout: {
             mode: "absolute",
             x: 10,
@@ -158,7 +160,7 @@ describe("toPersistedScene", () => {
             rotation: undefined,
             zIndex: undefined,
           },
-          bindings: undefined,
+          bindings: [{ key: "value", source: "dataset:sales" }],
           runtime: { transient: true },
           visible: undefined,
           locked: undefined,
@@ -167,5 +169,16 @@ describe("toPersistedScene", () => {
       },
       metadata: { title: "Scene" },
     });
+  });
+
+  it("preserves legal persisted fields while stripping session-only state", () => {
+    const scene = makeScene();
+    const persisted = toPersistedScene(scene);
+
+    expect(persisted.nodes.a?.style).toEqual({ color: "blue" });
+    expect(persisted.nodes.a?.bindings).toEqual([
+      { key: "value", source: "dataset:sales" },
+    ]);
+    expect(persisted.metadata).toEqual({ title: "Scene" });
   });
 });
