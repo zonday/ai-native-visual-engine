@@ -37,6 +37,65 @@ function makeScene(): SceneGraph {
 }
 
 describe("toPersistedLayout", () => {
+  it("keeps valid flex layouts", () => {
+    expect(
+      toPersistedLayout({
+        mode: "flex",
+        direction: "horizontal",
+        gap: 8,
+        align: "center",
+        justify: "space-between",
+        wrap: true,
+      }),
+    ).toEqual({
+      mode: "flex",
+      direction: "horizontal",
+      gap: 8,
+      align: "center",
+      justify: "space-between",
+      wrap: true,
+    });
+  });
+
+  it("keeps valid grid and grid-item layouts", () => {
+    expect(
+      toPersistedLayout({
+        mode: "grid",
+        columns: 4,
+        rowHeight: 120,
+        gap: 12,
+        autoFlow: "row",
+      }),
+    ).toEqual({
+      mode: "grid",
+      columns: 4,
+      rowHeight: 120,
+      gap: 12,
+      autoFlow: "row",
+    });
+
+    expect(
+      toPersistedLayout({
+        mode: "grid-item",
+        x: 1,
+        y: 2,
+        w: 3,
+        h: 4,
+        minW: 2,
+      }),
+    ).toEqual({
+      mode: "grid-item",
+      x: 1,
+      y: 2,
+      w: 3,
+      h: 4,
+      minW: 2,
+      minH: undefined,
+      maxW: undefined,
+      maxH: undefined,
+    });
+  });
+
   it("returns undefined for invalid layouts", () => {
     expect(
       toPersistedLayout({
