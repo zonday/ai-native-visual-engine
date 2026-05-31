@@ -1,5 +1,6 @@
 import { generateId } from "./bootstrap.js";
 import type { PrototypeComponent, SceneNode } from "./types.js";
+import { LayoutSchema } from "./types.js";
 
 export interface ResolvedInstance {
   props: Record<string, unknown>;
@@ -58,13 +59,18 @@ export function createPrototypeFromNode(
   node: SceneNode,
   name: string,
 ): PrototypeComponent {
+  const parsedLayout = node.layout
+    ? LayoutSchema.safeParse(node.layout)
+    : undefined;
+  const defaultLayout = parsedLayout?.success ? parsedLayout.data : undefined;
+
   return {
     id: generateId(),
     name,
     baseType: node.type,
     defaultProps: { ...(node.props ?? {}) },
     defaultStyle: { ...(node.style ?? {}) },
-    defaultLayout: node.layout ? { ...node.layout } : undefined,
+    defaultLayout,
   };
 }
 

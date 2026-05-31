@@ -74,6 +74,49 @@ describe("fixture files validation", () => {
     const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
     expect(parsed.success).toBe(false);
   });
+
+  it("rejects invalid scene node layout in an otherwise valid snapshot", () => {
+    const snapshot = loadFixture("single-page-empty");
+    const sceneId = snapshot.document.pages[0]?.sceneId;
+    if (!sceneId) throw new Error("Missing page fixture");
+
+    const invalidSnapshot = structuredClone(snapshot) as unknown as {
+      document: {
+        scenes: Record<
+          string,
+          { rootId: string; nodes: Record<string, Record<string, unknown>> }
+        >;
+      };
+    };
+    const scene = invalidSnapshot.document.scenes[sceneId];
+    if (!scene) throw new Error("Missing scene fixture");
+    scene.nodes[scene.rootId] = {
+      ...scene.nodes[scene.rootId],
+      layout: { mode: "bogus" } as unknown as Record<string, unknown>,
+    };
+
+    const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects invalid prototype defaultLayout in document schema", () => {
+    const invalidDoc = {
+      ...createNewDocument({ title: "Prototype Validation" }),
+      prototypes: [
+        {
+          id: "proto-1",
+          name: "Bad Proto",
+          baseType: "container",
+          defaultProps: {},
+          defaultStyle: {},
+          defaultLayout: { mode: "bogus" },
+        },
+      ],
+    } as unknown;
+
+    const parsed = VisualDocumentSchema.safeParse(invalidDoc);
+    expect(parsed.success).toBe(false);
+  });
 });
 
 describe("createNewDocument initialization", () => {

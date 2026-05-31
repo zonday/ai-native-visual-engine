@@ -237,7 +237,12 @@ export const SceneNodeSchema = z.object({
 
 export const PersistedSceneNodeSchema = SceneNodeSchema.omit({
   activeStates: true,
-}).strict();
+  layout: true,
+})
+  .extend({
+    layout: LayoutSchema.optional(),
+  })
+  .strict();
 
 export const PersistedSceneGraphSchema = z.object({
   version: z.number(),
@@ -312,7 +317,7 @@ export const PrototypeComponentSchema = z.object({
   baseType: z.string(),
   defaultProps: z.record(z.string(), z.unknown()),
   defaultStyle: z.record(z.string(), z.unknown()),
-  defaultLayout: z.record(z.string(), z.unknown()).optional(),
+  defaultLayout: LayoutSchema.optional(),
 });
 
 export const DocumentMetadataSchema = z.object({
