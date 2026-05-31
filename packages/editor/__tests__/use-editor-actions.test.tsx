@@ -89,7 +89,7 @@ function Harness({
 }: {
   runtimeScene: SceneGraph;
   onDocument: (doc: VisualDocument) => void;
-  mode?: "dispatchRuntime" | "undo";
+  mode?: "dispatchRuntime" | "undo" | "redo";
 }) {
   const [doc, setDoc] = useState<VisualDocument>(() => createDocument());
   const [scene, setScene] = useState<SceneGraph>(() => createRuntimeScene());
@@ -115,7 +115,26 @@ function Harness({
             },
           ]
         : [],
-    redoStack: [],
+    redoStack:
+      mode === "redo"
+        ? [
+            {
+              action: {
+                type: "update-runtime",
+                nodeId: "a",
+                runtime: { preview: true },
+              } as unknown as EditorAction,
+              actions: [
+                {
+                  type: "update-runtime",
+                  nodeId: "a",
+                  runtime: { preview: true },
+                } as unknown as EditorAction,
+              ],
+              timestamp: Date.now(),
+            },
+          ]
+        : [],
   } as HistoryState<EditorAction>);
   const isUndoingRef = useRef(false);
   const engines = createEngines(runtimeScene);
@@ -136,6 +155,10 @@ function Harness({
     dispatchedRef.current = true;
     if (mode === "undo") {
       actions.handleUndo();
+      return;
+    }
+    if (mode === "redo") {
+      actions.handleRedo();
       return;
     }
     actions.dispatchRuntime({
@@ -184,6 +207,34 @@ describe("useEditorActions", () => {
         runtimeScene={runtimeScene}
         onDocument={onDocument}
         mode="undo"
+      />,
+    );
+
+    await waitFor(() => {
+      const latest = onDocument.mock.calls.at(-1)?.[0] as
+        | VisualDocument
+        | undefined;
+      const persistedScene = latest?.scenes["scene-1"] as
+        | (VisualDocument["scenes"][string] & Record<string, unknown>)
+        | undefined;
+      expect(persistedScene?.selection).toBeUndefined();
+      expect(persistedScene?.viewport).toBeUndefined();
+      expect(persistedScene?.nodes.a?.layout).toBeUndefined();
+      expect(persistedScene?.nodes.a?.runtime).toEqual({
+        preview: true,
+      });
+    });
+  });
+
+  it("persists redo-applied runtime scenes through the persisted scene converter", async () => {
+    const runtimeScene = createRuntimeScene();
+    const onDocument = vi.fn();
+
+    render(
+      <Harness
+        runtimeScene={runtimeScene}
+        onDocument={onDocument}
+        mode="redo"
       />,
     );
 
