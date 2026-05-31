@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { docToMarkdown, markdownToDoc } from "../src/markdown-interop.js";
+import { docToMarkdown, markdownToDoc } from "../src/io/markdown-interop.js";
 import type { BlockNode } from "../src/rich-text.js";
 import { validateRichText } from "../src/rich-text.js";
 

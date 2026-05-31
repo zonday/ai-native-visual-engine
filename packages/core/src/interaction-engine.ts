@@ -1,5 +1,5 @@
-import type { ComputedStore } from "../computed-store.js";
-import type { NodeId, SceneGraph } from "../types.js";
+import type { ComputedStore } from "./computed-store.js";
+import type { NodeId, SceneGraph } from "./types.js";
 
 export type InteractionEvent =
   | { type: "selection-changed"; nodeIds: NodeId[] }
@@ -111,7 +111,7 @@ export function createInteractionEngine(): InteractionEngine {
       let bestArea = Infinity;
 
       for (const [id, node] of Object.entries(scene.nodes)) {
-        if (id === scene.rootId) continue; // skip root
+        if (id === scene.rootId) continue;
         if (node.visible === false) continue;
 
         const bounds = engine.getComputedBounds(id);

@@ -1,9 +1,9 @@
+import type { ComponentPluginRegistry } from "../plugin-registry.js";
 import type {
   ComponentCapabilities,
   ComponentConstraint,
   ComponentPlugin,
 } from "../plugin-types.js";
-import type { ComponentPluginRegistry } from "../plugins/registry.js";
 
 export interface AiPropEntry {
   key: string;

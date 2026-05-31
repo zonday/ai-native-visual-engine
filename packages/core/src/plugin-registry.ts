@@ -1,4 +1,4 @@
-import type { ComponentPlugin } from "../plugin-types.js";
+import type { ComponentPlugin } from "./plugin-types.js";
 
 export class ComponentPluginRegistry {
   private plugins = new Map<string, ComponentPlugin>();

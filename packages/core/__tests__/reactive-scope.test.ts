@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createScope } from "../src/deps/reactive-scope";
+import { createScope } from "../src/reactive-scope";
 
 describe("createScope", () => {
   it("signal get/set works", () => {

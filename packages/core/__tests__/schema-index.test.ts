@@ -3,8 +3,8 @@ import {
   buildSchemaIndex,
   schemaIndexToSnapshot,
 } from "../src/compiler/schema-index.js";
+import { ComponentPluginRegistry } from "../src/plugin-registry.js";
 import type { ComponentPlugin } from "../src/plugin-types.js";
-import { ComponentPluginRegistry } from "../src/plugins/registry.js";
 
 function makePlugin(
   type: string,

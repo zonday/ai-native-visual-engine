@@ -3,8 +3,10 @@ import type { DocumentAction } from "../document/register-handlers.js";
 import type { DispatchResult } from "../engine/command-bus.js";
 import type { HistoryState } from "../engine/history.js";
 import { pushUndoTransaction } from "../engine/history.js";
-import type { TransactionFlag } from "../engine/transaction-flag.js";
-import type { TransactionManager } from "../engine/transaction-manager.js";
+import type {
+  TransactionFlag,
+  TransactionManager,
+} from "../engine/transaction.js";
 import type { RuntimeContext } from "../runtime/handler-registry.js";
 import type { RuntimeAction } from "../runtime/register-handlers.js";
 import type { SceneGraph } from "../types.js";

@@ -30,6 +30,15 @@ export {
 } from "./document/register-handlers.js";
 // ── Engine ──
 export { ActionRegistry } from "./engine/action-registry.js";
+export type {
+  CommandResult,
+  HistoryService,
+  TransactionService,
+} from "./engine/factory.js";
+export {
+  createEngine,
+  type Engine,
+} from "./engine/factory.js";
 export type { RuntimeContext } from "./engine/handler.js";
 // ── History ──
 export {
@@ -41,24 +50,17 @@ export {
 } from "./engine/history.js";
 // ── Middleware ──
 export { createUndoHistoryMiddleware } from "./engine/history-middleware.js";
-export { createTransactionMiddleware } from "./engine/middleware/transaction.js";
 export { createValidatorMiddleware } from "./engine/middleware/validator.js";
-export { createTransactionFlag } from "./engine/transaction-flag.js";
-export type {
-  CommandResult,
-  HistoryService,
-  TransactionService,
-} from "./engine-api.js";
 export {
-  createEngine,
-  type Engine,
-} from "./engine-api.js";
+  createTransactionFlag,
+  createTransactionMiddleware,
+} from "./engine/transaction.js";
 export { type EngineEvents, EventBus } from "./event-bus.js";
 // ── Interaction ──
 export {
   createInteractionEngine,
   type InteractionEngine,
-} from "./interaction/interaction-engine.js";
+} from "./interaction-engine.js";
 // ── Plugin system ──
 export type { ComponentPlugin } from "./plugin-types.js";
 export { resolveInstance } from "./prototype.js";

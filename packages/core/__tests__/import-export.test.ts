@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import { exportDocument, importDocument } from "../src/import-export.js";
+import { exportDocument, importDocument } from "../src/io/import-export.js";
 
 function nonNull<T>(value: T): NonNullable<T> {
   return value as NonNullable<T>;

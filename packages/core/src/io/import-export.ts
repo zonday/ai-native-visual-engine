@@ -1,5 +1,5 @@
-import type { DocumentSnapshot, PageId, VisualDocument } from "./types.js";
-import { VisualDocumentSchema } from "./types.js";
+import type { DocumentSnapshot, PageId, VisualDocument } from "../types.js";
+import { VisualDocumentSchema } from "../types.js";
 
 export interface ImportResult {
   ok: boolean;

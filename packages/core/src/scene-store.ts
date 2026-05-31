@@ -1,6 +1,6 @@
 import { type Patch, produceWithPatches } from "immer";
-import { createScope, type Signal } from "./deps/reactive-scope.js";
-import { routeImmerPatches } from "./immer-patch-router.js";
+import { routeImmerPatches } from "./engine/immer-patch-router.js";
+import { createScope, type Signal } from "./reactive-scope.js";
 import type {
   Binding,
   DeepMutable,

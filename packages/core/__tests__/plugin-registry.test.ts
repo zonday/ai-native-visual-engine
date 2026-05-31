@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { ComponentPlugin } from "../src/plugin-types.js";
 import {
   ComponentPluginRegistry,
   createPluginRegistry,
-} from "../src/plugins/registry.js";
+} from "../src/plugin-registry.js";
+import type { ComponentPlugin } from "../src/plugin-types.js";
 
 function makePlugin(
   type: string,

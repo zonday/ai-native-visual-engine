@@ -1,17 +1,16 @@
-import { type ComputedStore, createComputedStore } from "./computed-store.js";
-import type { ActionRegistry } from "./engine/action-registry.js";
-import type { HistoryState } from "./engine/history.js";
-import { redoAction, undoAction } from "./engine/history.js";
-import type { ActiveTransaction } from "./engine/transaction-manager.js";
-import { TransactionManager } from "./engine/transaction-manager.js";
-import type { TransactionSource } from "./engine/transaction-types.js";
-import { EventBus } from "./event-bus.js";
-import type { RuntimeContext } from "./runtime/handler-registry.js";
-import type { RuntimeAction } from "./runtime/register-handlers.js";
-import type { CommandBus } from "./runtime/runtime-command-bus.js";
-import type { SceneStore } from "./scene-store.js";
-import { createSceneStore } from "./scene-store.js";
-import type { NodeId, SceneGraph } from "./types.js";
+import { type ComputedStore, createComputedStore } from "../computed-store.js";
+import { EventBus } from "../event-bus.js";
+import type { RuntimeContext } from "../runtime/handler-registry.js";
+import type { RuntimeAction } from "../runtime/register-handlers.js";
+import type { CommandBus } from "../runtime/runtime-command-bus.js";
+import type { SceneStore } from "../scene-store.js";
+import { createSceneStore } from "../scene-store.js";
+import type { NodeId, SceneGraph } from "../types.js";
+import type { ActionRegistry } from "./action-registry.js";
+import type { HistoryState } from "./history.js";
+import { redoAction, undoAction } from "./history.js";
+import type { ActiveTransaction, TransactionSource } from "./transaction.js";
+import { TransactionManager } from "./transaction.js";
 
 export type { ComputedStore, SceneStore };
 
@@ -155,11 +154,6 @@ export function createEngine(
   }
 
   // ── HistoryService ──
-  //
-  // undo/redo applies setHistory AFTER dispatching through middleware.
-  // During dispatch the middleware pushes undo entries (and clears redo),
-  // but setHistory overwrites with the correct final state.
-  // This avoids both double-push and redo-stack corruption.
 
   const history: HistoryService = {
     canUndo() {

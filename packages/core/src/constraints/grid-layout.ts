@@ -1,4 +1,4 @@
-import type { GridItemLayout, GridLayout, SceneGraph } from "./types.js";
+import type { GridItemLayout, GridLayout, SceneGraph } from "../types.js";
 
 export interface GridItemPosition {
   id: string;

@@ -1,4 +1,4 @@
-import { createScope } from "./deps/reactive-scope.js";
+import { createScope } from "./reactive-scope.js";
 import type { SceneStore } from "./scene-store.js";
 import type { NodeId, SceneNode } from "./types.js";
 
