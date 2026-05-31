@@ -5,7 +5,7 @@ import {
   CURRENT_SERIALIZATION_VERSION,
   serializeDocument,
   serializeEventLog,
-} from "../src/serialization.js";
+} from "../src/io/serialization.js";
 import type { DocumentSnapshot } from "../src/types.js";
 
 describe("serializeDocument", () => {

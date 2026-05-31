@@ -59,27 +59,6 @@ export function createScope(): ReactiveScope {
 
   const queued: (ReactiveNode | undefined)[] = [];
 
-  // ── Known gaps ──────────────────────────────────────────────────────────
-  //
-  // 1. alien-signals link() — no full-chain dedup scan.
-  //    If a node is read twice non-consecutively in one eval (A()+B()+A()),
-  //    the second read creates a duplicate link. This causes unlink asymmetry,
-  //    subs-chain length inflation, propagate overhead, and gradual graph
-  //    entropy growth over many re-evals. Future: add a Set per node or scan
-  //    the dep chain before linking (see alien-signals/system.mjs:18).
-  //
-  // 2. alien-signals checkDirty() — no visited-node tracking.
-  //    A computed cycle A→B→A where both are Pending could loop infinitely.
-  //    Blocked at runtime by the Evaluating-guard in oper() — no cycle ever
-  //    reaches checkDirty with valid deps. Do NOT remove that guard without
-  //    adding visited-node tracking to checkDirty.
-  //
-  // 3. Queue order (notify LIFO reversal) — alien-signals design choice.
-  //    Effects are reversed within each notification group so the most-recent
-  //    subscriber runs first. This is not a FIFO guarantee; cross-signal
-  //    notification order is non-deterministic. Reactive systems conventionally
-  //    do not order effects. No correctness impact.
-  // ─────────────────────────────────────────────────────────────────────────
   const { link, unlink, propagate, checkDirty, shallowPropagate } =
     createReactiveSystem({
       update(node: ReactiveNode): boolean {
@@ -129,8 +108,6 @@ export function createScope(): ReactiveScope {
         } else if ("currentValue" in node) {
           // signal — nothing to clean up
         }
-        // "fn" (effect) branch intentionally removed: effects are sink
-        // nodes — they never have subscribers under owner tree separation.
       },
     });
 
@@ -419,8 +396,6 @@ export function createScope(): ReactiveScope {
       cur = prev;
     }
   }
-  // e.subs loop intentionally removed: effects are sink nodes, they
-  // never have reactive subscribers under owner tree separation.
 
   let batchDepth = 0;
 

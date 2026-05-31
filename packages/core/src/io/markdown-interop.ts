@@ -3,7 +3,7 @@ import type {
   DocNode,
   InlineNode,
   ListItemNode,
-} from "./rich-text.js";
+} from "../rich-text.js";
 
 function parseInline(text: string): InlineNode[] {
   if (text.length === 0) return [];

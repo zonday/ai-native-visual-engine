@@ -1,6 +1,6 @@
 import type { Patch } from "immer";
 import { describe, expect, it, vi } from "vitest";
-import { routeImmerPatches } from "../src/immer-patch-router.js";
+import { routeImmerPatches } from "../src/engine/immer-patch-router.js";
 import { createSceneStore } from "../src/scene-store.js";
 
 function makeScene() {

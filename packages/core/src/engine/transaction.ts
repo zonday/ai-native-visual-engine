@@ -1,28 +1,60 @@
 import type { ActionRegistry } from "./action-registry.js";
-import type { DispatchResult } from "./command-bus.js";
+import type { DispatchResult, Middleware } from "./command-bus.js";
 import type { RuntimeContext } from "./handler.js";
-import {
-  DEFAULT_NESTED_DEPTH_LIMIT,
-  type RuntimeTransaction,
-  type TransactionContext,
-  type TransactionResult,
-  type TransactionSource,
-} from "./transaction-types.js";
+import type { HistoryState } from "./history.js";
+import { pushUndoTransaction } from "./history.js";
 
-export type {
-  DispatchResult,
-  RuntimeTransaction,
-  TransactionContext,
-  TransactionResult,
-  TransactionSource,
-};
+// ── Transaction types ──
 
-let transactionCounter = 0;
+export type TransactionSource = "user" | "ai" | "system";
 
-function generateTxId(source: TransactionSource): string {
-  transactionCounter++;
-  return `tx-${Date.now()}-${transactionCounter}-${source}`;
+export interface RuntimeTransaction {
+  id: string;
+  timestamp: number;
+  source: TransactionSource;
+  actions: unknown[];
+  inverseActions?: unknown[];
+  affectedNodes: string[];
+  metadata?: Record<string, unknown>;
 }
+
+export interface TransactionContext<TState, TAction> {
+  tx: RuntimeTransaction;
+  preState: TState;
+  postState?: TState;
+  appliedActions: TAction[];
+  appliedInverses: TAction[];
+}
+
+export interface TransactionResult<TState> {
+  ok: boolean;
+  state: TState;
+  tx: RuntimeTransaction;
+  error?: { code: string; message: string; actionType?: string };
+}
+
+export const DEFAULT_NESTED_DEPTH_LIMIT = 8;
+
+// ── Transaction Flag ──
+
+export interface TransactionFlag {
+  isActive(): boolean;
+  setActive(v: boolean): void;
+}
+
+export function createTransactionFlag(): TransactionFlag {
+  let active = false;
+  return {
+    isActive: () => active,
+    setActive: (v: boolean) => {
+      active = v;
+    },
+  };
+}
+
+// ── Transaction Manager ──
+
+export type { DispatchResult };
 
 export interface TransactionManagerConfig<
   TState,
@@ -45,6 +77,13 @@ export interface ActiveTransaction<TState, TAction, TContext> {
   preActionStates: TState[];
   appliedInverses: TAction[];
   context: TContext;
+}
+
+let transactionCounter = 0;
+
+function generateTxId(source: TransactionSource): string {
+  transactionCounter++;
+  return `tx-${Date.now()}-${transactionCounter}-${source}`;
 }
 
 export class TransactionManager<
@@ -282,4 +321,87 @@ export class TransactionManager<
       return undefined;
     }
   }
+}
+
+// ── Transaction Middleware ──
+
+export interface TransactionMiddlewareConfig<
+  TState,
+  TAction extends { type: string },
+  TContext extends RuntimeContext,
+> {
+  transactionManager: TransactionManager<TState, TAction, TContext>;
+  transactionFlag: TransactionFlag;
+  registry: ActionRegistry<TAction, TState, TContext>;
+  getContext: () => TContext;
+  getActorId?: () => string | undefined;
+  getHistory: () => HistoryState<TAction>;
+  setHistory: (state: HistoryState<TAction>) => void;
+  markDirty?: (nodeIds: string[]) => void;
+  source?: TransactionSource;
+  shouldExcludeFromHistory?: () => boolean;
+  onAfterCommit?: (state: TState) => void;
+}
+
+export function createTransactionMiddleware<
+  TState,
+  TAction extends { type: string },
+  TContext extends RuntimeContext,
+>(
+  config: TransactionMiddlewareConfig<TState, TAction, TContext>,
+): Middleware<TState, TAction> {
+  const source = config.source ?? ("user" as TransactionSource);
+
+  return (action, state, _next) => {
+    const activeTx = config.transactionManager.getActiveTransaction();
+
+    if (activeTx) {
+      const result = config.transactionManager.applyAction(activeTx, action);
+      if (result.ok) {
+        return { ok: true, state: activeTx.currentState };
+      }
+      return { ok: false, state: activeTx.preState, error: result.error };
+    }
+
+    const context = config.getContext();
+    config.transactionFlag.setActive(true);
+    const tx = config.transactionManager.begin(source, state, context);
+    const result = config.transactionManager.applyAction(tx, action);
+
+    if (!result.ok) {
+      config.transactionFlag.setActive(false);
+      config.transactionManager.rollback(tx);
+      return { ok: false, state, error: result.error };
+    }
+
+    const commitResult = config.transactionManager.commit(tx);
+
+    if (!commitResult.ok) {
+      config.transactionFlag.setActive(false);
+      config.transactionManager.rollback(tx);
+      return { ok: false, state, error: commitResult.error };
+    }
+
+    if (!config.shouldExcludeFromHistory?.()) {
+      const inverses = [...tx.appliedInverses].reverse();
+      if (inverses.length > 0) {
+        const currentHistory = config.getHistory();
+        const actorId = config.getActorId?.() ?? context.actorId;
+        const newHistory = pushUndoTransaction(
+          currentHistory,
+          [action],
+          inverses,
+          context.now(),
+          actorId,
+        );
+        config.setHistory(newHistory);
+      }
+    }
+
+    config.markDirty?.(tx.tx.affectedNodes);
+    config.onAfterCommit?.(commitResult.state);
+
+    config.transactionFlag.setActive(false);
+    return { ok: true, state: commitResult.state };
+  };
 }

@@ -1,5 +1,5 @@
 import { enablePatches, type Patch, setAutoFreeze } from "immer";
-import type { NodeField, SceneStore } from "./scene-store.js";
+import type { NodeField, SceneStore } from "../scene-store.js";
 
 // Enable Immer patches support (required for produceWithPatches)
 enablePatches();

@@ -3,7 +3,7 @@ import {
   createDataInteractionAPI,
   type DataInteractionAPI,
   type SelectionEvent,
-} from "../src/data/interaction.js";
+} from "../src/data/query.js";
 
 describe("DataInteractionAPI", () => {
   let api: DataInteractionAPI;

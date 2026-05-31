@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createInteractionEngine } from "../src/interaction/interaction-engine.js";
+import { createInteractionEngine } from "../src/interaction-engine.js";
 
 describe("InteractionEngine", () => {
   describe("selection state", () => {

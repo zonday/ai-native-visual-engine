@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ActionRegistry } from "../src/engine/action-registry.js";
 import type { DispatchResult } from "../src/engine/command-bus.js";
 import type { RuntimeContext } from "../src/engine/handler.js";
-import { TransactionManager } from "../src/engine/transaction-manager.js";
+import { TransactionManager } from "../src/engine/transaction.js";
 
 interface TestAction {
   type: string;

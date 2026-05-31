@@ -1,5 +1,5 @@
 import type { ActionRegistry } from "../engine/action-registry.js";
-import { TransactionManager } from "../engine/transaction-manager.js";
+import { TransactionManager } from "../engine/transaction.js";
 import type { SceneGraph } from "../types.js";
 import type { RuntimeContext } from "./handler-registry.js";
 import type { RuntimeAction } from "./register-handlers.js";
@@ -16,10 +16,10 @@ export function createRuntimeTransactionManager(
   return new TransactionManager({ registry });
 }
 
-export type { ActiveTransaction } from "../engine/transaction-manager.js";
 export type {
+  ActiveTransaction,
   RuntimeTransaction,
   TransactionContext,
   TransactionResult,
   TransactionSource,
-} from "../engine/transaction-types.js";
+} from "../engine/transaction.js";

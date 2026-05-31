@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { GridItemPosition } from "../src/grid-layout.js";
+import type { GridItemPosition } from "../src/constraints/grid-layout.js";
 import {
   autoLayoutGrid,
   detectCollisions,
   resolveCollisions,
-} from "../src/grid-layout.js";
+} from "../src/constraints/grid-layout.js";
 import { makeScene } from "./helpers.js";
 
 function getItem(positions: GridItemPosition[], id: string): GridItemPosition {
