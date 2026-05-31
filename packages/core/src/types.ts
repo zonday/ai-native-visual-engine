@@ -244,18 +244,20 @@ export const PersistedSceneNodeSchema = SceneNodeSchema.omit({
   })
   .strict();
 
-export const PersistedSceneGraphSchema = z.object({
-  version: z.number(),
-  rootId: z.string(),
-  nodes: z.record(z.string(), PersistedSceneNodeSchema),
-  metadata: z
-    .object({
-      title: z.string().optional(),
-      createdAt: z.number().optional(),
-      updatedAt: z.number().optional(),
-    })
-    .optional(),
-});
+export const PersistedSceneGraphSchema = z
+  .object({
+    version: z.number(),
+    rootId: z.string(),
+    nodes: z.record(z.string(), PersistedSceneNodeSchema),
+    metadata: z
+      .object({
+        title: z.string().optional(),
+        createdAt: z.number().optional(),
+        updatedAt: z.number().optional(),
+      })
+      .optional(),
+  })
+  .strict();
 
 export const SelectionStateSchema = z.object({
   nodeIds: z.array(z.string()),
