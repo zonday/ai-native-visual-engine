@@ -7,7 +7,7 @@ function nonNull<T>(value: T): NonNullable<T> {
 }
 
 import { createEmptyScene, createNewDocument } from "../src/bootstrap.js";
-import { exportDocument } from "../src/io/import-export.js";
+import { exportDocumentSnapshot } from "../src/io/import-export.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
 import { openDocumentSession } from "../src/session.js";
@@ -266,7 +266,7 @@ describe("batch actions via command bus", () => {
 describe("exportDocument with fixtures", () => {
   it("exports single page without selection overlays", () => {
     const doc = createNewDocument({ title: "Export" });
-    const exported = exportDocument(doc);
+    const exported = exportDocumentSnapshot(doc);
     const parsed = DocumentSnapshotSchema.safeParse(exported);
     expect(parsed.success).toBe(true);
   });
@@ -277,7 +277,9 @@ describe("exportDocument with fixtures", () => {
     doc.scenes["scene-2"] = createEmptyScene();
 
     const exportedId = nonNull(doc.pages[0]).id;
-    const exported = exportDocument(doc, { targetPageIds: [exportedId] });
+    const exported = exportDocumentSnapshot(doc, {
+      targetPageIds: [exportedId],
+    });
     expect(exported.document.pages).toHaveLength(1);
   });
 });

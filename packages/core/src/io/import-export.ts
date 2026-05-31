@@ -13,7 +13,7 @@ export interface ExportOptions {
   includeAssets?: boolean;
 }
 
-export function importDocument(data: unknown): ImportResult {
+export function importDocumentSnapshot(data: unknown): ImportResult {
   const diagnostics: string[] = [];
   const parsed = DocumentSnapshotSchema.safeParse(data);
 
@@ -31,7 +31,7 @@ export function importDocument(data: unknown): ImportResult {
   };
 }
 
-export function exportDocument(
+export function exportDocumentSnapshot(
   document: VisualDocument,
   options?: ExportOptions,
 ): DocumentSnapshot {

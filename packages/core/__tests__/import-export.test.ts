@@ -1,52 +1,55 @@
 import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import { exportDocument, importDocument } from "../src/io/import-export.js";
+import {
+  exportDocumentSnapshot,
+  importDocumentSnapshot,
+} from "../src/io/import-export.js";
 
 function nonNull<T>(value: T): NonNullable<T> {
   return value as NonNullable<T>;
 }
 
-describe("importDocument", () => {
+describe("importDocumentSnapshot", () => {
   it("imports a valid DocumentSnapshot", () => {
     const doc = createNewDocument({ title: "Imported" });
-    const result = importDocument({ document: doc });
+    const result = importDocumentSnapshot({ document: doc });
     expect(result.ok).toBe(true);
     expect(result.document?.title).toBe("Imported");
   });
 
   it("round-trips an exported snapshot", () => {
     const doc = createNewDocument({ title: "Round Trip" });
-    const snapshot = exportDocument(doc);
+    const snapshot = exportDocumentSnapshot(doc);
 
-    const result = importDocument(snapshot);
+    const result = importDocumentSnapshot(snapshot);
 
     expect(result.ok).toBe(true);
     expect(result.document).toEqual(snapshot.document);
   });
 
   it("rejects invalid data with diagnostics", () => {
-    const result = importDocument({ foo: "bar" });
+    const result = importDocumentSnapshot({ foo: "bar" });
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
   it("rejects malformed snapshot envelopes", () => {
-    const result = importDocument({ document: { foo: "bar" } });
+    const result = importDocumentSnapshot({ document: { foo: "bar" } });
 
     expect(result.ok).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
   it("rejects null", () => {
-    const result = importDocument(null);
+    const result = importDocumentSnapshot(null);
     expect(result.ok).toBe(false);
   });
 });
 
-describe("exportDocument", () => {
+describe("exportDocumentSnapshot", () => {
   it("exports the full document by default", () => {
     const doc = createNewDocument({ title: "Export" });
-    const exported = exportDocument(doc);
+    const exported = exportDocumentSnapshot(doc);
     expect(exported.document.pages).toHaveLength(1);
     expect(exported.document.id).toBe(doc.id);
   });
@@ -65,14 +68,16 @@ describe("exportDocument", () => {
     };
 
     const firstPageId = nonNull(doc.pages[0]).id;
-    const exported = exportDocument(doc, { targetPageIds: [firstPageId] });
+    const exported = exportDocumentSnapshot(doc, {
+      targetPageIds: [firstPageId],
+    });
     expect(exported.document.pages).toHaveLength(1);
     expect(exported.document.pages[0]?.id).toBe(firstPageId);
   });
 
   it("strips activeThemeId when includeThemes is false", () => {
     const doc = createNewDocument({ themeId: "dark" });
-    const exported = exportDocument(doc, { includeThemes: false });
+    const exported = exportDocumentSnapshot(doc, { includeThemes: false });
     expect(exported.document.activeThemeId).toBeUndefined();
   });
 });
