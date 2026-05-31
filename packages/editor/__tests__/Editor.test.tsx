@@ -1,11 +1,6 @@
 // @vitest-environment happy-dom
 
-import type {
-  ComputedStore,
-  SceneNode,
-  Scheduler,
-  VisualDocument,
-} from "@ai-native/core";
+import type { ComputedStore, Scheduler, VisualDocument } from "@ai-native/core";
 import { createInteractionEngine, createSceneStore } from "@ai-native/core";
 import type { ComponentRegistry } from "@ai-native/renderer-react";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -44,10 +39,10 @@ const baseContext = {
 };
 
 function createDocument(): VisualDocument {
-  const scene = {
+  const scene: VisualDocument["scenes"][string] = {
     version: 0,
     rootId: "root",
-    nodes: {} as Record<string, SceneNode>,
+    nodes: {},
   };
   return {
     id: "doc-1",
