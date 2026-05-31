@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createNewDocument } from "../src/bootstrap.js";
-import { loadDocument, openDocumentFromSnapshot } from "../src/session.js";
+import {
+  loadDocument,
+  openDocumentFromSnapshot,
+  SessionError,
+} from "../src/session.js";
 import type { DocumentSnapshot } from "../src/types.js";
 
 describe("loadDocument", () => {
@@ -61,5 +65,20 @@ describe("openDocumentFromSnapshot", () => {
       document: { invalid: true },
     } as unknown as DocumentSnapshot;
     expect(() => openDocumentFromSnapshot(snapshot)).toThrow();
+  });
+
+  it("throws session.load-failed for an invalid snapshot envelope", () => {
+    try {
+      openDocumentFromSnapshot({ foo: "bar" } as unknown as DocumentSnapshot);
+    } catch (error) {
+      expect(error).toBeInstanceOf(SessionError);
+      expect((error as SessionError).code).toBe("session.load-failed");
+      expect((error as SessionError).message).toContain(
+        "validation.document-snapshot-mismatch",
+      );
+      return;
+    }
+
+    throw new Error("Expected openDocumentFromSnapshot to throw");
   });
 });
