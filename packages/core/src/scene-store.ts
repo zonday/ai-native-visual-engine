@@ -25,6 +25,12 @@ import type {
 //
 // Contract: callers mutate scene data directly, then call
 // invalidate() to notify the registry.
+//
+// Public API note:
+//   • SceneQueries are safe read APIs for consumers.
+//   • SceneSyncControls are coordination APIs intended for engine/editor glue.
+//   • SceneReactiveControls are low-level reactive/runtime helpers and should
+//     generally stay inside infrastructure code.
 
 const MAX_CACHED_SELECTORS = 5000;
 
@@ -94,11 +100,20 @@ interface SceneSyncControls {
 
 interface SceneReactiveControls {
   batch<T>(fn: () => T): T;
+
+  // Flushes pending reactive effects in the underlying scope. Most app-level
+  // callers should not need this directly.
   flush(): void;
 
   // Internal cache management hook used by tests and low-level engine code.
   removeSelector(type: string, key: string): boolean;
+
+  // Low-level reactive autorun helper. Prefer higher-level engine/editor state
+  // subscriptions unless you specifically need selector dependency tracking.
   autorun(fn: () => void): () => void;
+
+  // Lifecycle hook for infrastructure that needs to dispose dependent caches
+  // before a scene swap clears selector internals.
   onBeforeDispose(cb: () => void): () => void;
 }
 
