@@ -186,6 +186,21 @@ describe("SelectorRegistry", () => {
       expect(descendants).toHaveLength(2);
       expect(descendants.includes("a1")).toBe(false);
     });
+
+    it("returns empty when a previously cached subtree node is removed", () => {
+      const scene = makeScene();
+      const sel = createSceneStore(scene);
+
+      expect(sel.getDescendants("a")).toEqual(["a1"]);
+
+      delete scene.nodes.a;
+      delete scene.nodes.a1;
+      const root = assertNode(scene.nodes.root, "root");
+      root.children = ["b"];
+      sel.applyPatch({ type: "remove-node", nodeId: "a" });
+
+      expect(sel.getDescendants("a")).toEqual([]);
+    });
   });
 
   describe("getSiblings", () => {
@@ -829,6 +844,19 @@ describe("SelectorRegistry", () => {
       const sel = createSceneStore(makeScene());
       expect(sel.getNodeLayout("nonexistent")).toBeUndefined();
     });
+
+    it("returns a detached layout object", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.layout = { x: 100, y: 200 };
+      const sel = createSceneStore(scene);
+
+      const layout = sel.getNodeLayout("a");
+      if (!layout) throw new Error("Expected layout");
+      (layout as Record<string, unknown>).x = 300;
+
+      expect((scene.nodes.a?.layout as Record<string, unknown>)?.x).toBe(100);
+    });
   });
 
   describe("getNodeProps", () => {
@@ -843,6 +871,51 @@ describe("SelectorRegistry", () => {
     it("returns undefined for node with no props", () => {
       const sel = createSceneStore(makeScene());
       expect(sel.getNodeProps("nonexistent")).toBeUndefined();
+    });
+
+    it("returns a detached props object", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.props = { text: "hello" };
+      const sel = createSceneStore(scene);
+
+      const props = sel.getNodeProps("a");
+      if (!props) throw new Error("Expected props");
+      (props as Record<string, unknown>).text = "changed";
+
+      expect((scene.nodes.a?.props as Record<string, unknown>)?.text).toBe(
+        "hello",
+      );
+    });
+  });
+
+  describe("defensive query copies", () => {
+    it("getStyle returns a detached style object", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.style = { color: "red" };
+      const sel = createSceneStore(scene);
+
+      const style = sel.getStyle("a");
+      (style as Record<string, unknown>).color = "blue";
+
+      expect((scene.nodes.a?.style as Record<string, unknown>)?.color).toBe(
+        "red",
+      );
+    });
+
+    it("getBindings returns a detached bindings array", () => {
+      const scene = makeScene();
+      const a = assertNode(scene.nodes.a, "a");
+      a.bindings = [{ key: "value", source: "dataset:sales" }];
+      const sel = createSceneStore(scene);
+
+      const bindings = sel.getBindings("a") as Binding[];
+      bindings.push({ key: "next", source: "variable:title" });
+
+      expect(scene.nodes.a?.bindings).toEqual([
+        { key: "value", source: "dataset:sales" },
+      ]);
     });
   });
 

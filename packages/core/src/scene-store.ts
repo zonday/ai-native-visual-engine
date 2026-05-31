@@ -43,7 +43,7 @@ interface SelectorNode<T = unknown> {
   dispose(): void;
 }
 
-export interface SceneStore {
+interface SceneQueries {
   getScene(): SceneGraph;
   hasNode(nodeId: NodeId): boolean;
   getNode(nodeId: NodeId): SceneNode | undefined;
@@ -57,28 +57,55 @@ export interface SceneStore {
   getDepth(nodeId: NodeId): number;
   isDescendantOf(nodeId: NodeId, ancestorId: NodeId): boolean;
   getVisibleNodes(): SceneNode[];
-  getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodeLayout(nodeId: NodeId): Readonly<Record<string, unknown>> | undefined;
   getNodeLayoutKey(nodeId: NodeId, key: string): unknown;
-  getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined;
+  getNodeProps(nodeId: NodeId): Readonly<Record<string, unknown>> | undefined;
   getNodePropsKey(nodeId: NodeId, key: string): unknown;
   getNodeVisibility(nodeId: NodeId): boolean | undefined;
   isLocked(nodeId: NodeId): boolean;
   getBindings(nodeId: NodeId): readonly Binding[];
-  getStyle(nodeId: NodeId): Record<string, unknown>;
+  getStyle(nodeId: NodeId): Readonly<Record<string, unknown>>;
   findNodes(predicate: (node: SceneNode) => boolean): SceneNode[];
+  getVersion(): number;
+}
+
+interface SceneSyncControls {
   invalidate(nodeId: NodeId, field?: NodeField): void;
   invalidateAll(): void;
+
+  // Apply a precomputed patch when the caller already knows the exact field
+  // or structural change that occurred.
   applyPatch(patch: ScenePatch): void;
+
+  // Replace the scene wholesale, disposing selector caches that belong to the
+  // previous scene graph. Use this for destructive scene swaps like page
+  // changes or full resynchronization.
   sync(newScene: SceneGraph): void;
+
+  // Update the current scene in place. When patches are provided, this uses
+  // incremental invalidation; otherwise it falls back to diffing old/new scene
+  // nodes conservatively.
   setScene(newScene: SceneGraph, patches?: readonly ScenePatch[]): void;
-  getVersion(): number;
+
+  // Convenience helper for local transactional edits that need Immer patches
+  // routed back into the store's invalidation system.
+  commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void;
+}
+
+interface SceneReactiveControls {
   batch<T>(fn: () => T): T;
   flush(): void;
+
+  // Internal cache management hook used by tests and low-level engine code.
   removeSelector(type: string, key: string): boolean;
-  commitScene(recipe: (draft: DeepMutable<SceneGraph>) => void): void;
   autorun(fn: () => void): () => void;
   onBeforeDispose(cb: () => void): () => void;
 }
+
+export interface SceneStore
+  extends SceneQueries,
+    SceneSyncControls,
+    SceneReactiveControls {}
 
 type SelectorType =
   | "children"
@@ -618,10 +645,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
         ensureTreeIndex();
         treeIndexSignal();
         const version = trackSubtree(nodeId);
+        const entry = treeIndex.get(nodeId);
+        if (!entry) {
+          descResultCache.delete(nodeId);
+          return [];
+        }
         const cached = descResultCache.get(nodeId);
         if (cached && cached.version === version) return cached.ids;
-        const entry = treeIndex.get(nodeId);
-        if (!entry) return [];
         const ids = flattenedNodes.slice(
           entry.preorder + 1,
           entry.preorder + entry.subtreeSize,
@@ -704,10 +734,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
       }).get();
     },
 
-    getNodeLayout(nodeId: NodeId): Record<string, unknown> | undefined {
+    getNodeLayout(
+      nodeId: NodeId,
+    ): Readonly<Record<string, unknown>> | undefined {
       return getCached("nodeLayout", nodeId, () => {
         trackLayout(nodeId);
-        return currentScene.nodes[nodeId]?.layout;
+        const layout = currentScene.nodes[nodeId]?.layout;
+        return layout ? { ...layout } : undefined;
       }).get();
     },
 
@@ -722,10 +755,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
       }).get();
     },
 
-    getNodeProps(nodeId: NodeId): Record<string, unknown> | undefined {
+    getNodeProps(
+      nodeId: NodeId,
+    ): Readonly<Record<string, unknown>> | undefined {
       return getCached("nodeProps", nodeId, () => {
         trackProps(nodeId);
-        return currentScene.nodes[nodeId]?.props;
+        const props = currentScene.nodes[nodeId]?.props;
+        return props ? { ...props } : undefined;
       }).get();
     },
 
@@ -754,13 +790,13 @@ export function createSceneStore(scene: Readonly<SceneGraph>): SceneStore {
     getBindings(nodeId: NodeId): readonly Binding[] {
       trackBindings(nodeId);
       const node = currentScene.nodes[nodeId];
-      return (node?.bindings ?? []) as readonly Binding[];
+      return node?.bindings ? [...node.bindings] : [];
     },
 
-    getStyle(nodeId: NodeId): Record<string, unknown> {
+    getStyle(nodeId: NodeId): Readonly<Record<string, unknown>> {
       trackStyle(nodeId);
       const node = currentScene.nodes[nodeId];
-      return (node?.style ?? {}) as Record<string, unknown>;
+      return node?.style ? { ...node.style } : {};
     },
 
     findNodes(predicate: (node: SceneNode) => boolean): SceneNode[] {
