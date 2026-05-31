@@ -1,8 +1,5 @@
 import { enablePatches, type Patch, setAutoFreeze } from "immer";
-import type {
-  NodeField,
-  SelectorRegistry,
-} from "./selector/selector-registry.js";
+import type { NodeField, SceneStore } from "./scene-store.js";
 
 // Enable Immer patches support (required for produceWithPatches)
 enablePatches();
@@ -30,7 +27,7 @@ const FIELD_MAP: Record<string, NodeField> = {
  */
 export function routeImmerPatches(
   patches: readonly Patch[],
-  registry: SelectorRegistry,
+  registry: SceneStore,
 ): void {
   for (const patch of patches) {
     const [scope, id, field, ...rest] = patch.path.map(String);

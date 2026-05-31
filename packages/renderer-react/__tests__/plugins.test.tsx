@@ -1,8 +1,4 @@
-import type {
-  ComputedStateEngine,
-  SceneNode,
-  Scheduler,
-} from "@ai-native/core";
+import type { ComputedStore, SceneNode, Scheduler } from "@ai-native/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ChartNode } from "../src/components/chart.jsx";
@@ -24,7 +20,7 @@ const mockEngine = {
   getLocalTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
   invalidate: () => {},
   invalidateAll: () => {},
-} as ComputedStateEngine;
+} as ComputedStore;
 
 const mockScheduler = {
   markDirty: () => {},

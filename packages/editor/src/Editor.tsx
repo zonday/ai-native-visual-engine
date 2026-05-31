@@ -2,7 +2,7 @@ import type {
   DocumentAction,
   InteractionEngine,
   RuntimeAction,
-  SelectorRegistry,
+  SceneStore,
   ViewportState,
   VisualDocument,
 } from "@ai-native/core";
@@ -23,7 +23,7 @@ export interface EditorProps {
   document: VisualDocument;
   registry: ComponentRegistry;
   context: RenderContext;
-  selectorRegistry?: SelectorRegistry;
+  selectorRegistry?: SceneStore;
   interactionEngine?: InteractionEngine;
   onTransform?: (event: TransformEvent) => void;
   onUpdateProps?: (nodeId: string, props: Record<string, unknown>) => void;

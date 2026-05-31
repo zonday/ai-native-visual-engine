@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createHistoryState } from "../src/engine/history.js";
-import { createEngineFacade } from "../src/engine-api.js";
+import { createEngine } from "../src/engine-api.js";
 import type { RuntimeAction } from "../src/runtime/register-handlers.js";
 
 const createRuntimeHistoryState = createHistoryState<RuntimeAction>;
@@ -10,10 +10,10 @@ import type { RuntimeContext } from "../src/engine/handler.js";
 import { createUndoHistoryMiddleware } from "../src/engine/history-middleware.js";
 import { createRuntimeRegistry } from "../src/runtime/register-handlers.js";
 import { createRuntimeCommandBus } from "../src/runtime/runtime-command-bus.js";
-import type { PageId, SceneGraph } from "../src/types.js";
+import type { SceneGraph } from "../src/types.js";
 import { makeScene } from "./helpers.js";
 
-describe("createEngineFacade", () => {
+describe("createEngine", () => {
   function setup(
     customScene?: SceneGraph,
     opts?: { withTx?: boolean; withHistory?: boolean },
@@ -61,9 +61,8 @@ describe("createEngineFacade", () => {
     const bus = createRuntimeCommandBus(runtimeReg, middlewares, scene, {
       now: Date.now,
     });
-    const api = createEngineFacade(
+    const api = createEngine(
       () => bus.getScene(),
-      () => "page-1" as PageId,
       bus,
       () => history,
       opts?.withHistory
@@ -78,88 +77,90 @@ describe("createEngineFacade", () => {
   }
 
   // NodeQuery
-  it("query.node.get returns existing node", () => {
-    expect(setup().api.query.node.get("a")?.type).toBe("text");
+  it("selector.getNode returns existing node", () => {
+    expect(setup().api.selector.getNode("a")?.type).toBe("text");
   });
 
-  it("query.node.get returns undefined for missing node", () => {
-    expect(setup().api.query.node.get("missing")).toBeUndefined();
+  it("selector.getNode returns undefined for missing node", () => {
+    expect(setup().api.selector.getNode("missing")).toBeUndefined();
   });
 
-  it("query.node.getParent returns parent", () => {
-    expect(setup().api.query.node.getParent("a")?.id).toBe("root");
+  it("selector.getParent returns parent", () => {
+    expect(setup().api.selector.getParent("a")?.id).toBe("root");
   });
 
-  it("query.node.getChildren returns children array", () => {
+  it("selector.getChildren returns children array", () => {
     expect(
       setup()
-        .api.query.node.getChildren("root")
+        .api.selector.getChildren("root")
         .map((n) => n.id),
     ).toEqual(["a", "b"]);
   });
 
-  it("query.node.getChildren returns empty for leaf", () => {
-    expect(setup().api.query.node.getChildren("a")).toEqual([]);
+  it("selector.getChildren returns empty for leaf", () => {
+    expect(setup().api.selector.getChildren("a")).toEqual([]);
   });
 
-  it("query.node.getProps returns props or empty object", () => {
-    expect(setup().api.query.node.getProps("a")).toEqual({ text: "hello" });
-    expect(setup().api.query.node.getProps("root")).toEqual({});
+  it("selector.getNodeProps returns props or undefined", () => {
+    expect(setup().api.selector.getNodeProps("a")).toEqual({
+      text: "hello",
+    });
+    expect(setup().api.selector.getNodeProps("root")).toBeUndefined();
   });
 
-  it("query.node.getLayout returns layout", () => {
-    expect(setup().api.query.node.getLayout("a")).toBeDefined();
+  it("selector.getNodeLayout returns layout", () => {
+    expect(setup().api.selector.getNodeLayout("a")).toBeDefined();
   });
 
-  it("query.node.getBindings returns bindings or empty array", () => {
-    expect(setup().api.query.node.getBindings("a")).toHaveLength(1);
-    expect(setup().api.query.node.getBindings("root")).toEqual([]);
+  it("selector.getBindings returns bindings or empty array", () => {
+    expect(setup().api.selector.getBindings("a")).toHaveLength(1);
+    expect(setup().api.selector.getBindings("root")).toEqual([]);
   });
 
-  it("query.node.getStyle returns style or empty object", () => {
-    expect(setup().api.query.node.getStyle("a")).toEqual({ color: "red" });
-    expect(setup().api.query.node.getStyle("root")).toEqual({});
+  it("selector.getStyle returns style or empty object", () => {
+    expect(setup().api.selector.getStyle("a")).toEqual({ color: "red" });
+    expect(setup().api.selector.getStyle("root")).toEqual({});
   });
 
-  it("query.node.isVisible returns false for hidden node", () => {
-    expect(setup().api.query.node.isVisible("b")).toBe(false);
+  it("selector.getNodeVisibility returns false for hidden node", () => {
+    expect(setup().api.selector.getNodeVisibility("b")).toBe(false);
   });
 
-  it("query.node.isLocked returns true for locked node", () => {
-    expect(setup().api.query.node.isLocked("b")).toBe(true);
+  it("selector.isLocked returns true for locked node", () => {
+    expect(setup().api.selector.isLocked("b")).toBe(true);
   });
 
-  it("query.node.exists checks node presence", () => {
-    expect(setup().api.query.node.exists("root")).toBe(true);
-    expect(setup().api.query.node.exists("missing")).toBe(false);
+  it("selector.getNode checks node presence", () => {
+    expect(setup().api.selector.getNode("root")).toBeDefined();
+    expect(setup().api.selector.getNode("missing")).toBeUndefined();
   });
 
   // SceneQuery
-  it("query.scene returns root, page, version, all nodes", () => {
+  it("selector returns root, version, all nodes", () => {
     const { api } = setup();
-    expect(api.query.scene.getRoot().id).toBe("root");
-    expect(api.query.scene.getActivePageId()).toBe("page-1");
-    expect(api.query.scene.getSceneVersion()).toBe(0);
-    expect(api.query.scene.getAllNodes()).toHaveLength(3);
+    expect(api.selector.getRoot().id).toBe("root");
+    expect(api.selector.getVersion()).toBe(0);
+    expect(api.selector.getAllNodes()).toHaveLength(3);
   });
 
-  it("query.scene.findNodes and findNodeByType filter correctly", () => {
+  it("selector.findNodes filters correctly", () => {
     const { api } = setup();
-    expect(api.query.scene.findNodes((n) => n.type === "text")).toHaveLength(2);
-    expect(api.query.scene.findNodeByType("text")).toHaveLength(2);
+    expect(api.selector.findNodes((n) => n.type === "text")).toHaveLength(2);
   });
 
   // SelectionQuery (read-only)
-  it("query.selection reads current selection", () => {
+  it("selector reads current selection from scene", () => {
     const { api } = setup();
-    expect(api.query.selection.getSelection()).toEqual([]);
-    expect(api.query.selection.isSelected("a")).toBe(false);
+    expect(api.selector.getScene().selection?.nodeIds ?? []).toEqual([]);
+    expect(
+      api.selector.getScene().selection?.nodeIds.includes("a") === true,
+    ).toBe(false);
   });
 
   // CommandService
-  it("command.dispatch creates node", () => {
+  it("command creates node", () => {
     const { api, bus } = setup();
-    const result = api.command.dispatch({
+    const result = api.command({
       type: "create-node",
       node: { id: "c", type: "text" },
       parentId: "root",
@@ -168,15 +169,15 @@ describe("createEngineFacade", () => {
     expect(bus.getScene().nodes.c).toBeDefined();
   });
 
-  it("command.dispatch removes node", () => {
+  it("command removes node", () => {
     const { api, bus } = setup();
-    const result = api.command.dispatch({ type: "remove-node", nodeId: "a" });
+    const result = api.command({ type: "remove-node", nodeId: "a" });
     expect(result.ok).toBe(true);
     expect(bus.getScene().nodes.a).toBeUndefined();
   });
 
-  it("command.dispatch rejects create-node with invalid parent", () => {
-    const result = setup().api.command.dispatch({
+  it("command rejects create-node with invalid parent", () => {
+    const result = setup().api.command({
       type: "create-node",
       node: { id: "x", type: "text" },
       parentId: "missing",
@@ -185,8 +186,8 @@ describe("createEngineFacade", () => {
     expect(result.error?.code).toBe("scene.invalid-parent");
   });
 
-  it("command.dispatch rejects remove-node on locked node", () => {
-    const result = setup().api.command.dispatch({
+  it("command rejects remove-node on locked node", () => {
+    const result = setup().api.command({
       type: "remove-node",
       nodeId: "b",
     });
@@ -194,17 +195,17 @@ describe("createEngineFacade", () => {
     expect(result.error?.code).toBe("scene.locked");
   });
 
-  it("command.dispatch rejects with missing node for update actions", () => {
+  it("command rejects with missing node for update actions", () => {
     const { api } = setup();
     expect(
-      api.command.dispatch({
+      api.command({
         type: "move-node",
         nodeId: "missing",
         parentId: "root",
       }).ok,
     ).toBe(false);
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-layout",
         nodeId: "missing",
         layout: {},
@@ -212,10 +213,10 @@ describe("createEngineFacade", () => {
     ).toBe(false);
   });
 
-  it("command.dispatch move-node, update-layout, update-props work", () => {
+  it("command move-node, update-layout, update-props work", () => {
     const { api } = setup();
     expect(
-      api.command.dispatch({
+      api.command({
         type: "move-node",
         nodeId: "a",
         parentId: "root",
@@ -223,14 +224,14 @@ describe("createEngineFacade", () => {
       }).ok,
     ).toBe(true);
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-layout",
         nodeId: "a",
         layout: { x: 100 },
       }).ok,
     ).toBe(true);
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-props",
         nodeId: "a",
         props: { text: "updated" },
@@ -238,39 +239,38 @@ describe("createEngineFacade", () => {
     ).toBe(true);
   });
 
-  it("command.dispatch update-style, update-bindings, update-runtime, rotate-node work", () => {
+  it("command update-style, update-bindings, update-runtime, rotate-node work", () => {
     const { api } = setup();
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-style",
         nodeId: "a",
         style: { color: "blue" },
       }).ok,
     ).toBe(true);
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-bindings",
         nodeId: "a",
         bindings: [],
       }).ok,
     ).toBe(true);
     expect(
-      api.command.dispatch({
+      api.command({
         type: "update-runtime",
         nodeId: "a",
         runtime: { loading: true },
       }).ok,
     ).toBe(true);
     expect(
-      api.command.dispatch({ type: "rotate-node", nodeId: "a", rotation: 45 })
-        .ok,
+      api.command({ type: "rotate-node", nodeId: "a", rotation: 45 }).ok,
     ).toBe(true);
   });
 
-  // selection mutation through command.dispatch
-  it("command.dispatch updates selection", () => {
+  // selection mutation through scene.command
+  it("command updates selection", () => {
     const { api, bus } = setup();
-    const result = api.command.dispatch({
+    const result = api.command({
       type: "update-selection",
       nodeIds: ["a", "b"],
     });
@@ -279,13 +279,13 @@ describe("createEngineFacade", () => {
   });
 
   // EventBus
-  it("events.subscribeToScene fires on dispatch", async () => {
+  it("events.on('scene') fires on dispatch", async () => {
     const { api } = setup();
     let fired = false;
-    api.events.subscribeToScene(() => {
+    api.events.on("scene", () => {
       fired = true;
     });
-    api.command.dispatch({
+    api.command({
       type: "update-props",
       nodeId: "a",
       props: { x: 1 },
@@ -294,13 +294,13 @@ describe("createEngineFacade", () => {
     expect(fired).toBe(true);
   });
 
-  it("events.subscribeToSelection fires on selection change", async () => {
+  it("events.on('selection') fires on selection change", async () => {
     const { api } = setup();
     let fired = false;
-    api.events.subscribeToSelection(() => {
+    api.events.on("selection", () => {
       fired = true;
     });
-    api.command.dispatch({
+    api.command({
       type: "update-selection",
       nodeIds: ["a"],
     });
@@ -308,46 +308,74 @@ describe("createEngineFacade", () => {
     expect(fired).toBe(true);
   });
 
-  it("subscribe returns unsubscribe function", () => {
+  it("events.on returns unsubscribe function", () => {
     const { api } = setup();
-    const unsub = api.events.subscribeToScene(() => {});
+    const unsub = api.events.on("scene", () => {});
     expect(typeof unsub).toBe("function");
     unsub();
   });
 
-  // StateService
-  it("states.setState activates state via command bus", () => {
+  // StateService — replaced with manual update-runtime dispatch
+  it("update-runtime sets activeStates via scene.command", () => {
     const { api, bus } = setup();
-    const result = api.states.setState("a", "hovered");
+    const result = api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: ["hovered"] },
+    });
     expect(result.ok).toBe(true);
     const rt = bus.getScene().nodes.a?.runtime as Record<string, unknown>;
     expect(rt.activeStates).toContain("hovered");
   });
 
-  it("states.clearState deactivates a state", () => {
+  it("update-runtime clears activeStates via scene.command", () => {
     const { api, bus } = setup();
-    api.states.setState("a", "hovered");
-    api.states.clearState("a", "hovered");
+    api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: ["hovered"] },
+    });
+    api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: [] },
+    });
     const rt = bus.getScene().nodes.a?.runtime as Record<string, unknown>;
     expect(rt.activeStates).not.toContain("hovered");
   });
 
-  it("states.getActiveStates returns active states", () => {
-    const { api } = setup();
-    api.states.setState("a", "active");
-    expect(api.states.getActiveStates("a")).toContain("active");
+  it("runtime activeStates contains expected states after update-runtime", () => {
+    const { api, bus } = setup();
+    api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: ["active"] },
+    });
+    const rt = bus.getScene().nodes.a?.runtime as Record<string, unknown>;
+    const activeStates = (
+      Array.isArray(rt?.activeStates) ? rt.activeStates : []
+    ) as string[];
+    expect(activeStates).toContain("active");
   });
 
-  it("states.setState returns CommandResult, not void", () => {
+  it("command returns CommandResult, not void", () => {
     const { api } = setup();
-    const result = api.states.setState("a", "hovered");
+    const result = api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: ["hovered"] },
+    });
     expect(result).toHaveProperty("ok");
     expect(result.ok).toBe(true);
   });
 
-  it("states.setState returns error for missing node", () => {
+  it("command returns error for missing node via update-runtime", () => {
     const { api } = setup();
-    const result = api.states.setState("missing", "hovered");
+    const result = api.command({
+      type: "update-runtime",
+      nodeId: "missing",
+      runtime: { activeStates: ["hovered"] },
+    });
     expect(result.ok).toBe(false);
   });
 
@@ -372,7 +400,7 @@ describe("createEngineFacade", () => {
   it("history.undo reverses a dispatched action", () => {
     const { api, bus } = setup(undefined, { withHistory: true });
 
-    api.command.dispatch({
+    api.command({
       type: "create-node",
       node: { id: "c", type: "text" },
       parentId: "root",
@@ -387,7 +415,7 @@ describe("createEngineFacade", () => {
   it("history.undo then redo round-trips correctly", () => {
     const { api, bus } = setup(undefined, { withHistory: true });
 
-    api.command.dispatch({
+    api.command({
       type: "create-node",
       node: { id: "c", type: "text" },
       parentId: "root",
@@ -406,16 +434,25 @@ describe("createEngineFacade", () => {
   });
 
   // Edge cases
-  it("query.node.isVisible returns false for missing node", () => {
-    expect(setup().api.query.node.isVisible("missing")).toBe(false);
+  it("selector.getNodeVisibility returns undefined for missing node", () => {
+    expect(setup().api.selector.getNodeVisibility("missing")).toBeUndefined();
   });
 
-  it("query.node.getChildren returns empty array for missing node", () => {
-    expect(setup().api.query.node.getChildren("missing")).toEqual([]);
+  it("selector.getChildren returns empty array for missing node", () => {
+    expect(setup().api.selector.getChildren("missing")).toEqual([]);
   });
 
-  it("states.getActiveStates returns empty array for missing node", () => {
-    expect(setup().api.states.getActiveStates("missing")).toEqual([]);
+  it("runtime activeStates returns empty array for missing node", () => {
+    const { api } = setup();
+    const node = api.selector.getNode("missing");
+    const activeStates = (
+      Array.isArray(
+        (node?.runtime as Record<string, unknown> | undefined)?.activeStates,
+      )
+        ? (node!.runtime as Record<string, unknown>).activeStates
+        : []
+    ) as string[];
+    expect(activeStates).toEqual([]);
   });
 
   // TransactionService
@@ -464,11 +501,31 @@ describe("createEngineFacade", () => {
     );
   });
 
-  // StateService — setExclusive O(1)
-  it("states.setExclusive clears previous holder via group index", () => {
+  // setExclusive — now using batch-actions with update-runtime
+  it("batch-actions clears previous group holder", () => {
     const { api, bus } = setup();
-    api.states.setExclusive("a", "active", "group1");
-    api.states.setExclusive("b", "active", "group1");
+    // First activate state on "a"
+    api.command({
+      type: "update-runtime",
+      nodeId: "a",
+      runtime: { activeStates: ["active"] },
+    });
+    // Then batch to clear "a" and set "b"
+    api.command({
+      type: "batch-actions",
+      actions: [
+        {
+          type: "update-runtime",
+          nodeId: "a",
+          runtime: { activeStates: [] },
+        },
+        {
+          type: "update-runtime",
+          nodeId: "b",
+          runtime: { activeStates: ["active"] },
+        },
+      ],
+    });
 
     const rtA = bus.getScene().nodes.a?.runtime as Record<string, unknown>;
     const rtB = bus.getScene().nodes.b?.runtime as Record<string, unknown>;
@@ -477,14 +534,14 @@ describe("createEngineFacade", () => {
   });
 
   // EventBus unsubscribe
-  it("events.subscribeToScene stops after unsubscribe", async () => {
+  it("events.on('scene') stops after unsubscribe", async () => {
     const { api } = setup();
     let count = 0;
-    const unsub = api.events.subscribeToScene(() => {
+    const unsub = api.events.on("scene", () => {
       count++;
     });
     unsub();
-    api.command.dispatch({
+    api.command({
       type: "update-props",
       nodeId: "a",
       props: { x: 1 },

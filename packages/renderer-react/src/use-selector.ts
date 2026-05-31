@@ -1,15 +1,15 @@
-import type { EngineFacade, NodeId, SceneNode } from "@ai-native/core";
+import type { Engine, NodeId, SceneNode } from "@ai-native/core";
 import { useCallback, useSyncExternalStore } from "react";
 
 function subscribeEngine(
-  engine: EngineFacade,
+  engine: Engine,
   onStoreChange: () => void,
 ): () => void {
-  return engine.selector.autorun(() => onStoreChange());
+  return engine.events.on("scene", () => onStoreChange());
 }
 
 export function useNode(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): Readonly<SceneNode> | undefined {
   const subscribe = useCallback(
@@ -24,7 +24,7 @@ export function useNode(
 }
 
 export function useNodeProps(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): Readonly<Record<string, unknown>> {
   const subscribe = useCallback(
@@ -39,7 +39,7 @@ export function useNodeProps(
 }
 
 export function useNodeLayout(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): Record<string, unknown> | undefined {
   const subscribe = useCallback(
@@ -54,7 +54,7 @@ export function useNodeLayout(
 }
 
 export function useNodeVisibility(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): boolean | undefined {
   const subscribe = useCallback(
@@ -69,7 +69,7 @@ export function useNodeVisibility(
 }
 
 export function useChildren(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): readonly Readonly<SceneNode>[] {
   const subscribe = useCallback(
@@ -84,7 +84,7 @@ export function useChildren(
 }
 
 export function useParent(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): Readonly<SceneNode> | undefined {
   const subscribe = useCallback(

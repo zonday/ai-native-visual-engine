@@ -7,7 +7,7 @@ import type {
 } from "@ai-native/core";
 import {
   type ActionRegistry,
-  createComputedStateEngine,
+  createComputedStore,
   createConstraintMiddleware,
   createConstraintRegistry,
   createDocumentCommandBus,
@@ -16,8 +16,8 @@ import {
   createRuntimeCommandBus,
   createRuntimeRegistry,
   createRuntimeTransactionManager,
+  createSceneStore,
   createScheduler,
-  createSelectorRegistry,
   createTransactionFlag,
   createTransactionMiddleware,
   createUndoHistoryMiddleware,
@@ -32,7 +32,7 @@ import { useMemo, useRef } from "react";
 import type { EditorAction } from "./use-editor-state.js";
 
 export interface EditorEngines {
-  selectorRegistry: ReturnType<typeof createSelectorRegistry>;
+  selectorRegistry: ReturnType<typeof createSceneStore>;
   interactionEngine: ReturnType<typeof createInteractionEngine>;
   constraintRegistry: ReturnType<typeof createConstraintRegistry>;
   runtimeRegistries: ActionRegistry<
@@ -46,7 +46,7 @@ export interface EditorEngines {
   >;
   schedulerRef: React.MutableRefObject<ReturnType<typeof createScheduler>>;
   computedEngineRef: React.MutableRefObject<
-    ReturnType<typeof createComputedStateEngine>
+    ReturnType<typeof createComputedStore>
   >;
   runtimeBus: ReturnType<typeof createRuntimeCommandBus>;
   documentBus: ReturnType<typeof createDocumentCommandBus>;
@@ -61,10 +61,7 @@ export function useEditorEngines(
   isUndoingRef: React.MutableRefObject<boolean>,
   syncHistoryState: () => void,
 ): EditorEngines {
-  const selectorRegistry = useMemo(
-    () => createSelectorRegistry(scene),
-    [scene],
-  );
+  const selectorRegistry = useMemo(() => createSceneStore(scene), [scene]);
 
   const interactionEngine = useMemo(() => createInteractionEngine(), []);
 
@@ -86,7 +83,7 @@ export function useEditorEngines(
   );
 
   const schedulerRef = useRef(createScheduler({ mode: "microtask" }));
-  const computedEngineRef = useRef(createComputedStateEngine(selectorRegistry));
+  const computedEngineRef = useRef(createComputedStore(selectorRegistry));
 
   const runtimeBus = useMemo(() => {
     const middlewares = [

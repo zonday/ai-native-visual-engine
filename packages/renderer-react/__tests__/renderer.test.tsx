@@ -1,10 +1,6 @@
 // @vitest-environment happy-dom
 
-import type {
-  ComputedStateEngine,
-  SceneGraph,
-  Scheduler,
-} from "@ai-native/core";
+import type { ComputedStore, SceneGraph, Scheduler } from "@ai-native/core";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ContainerNode } from "../src/components/container.jsx";
@@ -22,7 +18,7 @@ const mockEngine = {
   getLocalTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
   invalidate: () => {},
   invalidateAll: () => {},
-} as ComputedStateEngine;
+} as ComputedStore;
 
 const mockScheduler = {
   markDirty: () => {},

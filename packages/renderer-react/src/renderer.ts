@@ -1,6 +1,6 @@
 import type {
   ComponentPlugin,
-  ComputedStateEngine,
+  ComputedStore,
   InteractionEngine,
   PageId,
   PrototypeComponent,
@@ -27,7 +27,7 @@ export interface RenderContext {
   marqueeRect?: MarqueeRect;
   prototypes?: PrototypeComponent[];
   plugins?: ComponentPlugin[];
-  computedEngine: ComputedStateEngine;
+  computedEngine: ComputedStore;
   scheduler: Scheduler;
   interactionEngine?: InteractionEngine;
 }

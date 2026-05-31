@@ -1,4 +1,4 @@
-import type { ComputedStateEngine } from "../computed/computed-state-engine.js";
+import type { ComputedStore } from "../computed-store.js";
 import type { NodeId, SceneGraph } from "../types.js";
 
 export type InteractionEvent =
@@ -22,7 +22,7 @@ export interface InteractionEngine {
     x: number,
     y: number,
     scene: SceneGraph,
-    engine: ComputedStateEngine,
+    engine: ComputedStore,
   ): NodeId | undefined;
 
   // Hover
@@ -105,7 +105,7 @@ export function createInteractionEngine(): InteractionEngine {
       x: number,
       y: number,
       scene: SceneGraph,
-      engine: ComputedStateEngine,
+      engine: ComputedStore,
     ): NodeId | undefined {
       let best: NodeId | undefined;
       let bestArea = Infinity;

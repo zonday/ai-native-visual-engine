@@ -1,15 +1,12 @@
 // @vitest-environment happy-dom
 
 import type {
-  ComputedStateEngine,
+  ComputedStore,
   SceneNode,
   Scheduler,
   VisualDocument,
 } from "@ai-native/core";
-import {
-  createInteractionEngine,
-  createSelectorRegistry,
-} from "@ai-native/core";
+import { createInteractionEngine, createSceneStore } from "@ai-native/core";
 import type { ComponentRegistry } from "@ai-native/renderer-react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -25,7 +22,7 @@ const mockEngine = {
   getLocalTransform: () => ({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }),
   invalidate: () => {},
   invalidateAll: () => {},
-} as ComputedStateEngine;
+} as ComputedStore;
 
 const mockScheduler = {
   markDirty: () => {},
@@ -94,7 +91,7 @@ describe("Editor", () => {
     };
     const interactionEngine = createInteractionEngine();
     interactionEngine.select(["n1"]);
-    const selectorRegistry = createSelectorRegistry(scene);
+    const selectorRegistry = createSceneStore(scene);
 
     render(
       <Editor

@@ -1,15 +1,15 @@
-import type { EngineFacade, NodeId } from "@ai-native/core";
+import type { Engine, NodeId } from "@ai-native/core";
 import { useCallback, useSyncExternalStore } from "react";
 
 function subscribeComputed(
-  engine: EngineFacade,
+  engine: Engine,
   onStoreChange: () => void,
 ): () => void {
-  return engine.selector.autorun(() => onStoreChange());
+  return engine.events.on("scene", () => onStoreChange());
 }
 
 export function useWorldTransform(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): { x: number; y: number; rotation: number; scaleX: number; scaleY: number } {
   const subscribe = useCallback(
@@ -24,7 +24,7 @@ export function useWorldTransform(
 }
 
 export function useComputedBounds(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): { x: number; y: number; width: number; height: number } {
   const subscribe = useCallback(
@@ -39,7 +39,7 @@ export function useComputedBounds(
 }
 
 export function useCenter(
-  engine: EngineFacade,
+  engine: Engine,
   id: NodeId,
 ): { x: number; y: number } {
   const subscribe = useCallback(

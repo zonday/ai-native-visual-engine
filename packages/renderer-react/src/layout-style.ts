@@ -1,4 +1,4 @@
-import type { ComputedStateEngine, SceneNode } from "@ai-native/core";
+import type { ComputedStore, SceneNode } from "@ai-native/core";
 
 export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
   const layout = node.layout;
@@ -36,7 +36,7 @@ export function resolveLayoutStyle(node: SceneNode): React.CSSProperties {
 
 export function resolveComputedLayoutStyle(
   node: SceneNode,
-  engine: ComputedStateEngine,
+  engine: ComputedStore,
 ): React.CSSProperties {
   const mode =
     node.layout && typeof node.layout.mode === "string"

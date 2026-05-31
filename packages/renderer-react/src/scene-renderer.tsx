@@ -1,5 +1,5 @@
 import type {
-  ComputedStateEngine,
+  ComputedStore,
   InteractionEngine,
   PrototypeComponent,
   SceneNode,
@@ -53,7 +53,7 @@ function renderNode(
     string,
     { stateProps: Map<string, Record<string, unknown>> }
   >,
-  engine: ComputedStateEngine,
+  engine: ComputedStore,
   onTransform?: SceneRendererProps["onTransform"],
 ): React.ReactNode {
   if (node.visible === false) return null;
@@ -141,7 +141,7 @@ function handleSceneClick(
   scene: RenderContext["scene"],
   onSelectNode: SceneRendererProps["onSelectNode"],
   interactionEngine?: InteractionEngine,
-  computedEngine?: ComputedStateEngine,
+  computedEngine?: ComputedStore,
 ): void {
   if (!onSelectNode) return;
 
