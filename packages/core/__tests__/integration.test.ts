@@ -31,6 +31,30 @@ function validateFixture(snapshot: DocumentSnapshot): {
   return { ok: diagnostics.length === 0, diagnostics };
 }
 
+function mutatePersistedSceneFixture(
+  mutator: (rootNode: Record<string, unknown>) => Record<string, unknown>,
+): unknown {
+  const snapshot = loadFixture("single-page-empty");
+  const sceneId = snapshot.document.pages[0]?.sceneId;
+  if (!sceneId) throw new Error("Missing page fixture");
+
+  const invalidSnapshot = structuredClone(snapshot) as unknown as {
+    document: {
+      scenes: Record<
+        string,
+        { rootId: string; nodes: Record<string, Record<string, unknown>> }
+      >;
+    };
+  };
+  const scene = invalidSnapshot.document.scenes[sceneId];
+  if (!scene) throw new Error("Missing scene fixture");
+  const rootNode = scene.nodes[scene.rootId];
+  if (!rootNode) throw new Error("Missing root fixture");
+  scene.nodes[scene.rootId] = mutator(rootNode);
+
+  return invalidSnapshot;
+}
+
 describe("fixture files validation", () => {
   it("single-page-empty.json is valid", () => {
     const result = validateFixture(loadFixture("single-page-empty"));
@@ -50,50 +74,20 @@ describe("fixture files validation", () => {
   });
 
   it("rejects persisted activeStates in document snapshots", () => {
-    const snapshot = loadFixture("single-page-empty");
-    const sceneId = snapshot.document.pages[0]?.sceneId;
-    if (!sceneId) throw new Error("Missing page fixture");
-
-    const invalidSnapshot = structuredClone(snapshot) as unknown as {
-      document: {
-        scenes: Record<
-          string,
-          { rootId: string; nodes: Record<string, Record<string, unknown>> }
-        >;
-      };
-    };
-    const scene = invalidSnapshot.document.scenes[sceneId];
-    if (!scene) throw new Error("Missing scene fixture");
-    const rootNode = scene.nodes[scene.rootId];
-    if (!rootNode) throw new Error("Missing root fixture");
-    scene.nodes[scene.rootId] = {
+    const invalidSnapshot = mutatePersistedSceneFixture((rootNode) => ({
       ...rootNode,
       activeStates: ["hovered"],
-    };
+    }));
 
     const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
     expect(parsed.success).toBe(false);
   });
 
   it("rejects invalid scene node layout in an otherwise valid snapshot", () => {
-    const snapshot = loadFixture("single-page-empty");
-    const sceneId = snapshot.document.pages[0]?.sceneId;
-    if (!sceneId) throw new Error("Missing page fixture");
-
-    const invalidSnapshot = structuredClone(snapshot) as unknown as {
-      document: {
-        scenes: Record<
-          string,
-          { rootId: string; nodes: Record<string, Record<string, unknown>> }
-        >;
-      };
-    };
-    const scene = invalidSnapshot.document.scenes[sceneId];
-    if (!scene) throw new Error("Missing scene fixture");
-    scene.nodes[scene.rootId] = {
-      ...scene.nodes[scene.rootId],
+    const invalidSnapshot = mutatePersistedSceneFixture((rootNode) => ({
+      ...rootNode,
       layout: { mode: "bogus" } as unknown as Record<string, unknown>,
-    };
+    }));
 
     const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
     expect(parsed.success).toBe(false);
@@ -119,34 +113,20 @@ describe("fixture files validation", () => {
   });
 
   it("rejects persisted selection in document snapshots", () => {
-    const snapshot = loadFixture("single-page-empty");
-    const sceneId = snapshot.document.pages[0]?.sceneId;
-    if (!sceneId) throw new Error("Missing page fixture");
-
-    const invalidSnapshot = structuredClone(snapshot) as unknown as {
-      document: { scenes: Record<string, Record<string, unknown>> };
-    };
-    invalidSnapshot.document.scenes[sceneId] = {
-      ...invalidSnapshot.document.scenes[sceneId],
+    const invalidSnapshot = mutatePersistedSceneFixture((rootNode) => ({
+      ...rootNode,
       selection: { nodeIds: ["root"] },
-    };
+    }));
 
     const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
     expect(parsed.success).toBe(false);
   });
 
   it("rejects persisted viewport in document snapshots", () => {
-    const snapshot = loadFixture("single-page-empty");
-    const sceneId = snapshot.document.pages[0]?.sceneId;
-    if (!sceneId) throw new Error("Missing page fixture");
-
-    const invalidSnapshot = structuredClone(snapshot) as unknown as {
-      document: { scenes: Record<string, Record<string, unknown>> };
-    };
-    invalidSnapshot.document.scenes[sceneId] = {
-      ...invalidSnapshot.document.scenes[sceneId],
+    const invalidSnapshot = mutatePersistedSceneFixture((rootNode) => ({
+      ...rootNode,
       viewport: { x: 10, y: 20, zoom: 2 },
-    };
+    }));
 
     const parsed = DocumentSnapshotSchema.safeParse(invalidSnapshot);
     expect(parsed.success).toBe(false);
