@@ -192,6 +192,18 @@ describe("createPrototypeFromNode", () => {
     expect(result.defaultProps).toEqual({ label: "Revenue" });
     expect(result.defaultStyle).toEqual({ color: "#16a34a" });
   });
+
+  it("drops invalid node layout instead of storing an invalid defaultLayout", () => {
+    const node = {
+      id: "n1",
+      type: "metric-value",
+      layout: { mode: "bogus" },
+    } as unknown as SceneNode;
+
+    const result = createPrototypeFromNode(node, "Invalid Layout KPI");
+
+    expect(result.defaultLayout).toBeUndefined();
+  });
 });
 
 describe("detachInstance", () => {
