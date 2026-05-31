@@ -62,6 +62,7 @@ export interface SelectorRegistry {
   invalidateAll(): void;
   applyPatch(patch: ScenePatch): void;
   sync(newScene: SceneGraph): void;
+  setScene(newScene: SceneGraph): void;
   getVersion(): number;
   batch<T>(fn: () => T): T;
   flush(): void;
@@ -744,6 +745,41 @@ export function createSelectorRegistry(
       treeIndexDirty = false;
       rebuildVisibilityIndex();
       visibilityIndexDirty = false;
+      bumpExistence();
+    },
+
+    setScene(newScene: SceneGraph): void {
+      const oldScene = currentScene;
+      currentScene = newScene;
+
+      // Compare references: Immer's structural sharing means unchanged
+      // nodes keep the same identity. Only signal-bump nodes that differ.
+      const oldIds = Object.keys(oldScene.nodes);
+      const newIds = Object.keys(newScene.nodes);
+
+      // Check for removed nodes
+      for (const id of oldIds) {
+        if (!newScene.nodes[id]) {
+          handlePatch({ type: "remove-node", nodeId: id });
+        }
+      }
+
+      // Check for added or changed nodes
+      for (const id of newIds) {
+        const oldNode = oldScene.nodes[id];
+        const newNode = newScene.nodes[id];
+        if (!oldNode) {
+          handlePatch({ type: "add-node", nodeId: id });
+        } else if (oldNode !== newNode) {
+          // Node reference changed — bump all field signals
+          bumpSignal(childrenSignals, id);
+          bumpSignal(parentSignals, id);
+          bumpSignal(visibleSignals, id);
+          bumpSignal(layoutSignals, id);
+          bumpSignal(propsSignals, id);
+        }
+      }
+
       bumpExistence();
     },
 

@@ -271,7 +271,7 @@ export function createEngineFacade(
   function doDispatch(action: RuntimeAction): CommandResult {
     const result = commandBus.dispatch(action);
     if (result.ok) {
-      selectors.sync(getScene());
+      selectors.setScene(getScene());
       scheduleNotification("scene", getScene());
       scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
     }
@@ -548,7 +548,7 @@ export function createEngineFacade(
       }
       const result = transactionManager.applyAction(active, action);
       if (result.ok) {
-        selectors.sync(getScene());
+        selectors.setScene(getScene());
         scheduleNotification("scene", getScene());
         scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
       }
@@ -575,7 +575,7 @@ export function createEngineFacade(
       }
       const result = transactionManager.commit(active);
       if (result.ok) {
-        selectors.sync(getScene());
+        selectors.setScene(getScene());
         scheduleNotification("scene", getScene());
         scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
       }
@@ -593,10 +593,15 @@ export function createEngineFacade(
       if (!transactionManager) {
         return;
       }
-      transactionManager.rollback(active);
-      selectors.sync(getScene());
-      scheduleNotification("scene", getScene());
-      scheduleNotification("selection", getScene().selection?.nodeIds ?? []);
+      const preState = transactionManager.rollback(active);
+      // Sync selectors from the pre-state, not the command bus.
+      // The command bus dispatch path (config.dispatch → commandBus.dispatch)
+      // applied actions during begin/applyAction, and rollback cannot
+      // revert the command bus state — it only returns the pre-state.
+      // Consumers must read from selectors, not getScene(), after rollback.
+      selectors.setScene(preState);
+      scheduleNotification("scene", preState);
+      scheduleNotification("selection", preState.selection?.nodeIds ?? []);
     },
     getActive() {
       return transactionManager?.getActiveTransaction();
